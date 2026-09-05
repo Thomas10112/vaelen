@@ -25,6 +25,8 @@ namespace Vaelen
 			return "River";
 		case IdKind::ResourceDeposit:
 			return "ResourceDeposit";
+		case IdKind::Lake:
+			return "Lake";
 		case IdKind::Culture:
 			return "Culture";
 		case IdKind::Language:

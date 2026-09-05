@@ -69,7 +69,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 |---|---|---|---|
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
-| 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | IN PROGRESS (02.01-02.04 VALIDATED headless; 02.05-02.08 PLANNED) |
+| 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | IN PROGRESS (02.01-02.05 VALIDATED headless; 02.06-02.08 PLANNED) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | PLANNED |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
@@ -529,13 +529,37 @@ deterministic, and every one of these was checked against determinism first):
   plus a sea-proximity share gives 0.45 and every biome family at 256.
 - Decision: ADR-0019.
 
-### 02.05 Hydrology
+### 02.05 Hydrology - VALIDATED (headless)
 
-- D8 flow direction with deterministic tie-break, depression filling, flow
-  accumulation, river extraction above a threshold, lakes; rivers and lakes as entities
-  with components (source, mouth, length, tiles), river ids of kind `River`.
-- Tests: every land tile drains to sea or lake, no flow cycles, river count band at
-  256, frozen digests, one-million-tile long run at 1024 with baseline logged.
+- Delivered: `Hydrology.h/.cpp` - `WorldTypes::Declare` (River and Lake component
+  types and pools), `HydroLayers::Declare` (filled elevation, flow direction,
+  accumulation, river index, lake index), `RiverInfo` / `LakeInfo` plain-data
+  components, `IdKind::Lake`, `GenerateHydrology` (priority flood + epsilon from every
+  sea tile with ties broken by index; D8 steepest descent on the filled surface with
+  the diagonal drop scaled by 181/256 and ties kept in the fixed neighbour order;
+  accumulation in decreasing filled order; basins as 4-connected raised components
+  where a basin shallower than `LakeMinDepth` or smaller than `LakeMinTiles` is filled
+  with sediment - its elevation rises to the water surface and becomes a plain - and a
+  deeper one becomes a lake entity with surface, tiles and outlet; `ClassifyTerrain`
+  rerun; rivers as tiles above `RiverThreshold` outside lakes, traced from their
+  sources in scan order to the sea, a lake or an existing river, dropped below
+  `MinRiverLength`, one entity each), `MeasureHydrology`, `StepsToSea`,
+  `ExportHydroAscii`. The stage runs after elevation and before climate.
+- Tests (5): a synthetic cone with a carved pit (one lake of nine tiles with an outlet,
+  every pit tile reaches the sea, the summit has accumulation 1, a rerun replaces the
+  entities); the AELVOR map at 256 (every land tile drains to the sea - all of them,
+  not a sample -, flow descends, accumulation grows downstream, the total flow into
+  the sea equals the land count, lake tiles are raised and never river tiles, entities
+  agree with the index layers, 40 rivers with the longest at 46 tiles, 22 lakes under
+  4 % of the map, the river map logged); determinism across worlds including the
+  entities, snapshot round trip of twelve layers, a lower threshold gives more river
+  tiles, misuse before Reset; frozen digests for flow, accumulation and river index
+  plus the river and lake counts; the 1024 x 1024 baseline (1.5 s debug, 0.36 s
+  release).
+- Lesson: pure filling turned every fractal pit into a lake (375 lakes, rivers cut to
+  ten tiles); the basin-depth rule keeps only real lakes and lets rivers cross the
+  filled plains.
+- Decision: ADR-0020.
 
 ### 02.06 Regions
 
@@ -577,37 +601,38 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 02 — WORLD
-TASK        : 02.04 — CLIMATE AND BIOMES
+TASK        : 02.05 — HYDROLOGY
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████░░░░░░░░░░░░ 50%
+███████████████░░░░░░░░░ 62%
 
 CURRENTLY
-→ 02.04 closed: sea distance, latitude bands with altitude lapse, wind-advected moisture
-  with rain shadow and sea proximity, 12-entry biome table, seasonal offset hook
+→ 02.05 closed: priority-flood+epsilon depression filling, D8 flow, accumulation,
+  sediment-filled shallow basins vs deep lakes, rivers and lakes as entities
 
 COMPLETED
 ✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION (CI 9/9 on every run)
-✓ 02.01 Grid, tile layers, config, snapshot section (10 tests, CI run 18)
-✓ 02.02 Fixed-point math and deterministic noise (9 tests, CI run 19)
-✓ 02.03 Elevation and coastline (6 tests, CI run 20)
-✓ 02.04 Climate and biomes (6 tests: Climate)
+✓ 02.01 Grid and layers (CI 18) ; 02.02 Fixed point and noise (CI 19)
+✓ 02.03 Elevation and coastline (CI 20) ; 02.04 Climate and biomes (CI 21)
+✓ 02.05 Hydrology (5 tests: Hydrology)
 
 NEXT
-→ 02.05 Hydrology (D8 flow with deterministic tie-break, depression filling, rivers and lakes as entities)
-→ 02.06 Regions ; 02.07 Deposits ; 02.08 Phase 02 gate
+→ 02.06 Regions (watershed-seeded partition of the land, region entities and adjacency)
+→ 02.07 Deposits ; 02.08 Phase 02 gate (frozen full pipeline at 64/256/1024, baseline)
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-~ Source/VaelenSim/Public/Vaelen/Sim/WorldGen.h, Private/WorldGen.cpp (four new layers, climate stage)
-+ Tests/Sim/Test_Climate.cpp
++ Source/VaelenSim/Public/Vaelen/Sim/Hydrology.h, Private/Hydrology.cpp
+~ Ids.h/.cpp (IdKind::Lake = 14)
++ Tests/Sim/Test_Hydrology.cpp
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 108 (105 without asserts); ctest 37/37 in all six Linux presets
-✓ AELVOR at 256: 10 distinct land biomes, mean land moisture 0.45, temperature -15.7..30.5, max sea distance 48
-✓ Frozen: temperature256 a9c96b39c6085337, moisture256 871f1b4ad5cfe535, biome256 56503eefd26ec6d5 (clang = gcc)
-✓ Purity: 42 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 113 (110 without asserts); ctest 38/38 in all six Linux presets
+✓ AELVOR at 256: every land tile drains to the sea, 40 rivers (longest 46 tiles), 22 lakes; frozen
+  flow256 7b6f14f39284c7a0, acc256 09daae8f9829deed, river256 00f52817ba9dcda8 (clang = gcc)
+✓ Baseline 1024 x 1024 hydrology: 1.5 s debug, 0.36 s release
+✓ Purity: 44 files, 0 violations
 
 BLOCKERS
 None

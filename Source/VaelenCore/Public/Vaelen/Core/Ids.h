@@ -47,6 +47,7 @@ namespace Vaelen
 		Tile = 11,
 		River = 12,
 		ResourceDeposit = 13,
+		Lake = 14,
 
 		// -- History & society (Phases 03-05) --
 		Culture = 20,

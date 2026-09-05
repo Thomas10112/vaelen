@@ -42,6 +42,7 @@ Rules for this file:
 | [0017](#adr-0017-world-generation-uses-q3232-fixed-point-and-integer-lattice-noise-no-floating-point-no-libm) | World generation uses Q32.32 fixed point and integer lattice noise; no floating point, no libm | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0018](#adr-0018-world-generation-is-a-pipeline-of-pure-stages-with-derived-seeds-a-32-slot-parameter-block-and-a-sea-bounded-continent) | World generation is a pipeline of pure stages with derived seeds, a 32-slot parameter block and a sea-bounded continent | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0019](#adr-0019-climate-is-a-row-wise-advection-model-with-resolution-independent-decay-and-a-threshold-biome-table) | Climate is a row-wise advection model with resolution-independent decay and a threshold biome table | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0020](#adr-0020-hydrology-fills-depressions-by-priority-flood-fills-shallow-basins-with-sediment-and-keeps-deep-ones-as-lakes-rivers-and-lakes-are-entities) | Hydrology fills depressions by priority flood, fills shallow basins with sediment and keeps deep ones as lakes; rivers and lakes are entities | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -1273,6 +1274,65 @@ one set of parameters.
 Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/WorldGen.h`,
 `Source/VaelenSim/Private/WorldGen.cpp`, `Tests/Sim/Test_Climate.cpp` (6 tests).
 Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0020: Hydrology fills depressions by priority flood, fills shallow basins with sediment and keeps deep ones as lakes; rivers and lakes are entities
+
+### Context
+
+Rivers and lakes shape settlement, trade and borders in every later phase. The
+fractal relief of 02.03 has closed depressions everywhere; a drainage model has to
+decide what becomes a lake, what water simply crosses, and how to do that
+deterministically on a million tiles.
+
+### Decision
+
+1. Depressions are filled by priority flood + epsilon seeded from every sea tile, with
+   ties broken by tile index. After filling every land tile has a strictly lower
+   neighbour, so D8 flow never stalls and never cycles.
+2. Flow direction is the steepest descent on the filled surface, diagonals scaled by
+   181/256, ties resolved by the fixed neighbour order; accumulation is computed in
+   decreasing (filled, index) order.
+3. Raised tiles form basins (4-connected). A basin whose deepest fill is below
+   `LakeMinDepth` (160 units) or that has fewer than `LakeMinTiles` (12) tiles is filled
+   with sediment: its elevation is raised to the water surface and it becomes a plain.
+   A deeper, larger basin is a lake: the elevation stays as the lake bed, the filled
+   level is the surface. The stage therefore edits the elevation layer and reruns
+   `ClassifyTerrain`, and runs before the climate stage.
+4. Rivers are tiles whose accumulation exceeds a fraction of the tile count, outside
+   lakes, traced from their sources in scan order; each trace of at least
+   `MinRiverLength` tiles is one entity with a `RiverInfo` component; each lake is one
+   entity with a `LakeInfo` component; index layers point back to them.
+5. The stage destroys its previous entities before running, so it can be re-run, but
+   ids are fresh each time: regeneration reproduces a world only from a fresh world.
+
+### Alternatives and decision rule
+
+- Filling only (Barnes' priority flood as is): rejected after measurement; 375 lakes
+  covering a tenth of the land and rivers cut to ten tiles at 256.
+- Breaching (carving channels through rims): deferred; more code and parameters for a
+  result the sediment rule approximates, and it can be added later as a second
+  basin outcome without changing the layers.
+- Rivers as tile flags only: rejected; later phases need to name a river, follow it
+  and hang history on it, which the entity model provides.
+- Decided by robustness (drainage guaranteed by construction), then simplicity,
+  consistent with determinism (index tie-breaks everywhere).
+
+### Consequences
+
+- Elevation after hydrology differs from the 02.03 elevation on filled basins; the
+  02.03 frozen digests are taken before hydrology and stay valid.
+- Rivers end where they meet a lake or another river; a lake's outlet tile starts a
+  new river when its flow is high enough.
+- The 32-slot parameter block gains four hydrology slots (19 to 22).
+
+### Status
+
+Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/Hydrology.h`,
+`Source/VaelenSim/Private/Hydrology.cpp`, `Source/VaelenCore/Public/Vaelen/Core/Ids.h`,
+`Tests/Sim/Test_Hydrology.cpp` (5 tests). Headless VALIDATED on the six Linux presets;
+engine side UNVERIFIED.
 
 ---
 

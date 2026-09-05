@@ -13,37 +13,38 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 02 — WORLD
-TASK        : 02.04 — CLIMATE AND BIOMES
+TASK        : 02.05 — HYDROLOGY
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████░░░░░░░░░░░░ 50%
+███████████████░░░░░░░░░ 62%
 
 CURRENTLY
-→ 02.04 closed: sea distance, latitude bands with altitude lapse, wind-advected moisture
-  with rain shadow and sea proximity, 12-entry biome table, seasonal offset hook
+→ 02.05 closed: priority-flood+epsilon depression filling, D8 flow, accumulation,
+  sediment-filled shallow basins vs deep lakes, rivers and lakes as entities
 
 COMPLETED
 ✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION (CI 9/9 on every run)
-✓ 02.01 Grid, tile layers, config, snapshot section (10 tests, CI run 18)
-✓ 02.02 Fixed-point math and deterministic noise (9 tests, CI run 19)
-✓ 02.03 Elevation and coastline (6 tests, CI run 20)
-✓ 02.04 Climate and biomes (6 tests: Climate)
+✓ 02.01 Grid and layers (CI 18) ; 02.02 Fixed point and noise (CI 19)
+✓ 02.03 Elevation and coastline (CI 20) ; 02.04 Climate and biomes (CI 21)
+✓ 02.05 Hydrology (5 tests: Hydrology)
 
 NEXT
-→ 02.05 Hydrology (D8 flow with deterministic tie-break, depression filling, rivers and lakes as entities)
-→ 02.06 Regions ; 02.07 Deposits ; 02.08 Phase 02 gate
+→ 02.06 Regions (watershed-seeded partition of the land, region entities and adjacency)
+→ 02.07 Deposits ; 02.08 Phase 02 gate (frozen full pipeline at 64/256/1024, baseline)
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-~ Source/VaelenSim/Public/Vaelen/Sim/WorldGen.h, Private/WorldGen.cpp (four new layers, climate stage)
-+ Tests/Sim/Test_Climate.cpp
++ Source/VaelenSim/Public/Vaelen/Sim/Hydrology.h, Private/Hydrology.cpp
+~ Ids.h/.cpp (IdKind::Lake = 14)
++ Tests/Sim/Test_Hydrology.cpp
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 108 (105 without asserts); ctest 37/37 in all six Linux presets
-✓ AELVOR at 256: 10 distinct land biomes, mean land moisture 0.45, temperature -15.7..30.5, max sea distance 48
-✓ Frozen: temperature256 a9c96b39c6085337, moisture256 871f1b4ad5cfe535, biome256 56503eefd26ec6d5 (clang = gcc)
-✓ Purity: 42 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 113 (110 without asserts); ctest 38/38 in all six Linux presets
+✓ AELVOR at 256: every land tile drains to the sea, 40 rivers (longest 46 tiles), 22 lakes; frozen
+  flow256 7b6f14f39284c7a0, acc256 09daae8f9829deed, river256 00f52817ba9dcda8 (clang = gcc)
+✓ Baseline 1024 x 1024 hydrology: 1.5 s debug, 0.36 s release
+✓ Purity: 44 files, 0 violations
 
 BLOCKERS
 None
@@ -92,7 +93,8 @@ on the engine side until the first UE 5.6 build.**
 | 02.02 | Fix64 Q32.32 fixed point, deterministic lattice noise (value, gradient, fractal, warp) | VALIDATED: FixedPoint 4, Noise 5 tests |
 | 02.03 | Elevation and coastline: continental mask, relief, ridges, edge sea, terrain flags, slope, ASCII export | VALIDATED: WorldGen 6 tests |
 | 02.04 | Climate and biomes: sea distance, latitude and lapse, advected moisture with rain shadow, biome table, seasons hook | VALIDATED: Climate 6 tests |
-| 02.05-02.08 | Hydrology, regions, deposits, gate | PLANNED |
+| 02.05 | Hydrology: depression filling, D8 flow, accumulation, sediment fill vs lakes, rivers and lakes as entities | VALIDATED: Hydrology 5 tests |
+| 02.06-02.08 | Regions, deposits, gate | PLANNED |
 
 ## File status
 
@@ -124,6 +126,7 @@ the purity checker, applied to headers and sources).
 | `Public/Vaelen/Sim/TileGrid.h`, `WorldMap.h`, `Private/WorldMap.cpp` | VALIDATED (Phase 02) — covered by `Tests/Sim/Test_TileGrid.cpp`, `Test_WorldMap.cpp` |
 | `Public/Vaelen/Sim/FixedPoint.h`, `Noise.h`, `Private/Noise.cpp` | VALIDATED (Phase 02) — covered by `Tests/Sim/Test_FixedPoint.cpp`, `Test_Noise.cpp` |
 | `Public/Vaelen/Sim/WorldGen.h`, `Private/WorldGen.cpp` | VALIDATED (Phase 02) — covered by `Tests/Sim/Test_WorldGen.cpp`, `Test_Climate.cpp` |
+| `Public/Vaelen/Sim/Hydrology.h`, `Private/Hydrology.cpp` | VALIDATED (Phase 02) — covered by `Tests/Sim/Test_Hydrology.cpp` |
 
 ### Tests/
 
@@ -150,8 +153,9 @@ the purity checker, applied to headers and sources).
 | `Sim/Test_FixedPoint.cpp`, `Test_Noise.cpp` (Phase 02) | VALIDATED | 4, 5 |
 | `Sim/Test_WorldGen.cpp` (Phase 02) | VALIDATED | 6 |
 | `Sim/Test_Climate.cpp` (Phase 02) | VALIDATED | 6 |
+| `Sim/Test_Hydrology.cpp` (Phase 02) | VALIDATED | 5 |
 
-Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6 (108 tests, 2 124 816 checks; 105 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Registry`, `Sim.Shuffled` (37 entries in total).
+Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5 (113 tests, 2 124 870 checks; 110 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Registry`, `Sim.Shuffled` (38 entries in total).
 
 ### Tools/ and CI
 
@@ -168,16 +172,16 @@ Toolchain: clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.1
 
 | Preset | Build | `ctest` | `VaelenCoreTests` | `VaelenSimTests` |
 |---|---|---|---|---|
-| linux-clang-debug | 0 warnings | 37/37 passed | 133 run, 133 passed, 21914 checks | 108 run, 108 passed, 2 124 816 checks |
-| linux-gcc-debug | 0 warnings | 37/37 passed | 133 run, 133 passed, 21914 checks | 108 run, 108 passed |
-| linux-clang-release | 0 warnings | 37/37 passed | 133 run, 133 passed, 21914 checks | 108 run, 108 passed |
-| linux-gcc-release | 0 warnings | 37/37 passed | 133 run, 133 passed, 21914 checks | 108 run, 108 passed |
-| linux-clang-noasserts | 0 warnings | 37/37 passed | 108 run, 108 passed, 21701 checks | 105 run, 105 passed |
-| linux-gcc-noasserts | 0 warnings | 37/37 passed | 108 run, 108 passed, 21701 checks | 105 run, 105 passed |
+| linux-clang-debug | 0 warnings | 38/38 passed | 133 run, 133 passed, 22005 checks | 113 run, 113 passed, 2 124 870 checks |
+| linux-gcc-debug | 0 warnings | 38/38 passed | 133 run, 133 passed, 22005 checks | 113 run, 113 passed |
+| linux-clang-release | 0 warnings | 38/38 passed | 133 run, 133 passed, 22005 checks | 113 run, 113 passed |
+| linux-gcc-release | 0 warnings | 38/38 passed | 133 run, 133 passed, 22005 checks | 113 run, 113 passed |
+| linux-clang-noasserts | 0 warnings | 38/38 passed | 108 run, 108 passed, 21792 checks | 110 run, 110 passed |
+| linux-gcc-noasserts | 0 warnings | 38/38 passed | 108 run, 108 passed, 21792 checks | 110 run, 110 passed |
 
 Mini-world baseline (100 000 ticks, 41 entities, 305 027 events, 34 168 227-byte snapshot), logged by `Sim.MiniWorld`, not asserted: clang debug 0.39 s (255 k ticks/s), gcc debug 0.40 s, clang release 0.135 s (739 k ticks/s), gcc release without assertions 0.127 s (790 k ticks/s); snapshot 0.09-0.14 s.
 
-GitHub Actions runs 13 to 20 (01.06 through 02.03): all 9 jobs green each, so the frozen replay, mini-world and snapshot values hold on Windows MSVC and macOS AppleClang as well. Phase 00 record - run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14).
+GitHub Actions runs 13 to 21 (01.06 through 02.04): all 9 jobs green each, so the frozen replay, mini-world and snapshot values hold on Windows MSVC and macOS AppleClang as well. Phase 00 record - run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14).
 
 Also run locally: `python3 Tools/check_kernel_purity.py --self-test` (36 checks, 0 failed),
 `python3 Tools/check_kernel_purity.py --root . --verbose` (12 files, 0 violations),
