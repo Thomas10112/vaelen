@@ -44,7 +44,7 @@ TESTS
 ✓ 108/108 with assertions off (linux-*-noasserts), both compilers
 ✓ ctest 14/14 in all six Linux presets (incl. Kernel.Purity, PuritySelfTest 36 checks)
 ✓ clang-format 18: 0 drift on Source/VaelenCore and Tests
-⚠ Windows MSVC, macOS AppleClang: CI legs defined, not observed from here
+✓ GitHub CI run 5: Windows MSVC 19.44 and macOS 15 AppleClang, 14/14 each; all 9 jobs green
 ⚠ Unreal Build Tool (UE 5.6): never run, engine-facing files UNVERIFIED
 
 BLOCKERS
@@ -106,7 +106,7 @@ Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, Lo
 |---|---|
 | `Tools/check_kernel_purity.py` | VALIDATED (Phase 00): self-test 36 checks, kernel scan 12 files, 0 violations, 2 exemptions (the `long long` aliases) |
 | `Tools/kernel_modules.txt` | lists `VaelenCore` |
-| `.github/workflows/kernel-ci.yml` | Linux legs (6 presets) reproduced locally; `format`, Windows and macOS jobs defined, not observed from here |
+| `.github/workflows/kernel-ci.yml` | All 9 jobs green on GitHub (run 5): six Linux presets, `format`, Windows MSVC, macOS |
 
 ## Verified here
 
@@ -122,7 +122,9 @@ Toolchain: clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.1
 | linux-clang-noasserts | 0 warnings | 14/14 passed | 108 run, 108 passed, 21701 checks |
 | linux-gcc-noasserts | 0 warnings | 14/14 passed | 108 run, 108 passed, 21701 checks |
 
-Also run: `python3 Tools/check_kernel_purity.py --self-test` (36 checks, 0 failed),
+GitHub Actions run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14).
+
+Also run locally: `python3 Tools/check_kernel_purity.py --self-test` (36 checks, 0 failed),
 `python3 Tools/check_kernel_purity.py --root . --verbose` (12 files, 0 violations),
 `clang-format --style=file --dry-run -Werror` on every kernel and test source (0 drift).
 
@@ -131,10 +133,8 @@ Also run: `python3 Tools/check_kernel_purity.py --self-test` (36 checks, 0 faile
 - The Unreal build: no UE 5.6 installation is available in this environment. Every
   engine-facing file is UNVERIFIED and was reviewed only by reasoning from the UE 5.6
   API (see `Docs/ARCHITECTURE.md` section 8 for what the first engine build must confirm).
-- Windows (MSVC 2022, clang-cl) and macOS (AppleClang, `macos-15`) CI legs: defined in
-  the workflow, never executed from this repository. Known MSVC-specific measures already
-  applied: `/EHs-c- /wd4577`, C4127-safe assertion and harness macros, `/utf-8`,
-  ASCII-only kernel sources, `.gitattributes` forcing LF.
+- clang-cl on Windows: only Microsoft cl (MSVC 19.44) was exercised by CI; the
+  `/clang:-ffp-contract=off` branch is untested.
 - Long-duration and integration test categories: deferred to Phase 01 (ROADMAP 01.07,
   01.08); every kernel STATUS line says so.
 

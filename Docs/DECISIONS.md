@@ -684,5 +684,4 @@ presets into `out/build/<preset>`:
 
 Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). Purity: `python3 Tools/check_kernel_purity.py --self-test`
 -> 36 checks, 0 failed; `--root . --verbose` -> 12 files, 0 violations, 2 exemptions.
-clang-format 18 dry run: 0 drift. The Windows, macOS and engine (UBT) builds were not
-executed.
+clang-format 18 dry run: 0 drift. GitHub Actions run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14). The engine (UBT) build was not executed.

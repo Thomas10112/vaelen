@@ -444,8 +444,7 @@ with a timeout (300 s, 120 s for the purity entries).
 
 Verified in this repository: all six Linux presets with the exact preset commands:
 14/14 CTest entries pass, 133/133 tests (108/108 without assertions), 0 warnings, 0
-clang-format drift. The Windows and macOS legs are defined in the workflow but their
-results have not been observed from inside this repository.
+clang-format drift. GitHub Actions run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14).
 
 ### 7.2 Engine-backed build (NOT automated)
 

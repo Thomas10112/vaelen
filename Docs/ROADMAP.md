@@ -128,9 +128,10 @@ Deliverables present:
   `.editorconfig`, `.gitattributes` (LF), `.gitignore`.
 - Layering and module plan: `Docs/ARCHITECTURE.md` sections 1-4.
 
-Verified: headless configure, build and `ctest` for all six Linux presets (section 8).
-Not verified: any UBT build; every engine-facing file is labelled UNVERIFIED and has never
-been compiled in this repository.
+Verified: headless configure, build and `ctest` for all six Linux presets (section 8),
+and the full GitHub CI matrix including Windows MSVC and macOS AppleClang (run 5, all
+9 jobs green). Not verified: any UBT build; every engine-facing file is labelled
+UNVERIFIED and has never been compiled in this repository.
 
 ### 00.02 Core primitives: ids, hash, random - VALIDATED
 
@@ -190,8 +191,8 @@ Done:
 Deliberately not applied (see `Docs/STATUS.md`, "Discrepancies"): `FPSemantics` in the
 module rules, SHA-pinned GitHub Actions, trimming the `IdKind` placeholders.
 
-Phase 00 against the exit criteria of section 2: (1) green on all six Linux presets as
-run locally; Windows and macOS legs unobserved; (2) met for Random, Ids, Hash, including
+Phase 00 against the exit criteria of section 2: (1) green on the whole CI matrix
+(run 5: six Linux presets, clang-format, Windows MSVC, macOS); (2) met for Random, Ids, Hash, including
 frozen derivation values; (3) met: no INCOMPLETE file exists, engine files are
 UNVERIFIED; (4) unit, deterministic and edge-case present; integration and long-duration
 deferred to Phase 01 and stated in every STATUS line; (5) docs present, closing report in
@@ -358,7 +359,7 @@ TESTS
 ✓ 108/108 with assertions off (linux-*-noasserts), both compilers
 ✓ ctest 14/14 in all six Linux presets (incl. Kernel.Purity, PuritySelfTest 36 checks)
 ✓ clang-format 18: 0 drift on Source/VaelenCore and Tests
-⚠ Windows MSVC, macOS AppleClang: CI legs defined, not observed from here
+✓ GitHub CI run 5: Windows MSVC 19.44 and macOS 15 AppleClang, 14/14 each; all 9 jobs green
 ⚠ Unreal Build Tool (UE 5.6): never run, engine-facing files UNVERIFIED
 
 BLOCKERS
@@ -387,4 +388,6 @@ python3 Tools/check_kernel_purity.py --root . --verbose                # 12 file
 | linux-clang-noasserts | 0 warnings | 14/14 passed | 108 run, 108 passed, 21701 checks |
 | linux-gcc-noasserts | 0 warnings | 14/14 passed | 108 run, 108 passed, 21701 checks |
 
-Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). Not run: any UBT/engine build, the Windows and macOS CI legs.
+Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without).
+
+GitHub Actions run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14). Not run: any UBT/engine build.

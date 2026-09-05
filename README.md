@@ -136,7 +136,7 @@ available in this repository's environment, so every Unreal-facing file is marke
 | Test harness and runner | `Tests/Harness` | VALIDATED (Phase 00) |
 | Core test suites (133 tests, 108 without assertions) | `Tests/Core` | VALIDATED |
 | Kernel purity checker | `Tools/check_kernel_purity.py` | VALIDATED (Phase 00) |
-| Headless CI workflow | `.github/workflows/kernel-ci.yml` | Six Linux legs reproduced locally; clang-format, Windows and macOS runs not observed |
+| Headless CI workflow | `.github/workflows/kernel-ci.yml` | All 9 jobs green on GitHub: six Linux legs, clang-format, Windows MSVC, macOS AppleClang |
 | Modules of Phases 01-20 | - | PLANNED (do not exist) |
 
 Numbers, commands and the current BUILD STATUS block: [Docs/STATUS.md](Docs/STATUS.md).
