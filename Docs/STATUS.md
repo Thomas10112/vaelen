@@ -13,15 +13,15 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 01 — CORE SIMULATION
-TASK        : 01.04 — SIMULATION CLOCK & CALENDAR
+TASK        : 01.05 — EVENT BUS & EVENT LOG
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████░░░░░░░░░░░░ 50%
+███████████████░░░░░░░░░ 62%
 
 CURRENTLY
-→ 01.03 and 01.04 closed: ISystem, Scheduler (stable topological order, LOD periods,
-  per-system streams), SimClock and the AELVOR calendar
+→ 01.05 closed: Event (POD, cause, subject, payload), EventLog (append-only, running
+  digest, byte image), EventBus (next-tick delivery, listeners ordered by name hash)
 
 COMPLETED
 ✓ Phase 00 — FOUNDATION (CI 9/9)
@@ -29,19 +29,21 @@ COMPLETED
 ✓ 01.02 Component storage (15 tests)
 ✓ 01.03 Systems & tick scheduler (8 tests)
 ✓ 01.04 Simulation clock & calendar (4 tests)
+✓ 01.05 Event bus & event log (10 tests)
 
 NEXT
-→ 01.05 Event bus & event log (typed events, next-tick delivery, causal links)
-→ 01.06 Persistence interfaces & snapshot
+→ 01.06 Persistence interfaces & snapshot (IArchive, versioned world snapshot)
+→ 01.07 Deterministic replay test
 
 FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/{SimClock.h, System.h}
-+ Source/VaelenSim/Private/Scheduler.cpp
-+ Tests/Sim/{Test_SimClock.cpp, Test_Scheduler.cpp}
++ Source/VaelenSim/Public/Vaelen/Sim/{Event.h, EventBus.h}
++ Source/VaelenSim/Private/EventBus.cpp
+~ Source/VaelenSim/Private/Scheduler.cpp (dispatches pending events before the systems)
++ Tests/Sim/{Test_Event.cpp, Test_EventLog.cpp, Test_EventBus.cpp}
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 43 (41 without asserts); ctest 23/23 in all six Linux presets
-✓ Purity: 24 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 53 (50 without asserts); ctest 26/26 in all six Linux presets
+✓ Purity: 27 files, 0 violations
 ⚠ Unreal Build Tool: VaelenSim engine files UNVERIFIED
 
 BLOCKERS
@@ -84,7 +86,7 @@ the purity checker, applied to headers and sources).
 
 | File | STATUS |
 |---|---|
-| `Public/Vaelen/Sim/SimApi.h`, `EntityHandle.h`, `EntityRegistry.h`, `ComponentType.h`, `ComponentPool.h`, `ComponentStore.h`, `SimClock.h`, `System.h`, `Private/EntityRegistry.cpp`, `ComponentType.cpp`, `ComponentStore.cpp`, `Scheduler.cpp` | VALIDATED (Phase 01) — integration and long-duration tests arrive with 01.07 / 01.08 |
+| `Public/Vaelen/Sim/SimApi.h`, `EntityHandle.h`, `EntityRegistry.h`, `ComponentType.h`, `ComponentPool.h`, `ComponentStore.h`, `SimClock.h`, `System.h`, `Event.h`, `EventBus.h`, `Private/EntityRegistry.cpp`, `ComponentType.cpp`, `ComponentStore.cpp`, `Scheduler.cpp`, `EventBus.cpp` | VALIDATED (Phase 01) — integration and long-duration tests arrive with 01.07 / 01.08 |
 | `Private/VaelenSimModule.cpp`, `VaelenSim.Build.cs` | UNVERIFIED (requires UE5) |
 
 ### Tests/
@@ -102,7 +104,7 @@ the purity checker, applied to headers and sources).
 | `Core/Test_Random.cpp` | VALIDATED | 29 |
 | `Core/Test_Version.cpp` | VALIDATED | 7 |
 
-Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8 (43 tests, 2 017 947 checks; 41 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Registry`, `Sim.Shuffled` (23 entries in total).
+Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6 (53 tests, 2 018 073 checks; 50 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Registry`, `Sim.Shuffled` (26 entries in total).
 
 ### Tools/ and CI
 

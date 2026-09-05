@@ -5,6 +5,7 @@
 // STATUS: VALIDATED (Phase 01) - covered by Tests/Sim/Test_Scheduler.cpp
 #include "Vaelen/Sim/System.h"
 #include "Vaelen/Core/Assert.h"
+#include "Vaelen/Sim/EventBus.h"
 
 #include <algorithm>
 
@@ -208,6 +209,12 @@ namespace Vaelen
 			return 0;
 		}
 		const SimTick Tick = Clock.Now();
+		// Events published during earlier ticks reach their listeners now,
+		// before any system of this tick runs.
+		if (Events != nullptr)
+		{
+			Events->Dispatch(Tick);
+		}
 		uint32 Ran = 0;
 		for (usize Position = 0; Position < Order.size(); ++Position)
 		{

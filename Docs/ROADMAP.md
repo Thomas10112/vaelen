@@ -68,7 +68,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | Phase | Name | Objective (one line) | Status |
 |---|---|---|---|
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
-| 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | IN PROGRESS (01.01-01.04 VALIDATED headless; 01.05-01.08 PLANNED) |
+| 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | IN PROGRESS (01.01-01.05 VALIDATED headless; 01.06-01.08 PLANNED) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | PLANNED |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | PLANNED |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
@@ -273,17 +273,24 @@ design choice below that survives implementation gets an ADR (planned numbers 00
 - Decision: ADR-0013. Irregular calendars (leap days) remain a data decision for Phase
   02/03; `CalendarRules` is the extension point.
 
-### 01.05 Event bus and event log
+### 01.05 Event bus and event log - VALIDATED (headless)
 
-- Goal: the historical record and the replay input.
-- Planned: `Event{PersistentId Id (IdKind::Event); SimTick Tick; uint64 TypeHash;
-  fixed-size payload or byte span}`; `EventBus` with publish/subscribe delivered in
-  publish order within a tick; append-only `EventLog` with a running hash for
-  determinism comparison; serialisation as bytes.
-- Tests: delivery order, subscription filtering, log append-only and hash stable, log
-  byte round trip, ids monotonic, edge cases (no subscribers, publish during dispatch,
-  empty payload).
-- Exit: ADR for event layout and log format; VALIDATED.
+- Delivered: `Event` (`Event.h`: 112-byte plain record with id of kind Event, tick,
+  type hash, cause id, subject id and up to 64 payload bytes; every byte defined, so
+  events hash and serialise as raw bytes; `EventType<T>` / `MakeEventType`), `EventLog`
+  (`EventBus.h/.cpp`: append-only, running digest, byte image with count and digest,
+  corruption rejected, `CountCausedBy`), `EventBus` (publish at a tick with subject and
+  cause, next-tick delivery in publish order, listeners per type ordered by listener
+  name hash, events published during dispatch deferred to the next tick, ids from the
+  world allocator, every publication logged). `Scheduler::RunTick` dispatches the
+  pending events before running the systems of a tick.
+- Tests (`Tests/Sim`, 10): payload round trip and zero-filled bytes, hash coverage,
+  append-only digest (order-sensitive), byte round trip and corruption detection,
+  next-tick delivery order across ticks, type filtering and listener order independent
+  of subscription order, deferral during dispatch with causal link, no subscribers /
+  empty payload, scheduler integration with a birth -> death causal chain and equal
+  digests for two identical worlds, misuse paths.
+- Decision: ADR-0014.
 
 ### 01.06 Persistence interfaces and snapshot
 
@@ -339,15 +346,15 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 01 — CORE SIMULATION
-TASK        : 01.04 — SIMULATION CLOCK & CALENDAR
+TASK        : 01.05 — EVENT BUS & EVENT LOG
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████░░░░░░░░░░░░ 50%
+███████████████░░░░░░░░░ 62%
 
 CURRENTLY
-→ 01.03 and 01.04 closed: ISystem, Scheduler (stable topological order, LOD periods,
-  per-system streams), SimClock and the AELVOR calendar
+→ 01.05 closed: Event (POD, cause, subject, payload), EventLog (append-only, running
+  digest, byte image), EventBus (next-tick delivery, listeners ordered by name hash)
 
 COMPLETED
 ✓ Phase 00 — FOUNDATION (CI 9/9)
@@ -355,19 +362,21 @@ COMPLETED
 ✓ 01.02 Component storage (15 tests)
 ✓ 01.03 Systems & tick scheduler (8 tests)
 ✓ 01.04 Simulation clock & calendar (4 tests)
+✓ 01.05 Event bus & event log (10 tests)
 
 NEXT
-→ 01.05 Event bus & event log (typed events, next-tick delivery, causal links)
-→ 01.06 Persistence interfaces & snapshot
+→ 01.06 Persistence interfaces & snapshot (IArchive, versioned world snapshot)
+→ 01.07 Deterministic replay test
 
 FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/{SimClock.h, System.h}
-+ Source/VaelenSim/Private/Scheduler.cpp
-+ Tests/Sim/{Test_SimClock.cpp, Test_Scheduler.cpp}
++ Source/VaelenSim/Public/Vaelen/Sim/{Event.h, EventBus.h}
++ Source/VaelenSim/Private/EventBus.cpp
+~ Source/VaelenSim/Private/Scheduler.cpp (dispatches pending events before the systems)
++ Tests/Sim/{Test_Event.cpp, Test_EventLog.cpp, Test_EventBus.cpp}
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 43 (41 without asserts); ctest 23/23 in all six Linux presets
-✓ Purity: 24 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 53 (50 without asserts); ctest 26/26 in all six Linux presets
+✓ Purity: 27 files, 0 violations
 ⚠ Unreal Build Tool: VaelenSim engine files UNVERIFIED
 
 BLOCKERS

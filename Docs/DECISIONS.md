@@ -36,6 +36,7 @@ Rules for this file:
 | [0011](#adr-0011-components-are-plain-data-in-typed-sparse-sets-registered-explicitly) | Components are plain data in typed sparse sets, registered explicitly | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0012](#adr-0012-systems-are-ordered-by-declared-dependencies-with-a-name-hash-tie-break-each-gets-a-per-tick-derived-stream) | Systems ordered by declared dependencies with a name-hash tie-break; per-tick derived streams | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0013](#adr-0013-simulation-time-is-an-integer-tick-count-the-calendar-is-data-derived-from-it) | Simulation time is an integer tick count; the calendar is data derived from it | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0014](#adr-0014-events-are-plain-112-byte-records-with-a-cause-delivered-next-tick-in-publish-order-the-log-is-append-only-with-a-running-digest) | Events are plain records with a cause, delivered next tick; append-only log with running digest | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -897,6 +898,66 @@ rounding; the wall clock is already banned by the purity rules (R1/R4).
 Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/SimClock.h`,
 `Tests/Sim/Test_SimClock.cpp` (4 tests). Headless VALIDATED on the six Linux presets;
 engine side UNVERIFIED.
+
+---
+
+## ADR-0014: Events are plain 112-byte records with a cause; delivered next tick in publish order; the log is append-only with a running digest
+
+### Context
+
+The master prompt demands that every event be caused by the systems (section 2), that
+the game answer "why did this happen" with a causal chain (section 58), that event logs
+support replay (section 35), and that history stay addressable centuries later. The
+kernel therefore needs an event record that is cheap, comparable between runs and
+serialisable as bytes, plus a delivery discipline that cannot depend on scheduling.
+
+### Decision
+
+- `Event` (`Source/VaelenSim/Public/Vaelen/Sim/Event.h`): 112 bytes, no padding, every
+  byte defined: `Id` (PersistentId of kind Event, monotonic from the world allocator),
+  `Tick`, `TypeHash` (FNV-1a of the type name, `EventType<T>`), `Cause` (id of the event
+  that caused it, Invalid for root causes), `Subject` (the persistent id it is about),
+  `PayloadSize` and 64 payload bytes holding a trivially copyable `T`. The cause field is
+  the edge of the causal graph that Phase 17 tooling walks.
+- `EventLog`: append-only; `Digest()` is a running `HashCombine` over each event's raw
+  bytes in order, so equal digests mean identical histories; byte image `[count]
+  [digest][events]` whose digest is recomputed and checked on load. Unbounded in Phase
+  01 (the log is the history); tiering and compaction belong to Phases 16/17.
+- `EventBus`: `Publish(tick, type, payload, subject, cause)` logs the event immediately
+  and queues it; `Dispatch(tick)` delivers every event published before `tick`, in
+  publish order, to the listeners of its type ordered by listener-name hash; events
+  published while dispatching wait for the next tick. `Scheduler::RunTick` dispatches
+  before running the systems of the tick, so a system sees the events of the previous
+  tick, never those of the current one.
+
+### Alternatives and decision rule
+
+- Immediate (synchronous) delivery: rejected for determinism and evolvability (results
+  would depend on which system published first within a tick and would break under a
+  parallel scheduler).
+- Variable-size payloads (byte spans, heap allocation): rejected for simplicity and
+  robustness of hashing and serialisation; 64 bytes hold ids, counts and small structs,
+  and large data belongs in components referenced by `Subject`.
+- Listeners in subscription order: rejected for determinism (same reasoning as system
+  ordering, ADR-0012).
+- Decided by determinism, then robustness and simplicity.
+
+### Consequences
+
+- One-tick latency between cause and reaction is the rule; a chain of n reactions takes
+  n ticks (one hour each at the default calendar). Systems that need same-tick effects
+  use component state, not events.
+- Renaming an event type or listener changes hashes and delivery order: names are part
+  of a world's save-format contract.
+- Every published event is logged even when nobody listens: the log is the history, not
+  a message queue.
+
+### Status
+
+Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/Event.h`, `EventBus.h`,
+`Source/VaelenSim/Private/EventBus.cpp`, `Scheduler.cpp`, `Tests/Sim/Test_Event.cpp`,
+`Test_EventLog.cpp`, `Test_EventBus.cpp` (10 tests). Headless VALIDATED on the six Linux
+presets; engine side UNVERIFIED.
 
 ---
 

@@ -31,7 +31,7 @@
 
 namespace Vaelen
 {
-	class EventBus; // 01.05
+	class EventBus;
 
 	/// Simulation level of detail of a system (master prompt section 36).
 	enum class SimLod : uint8
@@ -54,7 +54,7 @@ namespace Vaelen
 		EntityRegistry* Entities = nullptr;
 		ComponentStore* Components = nullptr;
 		RandomStream* Random = nullptr; ///< the system's own stream
-		EventBus* Events = nullptr;		///< null until 01.05
+		EventBus* Events = nullptr;		///< null when the world runs without a bus
 	};
 
 	class VAELEN_SIM_API ISystem
@@ -121,8 +121,9 @@ namespace Vaelen
 		/// Name of the offending system after a failed Build() (empty otherwise).
 		std::string_view GetBuildError() const noexcept { return BuildError; }
 
-		/// Runs every system due at Clock.Now() in order, with its own stream
-		/// derived from WorldStream, then advances the clock by one tick.
+		/// Dispatches the events pending for Clock.Now(), runs every system due
+		/// at that tick in order, each with its own stream derived from
+		/// WorldStream, then advances the clock by one tick.
 		/// Returns the number of systems that ticked; 0 with a Check failure
 		/// when the scheduler is not built.
 		uint32 RunTick(SimClock& Clock, const RandomStream& WorldStream, EntityRegistry& Entities,

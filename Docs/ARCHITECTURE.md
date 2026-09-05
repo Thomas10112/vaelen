@@ -140,7 +140,7 @@ in `ExtraModuleNames`.
 | Phase | Module | Kind | Notes |
 |---|---|---|---|
 | 00 FOUNDATION | `VaelenCore` | Kernel | Exists (see above). |
-| 01 CORE SIMULATION | `VaelenSim` | Kernel | Exists: entity handles and registry (01.01), component type registry, pools and store (01.02), systems, scheduler and LOD periods (01.03), clock and calendar (01.04); event log, checkpoints and replay follow in 01.05-01.08. |
+| 01 CORE SIMULATION | `VaelenSim` | Kernel | Exists: entity handles and registry (01.01), component type registry, pools and store (01.02), systems, scheduler and LOD periods (01.03), clock and calendar (01.04), events, event log and bus (01.05); snapshots and replay follow in 01.06-01.08. |
 | 02 WORLD | `VaelenWorld` | Kernel | Regions, tiles, rivers, resource deposits (`IdKind` 10-13 already reserved). |
 | 03 HISTORY | `VaelenHistory` | Kernel | Historical record, eras, cultures, languages, religions. |
 | 04 POPULATION | `VaelenPopulation` | Kernel | Persons, families, demographics. |
@@ -283,7 +283,7 @@ military, 50-51 knowledge (Phase 12). Values are part of the save format: append
     Core/CMakeLists.txt           VaelenCoreTests; one CTest "Core.<Suite>" per Test_<Suite>.cpp
     Core/Test_*.cpp               Assert CoreTypes Harness Hash Ids Log LogFloor Random Version
     Sim/CMakeLists.txt            VaelenSimTests; one CTest "Sim.<Suite>" per Test_<Suite>.cpp
-    Sim/Test_*.cpp                EntityHandle EntityRegistry ComponentType ComponentPool ComponentStore SimClock Scheduler
+    Sim/Test_*.cpp                EntityHandle EntityRegistry ComponentType ComponentPool ComponentStore SimClock Scheduler Event EventLog EventBus
   Tools/
     check_kernel_purity.py        purity checker (rules R0-R7, --self-test)
     kernel_modules.txt            list of kernel modules to check (VaelenCore)
