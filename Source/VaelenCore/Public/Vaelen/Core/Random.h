@@ -5,9 +5,12 @@
 //
 // Generator: xoshiro256** (Blackman & Vigna) seeded through SplitMix64.
 //   - 256-bit state, period 2^256 - 1, excellent statistical quality.
-//   - No floating point in the generator itself; NextDouble() derives a
-//     53-bit uniform from integer bits, so sequences are bit-identical across
-//     platforms and compilers.
+//   - No floating point in the generator itself; NextDouble()/NextFloat()
+//     derive uniforms from integer bits, so integer draws and these uniforms
+//     are bit-identical across platforms and compilers.
+//   - NextNormal() uses std::sqrt/std::log: it is deterministic for a given
+//     libm, but not guaranteed bit-exact across C runtimes. Authoritative
+//     simulation state should prefer integer draws (see Docs/CONVENTIONS.md).
 //
 // Streams are hierarchical: every simulation domain derives its own stream
 // from its parent by NAME (`Derive("hydrology")`) or by index (`Fork(i)`),
@@ -27,9 +30,9 @@ namespace Vaelen
 	/// Serializable state of a RandomStream (persisted verbatim in saves).
 	struct RandomStreamState
 	{
-		uint64 Seed = 0;	   ///< Root seed of this stream (used for derivation).
+		uint64 Seed = 0;			///< Root seed of this stream (used for derivation).
 		uint64 S[4] = {0, 0, 0, 0}; ///< xoshiro256** state.
-		uint64 DrawCount = 0;  ///< Number of NextU64() calls since seeding (diagnostics/replay).
+		uint64 DrawCount = 0;		///< Number of NextU64() calls since seeding, Jump() included (diagnostics/replay).
 
 		constexpr bool operator==(const RandomStreamState&) const = default;
 	};
@@ -59,7 +62,7 @@ namespace Vaelen
 		uint64 NextU64() noexcept;
 		uint32 NextU32() noexcept;
 
-		/// Uniform integer in [Min, Max] (inclusive). Unbiased (Lemire).
+		/// Uniform integer in [Min, Max] (inclusive). Unbiased (bitmask rejection sampling).
 		/// Requires Min <= Max.
 		int64 RangeInclusive(int64 Min, int64 Max) noexcept;
 		uint64 RangeInclusiveU(uint64 Min, uint64 Max) noexcept;
@@ -87,8 +90,11 @@ namespace Vaelen
 		uint64 GetSeed() const noexcept { return State.Seed; }
 		uint64 GetDrawCount() const noexcept { return State.DrawCount; }
 
-		/// Advances the stream by 2^128 draws; use to create non-overlapping
+		/// Advances the stream to the position 2^128 draws ahead (reference
+		/// xoshiro256** jump polynomial); use to create non-overlapping
 		/// sub-sequences when hierarchical derivation is not applicable.
+		/// Implementation detail: performs 256 internal NextU64() calls, so
+		/// DrawCount advances by 256, not by 2^128.
 		void Jump() noexcept;
 
 	private:

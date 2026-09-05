@@ -120,11 +120,17 @@ namespace Vaelen
 		struct State
 		{
 			std::array<uint64, KindCount> NextSerial{};
+
+			bool operator==(const State&) const noexcept = default;
 		};
 
 		IdAllocator() noexcept;
 
 		/// Allocates the next id of the given kind. Kind must not be None.
+		/// Passing None, or exhausting a kind's 56-bit serial space, is a Check
+		/// failure; should execution continue (assertions disabled or a
+		/// returning handler) the call returns Invalid() and leaves the
+		/// counters untouched: serials never wrap around, ids are never reused.
 		PersistentId Allocate(IdKind Kind) noexcept;
 
 		/// Number of ids allocated so far for a kind.
@@ -135,7 +141,8 @@ namespace Vaelen
 
 		/// Marks a serial as used (e.g. when importing ids); subsequent
 		/// allocations of that kind start above it. Returns false if the
-		/// serial is already below the current counter (no change).
+		/// serial is already below the current counter (no change). A serial
+		/// above MaxSerial is a Check failure and is rejected (false, no change).
 		bool ReserveUpTo(IdKind Kind, uint64 Serial) noexcept;
 
 		const State& GetState() const noexcept { return Current; }
@@ -152,9 +159,6 @@ namespace std
 	template <>
 	struct hash<::Vaelen::PersistentId>
 	{
-		size_t operator()(const ::Vaelen::PersistentId& Id) const noexcept
-		{
-			return static_cast<size_t>(Id.Hash());
-		}
+		size_t operator()(const ::Vaelen::PersistentId& Id) const noexcept { return static_cast<size_t>(Id.Hash()); }
 	};
 } // namespace std

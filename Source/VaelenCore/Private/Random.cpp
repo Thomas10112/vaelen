@@ -1,4 +1,7 @@
 // VAELEN - VaelenCore
+// xoshiro256** / SplitMix64 implementation of RandomStream.
+//
+// STATUS: VALIDATED (Phase 00) - covered by Tests/Core/Test_Random.cpp
 #include "Vaelen/Core/Random.h"
 #include "Vaelen/Core/Assert.h"
 
@@ -14,7 +17,7 @@ namespace Vaelen
 		}
 
 		// Stream-derivation domain separators (arbitrary but fixed forever).
-		constexpr uint64 DeriveByNameSalt = 0x5641454c454e2d4eull; // "VAELEN-N"
+		constexpr uint64 DeriveByNameSalt = 0x5641454c454e2d4eull;	// "VAELEN-N"
 		constexpr uint64 DeriveByIndexSalt = 0x5641454c454e2d49ull; // "VAELEN-I"
 	} // namespace
 

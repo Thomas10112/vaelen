@@ -1,4 +1,7 @@
 // VAELEN - VaelenCore
+// PersistentId kind names and the deterministic IdAllocator.
+//
+// STATUS: VALIDATED (Phase 00) - covered by Tests/Core/Test_Ids.cpp
 #include "Vaelen/Core/Ids.h"
 #include "Vaelen/Core/Assert.h"
 
@@ -90,9 +93,19 @@ namespace Vaelen
 	PersistentId IdAllocator::Allocate(IdKind Kind) noexcept
 	{
 		VAELEN_CHECKF(Kind != IdKind::None, "Cannot allocate an id of kind None");
+		if (Kind == IdKind::None)
+		{
+			return PersistentId::Invalid();
+		}
 		uint64& Next = Current.NextSerial[ToUnderlying(Kind)];
 		VAELEN_CHECKF(Next <= PersistentId::MaxSerial, "PersistentId serial space exhausted for kind %s",
 					  IdKindToString(Kind));
+		if (Next > PersistentId::MaxSerial)
+		{
+			// Never wrap around: a reused id would silently corrupt history.
+			// Reached only when assertions are disabled or the handler returns.
+			return PersistentId::Invalid();
+		}
 		const PersistentId Id = PersistentId::Make(Kind, Next);
 		++Next;
 		return Id;
@@ -111,6 +124,13 @@ namespace Vaelen
 	bool IdAllocator::ReserveUpTo(IdKind Kind, uint64 Serial) noexcept
 	{
 		VAELEN_CHECK(Serial <= PersistentId::MaxSerial);
+		if (Serial > PersistentId::MaxSerial)
+		{
+			// A serial outside the 56-bit space (corrupt import) must not poison
+			// the counter. Reached only when assertions are disabled or the
+			// handler returns.
+			return false;
+		}
 		uint64& Next = Current.NextSerial[ToUnderlying(Kind)];
 		if (Serial + 1 > Next)
 		{
