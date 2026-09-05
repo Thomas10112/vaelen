@@ -108,6 +108,9 @@ namespace Vaelen
 		uint32 Dispatch(SimTick Tick);
 
 		uint64 PendingCount() const noexcept { return Pending.size(); }
+		/// Undelivered events: part of the world state. Never called while dispatching.
+		const std::vector<Event>& GetPending() const noexcept { return Pending; }
+		void SetPending(const std::vector<Event>& InPending);
 		bool IsDispatching() const noexcept { return Dispatching; }
 		const EventLog& GetLog() const noexcept { return *Log; }
 

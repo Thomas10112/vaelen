@@ -19,6 +19,7 @@
 
 #include "Vaelen/Core/Assert.h"
 #include "Vaelen/Core/CoreTypes.h"
+#include "Vaelen/Sim/Archive.h"
 #include "Vaelen/Sim/ComponentType.h"
 #include "Vaelen/Sim/EntityHandle.h"
 
@@ -36,6 +37,11 @@ namespace Vaelen
 		virtual bool Remove(EntityHandle Handle) noexcept = 0;
 		virtual uint32 Size() const noexcept = 0;
 		virtual void Clear() noexcept = 0;
+		/// Saves or loads the dense state (count, entities, raw data). Returns
+		/// false when loading failed (pool left empty).
+		virtual bool Serialize(IArchive& Ar) = 0;
+		/// Size in bytes of one element, for layout checks when loading.
+		virtual uint32 ElementSize() const noexcept = 0;
 	};
 
 	template <typename T>
@@ -170,6 +176,27 @@ namespace Vaelen
 		}
 
 		State GetState() const { return State{DenseEntities, DenseData}; }
+
+		bool Serialize(IArchive& Ar) override
+		{
+			if (Ar.IsSaving())
+			{
+				std::vector<EntityHandle> Entities = DenseEntities;
+				std::vector<T> Values = DenseData;
+				SerializeVector(Ar, Entities);
+				SerializeVector(Ar, Values);
+				return true;
+			}
+			State Loaded;
+			if (!SerializeVector(Ar, Loaded.Entities) || !SerializeVector(Ar, Loaded.Data))
+			{
+				Clear();
+				return false;
+			}
+			return SetState(Loaded);
+		}
+
+		uint32 ElementSize() const noexcept override { return static_cast<uint32>(sizeof(T)); }
 
 		/// Restores the dense arrays and rebuilds the sparse index. Returns
 		/// false (pool left empty) on mismatched sizes, null handles or

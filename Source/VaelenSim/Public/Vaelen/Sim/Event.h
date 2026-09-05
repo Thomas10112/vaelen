@@ -20,6 +20,7 @@
 #include "Vaelen/Core/CoreTypes.h"
 #include "Vaelen/Core/Hash.h"
 #include "Vaelen/Core/Ids.h"
+#include "Vaelen/Sim/PlainData.h"
 #include "Vaelen/Sim/SimClock.h"
 
 #include <cstring>
@@ -32,7 +33,7 @@ namespace Vaelen
 	template <typename T>
 	struct EventType
 	{
-		static_assert(std::is_trivially_copyable_v<T>, "event payloads must be trivially copyable plain data");
+		VAELEN_PLAIN_DATA_CHECK(T, "event payloads");
 
 		const char* Name = "";
 		Hash64 TypeHash = 0;
@@ -91,7 +92,7 @@ namespace Vaelen
 		template <typename T>
 		void Set(const T& Value) noexcept
 		{
-			static_assert(std::is_trivially_copyable_v<T>, "event payloads must be trivially copyable");
+			VAELEN_PLAIN_DATA_CHECK(T, "event payloads");
 			static_assert(sizeof(T) <= MaxPayloadBytes, "event payload too large");
 			std::memset(Payload, 0, MaxPayloadBytes);
 			if constexpr (!std::is_empty_v<T>)

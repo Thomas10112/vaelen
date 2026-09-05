@@ -37,6 +37,7 @@ Rules for this file:
 | [0012](#adr-0012-systems-are-ordered-by-declared-dependencies-with-a-name-hash-tie-break-each-gets-a-per-tick-derived-stream) | Systems ordered by declared dependencies with a name-hash tie-break; per-tick derived streams | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0013](#adr-0013-simulation-time-is-an-integer-tick-count-the-calendar-is-data-derived-from-it) | Simulation time is an integer tick count; the calendar is data derived from it | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0014](#adr-0014-events-are-plain-112-byte-records-with-a-cause-delivered-next-tick-in-publish-order-the-log-is-append-only-with-a-running-digest) | Events are plain records with a cause, delivered next tick; append-only log with running digest | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0015](#adr-0015-one-world-object-owns-the-state-snapshots-are-a-symmetric-versioned-digest-checked-byte-image-stored-types-carry-no-padding) | One World object owns the state; snapshots are a symmetric, versioned, digest-checked byte image; stored types carry no padding | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -958,6 +959,81 @@ Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/Event.h`, `Event
 `Source/VaelenSim/Private/EventBus.cpp`, `Scheduler.cpp`, `Tests/Sim/Test_Event.cpp`,
 `Test_EventLog.cpp`, `Test_EventBus.cpp` (10 tests). Headless VALIDATED on the six Linux
 presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0015: One World object owns the state; snapshots are a symmetric, versioned, digest-checked byte image; stored types carry no padding
+
+### Context
+
+The master prompt requires checkpoints, deterministic replay and "same seed + same
+inputs = same result" (sections 3 and 35). Phase 01 needs a way to capture the whole
+simulation state, restore it into a fresh process and continue as if nothing had
+happened, and a way to compare two worlds byte for byte. Until 01.06 the state blocks
+(id allocator, random stream, clock, registry, pools, event bus, log) were assembled
+by hand in every test.
+
+### Decision
+
+1. `World` is the single owner of state. It holds the id allocator, the root random
+   stream, the clock, the entity registry, the component store, the event bus and the
+   event log, and references the code that acts on them (component type registrations,
+   systems, listeners). The code is not saved: the same setup function runs on both
+   sides of a restore, and the snapshot verifies that it did (component layout digest,
+   seed, per-pool type id, name hash and element size).
+2. Serialisation is symmetric. `IArchive` exposes `IsLoading()` and `SerializeBytes`;
+   one routine per type both writes and reads, so save and load cannot drift. The
+   memory reader never throws: a read past the end sets a sticky error flag and
+   zero-fills the destination; vector counts are bounded before allocation.
+3. The image is versioned and digest-checked. Header: magic `VAELENSN`,
+   `VAELEN_SAVE_FORMAT_VERSION`, flags, component layout digest, seed. Body: clock,
+   root stream state, 256 id counters, entity slots, pools in type-id order, pending
+   events, event log. Trailer: FNV-1a digest of every preceding byte, verified before
+   any state is touched. Every rejection is a named `SnapshotResult`
+   (`VersionMismatch`, `BadMagic`, `LayoutMismatch`, `MissingPool`, `Truncated`,
+   `Corrupt`, `Inconsistent`); a wrong version is never migrated silently.
+4. Stored types carry no padding. Components and event payloads must satisfy
+   `IsPlainData<T>`: trivially copyable and either empty, provably unique in
+   representation (`std::has_unique_object_representations_v`) or declared padding-free
+   through `PlainDataTraits<T>::NoPadding` (needed for floating-point members, which the
+   compiler cannot prove). Structs with padding inside the kernel (the registry slot)
+   are written field by field.
+5. Only the root random stream is saved. Per-system per-tick streams are derived from
+   the root seed, the system name and the tick (ADR-0012), so they need no state.
+6. Systems hold no state of their own. Anything a system needs across ticks lives in
+   components or events; otherwise a restored world could not continue identically.
+
+### Alternatives and decision rule
+
+- Separate writer and reader code paths: rejected; the round-trip tests found that
+  the raw registry slot image was non-deterministic (padding bytes), and a symmetric
+  routine makes such asymmetries impossible by construction.
+- Raw `memcpy` of state structs, padding included: rejected; two identical worlds
+  would differ in bytes nobody wrote, defeating byte-identical snapshots.
+- Automatic migration of older format versions: deferred to Phase 16 with on-disk
+  files; the kernel rejects mismatches explicitly instead.
+- Saving derived per-system streams: rejected; they are a pure function of saved data.
+- Decided by robustness (explicit rejection, digest before mutation), then
+  determinism, then simplicity.
+
+### Consequences
+
+- Adding a component field, renaming a type or changing the seed changes the layout
+  digest or the identity check: old images are rejected until Phase 16 provides
+  migration.
+- `World` is the unit of testing from 01.07 on; tests no longer assemble the blocks by
+  hand.
+- Types with floating-point members must declare `PlainDataTraits<T>::NoPadding` and
+  their authors are responsible for the field layout.
+- Loading into a world leaves that world unspecified on failure; callers discard it.
+
+### Status
+
+Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/PlainData.h`,
+`Archive.h`, `World.h`, `Snapshot.h`, `Source/VaelenSim/Private/Archive.cpp`,
+`World.cpp`, `Snapshot.cpp`, `Tests/Sim/Test_Archive.cpp`, `Test_World.cpp`,
+`Test_Snapshot.cpp` (15 tests). Headless VALIDATED on the six Linux presets; engine
+side UNVERIFIED.
 
 ---
 

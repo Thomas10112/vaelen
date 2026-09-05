@@ -17,6 +17,20 @@ namespace
 	{
 		int64 Grain = 0;
 		uint32 Region = 0;
+		uint32 Reserved = 0; ///< explicit: payloads must have no padding bytes
+	};
+	struct Padded
+	{
+		int64 Grain = 0;
+		uint32 Region = 0;
+	};
+	struct Fractional
+	{
+		double Share = 0.0;
+	};
+	struct UndeclaredFractional
+	{
+		double Share = 0.0;
 	};
 	struct Big
 	{
@@ -26,7 +40,20 @@ namespace
 	constexpr EventType<NoPayload> DawnEvent = MakeEventType<NoPayload>("Dawn");
 } // namespace
 
+namespace Vaelen
+{
+	template <>
+	struct PlainDataTraits<Fractional>
+	{
+		static constexpr bool NoPadding = true;
+	};
+} // namespace Vaelen
+
 static_assert(sizeof(Event) == 112);
+static_assert(IsPlainData<Harvest> && IsPlainData<Big> && IsPlainData<NoPayload>);
+static_assert(!IsPlainData<Padded>, "a padded payload is rejected at compile time");
+static_assert(!IsPlainData<UndeclaredFractional>, "floating-point members need an explicit no-padding declaration");
+static_assert(IsPlainData<Fractional>, "declared through PlainDataTraits");
 static_assert(std::is_trivially_copyable_v<Event>);
 static_assert(HarvestEvent.TypeHash == HashString("Harvest"));
 static_assert(HarvestEvent.IsValid());

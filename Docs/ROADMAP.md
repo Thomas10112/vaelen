@@ -68,7 +68,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | Phase | Name | Objective (one line) | Status |
 |---|---|---|---|
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
-| 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | IN PROGRESS (01.01-01.05 VALIDATED headless; 01.06-01.08 PLANNED) |
+| 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | IN PROGRESS (01.01-01.06 VALIDATED headless; 01.07-01.08 PLANNED) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | PLANNED |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | PLANNED |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
@@ -292,18 +292,37 @@ design choice below that survives implementation gets an ADR (planned numbers 00
   digests for two identical worlds, misuse paths.
 - Decision: ADR-0014.
 
-### 01.06 Persistence interfaces and snapshot
+### 01.06 Persistence interfaces and snapshot - VALIDATED (headless)
 
-- Goal: capture and restore the whole simulation state in memory; on-disk files come in
-  Phase 16.
-- Planned: `IArchive` (write/read bytes, versioned by `VAELEN_SAVE_FORMAT_VERSION`),
-  `Snapshot` covering registry, component pools, `IdAllocator::State`,
-  `RandomStreamState` of every stream, clock, event-log position; version mismatch
-  rejected explicitly; snapshots of identical runs are byte-identical.
-- Tests: snapshot -> restore -> continue equals the uninterrupted run (state and event
-  hash), snapshot equality across two identical worlds, wrong version rejected, empty
-  world snapshot, large world snapshot.
-- Exit: ADR for archive and snapshot format; VALIDATED.
+- Delivered: `World` (`World.h/.cpp`: owns every state block - id allocator, root
+  random stream, clock, entity registry, component store, pending events, event log -
+  and references the code that acts on it: type registrations, systems, listeners;
+  `Build`, `Tick`, `TickMany`, `CreateEntity`, `DestroyEntity`), `IArchive` with
+  `MemoryWriter` / `MemoryReader` (`Archive.h/.cpp`: one symmetric `Serialize` per type,
+  no exceptions, a read past the end sets a sticky error and zero-fills, vector counts
+  bounded), `SaveSnapshot` / `LoadSnapshot` / `ComputeStateDigest` (`Snapshot.h/.cpp`:
+  header with magic, `VAELEN_SAVE_FORMAT_VERSION`, component layout digest and seed;
+  clock, root stream, 256 id counters, entity slots written field by field, pools in
+  type-id order with type id, name hash and element size, pending events, event log;
+  FNV-1a trailer digest checked before any state changes; every rejection is an explicit
+  `SnapshotResult`). The plain-data rule (`PlainData.h`): component and payload types
+  must have a unique object representation (no padding), proven by the compiler for
+  integer types and declared through `PlainDataTraits<T>` for floating-point members.
+  `IComponentPool::Serialize` / `ElementSize` and `EventBus::GetPending` / `SetPending`
+  expose the remaining state.
+- Not in this task: the streams derived per system per tick are recomputed from the
+  root seed and the tick (ADR-0012), so only the root stream state is saved; on-disk
+  files, compression and migration between format versions come in Phase 16.
+- Tests (`Tests/Sim`, 15): archive scalar/vector round trip, bounds error with
+  zero-fill and sticky failure, count limit, empty writes; world build/tick/lifecycle,
+  identical worlds give identical state digests (seed, entity count and tick each
+  change it), tick before build reported; snapshot round trip of every block (including
+  a destroyed entity and undelivered events), restored world continues exactly like the
+  uninterrupted run (state digest, log digest and count after 300 ticks), byte-identical
+  images for identical worlds, empty world, wrong version, bad magic, truncation before
+  and inside the body, flipped bytes at five offsets, trailing bytes, different seed,
+  different component layout, missing pool, 50 000-entity world.
+- Decision: ADR-0015.
 
 ### 01.07 Deterministic replay test
 
@@ -346,15 +365,15 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 01 — CORE SIMULATION
-TASK        : 01.05 — EVENT BUS & EVENT LOG
+TASK        : 01.06 — PERSISTENCE INTERFACES & SNAPSHOT
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███████████████░░░░░░░░░ 62%
+██████████████████░░░░░░ 75%
 
 CURRENTLY
-→ 01.05 closed: Event (POD, cause, subject, payload), EventLog (append-only, running
-  digest, byte image), EventBus (next-tick delivery, listeners ordered by name hash)
+→ 01.06 closed: World (owns every state block), IArchive + memory writer/reader,
+  versioned snapshot with layout digest and trailer digest, plain-data (no padding) rule
 
 COMPLETED
 ✓ Phase 00 — FOUNDATION (CI 9/9)
@@ -363,20 +382,22 @@ COMPLETED
 ✓ 01.03 Systems & tick scheduler (8 tests)
 ✓ 01.04 Simulation clock & calendar (4 tests)
 ✓ 01.05 Event bus & event log (10 tests)
+✓ 01.06 Persistence interfaces & snapshot (15 tests: Archive 4, World 3, Snapshot 8)
 
 NEXT
-→ 01.06 Persistence interfaces & snapshot (IArchive, versioned world snapshot)
-→ 01.07 Deterministic replay test
+→ 01.07 Deterministic replay test (checkpoint/restore vs uninterrupted run, clang = gcc hashes)
+→ 01.08 Abstract mini-world long-duration test
 
 FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/{Event.h, EventBus.h}
-+ Source/VaelenSim/Private/EventBus.cpp
-~ Source/VaelenSim/Private/Scheduler.cpp (dispatches pending events before the systems)
-+ Tests/Sim/{Test_Event.cpp, Test_EventLog.cpp, Test_EventBus.cpp}
++ Source/VaelenSim/Public/Vaelen/Sim/{PlainData.h, Archive.h, World.h, Snapshot.h}
++ Source/VaelenSim/Private/{Archive.cpp, World.cpp, Snapshot.cpp}
+~ ComponentPool.h (type-erased Serialize/ElementSize), EventBus.h/.cpp (pending queue as state),
+  ComponentType.h / Event.h (plain-data rule)
++ Tests/Sim/{Test_Archive.cpp, Test_World.cpp, Test_Snapshot.cpp}
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 53 (50 without asserts); ctest 26/26 in all six Linux presets
-✓ Purity: 27 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 68 (65 without asserts); ctest 29/29 in all six Linux presets
+✓ Purity: 34 files, 0 violations
 ⚠ Unreal Build Tool: VaelenSim engine files UNVERIFIED
 
 BLOCKERS

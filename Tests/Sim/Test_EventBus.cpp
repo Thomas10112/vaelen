@@ -25,6 +25,7 @@ namespace
 	{
 		uint32 Settlement = 0;
 		uint8 Cause = 0;
+		uint8 Reserved[3] = {};
 	};
 	constexpr EventType<Birth> BirthEvent = MakeEventType<Birth>("Birth");
 	constexpr EventType<Death> DeathEvent = MakeEventType<Death>("Death");

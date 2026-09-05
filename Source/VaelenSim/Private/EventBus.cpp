@@ -165,6 +165,17 @@ namespace Vaelen
 		return Count;
 	}
 
+	void EventBus::SetPending(const std::vector<Event>& InPending)
+	{
+		VAELEN_CHECKF(!Dispatching, "EventBus::SetPending while dispatching");
+		if (Dispatching)
+		{
+			return;
+		}
+		Pending = InPending;
+		Deferred.clear();
+	}
+
 	uint32 EventBus::Dispatch(SimTick Tick)
 	{
 		VAELEN_CHECKF(!Dispatching, "EventBus::Dispatch is not re-entrant");

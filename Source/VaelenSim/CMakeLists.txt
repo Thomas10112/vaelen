@@ -12,6 +12,10 @@ set(VAELEN_SIM_PUBLIC_HEADERS
   Public/Vaelen/Sim/System.h
   Public/Vaelen/Sim/Event.h
   Public/Vaelen/Sim/EventBus.h
+  Public/Vaelen/Sim/PlainData.h
+  Public/Vaelen/Sim/Archive.h
+  Public/Vaelen/Sim/World.h
+  Public/Vaelen/Sim/Snapshot.h
 )
 
 set(VAELEN_SIM_SOURCES
@@ -20,6 +24,9 @@ set(VAELEN_SIM_SOURCES
   Private/ComponentStore.cpp
   Private/Scheduler.cpp
   Private/EventBus.cpp
+  Private/Archive.cpp
+  Private/World.cpp
+  Private/Snapshot.cpp
 )
 
 add_library(VaelenSim STATIC ${VAELEN_SIM_SOURCES} ${VAELEN_SIM_PUBLIC_HEADERS})

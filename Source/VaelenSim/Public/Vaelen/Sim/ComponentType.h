@@ -19,6 +19,7 @@
 
 #include "Vaelen/Core/CoreTypes.h"
 #include "Vaelen/Core/Hash.h"
+#include "Vaelen/Sim/PlainData.h"
 #include "Vaelen/Sim/SimApi.h"
 
 #include <string_view>
@@ -36,7 +37,7 @@ namespace Vaelen
 	template <typename T>
 	struct ComponentType
 	{
-		static_assert(std::is_trivially_copyable_v<T>, "components must be trivially copyable plain data");
+		VAELEN_PLAIN_DATA_CHECK(T, "components");
 		static_assert(std::is_default_constructible_v<T>, "components must be default constructible");
 
 		ComponentTypeId Id = InvalidComponentTypeId;
