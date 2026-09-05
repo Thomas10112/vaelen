@@ -1,6 +1,10 @@
 {
   "version": 6,
-  "cmakeMinimumRequired": { "major": 3, "minor": 24, "patch": 0 },
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 24,
+    "patch": 0
+  },
   "configurePresets": [
     {
       "name": "base",
@@ -12,42 +16,215 @@
         "VAELEN_WARNINGS_AS_ERRORS": "ON"
       }
     },
-    { "name": "linux-clang-debug", "inherits": "base",
-      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CXX_COMPILER": "clang++" } },
-    { "name": "linux-clang-release", "inherits": "base",
-      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo", "CMAKE_CXX_COMPILER": "clang++" } },
-    { "name": "linux-gcc-debug", "inherits": "base",
-      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CXX_COMPILER": "g++" } },
-    { "name": "linux-gcc-release", "inherits": "base",
-      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo", "CMAKE_CXX_COMPILER": "g++" } },
-    { "name": "macos-debug", "inherits": "base",
-      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin" },
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" } },
-    { "name": "windows-msvc", "inherits": "base",
+    {
+      "name": "linux-clang-debug",
+      "inherits": "base",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    },
+    {
+      "name": "linux-clang-release",
+      "inherits": "base",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    },
+    {
+      "name": "linux-gcc-debug",
+      "inherits": "base",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "g++"
+      }
+    },
+    {
+      "name": "linux-gcc-release",
+      "inherits": "base",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_CXX_COMPILER": "g++"
+      }
+    },
+    {
+      "name": "macos-debug",
+      "inherits": "base",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "windows-msvc",
+      "inherits": "base",
       "generator": "Visual Studio 17 2022",
       "architecture": "x64",
-      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" } }
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "linux-clang-noasserts",
+      "inherits": "base",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "VAELEN_ENABLE_ASSERTS": "OFF"
+      }
+    },
+    {
+      "name": "linux-gcc-noasserts",
+      "inherits": "base",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_CXX_COMPILER": "g++",
+        "VAELEN_ENABLE_ASSERTS": "OFF"
+      }
+    }
   ],
   "buildPresets": [
-    { "name": "linux-clang-debug",   "configurePreset": "linux-clang-debug" },
-    { "name": "linux-clang-release", "configurePreset": "linux-clang-release" },
-    { "name": "linux-gcc-debug",     "configurePreset": "linux-gcc-debug" },
-    { "name": "linux-gcc-release",   "configurePreset": "linux-gcc-release" },
-    { "name": "macos-debug",         "configurePreset": "macos-debug" },
-    { "name": "windows-msvc-debug",  "configurePreset": "windows-msvc", "configuration": "Debug" },
-    { "name": "windows-msvc-release","configurePreset": "windows-msvc", "configuration": "RelWithDebInfo" }
+    {
+      "name": "linux-clang-debug",
+      "configurePreset": "linux-clang-debug"
+    },
+    {
+      "name": "linux-clang-release",
+      "configurePreset": "linux-clang-release"
+    },
+    {
+      "name": "linux-gcc-debug",
+      "configurePreset": "linux-gcc-debug"
+    },
+    {
+      "name": "linux-gcc-release",
+      "configurePreset": "linux-gcc-release"
+    },
+    {
+      "name": "macos-debug",
+      "configurePreset": "macos-debug"
+    },
+    {
+      "name": "windows-msvc-debug",
+      "configurePreset": "windows-msvc",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-msvc-release",
+      "configurePreset": "windows-msvc",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "linux-clang-noasserts",
+      "configurePreset": "linux-clang-noasserts"
+    },
+    {
+      "name": "linux-gcc-noasserts",
+      "configurePreset": "linux-gcc-noasserts"
+    }
   ],
   "testPresets": [
-    { "name": "linux-clang-debug",   "configurePreset": "linux-clang-debug",   "output": { "outputOnFailure": true } },
-    { "name": "linux-clang-release", "configurePreset": "linux-clang-release", "output": { "outputOnFailure": true } },
-    { "name": "linux-gcc-debug",     "configurePreset": "linux-gcc-debug",     "output": { "outputOnFailure": true } },
-    { "name": "linux-gcc-release",   "configurePreset": "linux-gcc-release",   "output": { "outputOnFailure": true } },
-    { "name": "macos-debug",         "configurePreset": "macos-debug",         "output": { "outputOnFailure": true } },
-    { "name": "windows-msvc-debug",  "configurePreset": "windows-msvc", "configuration": "Debug", "output": { "outputOnFailure": true } },
-    { "name": "windows-msvc-release","configurePreset": "windows-msvc", "configuration": "RelWithDebInfo", "output": { "outputOnFailure": true } }
+    {
+      "name": "linux-clang-debug",
+      "configurePreset": "linux-clang-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "linux-clang-release",
+      "configurePreset": "linux-clang-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "linux-gcc-debug",
+      "configurePreset": "linux-gcc-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "linux-gcc-release",
+      "configurePreset": "linux-gcc-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "macos-debug",
+      "configurePreset": "macos-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-msvc-debug",
+      "configurePreset": "windows-msvc",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-msvc-release",
+      "configurePreset": "windows-msvc",
+      "configuration": "RelWithDebInfo",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "linux-clang-noasserts",
+      "configurePreset": "linux-clang-noasserts",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "linux-gcc-noasserts",
+      "configurePreset": "linux-gcc-noasserts",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
   ]
 }

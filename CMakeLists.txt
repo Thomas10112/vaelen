@@ -21,6 +21,7 @@ project(Vaelen
 option(VAELEN_BUILD_TESTS "Build the kernel test executables" ON)
 option(VAELEN_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" ON)
 option(VAELEN_ENABLE_ASSERTS "Enable VAELEN_CHECK assertions" ON)
+option(VAELEN_REQUIRE_PURITY_CHECK "Fail configuration when Python 3 (needed by the Kernel.Purity test) is missing" ON)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -37,14 +38,17 @@ if(MSVC)
   # Unreal builds with _HAS_EXCEPTIONS=0 and /GR-. We do the same.
   string(REGEX REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
   string(REGEX REPLACE "/GR " "/GR- " CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ")
-  target_compile_options(vaelen_build_flags INTERFACE /W4 /permissive- /utf-8 /GR-)
+  # /fp:precise (MSVC default) forbids FMA contraction; kept explicit for determinism.
+  target_compile_options(vaelen_build_flags INTERFACE /W4 /permissive- /utf-8 /GR- /fp:precise)
   target_compile_definitions(vaelen_build_flags INTERFACE _HAS_EXCEPTIONS=0 _CRT_SECURE_NO_WARNINGS NOMINMAX)
   if(VAELEN_WARNINGS_AS_ERRORS)
     target_compile_options(vaelen_build_flags INTERFACE /WX)
   endif()
 else()
+  # -ffp-contract=off: no fused multiply-add contraction, so floating-point
+  # results are identical between GCC and Clang (determinism, see ADR-0009).
   target_compile_options(vaelen_build_flags INTERFACE
-    -fno-exceptions -fno-rtti
+    -fno-exceptions -fno-rtti -ffp-contract=off
     -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion
     -Wold-style-cast -Wcast-align -Wnon-virtual-dtor -Woverloaded-virtual
     -Wnull-dereference -Wdouble-promotion -Wformat=2)

@@ -11,7 +11,8 @@ AllowShortFunctionsOnASingleLine: Inline
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 AlwaysBreakTemplateDeclarations: Yes
-NamespaceIndentation: None
+NamespaceIndentation: All
+IndentPPDirectives: AfterHash
 PointerAlignment: Left
 SpaceAfterTemplateKeyword: true
 IncludeBlocks: Preserve

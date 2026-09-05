@@ -1,0 +1,11 @@
+# VAELEN - engine-agnostic kernel modules checked by Tools/check_kernel_purity.py.
+#
+# One module name per line; each names a directory under Source/. A '#' starts a
+# comment, blank lines are ignored. Every file under Source/<Module>/Public and
+# Source/<Module>/Private must be pure C++20 (no Unreal headers, no exceptions,
+# no RTTI, no non-deterministic randomness, fixed-width integers only), except
+# the single <Module>Module.cpp Unreal-facing translation unit, which is skipped.
+#
+# Add a module here as soon as it is created; the CTest entry Kernel.Purity
+# fails when any listed module violates a rule.
+VaelenCore

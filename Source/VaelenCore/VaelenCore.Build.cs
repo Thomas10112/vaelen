@@ -5,10 +5,11 @@
 // Unreal header, so that the same sources can be built headless with CMake
 // (see /CMakeLists.txt) for unit tests, determinism tests and stress tests.
 //
-// Rules enforced by Tools/check_kernel_purity.py:
-//   - no Unreal includes (CoreMinimal.h, Engine/*, UObject/*, ...)
-//   - no exceptions, no RTTI (dynamic_cast / typeid)
-//   - no non-deterministic randomness (rand(), std::random_device, ...)
+// Rules enforced by Tools/check_kernel_purity.py (CTest entry Kernel.Purity):
+//   R0 at most one *Module.cpp per module   R1 includes: "Vaelen/..." or std only
+//   R2 no exceptions                        R3 no RTTI (dynamic_cast / typeid)
+//   R4 no non-deterministic randomness      R5 #pragma once + STATUS line
+//   R6 VALIDATED files carry no TODO/FIXME  R7 no bare long / long long
 using UnrealBuildTool;
 
 public class VaelenCore : ModuleRules

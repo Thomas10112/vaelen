@@ -1,6 +1,8 @@
 # VAELEN kernel CI — builds and tests the engine-agnostic simulation kernel
-# headless (no Unreal Engine required). The Unreal project itself is built on
-# an engine-backed runner (see Docs/ARCHITECTURE.md § Build pipeline).
+# headless (no Unreal Engine required). The Unreal project itself is NOT built
+# by any automation yet: it needs an engine-backed runner (see
+# Docs/ARCHITECTURE.md, "Build pipeline"). Until then the Unreal-facing files
+# stay labelled UNVERIFIED.
 name: kernel-ci
 
 on:
@@ -15,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        preset: [linux-clang-debug, linux-clang-release, linux-gcc-debug, linux-gcc-release]
+        preset: [linux-clang-debug, linux-clang-release, linux-clang-noasserts, linux-gcc-debug, linux-gcc-release, linux-gcc-noasserts]
     steps:
       - uses: actions/checkout@v4
       - name: Install toolchain
@@ -32,6 +34,9 @@ jobs:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - name: Configure
         run: cmake --preset windows-msvc
       - name: Build
@@ -44,6 +49,9 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - name: Install ninja
         run: brew install ninja
       - name: Configure
