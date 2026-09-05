@@ -28,6 +28,12 @@ namespace Vaelen
 		/// Writes or reads Size raw bytes. Returns false once the archive is in error.
 		virtual bool SerializeBytes(void* Data, usize Size) noexcept = 0;
 		virtual bool HasError() const noexcept = 0;
+		/// Bytes still readable (loading) or no limit (saving). Lets loaders
+		/// refuse element counts that the image cannot possibly contain.
+		virtual usize RemainingBytes() const noexcept = 0;
+		/// Puts a loading archive into its sticky error state (a refused count,
+		/// a failed consistency check). No effect while saving.
+		virtual void Fail() noexcept = 0;
 		bool IsSaving() const noexcept { return !IsLoading(); }
 	};
 
@@ -39,6 +45,8 @@ namespace Vaelen
 		bool IsLoading() const noexcept override { return false; }
 		bool SerializeBytes(void* Data, usize Size) noexcept override;
 		bool HasError() const noexcept override { return false; }
+		usize RemainingBytes() const noexcept override { return ~usize{0}; }
+		void Fail() noexcept override {}
 		usize BytesWritten() const noexcept { return Out->size(); }
 
 	private:
@@ -53,6 +61,8 @@ namespace Vaelen
 		bool IsLoading() const noexcept override { return true; }
 		bool SerializeBytes(void* Data, usize Count) noexcept override;
 		bool HasError() const noexcept override { return Error; }
+		usize RemainingBytes() const noexcept override { return Size - Offset; }
+		void Fail() noexcept override { Error = true; }
 		usize Position() const noexcept { return Offset; }
 		usize Remaining() const noexcept { return Size - Offset; }
 		bool AtEnd() const noexcept { return Offset == Size; }
@@ -74,8 +84,8 @@ namespace Vaelen
 	}
 
 	/// A vector of trivially copyable elements: count, then raw bytes. When
-	/// loading, counts above MaxCount are rejected (error flag) so a corrupt
-	/// count cannot request an absurd allocation.
+	/// loading, a count above MaxCount or larger than the remaining bytes can
+	/// hold is rejected before any allocation (error flag set).
 	template <typename T>
 	bool SerializeVector(IArchive& Ar, std::vector<T>& Values, uint64 MaxCount = uint64{1} << 32) noexcept
 	{
@@ -84,8 +94,9 @@ namespace Vaelen
 		Ar << Count;
 		if (Ar.IsLoading())
 		{
-			if (Ar.HasError() || Count > MaxCount)
+			if (Ar.HasError() || Count > MaxCount || Count > Ar.RemainingBytes() / sizeof(T))
 			{
+				Ar.Fail();
 				Values.clear();
 				return false;
 			}

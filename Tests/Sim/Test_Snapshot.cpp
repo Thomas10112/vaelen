@@ -299,6 +299,17 @@ VAELEN_TEST(Snapshot, BadMagicTruncationAndCorruptionAreRejected)
 		VT_CHECK(Load(Bad) == SnapshotResult::Corrupt);
 	}
 	{
+		// An absurd element count with a valid digest (the log's byte count, the
+		// last u64 before the log bytes) must be refused before any allocation.
+		std::vector<uint8> Bad = Image;
+		const usize LogBytes = static_cast<usize>(A.Instance.Log().Count()) * sizeof(Event) + 16;
+		const usize CountOffset = Bad.size() - 8 - LogBytes - 8;
+		uint64 Absurd = uint64{1} << 40;
+		std::memcpy(Bad.data() + CountOffset, &Absurd, 8);
+		Reseal(Bad);
+		VT_CHECK(Load(Bad) == SnapshotResult::Truncated);
+	}
+	{
 		// Different seed: identity mismatch.
 		TestWorld Other(5);
 		VT_CHECK(LoadSnapshot(Other.Instance, Image.data(), Image.size()) == SnapshotResult::LayoutMismatch);

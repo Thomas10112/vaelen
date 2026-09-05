@@ -84,7 +84,8 @@ namespace Vaelen
 				Ar << FreeHead << AliveCount << SlotCount;
 				if (Ar.IsLoading())
 				{
-					if (Ar.HasError() || SlotCount > EntityHandle::MaxIndex + uint64{1})
+					if (Ar.HasError() || SlotCount > EntityHandle::MaxIndex + uint64{1} ||
+						SlotCount > Ar.RemainingBytes() / 17u)
 					{
 						return SnapshotResult::Truncated;
 					}
