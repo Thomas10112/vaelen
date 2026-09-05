@@ -1,4 +1,7 @@
 // VAELEN - VaelenCore
+// Assertion reporting: pluggable handler, failure counter, default log-and-abort.
+//
+// STATUS: VALIDATED (Phase 00) - covered by Tests/Core/Test_Assert.cpp
 #include "Vaelen/Core/Assert.h"
 #include "Vaelen/Core/Log.h"
 
@@ -41,6 +44,16 @@ namespace Vaelen
 	{
 		GHandlerUserData.store(UserData, std::memory_order_relaxed);
 		GHandler.store(Handler, std::memory_order_release);
+	}
+
+	AssertHandler GetAssertHandler(void** OutUserData) noexcept
+	{
+		AssertHandler Handler = GHandler.load(std::memory_order_acquire);
+		if (OutUserData != nullptr)
+		{
+			*OutUserData = GHandlerUserData.load(std::memory_order_relaxed);
+		}
+		return Handler;
 	}
 
 	uint64 GetAssertFailureCount() noexcept
@@ -90,8 +103,14 @@ namespace Vaelen
 			MessageBuffer[0] = '\0';
 			std::va_list Args;
 			va_start(Args, Format);
-			std::vsnprintf(MessageBuffer, sizeof(MessageBuffer), Format, Args);
+			const int Written = std::vsnprintf(MessageBuffer, sizeof(MessageBuffer), Format, Args);
 			va_end(Args);
+			if (Written < 0)
+			{
+				// Encoding error: the buffer content is unspecified, never hand
+				// it to the handler.
+				MessageBuffer[0] = '\0';
+			}
 			Dispatch(Kind, Expression, File, Line, Function, MessageBuffer);
 		}
 

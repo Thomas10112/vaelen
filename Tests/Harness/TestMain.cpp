@@ -1,4 +1,6 @@
 // VAELEN - test runner.
+//
+// STATUS: VALIDATED (Phase 00)
 #include "VaelenTest.h"
 
 #include "Vaelen/Core/Log.h"

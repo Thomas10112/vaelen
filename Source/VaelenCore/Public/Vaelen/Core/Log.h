@@ -9,8 +9,9 @@
 //     guaranteed there).
 //   - Categories are static objects: `VAELEN_DECLARE_LOG_CATEGORY(LogEconomy)`
 //     in a header, `VAELEN_DEFINE_LOG_CATEGORY(LogEconomy)` in one .cpp.
-//   - Sinks receive fully formatted records. The headless build installs a
-//     stdout sink; the Unreal module installs a UE_LOG sink.
+//   - Sinks receive fully formatted records. No sink is installed by default:
+//     the test runner installs StdioLogSink with --verbose, the Unreal module
+//     installs a UE_LOG sink at startup.
 //   - Logging is NOT part of the simulation state: it must never influence
 //     determinism. A sink may run on any thread; sinks are called under a
 //     mutex so a sink implementation need not be thread-safe itself.
@@ -37,7 +38,10 @@ namespace Vaelen
 	/// A named log category with its own runtime verbosity threshold.
 	struct VAELENCORE_API LogCategory
 	{
-		explicit LogCategory(const char* InName, LogLevel InMinLevel = LogLevel::Info) noexcept;
+		constexpr explicit LogCategory(const char* InName, LogLevel InMinLevel = LogLevel::Info) noexcept
+			: Name(InName), MinLevel(InMinLevel)
+		{
+		}
 
 		const char* Name;
 		LogLevel MinLevel;
@@ -82,6 +86,8 @@ namespace Vaelen
 		VAELENCORE_API bool AddSink(ILogSink* Sink) noexcept;
 		VAELENCORE_API bool RemoveSink(ILogSink* Sink) noexcept;
 		VAELENCORE_API void RemoveAllSinks() noexcept;
+		/// Number of currently registered sinks.
+		VAELENCORE_API usize GetSinkCount() noexcept;
 		VAELENCORE_API void Flush();
 
 		/// Total number of records dispatched to sinks since process start.

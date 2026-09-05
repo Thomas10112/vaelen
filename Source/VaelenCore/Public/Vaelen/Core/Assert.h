@@ -8,8 +8,9 @@
 //   VAELEN_CHECKF(expr, fmt...) - same, with a printf-style message.
 //   VAELEN_VERIFY(expr)         - expr is ALWAYS evaluated; fatal only when
 //                                 assertions are enabled.
-//   VAELEN_ENSURE(expr)         - non-fatal: reports once per call site and
-//                                 evaluates to the boolean result of expr.
+//   VAELEN_ENSURE(expr)         - non-fatal: reports every failing evaluation
+//                                 and evaluates to the boolean result of expr
+//                                 (expr is ALWAYS evaluated, exactly once).
 //   VAELEN_UNREACHABLE()        - marks code that must never execute.
 //
 // The failure handler is pluggable so the Unreal module can route it to
@@ -54,8 +55,8 @@ namespace Vaelen
 {
 	enum class AssertKind : uint8
 	{
-		Check,	 ///< Fatal: the program state is invalid.
-		Ensure,	 ///< Recoverable: report and continue.
+		Check,	///< Fatal: the program state is invalid.
+		Ensure, ///< Recoverable: report and continue.
 	};
 
 	struct AssertInfo
@@ -75,6 +76,10 @@ namespace Vaelen
 	/// Installs a handler; passing nullptr restores the default (log + abort).
 	VAELENCORE_API void SetAssertHandler(AssertHandler Handler, void* UserData = nullptr) noexcept;
 
+	/// Returns the currently installed handler (nullptr when the default is
+	/// active) and its user data, so that a caller can restore them later.
+	VAELENCORE_API AssertHandler GetAssertHandler(void** OutUserData = nullptr) noexcept;
+
 	/// Number of assertion failures reported since process start (all kinds).
 	VAELENCORE_API uint64 GetAssertFailureCount() noexcept;
 
@@ -89,6 +94,14 @@ namespace Vaelen
 										  const char* Function, const char* Format, ...) VAELEN_PRINTF_ATTR(6, 7);
 
 		[[noreturn]] VAELENCORE_API void AbortProcess() noexcept;
+
+		/// Identity used by the compiled-out VAELEN_ENSURE so that a bare
+		/// `VAELEN_ENSURE(x);` statement is not diagnosed as a statement with
+		/// no effect (GCC -Wunused-value) when assertions are disabled.
+		constexpr bool EnsureResult(bool Value) noexcept
+		{
+			return Value;
+		}
 	} // namespace Detail
 } // namespace Vaelen
 
@@ -114,7 +127,7 @@ namespace Vaelen
 			if (VAELEN_UNLIKELY(!(Expr)))                                                                              \
 			{                                                                                                          \
 				::Vaelen::Detail::ReportAssertF(::Vaelen::AssertKind::Check, #Expr, __FILE__, __LINE__,                \
-												VAELEN_FUNCTION, __VA_ARGS__);                                          \
+												VAELEN_FUNCTION, __VA_ARGS__);                                         \
 			}                                                                                                          \
 		} while (false)
 #	define VAELEN_VERIFY(Expr) VAELEN_CHECK(Expr)
@@ -127,13 +140,13 @@ namespace Vaelen
 		do                                                                                                             \
 		{                                                                                                              \
 			::Vaelen::Detail::ReportAssert(::Vaelen::AssertKind::Check, "unreachable", __FILE__, __LINE__,             \
-										   VAELEN_FUNCTION);                                                       \
+										   VAELEN_FUNCTION);                                                           \
 			::Vaelen::Detail::AbortProcess();                                                                          \
 		} while (false)
 #else
 #	define VAELEN_CHECK(Expr) ((void)0)
 #	define VAELEN_CHECKF(Expr, ...) ((void)0)
 #	define VAELEN_VERIFY(Expr) ((void)(Expr))
-#	define VAELEN_ENSURE(Expr) (!!(Expr))
+#	define VAELEN_ENSURE(Expr) (::Vaelen::Detail::EnsureResult(!!(Expr)))
 #	define VAELEN_UNREACHABLE() ::Vaelen::Detail::AbortProcess()
 #endif

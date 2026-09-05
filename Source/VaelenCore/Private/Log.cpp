@@ -1,4 +1,8 @@
 // VAELEN - VaelenCore
+// Logging implementation: level names, the stdout/stderr sink and the
+// mutex-protected sink table behind Vaelen::Log (see Log.h).
+//
+// STATUS: VALIDATED (Phase 00) - covered by Tests/Core/Test_Log.cpp
 #include "Vaelen/Core/Log.h"
 
 #include <atomic>
@@ -31,8 +35,6 @@ namespace Vaelen
 		}
 		return "Unknown";
 	}
-
-	LogCategory::LogCategory(const char* InName, LogLevel InMinLevel) noexcept : Name(InName), MinLevel(InMinLevel) {}
 
 	void StdioLogSink::Write(const LogRecord& Record)
 	{
@@ -135,6 +137,12 @@ namespace Vaelen
 		{
 			std::lock_guard<std::mutex> Lock(SinkMutex());
 			Sinks() = SinkTable{};
+		}
+
+		usize GetSinkCount() noexcept
+		{
+			std::lock_guard<std::mutex> Lock(SinkMutex());
+			return Sinks().Count;
 		}
 
 		void Flush()

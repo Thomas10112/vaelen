@@ -10,7 +10,7 @@
 //       VT_REQUIRE(Ptr != nullptr);     // stops this test on failure
 //   }
 //
-// Run:  VaelenCoreTests [--suite Name] [--filter Substring] [--list] [--verbose]
+// Run:  VaelenCoreTests [--suite Name] [--filter Substring] [--list] [--verbose] [--quiet-log]
 #pragma once
 
 #include "Vaelen/Core/CoreTypes.h"
@@ -71,19 +71,18 @@ namespace VaelenTest
 	};
 
 	/// Captures kernel assertion failures instead of aborting, for tests that
-	/// exercise VAELEN_CHECK / VAELEN_ENSURE paths. Restores the previous
-	/// handler on destruction.
+	/// exercise VAELEN_CHECK / VAELEN_ENSURE paths. Restores the previously
+	/// installed handler (and its user data) on destruction, so captures may
+	/// be nested.
 	class ScopedAssertCapture
 	{
 	public:
 		ScopedAssertCapture() noexcept
 		{
+			PreviousHandler = Vaelen::GetAssertHandler(&PreviousUserData);
 			Vaelen::SetAssertHandler(&OnAssert, this);
 		}
-		~ScopedAssertCapture() noexcept
-		{
-			Vaelen::SetAssertHandler(nullptr);
-		}
+		~ScopedAssertCapture() noexcept { Vaelen::SetAssertHandler(PreviousHandler, PreviousUserData); }
 		ScopedAssertCapture(const ScopedAssertCapture&) = delete;
 		ScopedAssertCapture& operator=(const ScopedAssertCapture&) = delete;
 
@@ -93,6 +92,9 @@ namespace VaelenTest
 		char LastMessage[512] = {};
 
 	private:
+		Vaelen::AssertHandler PreviousHandler = nullptr;
+		void* PreviousUserData = nullptr;
+
 		static void OnAssert(const Vaelen::AssertInfo& Info, void* UserData)
 		{
 			auto* Self = static_cast<ScopedAssertCapture*>(UserData);
