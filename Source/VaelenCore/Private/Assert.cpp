@@ -11,12 +11,6 @@ namespace Vaelen
 {
 	namespace
 	{
-		struct HandlerSlot
-		{
-			AssertHandler Handler = nullptr;
-			void* UserData = nullptr;
-		};
-
 		std::atomic<AssertHandler> GHandler{nullptr};
 		std::atomic<void*> GHandlerUserData{nullptr};
 		std::atomic<uint64> GFailureCount{0};
@@ -56,39 +50,49 @@ namespace Vaelen
 
 	namespace Detail
 	{
-		void ReportAssert(AssertKind Kind, const char* Expression, const char* File, int32 Line, const char* Function,
-						  const char* Format, ...)
+		namespace
 		{
-			GFailureCount.fetch_add(1, std::memory_order_relaxed);
+			void Dispatch(AssertKind Kind, const char* Expression, const char* File, int32 Line, const char* Function,
+						  const char* Message)
+			{
+				GFailureCount.fetch_add(1, std::memory_order_relaxed);
 
+				AssertInfo Info;
+				Info.Kind = Kind;
+				Info.Expression = Expression;
+				Info.File = File;
+				Info.Line = Line;
+				Info.Function = Function;
+				Info.Message = Message;
+
+				AssertHandler Handler = GHandler.load(std::memory_order_acquire);
+				void* UserData = GHandlerUserData.load(std::memory_order_relaxed);
+				if (Handler != nullptr)
+				{
+					Handler(Info, UserData);
+				}
+				else
+				{
+					DefaultHandler(Info, nullptr);
+				}
+			}
+		} // namespace
+
+		void ReportAssert(AssertKind Kind, const char* Expression, const char* File, int32 Line, const char* Function)
+		{
+			Dispatch(Kind, Expression, File, Line, Function, "");
+		}
+
+		void ReportAssertF(AssertKind Kind, const char* Expression, const char* File, int32 Line, const char* Function,
+						   const char* Format, ...)
+		{
 			char MessageBuffer[1024];
 			MessageBuffer[0] = '\0';
-			if (Format != nullptr && Format[0] != '\0')
-			{
-				std::va_list Args;
-				va_start(Args, Format);
-				std::vsnprintf(MessageBuffer, sizeof(MessageBuffer), Format, Args);
-				va_end(Args);
-			}
-
-			AssertInfo Info;
-			Info.Kind = Kind;
-			Info.Expression = Expression;
-			Info.File = File;
-			Info.Line = Line;
-			Info.Function = Function;
-			Info.Message = MessageBuffer;
-
-			AssertHandler Handler = GHandler.load(std::memory_order_acquire);
-			void* UserData = GHandlerUserData.load(std::memory_order_relaxed);
-			if (Handler != nullptr)
-			{
-				Handler(Info, UserData);
-			}
-			else
-			{
-				DefaultHandler(Info, nullptr);
-			}
+			std::va_list Args;
+			va_start(Args, Format);
+			std::vsnprintf(MessageBuffer, sizeof(MessageBuffer), Format, Args);
+			va_end(Args);
+			Dispatch(Kind, Expression, File, Line, Function, MessageBuffer);
 		}
 
 		void AbortProcess() noexcept

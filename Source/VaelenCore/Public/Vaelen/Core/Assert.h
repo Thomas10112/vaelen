@@ -80,8 +80,13 @@ namespace Vaelen
 
 	namespace Detail
 	{
+		/// Reports a failure without a message.
 		VAELENCORE_API void ReportAssert(AssertKind Kind, const char* Expression, const char* File, int32 Line,
-										 const char* Function, const char* Format, ...) VAELEN_PRINTF_ATTR(6, 7);
+										 const char* Function);
+
+		/// Reports a failure with a printf-style message.
+		VAELENCORE_API void ReportAssertF(AssertKind Kind, const char* Expression, const char* File, int32 Line,
+										  const char* Function, const char* Format, ...) VAELEN_PRINTF_ATTR(6, 7);
 
 		[[noreturn]] VAELENCORE_API void AbortProcess() noexcept;
 	} // namespace Detail
@@ -100,7 +105,7 @@ namespace Vaelen
 			if (VAELEN_UNLIKELY(!(Expr)))                                                                              \
 			{                                                                                                          \
 				::Vaelen::Detail::ReportAssert(::Vaelen::AssertKind::Check, #Expr, __FILE__, __LINE__,                 \
-											   VAELEN_FUNCTION, "");                                                   \
+											   VAELEN_FUNCTION);                                                       \
 			}                                                                                                          \
 		} while (false)
 #	define VAELEN_CHECKF(Expr, ...)                                                                                   \
@@ -108,21 +113,21 @@ namespace Vaelen
 		{                                                                                                              \
 			if (VAELEN_UNLIKELY(!(Expr)))                                                                              \
 			{                                                                                                          \
-				::Vaelen::Detail::ReportAssert(::Vaelen::AssertKind::Check, #Expr, __FILE__, __LINE__,                 \
-											   VAELEN_FUNCTION, __VA_ARGS__);                                          \
+				::Vaelen::Detail::ReportAssertF(::Vaelen::AssertKind::Check, #Expr, __FILE__, __LINE__,                \
+												VAELEN_FUNCTION, __VA_ARGS__);                                          \
 			}                                                                                                          \
 		} while (false)
 #	define VAELEN_VERIFY(Expr) VAELEN_CHECK(Expr)
 #	define VAELEN_ENSURE(Expr)                                                                                        \
 		(VAELEN_LIKELY(!!(Expr)) ? true                                                                                \
 								 : (::Vaelen::Detail::ReportAssert(::Vaelen::AssertKind::Ensure, #Expr, __FILE__,      \
-																   __LINE__, VAELEN_FUNCTION, ""),                     \
+																   __LINE__, VAELEN_FUNCTION),                         \
 									false))
 #	define VAELEN_UNREACHABLE()                                                                                       \
 		do                                                                                                             \
 		{                                                                                                              \
 			::Vaelen::Detail::ReportAssert(::Vaelen::AssertKind::Check, "unreachable", __FILE__, __LINE__,             \
-										   VAELEN_FUNCTION, "");                                                       \
+										   VAELEN_FUNCTION);                                                       \
 			::Vaelen::Detail::AbortProcess();                                                                          \
 		} while (false)
 #else
