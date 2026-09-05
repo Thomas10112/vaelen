@@ -45,6 +45,7 @@ Rules for this file:
 | [0020](#adr-0020-hydrology-fills-depressions-by-priority-flood-fills-shallow-basins-with-sediment-and-keeps-deep-ones-as-lakes-rivers-and-lakes-are-entities) | Hydrology fills depressions by priority flood, fills shallow basins with sediment and keeps deep ones as lakes; rivers and lakes are entities | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0021](#adr-0021-regions-grow-from-lattice-seeds-by-terrain-cost-with-a-merge-floor-the-adjacency-graph-is-derived-not-stored) | Regions grow from lattice seeds by terrain cost with a merge floor; the adjacency graph is derived, not stored | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0022](#adr-0022-deposits-come-from-an-explicit-suitability-table-hashed-draws-and-one-per-kind-per-cell-spacing) | Deposits come from an explicit suitability table, hashed draws and one-per-kind-per-cell spacing | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0023](#adr-0023-the-world-is-a-function-of-seed-and-config-through-one-pipeline-call-frozen-as-whole-world-digests-at-three-sizes) | The world is a function of seed and config through one pipeline call, frozen as whole-world digests at three sizes | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -1441,6 +1442,57 @@ deterministic and cheap.
 Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/Deposits.h`,
 `Source/VaelenSim/Private/Deposits.cpp`, `Tests/Sim/Test_Deposits.cpp` (5 tests).
 Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0023: The world is a function of seed and config through one pipeline call, frozen as whole-world digests at three sizes
+
+### Context
+
+Seven stages exist with their own layers, entities, parameters and frozen digests.
+Later phases and the engine need one way to produce a world, one way to check that a
+build still produces the same world, and one setup routine that every side of a
+snapshot runs identically.
+
+### Decision
+
+1. `WorldSetup::Declare` declares every Phase 02 layer and component type in a fixed
+   order; it is the setup routine of the world's save-format contract (ADR-0015).
+2. `GenerateWorld(World, Setup, Config, Last)` runs Reset, elevation, hydrology,
+   climate, regions and deposits, stoppable after any stage; an invalid config or
+   stage is refused with a report. Re-running replaces the generated entities.
+3. The world is a pure function of (seed, config): the tests freeze the digest of the
+   whole world state - layers and entities - at 64, 256 and 1024 for the AELVOR seed,
+   and every compiler and platform in CI must reproduce them. Two fresh worlds give
+   byte-identical snapshot images.
+4. Degenerate inputs are legal: a drowned world and a 1 x 1 map succeed with zero
+   entities; a non-square map is ordinary.
+
+### Alternatives and decision rule
+
+- Leaving stage composition to callers: rejected; the order carries constraints
+  (hydrology edits elevation before climate, deposits read regions) that one function
+  should own.
+- Freezing only per-stage digests: rejected; the whole-world digest also covers the
+  entity ids, the id allocator and the component pools, which is what a saved game
+  depends on.
+- A separate world-generation executable for CI comparison: rejected; the frozen
+  constants inside the test binary already run on all four compilers.
+- Decided by robustness (one owner of the order, whole-state freeze) and simplicity.
+
+### Consequences
+
+- Any change to a stage, a default parameter or the save format changes the three
+  whole-world digests: refreezing them is the deliberate act that ships the change.
+- The 1024 x 1024 world takes 25 s in a debug build with assertions; CI runs it on
+  every push, which is acceptable now and to be watched.
+- Phase 03 starts from `GenerateWorld` and adds its own setup and stages after it.
+
+### Status
+
+Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/WorldGenPipeline.h`,
+`Source/VaelenSim/Private/WorldGenPipeline.cpp`, `Tests/Sim/Test_WorldPipeline.cpp`
+(4 tests). Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
 

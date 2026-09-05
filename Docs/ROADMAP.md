@@ -69,8 +69,8 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 |---|---|---|---|
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
-| 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | IN PROGRESS (02.01-02.07 VALIDATED headless; 02.08 PLANNED) |
-| 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | PLANNED |
+| 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
+| 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | PLANNED (task breakdown in section 7) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
@@ -95,7 +95,7 @@ Planned module names per phase are listed in `Docs/ARCHITECTURE.md` section 3.2.
 ## 4. Phase 00 - FOUNDATION: task breakdown and real status
 
 Status below was established by reading the code and the tests in `Tests/Core` and by
-running them (section 9). Test counts are from `VaelenCoreTests --list`. This numbering
+running them (section 10). Test counts are from `VaelenCoreTests --list`. This numbering
 is canonical: `Docs/STATUS.md` and commit subjects (`<phase>.<task>: ...`) use it.
 
 Master prompt scope item "interfaces de base": Phase 00 delivers only the two interfaces
@@ -128,7 +128,7 @@ Deliverables present:
   `.editorconfig`, `.gitattributes` (LF), `.gitignore`.
 - Layering and module plan: `Docs/ARCHITECTURE.md` sections 1-4.
 
-Verified: headless configure, build and `ctest` for all six Linux presets (section 9),
+Verified: headless configure, build and `ctest` for all six Linux presets (section 10),
 and the full GitHub CI matrix including Windows MSVC and macOS AppleClang (run 5, all
 9 jobs green). Not verified: any UBT build; every engine-facing file is labelled
 UNVERIFIED and has never been compiled in this repository.
@@ -613,16 +613,110 @@ deterministic, and every one of these was checked against determinism first):
   by the frozen counts.
 - Decision: ADR-0022.
 
-### 02.08 World-gen determinism and long-duration gate; Phase 02 close
+### 02.08 World-gen determinism and long-duration gate; Phase 02 close - VALIDATED (headless)
 
-- Full pipeline frozen hashes at the three sizes on the four compilers; regenerate
-  from the same seed twice and compare byte for byte; snapshot of a generated world
-  restores and re-hashes identically; generation baseline at 1024 logged; Phase 02
-  closed against section 2.
+- Delivered: `WorldGenPipeline.h/.cpp` - `WorldSetup::Declare` (every Phase 02 layer
+  and component type in a fixed order), `WorldGenStage`, `GenerateWorld` (Reset,
+  elevation, hydrology, climate, regions, deposits, stoppable after any stage, invalid
+  config or stage refused), `ReportWorld` (every stage's statistics and the entity
+  count).
+- Tests (4): two fresh worlds give byte-identical snapshot images and a restored world
+  re-saves the same bytes and reports the same numbers, regeneration in the same world
+  reproduces the layers, another seed differs; partial runs match the full run's
+  elevation from hydrology onwards and leave later layers empty, a 160 x 48 map, a
+  drowned world (sea level above every peak: every stage succeeds with zero entities),
+  the 1 x 1 map, invalid config and stage refused; the Phase 01 kernel over a generated
+  world (ticks leave the map digest unchanged, a mid-run snapshot continues
+  identically); the whole-world digests frozen at 64, 256 and 1024 with the full
+  baseline logged (0.1 s, 1.5 s and 25 s in debug).
+- Decision: ADR-0023.
 
-## 7. Phases 03-20: notes
+Phase 02 against the exit criteria of section 2: (1) CI matrix green for every task
+(runs 18 to 24), 02.08 by its own run; (2) frozen digests per stage and for the whole
+world, byte-identical regeneration, snapshot re-hash; (3) no INCOMPLETE file, engine
+files UNVERIFIED; (4) unit, integration, deterministic, edge-case and long-duration
+categories present; (5) ADR-0016 to ADR-0023, docs updated. Verdict: **Phase 02
+VALIDATED on the headless side, UNVERIFIED on the engine side until the first UE 5.6
+build.**
 
-No task breakdown exists yet for Phases 03-20; each is broken down when the previous
+## 7. Phase 03 - HISTORY: task breakdown (PLANNED)
+
+Goal: the simulated pre-history everything later inherits - eras, cultures, languages,
+religions, migrations and the historical record - produced by the Phase 01 kernel
+ticking over the Phase 02 world at LOD 4 (yearly and monthly systems), so that a new
+game starts on a world with centuries behind it and every fact of that past is an
+event in the log with a cause.
+
+Decisions taken up front (each becomes an ADR when its task closes):
+
+- History is simulated, not authored: cultures, languages and religions are entities
+  created by systems from regions and events; nothing is named or placed by hand.
+  Names come from a deterministic phonology per language (03.03), never from lists.
+- Coarse population per region (integer counts by culture), not persons: persons and
+  families are Phase 04. Migration, growth and collapse move counts between regions
+  along the region graph.
+- The historical record is the event log plus a chronicle of `Record` entities that
+  summarise events per era and region; both are queryable by cause chain ("why").
+- Frozen digests per era of the reference history at 256 so any change to a system is
+  deliberate.
+
+### 03.01 Eras, the era calendar and the historical record
+
+- `Era` entities (index, start and end tick, name from the language of the dominant
+  culture once 03.03 exists), an `EraSystem` at LOD 4 that opens a new era on
+  configured triggers (span, collapse, founding), `Record` entities summarising
+  events per era and region, query helpers over the event log (by subject, by cause
+  chain, by era).
+- Tests: eras cover time without gaps, records match the log, cause chains resolve.
+
+### 03.02 Cultures and coarse population
+
+- `Culture` entities seeded on fertile regions, `RegionPopulation` components (counts
+  per culture), growth bounded by deposits and biome, monthly migration along the
+  region graph with a deterministic choice, assimilation and splits.
+- Tests: conservation of counts, bounds, determinism, frozen digests.
+
+### 03.03 Languages and naming
+
+- `Language` entities per culture with a phonology (syllable inventory drawn from the
+  seed), deterministic name generation for regions, rivers, eras, cultures and later
+  persons; drift and split when cultures split.
+- Tests: names are pronounceable by construction, unique per scope, frozen.
+
+### 03.04 Religions
+
+- `Religion` entities born from cultures and events (omens, disasters, founders), spread
+  along migration, schisms; tenets as data that later phases read.
+- Tests: spread follows the graph, no religion without a founding event.
+
+### 03.05 Disasters and omens
+
+- Yearly random events tied to the world (drought from moisture, flood from rivers,
+  eruption from mountains, plague from population density) with causal consequences
+  in population and religion.
+- Tests: every disaster has a place and a cause; frequencies in bands.
+
+### 03.06 Pre-history run and the starting state
+
+- A `GeneratePreHistory` call runs N years (default 500) at LOD 4 over a generated
+  world and returns the world ready for Phase 04; ASCII export of cultures by region.
+- Tests: reference run frozen per century at 256; snapshot mid-history continues
+  identically; 1024 baseline.
+
+### 03.07 Queryable history
+
+- "Why" queries: from any entity or event to its cause chain and era; per-region
+  timeline; the chronicle as text lines built from records and names.
+- Tests: every record resolves; text is deterministic.
+
+### 03.08 Phase 03 gate
+
+- Long-duration run (2000 years at 256), invariants every decade, frozen digests on
+  four compilers; Phase 03 closed against section 2.
+
+## 8. Phases 04-20: notes
+
+No task breakdown exists yet for Phases 04-20; each is broken down when the previous
 phase closes. Fixed points already in the code: `IdKind` values for Region, Tile, River,
 ResourceDeposit (Phase 02), Culture, Language, Religion, Person, Family, Organization
 (Phases 03-05), Item, Building, Settlement, Market, Route (Phases 06, 09), Polity, Law,
@@ -630,53 +724,53 @@ Army, War (Phases 07-08), Document, Map (Phase 12); `VAELEN_SAVE_FORMAT_VERSION`
 (Phase 16); `Config/DefaultEngine.ini` and `DefaultInput.ini` note that the game engine
 class and Enhanced Input mappings arrive in Phase 10.
 
-## 8. Current BUILD STATUS
+## 9. Current BUILD STATUS
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 02 — WORLD
-TASK        : 02.07 — RESOURCE DEPOSITS
+PHASE       : 02 — WORLD (closed, headless) → 03 — HISTORY (planned)
+TASK        : 02.08 — WORLD-GEN DETERMINISM AND LONG-DURATION GATE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-█████████████████████░░░ 87%
+████████████████████████ 100%  (Phase 02)
 
 CURRENTLY
-→ 02.07 closed: eight resource kinds placed from explicit suitability rules (biome,
-  elevation, slope, coast, rivers and lakes), hashed draws, one per kind per spacing cell,
-  richness and three rarity tiers, one entity per deposit
+→ Phase 02 closed against ROADMAP section 2: one-call pipeline, whole-world digests frozen
+  at 64 / 256 / 1024, regeneration byte for byte, snapshot re-hash, drowned and 1 x 1
+  worlds, simulation and replay over a generated world
 
 COMPLETED
-✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION (CI 9/9 on every run)
+✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION
 ✓ 02.01 Grid (CI 18) ; 02.02 Fixed point and noise (CI 19) ; 02.03 Elevation (CI 20)
-✓ 02.04 Climate (CI 21) ; 02.05 Hydrology (CI 22) ; 02.06 Regions (CI pending)
-✓ 02.07 Resource deposits (5 tests: Deposits)
+✓ 02.04 Climate (CI 21) ; 02.05 Hydrology (CI 22) ; 02.06 Regions (CI 23) ; 02.07 Deposits (CI 24)
+✓ 02.08 Gate (4 tests: WorldPipeline) ; Phase 03 HISTORY broken down (03.01-03.08)
 
 NEXT
-→ 02.08 Phase 02 gate: one-call pipeline, frozen full-world digests at 64/256/1024 on four
-  compilers, regenerate twice byte for byte, snapshot re-hash, baseline; Phase 02 close
-→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
+→ 03.01 Eras and the historical record (era calendar, chronicle entries as entities)
+→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist) to clear UNVERIFIED
 
 FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/Deposits.h, Private/Deposits.cpp
-+ Tests/Sim/Test_Deposits.cpp
++ Source/VaelenSim/Public/Vaelen/Sim/WorldGenPipeline.h, Private/WorldGenPipeline.cpp
++ Tests/Sim/Test_WorldPipeline.cpp
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 123 (120 without asserts); ctest 40/40 in all six Linux presets
-✓ AELVOR at 256: 1364 deposits, every kind present, tiers 1086/267/11, none on sea;
-  frozen deposit256 c0b544dc8c210da6 (clang = gcc)
-✓ Baseline 1024 x 1024 deposits: 0.6 s debug, 0.3 s release
-✓ Purity: 48 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 127 (124 without asserts); ctest 41/41 in all six Linux presets
+✓ Frozen whole-world digests (AELVOR seed): 64 31bd627b7440357a, 256 044cf4cce94d3853,
+  1024 1211462eedf18e82 (clang = gcc; MSVC and AppleClang checked by CI)
+✓ AELVOR 1024: 413 641 land tiles, 10 land biomes, 43 rivers, 25 lakes, 166 regions,
+  18 523 deposits, 18 757 entities; full pipeline 25 s debug
+✓ Purity: 50 files, 0 violations
 
 BLOCKERS
 None
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-## 9. Verification record
+## 10. Verification record
 
 Commands run on 2026-09-05 (clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.15, clang-format 18.1.3, Linux x86_64) with the checked-in presets, each into
 `out/build/<preset>`:
