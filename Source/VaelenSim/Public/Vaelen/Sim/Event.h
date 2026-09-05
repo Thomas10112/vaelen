@@ -108,10 +108,7 @@ namespace Vaelen
 		}
 
 		/// Order-independent per-event hash over every defined byte.
-		Hash64 Hash() const noexcept
-		{
-			return HashBytes(reinterpret_cast<const char*>(this), sizeof(Event));
-		}
+		Hash64 Hash() const noexcept { return HashBytes(reinterpret_cast<const char*>(this), sizeof(Event)); }
 
 		bool operator==(const Event&) const noexcept = default;
 	};
