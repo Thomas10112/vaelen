@@ -68,7 +68,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | Phase | Name | Objective (one line) | Status |
 |---|---|---|---|
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
-| 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | PLANNED |
+| 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | IN PROGRESS (01.01 VALIDATED headless; 01.02-01.08 PLANNED) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | PLANNED |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | PLANNED |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
@@ -201,7 +201,7 @@ engine side until the first UE 5.6 build.**
 
 ## 5. Phase 01 - CORE SIMULATION: task breakdown (PLANNED)
 
-Nothing in this section exists. Planned module: `VaelenSim` (kernel), directory
+Module `VaelenSim` (kernel) exists since 01.01; tasks 01.02-01.08 are PLANNED. Directory
 `Source/VaelenSim` with `Public/Vaelen/Sim/`, listed in `Tools/kernel_modules.txt`,
 `/CMakeLists.txt`, `Vaelen.uproject` and both targets (`Docs/ARCHITECTURE.md` section 3.3,
 rule 6). Tests in `Tests/Sim/Test_<Suite>.cpp` building `VaelenSimTests`. Each task ends
@@ -209,21 +209,22 @@ VALIDATED only with unit, deterministic and edge-case tests on both compilers; 0
 01.08 supply the integration and long-duration categories for the whole phase. Every
 design choice below that survives implementation gets an ADR (planned numbers 0010+).
 
-### 01.01 Entity handles and registry
+### 01.01 Entity handles and registry - VALIDATED (headless)
 
-- Goal: a runtime handle for dense storage plus the mapping to `PersistentId`
-  (`IdKind::Entity`), as anticipated in `Ids.h` ("runtime slot handles with generation
-  counters ... Phase 01").
-- Planned: `EntityHandle{uint32 Slot; uint32 Generation}`; `EntityRegistry` with
-  `Create() -> {PersistentId, EntityHandle}` (id from an `IdAllocator` owned by the
-  world state), `Destroy(handle)` bumping the generation, `IsAlive`, `Resolve(id) ->
-  handle`, `IdOf(handle)`; destroyed entities keep their `PersistentId` forever; slot
-  reuse policy fixed and documented (free list in deterministic order).
-- Tests: create/destroy/reuse with generation check, stale handle rejected, id <-> handle
-  round trip, iteration order stable and independent of destruction history where
-  specified, registry state round trip, determinism over a scripted create/destroy
-  sequence, edge cases (empty registry, destroy twice, resolve of a never-created id).
-- Exit: ADR for handle layout and slot reuse; VALIDATED.
+- Delivered: `EntityHandle` (64-bit: 32-bit generation, 32-bit slot index; null is
+  value 0, live generations start at 1) and `EntityRegistry` (`Create(PersistentId)`,
+  `Create(IdAllocator&, IdKind)`, `Destroy`, `IsAlive`, `GetId`, `Find`, `ForEachAlive`
+  in slot order, `GetState`/`SetState` with full consistency validation, `Clear`).
+  Slots are recycled through a LIFO free list; a slot whose generation reaches
+  `MaxGeneration` is retired. The `PersistentId` lookup is an `unordered_map` used for
+  lookups only. Module `VaelenSim` with its own `VAELEN_SIM_API`, listed in
+  `Tools/kernel_modules.txt`, `/CMakeLists.txt`, `Vaelen.uproject` and both targets.
+- Tests (`Tests/Sim`): EntityHandle 3, EntityRegistry 13: dense allocation, LIFO reuse
+  with generation bump, stale/null/out-of-range handles, slot-order iteration,
+  determinism across instances, state round trip, rejection of inconsistent states,
+  retirement at the last generation, one million create/destroy cycles, assertion paths.
+- Decision: ADR-0010. Engine side (`VaelenSim.Build.cs`, `VaelenSimModule.cpp`)
+  UNVERIFIED.
 
 ### 01.02 Component storage
 
@@ -327,40 +328,35 @@ class and Enhanced Input mappings arrive in Phase 10.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 00 — FOUNDATION
-TASK        : 00.05 — FOUNDATION VALIDATION
+PHASE       : 01 — CORE SIMULATION
+TASK        : 01.01 — ENTITY HANDLES & REGISTRY
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████████████████ 100%
+███░░░░░░░░░░░░░░░░░░░░░ 12%
 
 CURRENTLY
-→ Phase 00 closed on the headless side
-→ Engine-side files await the first UE 5.6 build (Docs/ARCHITECTURE.md § 8)
+→ 01.01 closed: EntityHandle, EntityRegistry, module VaelenSim wired everywhere
 
 COMPLETED
-✓ 00.01 Project architecture (UE5 project, dual build, CMake presets, CI)
-✓ 00.02 Core primitives: ids, hash, random
-✓ 00.03 Logging and assertions
-✓ 00.04 Test harness and kernel purity check
-✓ 00.05 Adversarial review (189 findings triaged, 60+ fixes), docs
+✓ Phase 00 — FOUNDATION (CI 9/9)
+✓ 01.01 Entity handles & registry (16 tests, 1.5 M checks incl. a one-million-cycle soak)
 
 NEXT
-→ 01.01 Entity handles and registry (Phase 01 — CORE SIMULATION)
-→ First engine build on a machine with UE 5.6 (validates the UNVERIFIED files)
+→ 01.02 Component storage (typed sparse sets, explicit type registry)
+→ 01.03 Systems & tick scheduler
 
 FILES
-Source/VaelenCore (7 headers, 5 sources, 1 UE module file)
-Tests/Harness (2), Tests/Core (9 suites), Tools/check_kernel_purity.py
-Docs/{ARCHITECTURE,CONVENTIONS,DECISIONS,ROADMAP,STATUS}.md, README.md
++ Source/VaelenSim/{VaelenSim.Build.cs, CMakeLists.txt}
++ Source/VaelenSim/Public/Vaelen/Sim/{SimApi.h, EntityHandle.h, EntityRegistry.h}
++ Source/VaelenSim/Private/{EntityRegistry.cpp, VaelenSimModule.cpp}
++ Tests/Sim/{CMakeLists.txt, Test_EntityHandle.cpp, Test_EntityRegistry.cpp}
+~ CMakeLists.txt, Tests/CMakeLists.txt, Tools/kernel_modules.txt, Vaelen.uproject, *.Target.cs
 
 TESTS
-✓ 133/133 tests, 21 914 checks: clang++ 18 and g++ 13, Debug and RelWithDebInfo
-✓ 108/108 with assertions off (linux-*-noasserts), both compilers
-✓ ctest 14/14 in all six Linux presets (incl. Kernel.Purity, PuritySelfTest 36 checks)
-✓ clang-format 18: 0 drift on Source/VaelenCore and Tests
-✓ GitHub CI run 5: Windows MSVC 19.44 and macOS 15 AppleClang, 14/14 each; all 9 jobs green
-⚠ Unreal Build Tool (UE 5.6): never run, engine-facing files UNVERIFIED
+✓ Core 133 (108 without asserts) + Sim 16 tests; ctest 18/18 in all six Linux presets
+✓ Purity: 16 files, 0 violations
+⚠ Unreal Build Tool: VaelenSim.Build.cs and VaelenSimModule.cpp UNVERIFIED
 
 BLOCKERS
 None

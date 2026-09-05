@@ -12,40 +12,35 @@ refresh").
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 00 — FOUNDATION
-TASK        : 00.05 — FOUNDATION VALIDATION
+PHASE       : 01 — CORE SIMULATION
+TASK        : 01.01 — ENTITY HANDLES & REGISTRY
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████████████████ 100%
+███░░░░░░░░░░░░░░░░░░░░░ 12%
 
 CURRENTLY
-→ Phase 00 closed on the headless side
-→ Engine-side files await the first UE 5.6 build (Docs/ARCHITECTURE.md § 8)
+→ 01.01 closed: EntityHandle, EntityRegistry, module VaelenSim wired everywhere
 
 COMPLETED
-✓ 00.01 Project architecture (UE5 project, dual build, CMake presets, CI)
-✓ 00.02 Core primitives: ids, hash, random
-✓ 00.03 Logging and assertions
-✓ 00.04 Test harness and kernel purity check
-✓ 00.05 Adversarial review (189 findings triaged, 60+ fixes), docs
+✓ Phase 00 — FOUNDATION (CI 9/9)
+✓ 01.01 Entity handles & registry (16 tests, 1.5 M checks incl. a one-million-cycle soak)
 
 NEXT
-→ 01.01 Entity handles and registry (Phase 01 — CORE SIMULATION)
-→ First engine build on a machine with UE 5.6 (validates the UNVERIFIED files)
+→ 01.02 Component storage (typed sparse sets, explicit type registry)
+→ 01.03 Systems & tick scheduler
 
 FILES
-Source/VaelenCore (7 headers, 5 sources, 1 UE module file)
-Tests/Harness (2), Tests/Core (9 suites), Tools/check_kernel_purity.py
-Docs/{ARCHITECTURE,CONVENTIONS,DECISIONS,ROADMAP,STATUS}.md, README.md
++ Source/VaelenSim/{VaelenSim.Build.cs, CMakeLists.txt}
++ Source/VaelenSim/Public/Vaelen/Sim/{SimApi.h, EntityHandle.h, EntityRegistry.h}
++ Source/VaelenSim/Private/{EntityRegistry.cpp, VaelenSimModule.cpp}
++ Tests/Sim/{CMakeLists.txt, Test_EntityHandle.cpp, Test_EntityRegistry.cpp}
+~ CMakeLists.txt, Tests/CMakeLists.txt, Tools/kernel_modules.txt, Vaelen.uproject, *.Target.cs
 
 TESTS
-✓ 133/133 tests, 21 914 checks: clang++ 18 and g++ 13, Debug and RelWithDebInfo
-✓ 108/108 with assertions off (linux-*-noasserts), both compilers
-✓ ctest 14/14 in all six Linux presets (incl. Kernel.Purity, PuritySelfTest 36 checks)
-✓ clang-format 18: 0 drift on Source/VaelenCore and Tests
-✓ GitHub CI run 5: Windows MSVC 19.44 and macOS 15 AppleClang, 14/14 each; all 9 jobs green
-⚠ Unreal Build Tool (UE 5.6): never run, engine-facing files UNVERIFIED
+✓ Core 133 (108 without asserts) + Sim 16 tests; ctest 18/18 in all six Linux presets
+✓ Purity: 16 files, 0 violations
+⚠ Unreal Build Tool: VaelenSim.Build.cs and VaelenSimModule.cpp UNVERIFIED
 
 BLOCKERS
 None
@@ -83,6 +78,13 @@ the purity checker, applied to headers and sources).
 | `VaelenCore/VaelenCore.Build.cs`, `Vaelen.Target.cs`, `VaelenEditor.Target.cs` | UNVERIFIED (requires UE5) |
 | `Vaelen/Vaelen.Build.cs`, `Vaelen/Public/Vaelen.h`, `Vaelen/Private/Vaelen.cpp`, `VaelenLogSink.h/.cpp` | UNVERIFIED (requires UE5) |
 
+### Source/VaelenSim (Phase 01)
+
+| File | STATUS |
+|---|---|
+| `Public/Vaelen/Sim/SimApi.h`, `EntityHandle.h`, `EntityRegistry.h`, `Private/EntityRegistry.cpp` | VALIDATED (Phase 01) — integration and long-duration tests arrive with 01.07 / 01.08 |
+| `Private/VaelenSimModule.cpp`, `VaelenSim.Build.cs` | UNVERIFIED (requires UE5) |
+
 ### Tests/
 
 | File | STATUS | Tests |
@@ -98,7 +100,7 @@ the purity checker, applied to headers and sources).
 | `Core/Test_Random.cpp` | VALIDATED | 29 |
 | `Core/Test_Version.cpp` | VALIDATED | 7 |
 
-Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries).
+Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13 (16 tests, 1 500 250 checks); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.Registry`, `Sim.Shuffled` (18 entries in total).
 
 ### Tools/ and CI
 

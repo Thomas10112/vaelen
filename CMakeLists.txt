@@ -72,6 +72,7 @@ target_compile_definitions(vaelen_build_flags INTERFACE
 
 # ── Kernel modules ───────────────────────────────────────────────────────────
 add_subdirectory(Source/VaelenCore)
+add_subdirectory(Source/VaelenSim)
 
 # ── Tests ────────────────────────────────────────────────────────────────────
 if(VAELEN_BUILD_TESTS)

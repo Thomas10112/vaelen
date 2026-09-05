@@ -10,6 +10,14 @@
 			"LoadingPhase": "PreDefault"
 		},
 		{
+			"Name": "VaelenSim",
+			"Type": "Runtime",
+			"LoadingPhase": "PreDefault",
+			"AdditionalDependencies": [
+				"VaelenCore"
+			]
+		},
+		{
 			"Name": "Vaelen",
 			"Type": "Runtime",
 			"LoadingPhase": "Default",

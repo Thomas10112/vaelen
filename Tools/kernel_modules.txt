@@ -9,3 +9,4 @@
 # Add a module here as soon as it is created; the CTest entry Kernel.Purity
 # fails when any listed module violates a rule.
 VaelenCore
+VaelenSim
