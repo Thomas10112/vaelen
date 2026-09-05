@@ -1,0 +1,19 @@
+# VAELEN — Unreal-compatible C++ style (Allman braces, tabs, PascalCase).
+BasedOnStyle: LLVM
+Language: Cpp
+Standard: c++20
+UseTab: Always
+TabWidth: 4
+IndentWidth: 4
+ColumnLimit: 120
+BreakBeforeBraces: Allman
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakTemplateDeclarations: Yes
+NamespaceIndentation: None
+PointerAlignment: Left
+SpaceAfterTemplateKeyword: true
+IncludeBlocks: Preserve
+SortIncludes: false
+AccessModifierOffset: -4
