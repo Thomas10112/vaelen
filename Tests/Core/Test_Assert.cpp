@@ -1021,10 +1021,20 @@ VAELEN_TEST(Assert, HandlerSwapDuringReportsNeverTearsThePair)
 				}
 			});
 	}
-	for (int32 i = 0; i < 2000; ++i)
+	// Swap handlers while the reporters run. The reporters may not have been
+	// scheduled yet when the loop starts (observed on the Windows and macOS CI
+	// runners), so keep swapping until they have reported, then a while longer.
+	int32 Swaps = 0;
+	while (Swaps < 2000 || HandlerA.Calls.load() + HandlerB.Calls.load() < 100)
 	{
-		SetAssertHandler((i & 1) ? &PairHandler::B : &PairHandler::A,
-						 (i & 1) ? static_cast<void*>(&HandlerB) : static_cast<void*>(&HandlerA));
+		const bool UseB = (Swaps & 1) != 0;
+		SetAssertHandler(UseB ? &PairHandler::B : &PairHandler::A,
+						 UseB ? static_cast<void*>(&HandlerB) : static_cast<void*>(&HandlerA));
+		++Swaps;
+		if ((Swaps & 1023) == 0)
+		{
+			std::this_thread::yield();
+		}
 	}
 	Stop.store(true, std::memory_order_relaxed);
 	for (std::thread& Reporter : Reporters)
