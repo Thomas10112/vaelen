@@ -47,6 +47,7 @@ Rules for this file:
 | [0022](#adr-0022-deposits-come-from-an-explicit-suitability-table-hashed-draws-and-one-per-kind-per-cell-spacing) | Deposits come from an explicit suitability table, hashed draws and one-per-kind-per-cell spacing | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0023](#adr-0023-the-world-is-a-function-of-seed-and-config-through-one-pipeline-call-frozen-as-whole-world-digests-at-three-sizes) | The world is a function of seed and config through one pipeline call, frozen as whole-world digests at three sizes | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0024](#adr-0024-history-is-eras-opened-by-span-or-caused-request-plus-a-chronicle-of-record-entities-with-every-piece-of-state-in-components) | History is eras opened by span or caused request plus a chronicle of Record entities, with every piece of state in components | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0025](#adr-0025-population-is-coarse-per-region-cultures-are-entities-and-a-culture-splits-by-graph-distance-with-lineage-spacing) | Population is coarse per region, cultures are entities, and a culture splits by graph distance with lineage spacing | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -1549,6 +1550,72 @@ Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/History.h`,
 `Source/VaelenSim/Private/History.cpp`, `Source/VaelenCore/Public/Vaelen/Core/Ids.h`,
 `Tests/Sim/Test_History.cpp` (3 tests). Headless VALIDATED on the six Linux presets;
 engine side UNVERIFIED.
+
+---
+
+## ADR-0025: Population is coarse per region, cultures are entities, and a culture splits by graph distance with lineage spacing
+
+### Context
+
+Phase 03 needs people before persons exist (Phase 04): enough demography for cultures
+to spread, mix and split over centuries of pre-history, at a cost that lets a 500-year
+run finish in seconds and stay deterministic across compilers. Phase 02 already gives
+regions, their adjacency graph, biomes, rivers and fertile deposits.
+
+### Decision
+
+1. Population is one `RegionPopulation` component per region: up to six culture slots
+   with integer counts, a total, a capacity derived from the region's tiles (biome
+   table, river tiles, fertile deposits), the majority and the years settled. No
+   individuals, no fractions, no floats.
+2. Cultures are entities (`CultureInfo`: home region, parent, generation, founding tick,
+   identity hash). Founding, splitting, settling, abandoning and migrating are events;
+   a settlement caused by a wave carries the wave as its cause.
+3. Growth is yearly and logistic in integers (`Total * Growth * Room / Capacity / 1000`),
+   decline above capacity is proportional to the excess, minorities below the
+   assimilation share join the majority. Migration is monthly: a majority above the
+   crowding threshold sends a share to the least crowded neighbour, every move decided
+   on the start-of-tick state in region order, so the outcome is independent of pool
+   iteration order and conserves people.
+4. A culture splits when a region has been settled for `SplitYears` and its majority's
+   home lies at least `SplitDistance` away in the region graph. The due region drags
+   its connected far component of the same culture with it. The block joins the
+   nearest sibling culture (same parent) whose home is closer than `SplitDistance`;
+   otherwise it founds a culture at the block's lowest region. Homes of one lineage are
+   therefore at least `SplitDistance` apart and the culture count is bounded by the
+   graph, not by the order in which regions happen to become due.
+5. All thresholds live in a public `PopulationRules` table with the defaults used by
+   the frozen test; later phases (disasters, religions) read and change population only
+   through the component and events.
+
+### Alternatives and decision rule
+
+- Per-tile population layers: rejected; regions are the unit history reasons about and
+  a per-tile layer costs a 1024 x 1024 pass per year for nothing Phase 03 needs.
+- One culture per splitting region: tried first and rejected; the frontier of an
+  expanding culture becomes due one region at a time, which produced more than forty
+  cultures in a century on a 99-region continent. Grouping the regions due in the same
+  year was not enough either (41); the far-component and lineage-spacing rules bring
+  the same run to 18 cultures with contiguous territories.
+- Migration decided during pool iteration: rejected; conservation and determinism
+  depend on decisions taken on a frozen view of the tick.
+- Decided by robustness (integer bookkeeping with exact helpers, conservation proven by
+  running the migration system by hand) and simplicity (one rule table, no floats).
+
+### Consequences
+
+- Six culture slots per region: a seventh culture cannot enter a region until
+  assimilation frees a slot, and migration keeps the people where they are in that case.
+- Capacity is recomputed from the map each year; a later phase that changes deposits or
+  biomes changes capacity without touching this code.
+- The frozen 500-year run at 128 (`f2afaa068c0f717d`, 47 587 people, 18 cultures) is
+  the reference for every later change of the rules; a deliberate change re-freezes it.
+
+### Status
+
+Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/Population.h`,
+`Source/VaelenSim/Private/Population.cpp`, `Tests/Sim/Test_Population.cpp` (5 tests).
+Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
 

@@ -70,7 +70,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
-| 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | IN PROGRESS (03.01 VALIDATED headless; 03.02-03.08 PLANNED) |
+| 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | IN PROGRESS (03.01-03.02 VALIDATED headless; 03.03-03.08 PLANNED) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
@@ -688,12 +688,38 @@ Decisions taken up front (each becomes an ADR when its task closes):
   refused, ticking without history reported and harmless.
 - Decision: ADR-0024.
 
-### 03.02 Cultures and coarse population
+### 03.02 Cultures and coarse population - VALIDATED (headless)
 
-- `Culture` entities seeded on fertile regions, `RegionPopulation` components (counts
-  per culture), growth bounded by deposits and biome, monthly migration along the
-  region graph with a deterministic choice, assimilation and splits.
-- Tests: conservation of counts, bounds, determinism, frozen digests.
+- Delivered: `Population.h/.cpp` - `CultureInfo` (index, home region, parent, generation,
+  founding tick, identity hash), `RegionPopulation` (six culture slots with counts, total,
+  capacity, majority, years settled; exact bookkeeping helpers), `PopulationTypes::Declare`,
+  `PopulationRules` (public rule table: seeds, capacity per biome tile, per river tile and
+  per fertile deposit, growth and decline per mille, migration threshold, share and
+  minimum wave, assimilation share, split distance and years), `SeedCultures` (the
+  highest-capacity mutually non-adjacent regions, one CultureFounded and one caused
+  RegionSettled each), `PopulationSystem` (LOD World, yearly: logistic growth bounded by
+  capacity, decline above it, assimilation of minorities below the share, abandonment,
+  splits), `MigrationSystem` (LOD Statistic, monthly: a majority above the crowding
+  threshold sends a share to the least crowded neighbour along the region graph, decided
+  on start-of-tick state in region order; RegionSettled caused by the wave when the
+  destination was empty; people stay when no slot is free), events CultureFounded,
+  CultureSplit, RegionSettled, RegionAbandoned, MigrationWave, `MeasurePopulation`,
+  `ExportCultureAscii`.
+- Split rule: a region settled for `SplitYears` whose majority's home lies at least
+  `SplitDistance` away in the region graph splits together with its connected far
+  component of the same culture; the block joins the nearest sibling culture (same
+  parent) whose home is closer than `SplitDistance`, otherwise founds a culture whose
+  home is the block's lowest region. Culture homes of one lineage therefore stay at
+  least `SplitDistance` apart, which bounds the number of cultures by the graph.
+- Tests (5): exact bookkeeping (slots, totals, majority, overflow refused); seeding on
+  AELVOR 128 (four non-adjacent homes, events, second seeding refused); 500 years at 128
+  with invariants each century (counts consistent, people within capacity plus a wave,
+  no collapse without a cause), the continent fills up, splits happened and equal
+  cultures minus seeds, more than a hundred waves, migration alone conserves people,
+  ASCII map by culture; two worlds identical and a snapshot at year 60 continuing
+  identically, a drowned world stays empty; frozen 500 years at 128: state
+  `f2afaa068c0f717d`, 47 587 people, 18 cultures.
+- Decision: ADR-0025.
 
 ### 03.03 Languages and naming
 
@@ -748,6 +774,42 @@ class and Enhanced Input mappings arrive in Phase 10.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VAELEN BUILD STATUS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PHASE       : 03 — HISTORY
+TASK        : 03.02 — CULTURES AND COARSE POPULATION
+STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
+
+PROGRESS
+██████░░░░░░░░░░░░░░░░░░ 25%
+
+CURRENTLY
+→ 03.02 closed: Culture entities seeded on the best spread regions, coarse population per
+  region (six culture slots), yearly growth bounded by biome, river and fertile-deposit
+  capacity, monthly migration along the region graph, assimilation, abandonment and
+  culture splits by graph distance with lineage spacing
+
+COMPLETED
+✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD (headless)
+✓ 03.01 Eras and the historical record (CI 26) ; 03.02 Cultures and population (5 tests: Population)
+
+NEXT
+→ 03.03 Languages and naming (Language entities per culture, deterministic names)
+→ 03.04 Religions ; 03.05 Disasters and omens
+→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
+
+FILES
++ Source/VaelenSim/Public/Vaelen/Sim/Population.h, Private/Population.cpp
++ Tests/Sim/Test_Population.cpp
+
+TESTS
+✓ Core 133 (108 without asserts) + Sim 135 (132 without asserts); ctest 43/43 in all six Linux presets
+✓ AELVOR 128, 500 years: 47 587 people of 55 174 capacity, 18 cultures from 4 seeds, 74/99 regions
+  settled; migration conserves people; frozen state f2afaa068c0f717d (clang = gcc)
+✓ Purity: 54 files, 0 violations
+
+BLOCKERS
+∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 03 — HISTORY
