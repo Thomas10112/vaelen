@@ -13,6 +13,50 @@ VAELEN_TEST(Harness, ChecksPass)
 	VT_REQUIRE(Ctx.Failures == 0);
 }
 
+namespace
+{
+	/// Every failing form of every macro, run against a silent scratch context.
+	void RunNegativeChecks(::VaelenTest::Context& Ctx)
+	{
+		VT_CHECK(false);
+		VT_CHECK_MSG(false, "detail %d", 1);
+		VT_CHECK_EQ(1, 2);
+		VT_CHECK_EQ(int{-1}, ~Vaelen::uint64{0}); // mixed signedness must NOT compare equal
+		VT_CHECK_NE(3, 3);
+		VT_CHECK_STREQ("a", "b");
+		VT_CHECK_STREQ(nullptr, "");
+		VT_CHECK_NEAR(0.0 / 0.0, 0.0, 1.0); // NaN is never near
+		VT_REQUIRE_EQ(1, 2);
+		VT_CHECK(true); // must not be reached: VT_REQUIRE_EQ returned
+	}
+
+	void RunRequireStops(::VaelenTest::Context& Ctx)
+	{
+		VT_REQUIRE(false);
+		VT_CHECK(false); // must not be reached
+	}
+} // namespace
+
+VAELEN_TEST(Harness, NegativeChecksAreRecorded)
+{
+	::VaelenTest::Context Scratch;
+	Scratch.Silent = true;
+	RunNegativeChecks(Scratch);
+	VT_CHECK_EQ(Scratch.Failures, 9);
+	VT_CHECK_EQ(Scratch.Checks, 9);
+
+	::VaelenTest::Context Stops;
+	Stops.Silent = true;
+	RunRequireStops(Stops);
+	VT_CHECK_EQ(Stops.Failures, 1);
+	VT_CHECK_EQ(Stops.Checks, 1);
+
+	// Mixed signedness compares mathematically, not after promotion.
+	VT_CHECK_NE(int{-1}, ~Vaelen::uint64{0});
+	VT_CHECK_EQ(Vaelen::uint64{5}, int{5});
+	VT_CHECK_EQ(Vaelen::int64{-5}, int{-5});
+}
+
 VAELEN_TEST(Harness, EnsureYieldsItsBooleanInEveryBuild)
 {
 	VaelenTest::ScopedAssertCapture Capture;

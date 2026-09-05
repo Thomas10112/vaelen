@@ -547,16 +547,28 @@ def relative_posix(root: Path, path: Path) -> str:
   return path.relative_to(root).as_posix()
 
 
+MODULE_NAME_RE = re.compile(r"[A-Za-z0-9_]+")
+
+
 def discover_module(root: Path, name: str) -> Tuple[Optional[ModuleInfo], Optional[str]]:
+  if MODULE_NAME_RE.fullmatch(name) is None:
+    return None, "module name '%s' is not a plain identifier (no path components allowed)" % name
   base = root / "Source" / name
   if not base.is_dir():
     return None, "module '%s' listed in the module list has no directory %s" % (name, base.as_posix())
   files: List[Path] = []
   module_files: List[Path] = []
+  seen_dir = False
   for directory, extensions in ((base / "Public", PUBLIC_EXTENSIONS), (base / "Private", PRIVATE_EXTENSIONS)):
+    if directory.is_symlink():
+      return None, "module '%s': %s is a symlink, which is not scanned" % (name, relative_posix(root, directory))
     if not directory.is_dir():
       continue
+    seen_dir = True
     for path in sorted(directory.rglob("*")):
+      if path.is_symlink():
+        return None, "module '%s': %s is a symlink, which is not allowed in a kernel module" % (
+          name, relative_posix(root, path))
       if not path.is_file():
         continue
       if path.name.endswith(MODULE_FILE_SUFFIX):
@@ -564,6 +576,10 @@ def discover_module(root: Path, name: str) -> Tuple[Optional[ModuleInfo], Option
         continue
       if path.suffix in extensions:
         files.append(path)
+  if not seen_dir:
+    return None, "module '%s' has neither a Public nor a Private directory under %s" % (name, base.as_posix())
+  if not files:
+    return None, "module '%s' has no scannable source files (a vacuous pass is not a pass)" % name
   files.sort(key=lambda p: relative_posix(root, p))
   module_files.sort(key=lambda p: relative_posix(root, p))
   return ModuleInfo(name, files, module_files), None
@@ -577,7 +593,7 @@ def run(root: Path, modules_file: Path) -> Report:
   if not modules_file.is_file():
     errors.append("module list %s does not exist" % modules_file.as_posix())
     return Report(root, [], [], [], [], errors)
-  names = read_module_list(modules_file.read_text(encoding="utf-8", errors="replace"))
+  names = read_module_list(modules_file.read_text(encoding="utf-8-sig", errors="replace"))
   if not names:
     errors.append("module list %s names no module" % modules_file.as_posix())
     return Report(root, [], [], [], [], errors)
@@ -606,7 +622,7 @@ def run(root: Path, modules_file: Path) -> Report:
     for path in info.files:
       rel = relative_posix(root, path)
       files.append(rel)
-      raw = path.read_text(encoding="utf-8", errors="replace")
+      raw = path.read_text(encoding="utf-8-sig", errors="replace")
       file_reports.append(check_file(rel, raw, path.suffix))
   return Report(root, modules, files, file_reports, structural, errors)
 
@@ -648,6 +664,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
   parser.add_argument("--verbose", action="store_true", help="print per-module and per-rule counts and exemptions")
   parser.add_argument("--self-test", action="store_true", help="exercise every rule on temporary files and exit")
   args = parser.parse_args(argv)
+
+  # Violations may quote non-UTF-8 bytes (decoded as U+FFFD); never let the
+  # report itself crash on a non-UTF-8 console (Windows ctest pipes).
+  for stream in (sys.stdout, sys.stderr):
+    try:
+      stream.reconfigure(errors="backslashreplace")  # type: ignore[attr-defined]
+    except (AttributeError, ValueError):
+      pass
 
   if args.self_test:
     return self_test()
@@ -709,6 +733,11 @@ def _build_self_test_repo(root: Path) -> Tuple[List[Tuple[str, int, str]], List[
     "# self-test module list\n\nFakeKernel   # trailing comment\nOtherKernel\nFakeKernel\n", encoding="utf-8")
   (root / "Tools" / "clean_modules.txt").write_text("OtherKernel\n", encoding="utf-8")
   (root / "Tools" / "missing_modules.txt").write_text("NoSuchModule\n", encoding="utf-8")
+  (root / "Tools" / "empty_modules.txt").write_text("EmptyKernel\n", encoding="utf-8")
+  (root / "Tools" / "traversal_modules.txt").write_text("../Outside\n", encoding="utf-8")
+  (root / "Tools" / "bom_modules.txt").write_bytes(b"\xef\xbb\xbfOtherKernel\r\n")
+  (root / "Source" / "EmptyKernel" / "Public").mkdir(parents=True)
+  (root / "Source" / "EmptyKernel" / "Private").mkdir(parents=True)
 
   # -- A clean header exercising every lexer corner case: must produce nothing.
   b = new("Source/FakeKernel/Public/Vaelen/Fake/Clean.h")
@@ -815,6 +844,14 @@ def _build_self_test_repo(root: Path) -> Tuple[List[Tuple[str, int, str]], List[
 
   b = new("Source/FakeKernel/Private/NoStatus.h")
   b.line("int NoStatusNoPragma;", "R5", "R5")
+
+  # A UTF-8 BOM and CRLF line endings (Windows editors) must not produce false
+  # R5 violations: this header is clean.
+  b = new("Source/FakeKernel/Public/Vaelen/Fake/Bom.h")
+  b.line("\ufeff#pragma once\r")
+  b.line("// STATUS: VALIDATED (self-test, BOM + CRLF)\r")
+  b.line("#include <cstdint>\r")
+  b.line("inline int Bom() { return 1; }\r")
 
   b = new("Source/FakeKernel/Private/BadStatus.h")
   b.line("#pragma once")
@@ -988,6 +1025,35 @@ def self_test() -> int:
              "missing module directory is a configuration error")
       code_value, _ = run_main(["--root", str(root / "does-not-exist")])
       expect(code_value == 2 and "does-not-exist" in stderr.getvalue(), "missing root is a configuration error")
+      code_value, _ = run_main(["--root", str(root), "--modules", str(root / "Tools" / "empty_modules.txt")])
+      expect(code_value == 2 and "no scannable source files" in stderr.getvalue(),
+             "a module without source files is a configuration error, not a vacuous pass")
+      code_value, _ = run_main(["--root", str(root), "--modules", str(root / "Tools" / "traversal_modules.txt")])
+      expect(code_value == 2 and "not a plain identifier" in stderr.getvalue(),
+             "a module name with path components is rejected")
+    finally:
+      sys.stderr = old_stderr
+
+    # A BOM + CRLF module list resolves to the clean module.
+    code_value, output = run_main(["--root", str(root), "--modules", str(root / "Tools" / "bom_modules.txt")])
+    expect(code_value == 0 and output.strip() == "[purity] 2 files, 0 violations",
+           "BOM + CRLF module list is read correctly: %r" % output.strip())
+
+    # Symlinked files are rejected (never scanned under a fake in-repo path).
+    link_dir = root / "Source" / "LinkKernel" / "Private"
+    link_dir.mkdir(parents=True)
+    try:
+      (link_dir / "Evil.h").symlink_to(root / "Tools" / "kernel_modules.txt")
+      (root / "Tools" / "link_modules.txt").write_text("LinkKernel\n", encoding="utf-8")
+      stderr = io.StringIO()
+      sys.stderr = stderr
+      try:
+        code_value, _ = run_main(["--root", str(root), "--modules", str(root / "Tools" / "link_modules.txt")])
+      finally:
+        sys.stderr = old_stderr
+      expect(code_value == 2 and "symlink" in stderr.getvalue(), "a symlinked file is a configuration error")
+    except OSError:
+      pass  # symlinks unavailable on this filesystem: not tested here
     finally:
       sys.stderr = old_stderr
 

@@ -1,7 +1,8 @@
 // VAELEN - VaelenCore
 // Deterministic, platform-independent hashing.
 //
-// STATUS: VALIDATED (Phase 00)
+// STATUS: VALIDATED (Phase 00) - unit/deterministic/edge tests in Tests/Core;
+//         integration and long-duration tests deferred to Phase 01 (ROADMAP 01.07, 01.08).
 //
 // All hashes here are pure functions of their input bytes: same input on any
 // platform, compiler or run yields the same 64-bit value. They are used for

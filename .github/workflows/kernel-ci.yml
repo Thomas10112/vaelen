@@ -1,4 +1,4 @@
-# VAELEN kernel CI — builds and tests the engine-agnostic simulation kernel
+# VAELEN kernel CI - builds and tests the engine-agnostic simulation kernel
 # headless (no Unreal Engine required). The Unreal project itself is NOT built
 # by any automation yet: it needs an engine-backed runner (see
 # Docs/ARCHITECTURE.md, "Build pipeline"). Until then the Unreal-facing files
@@ -10,18 +10,31 @@ on:
     branches: ["**"]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: kernel-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   linux:
     name: Linux (${{ matrix.preset }})
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         preset: [linux-clang-debug, linux-clang-release, linux-clang-noasserts, linux-gcc-debug, linux-gcc-release, linux-gcc-noasserts]
     steps:
-      - uses: actions/checkout@v4
-      - name: Install toolchain
-        run: sudo apt-get update && sudo apt-get install -y ninja-build clang g++ cmake python3
+      - uses: actions/checkout@v5
+      - name: Toolchain
+        run: |
+          clang++ --version
+          g++ --version
+          cmake --version
+          ninja --version
+          python3 --version
       - name: Configure
         run: cmake --preset ${{ matrix.preset }}
       - name: Build
@@ -29,12 +42,25 @@ jobs:
       - name: Test
         run: ctest --preset ${{ matrix.preset }}
 
+  format:
+    name: clang-format (18)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check formatting
+        run: |
+          clang-format-18 --version
+          git ls-files 'Source/*.h' 'Source/*.cpp' 'Tests/*.h' 'Tests/*.cpp' | grep -v 'Source/Vaelen/' \
+            | xargs clang-format-18 --style=file --dry-run -Werror
+
   windows:
     name: Windows (MSVC)
     runs-on: windows-2022
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Configure
@@ -46,14 +72,18 @@ jobs:
 
   macos:
     name: macOS (AppleClang)
-    runs-on: macos-14
+    runs-on: macos-15
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - name: Install ninja
-        run: brew install ninja
+      - name: Toolchain
+        run: |
+          clang++ --version
+          cmake --version
+          ninja --version
       - name: Configure
         run: cmake --preset macos-debug
       - name: Build

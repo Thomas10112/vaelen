@@ -1,7 +1,8 @@
 // VAELEN - VaelenCore
 // Project and data-format versions.
 //
-// STATUS: VALIDATED (Phase 00)
+// STATUS: VALIDATED (Phase 00) - unit/deterministic/edge tests in Tests/Core;
+//         integration and long-duration tests deferred to Phase 01 (ROADMAP 01.07, 01.08).
 //
 // Two independent version lines:
 //   - Project version: what humans see (semantic version).
@@ -30,13 +31,14 @@ namespace Vaelen
 	};
 
 	/// Returns the compiled-in project version.
-	VAELENCORE_API ProjectVersion GetProjectVersion() noexcept;
+	VAELEN_CORE_API ProjectVersion GetProjectVersion() noexcept;
 
 	/// Returns the project version as "MAJOR.MINOR.PATCH" (static storage).
-	VAELENCORE_API const char* GetProjectVersionString() noexcept;
+	VAELEN_CORE_API const char* GetProjectVersionString() noexcept;
 
-	/// Returns the compiled-in save format version.
-	VAELENCORE_API constexpr uint32 GetSaveFormatVersion() noexcept
+	/// Returns the compiled-in save format version. (constexpr functions are
+	/// inline and never carry the export macro.)
+	constexpr uint32 GetSaveFormatVersion() noexcept
 	{
 		return VAELEN_SAVE_FORMAT_VERSION;
 	}

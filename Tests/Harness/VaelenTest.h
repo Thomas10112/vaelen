@@ -18,6 +18,8 @@
 
 #include <cstdio>
 #include <cstring>
+#include <type_traits>
+#include <utility>
 
 namespace VaelenTest
 {
@@ -26,10 +28,15 @@ namespace VaelenTest
 		int Failures = 0;
 		int Checks = 0;
 		bool Verbose = false;
+		bool Silent = false; ///< Record failures without printing (harness self-tests).
 
 		void ReportFailure(const char* File, int Line, const char* What, const char* Detail = nullptr)
 		{
 			++Failures;
+			if (Silent)
+			{
+				return;
+			}
 			if (Detail != nullptr && Detail[0] != '\0')
 			{
 				std::fprintf(stderr, "    FAIL %s:%d: %s\n         %s\n", File, Line, What, Detail);
@@ -147,11 +154,34 @@ namespace VaelenTest
 			}
 		}
 
+		/// Integer types std::cmp_equal accepts: integral, but not bool or a
+		/// character type.
+		template <typename T>
+		inline constexpr bool IsPlainInteger =
+			std::is_integral_v<T> && !std::is_same_v<T, bool> && !std::is_same_v<T, char> &&
+			!std::is_same_v<T, wchar_t> && !std::is_same_v<T, char8_t> && !std::is_same_v<T, char16_t> &&
+			!std::is_same_v<T, char32_t>;
+
+		/// Equality that is mathematically correct across integer signedness
+		/// (std::cmp_equal), so -1 never compares equal to ~uint64{0}.
+		template <typename A, typename B>
+		bool ValuesEqual(const A& Actual, const B& Expected)
+		{
+			if constexpr (IsPlainInteger<A> && IsPlainInteger<B>)
+			{
+				return std::cmp_equal(Actual, Expected);
+			}
+			else
+			{
+				return Actual == Expected;
+			}
+		}
+
 		template <typename A, typename B>
 		bool CheckEqual(Context& Ctx, const char* File, int Line, const char* Expr, const A& Actual, const B& Expected)
 		{
 			++Ctx.Checks;
-			if (Actual == Expected)
+			if (ValuesEqual(Actual, Expected))
 			{
 				return true;
 			}
@@ -161,6 +191,23 @@ namespace VaelenTest
 			FormatValue(ExpectedText, sizeof(ExpectedText), Expected);
 			char Detail[300];
 			std::snprintf(Detail, sizeof(Detail), "actual: %s  expected: %s", ActualText, ExpectedText);
+			Ctx.ReportFailure(File, Line, Expr, Detail);
+			return false;
+		}
+
+		template <typename A, typename B>
+		bool CheckNotEqual(Context& Ctx, const char* File, int Line, const char* Expr, const A& Actual,
+						   const B& NotExpected)
+		{
+			++Ctx.Checks;
+			if (!ValuesEqual(Actual, NotExpected))
+			{
+				return true;
+			}
+			char ActualText[128];
+			FormatValue(ActualText, sizeof(ActualText), Actual);
+			char Detail[200];
+			std::snprintf(Detail, sizeof(Detail), "both values: %s", ActualText);
 			Ctx.ReportFailure(File, Line, Expr, Detail);
 			return false;
 		}
@@ -211,6 +258,7 @@ namespace VaelenTest
 	do                                                                                                                 \
 	{                                                                                                                  \
 		++Ctx.Checks;                                                                                                  \
+		VAELEN_MSVC_WARNING_SUPPRESS(4127)                                                                             \
 		if (!(Expr))                                                                                                   \
 		{                                                                                                              \
 			Ctx.ReportFailure(__FILE__, __LINE__, "VT_CHECK(" #Expr ")");                                              \
@@ -222,6 +270,7 @@ namespace VaelenTest
 	do                                                                                                                 \
 	{                                                                                                                  \
 		++Ctx.Checks;                                                                                                  \
+		VAELEN_MSVC_WARNING_SUPPRESS(4127)                                                                             \
 		if (!(Expr))                                                                                                   \
 		{                                                                                                              \
 			char VtDetail[512];                                                                                        \
@@ -235,6 +284,7 @@ namespace VaelenTest
 	do                                                                                                                 \
 	{                                                                                                                  \
 		++Ctx.Checks;                                                                                                  \
+		VAELEN_MSVC_WARNING_SUPPRESS(4127)                                                                             \
 		if (!(Expr))                                                                                                   \
 		{                                                                                                              \
 			Ctx.ReportFailure(__FILE__, __LINE__, "VT_REQUIRE(" #Expr ")");                                            \
@@ -257,14 +307,8 @@ namespace VaelenTest
 	} while (false)
 
 #define VT_CHECK_NE(Actual, NotExpected)                                                                               \
-	do                                                                                                                 \
-	{                                                                                                                  \
-		++Ctx.Checks;                                                                                                  \
-		if ((Actual) == (NotExpected))                                                                                 \
-		{                                                                                                              \
-			Ctx.ReportFailure(__FILE__, __LINE__, "VT_CHECK_NE(" #Actual ", " #NotExpected ")");                       \
-		}                                                                                                              \
-	} while (false)
+	::VaelenTest::Detail::CheckNotEqual(Ctx, __FILE__, __LINE__, "VT_CHECK_NE(" #Actual ", " #NotExpected ")",         \
+										(Actual), (NotExpected))
 
 #define VT_CHECK_STREQ(Actual, Expected)                                                                               \
 	::VaelenTest::Detail::CheckStrEqual(Ctx, __FILE__, __LINE__, "VT_CHECK_STREQ(" #Actual ", " #Expected ")",         \

@@ -1,0 +1,11 @@
+# Sources are LF everywhere (matches .editorconfig); Windows checkouts must not
+# convert them, so hashed / byte-compared fixtures stay identical on every OS.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.uasset binary
+*.umap binary
+*.png binary
+*.jpg binary
+*.wav binary
+*.ogg binary
+*.fbx binary

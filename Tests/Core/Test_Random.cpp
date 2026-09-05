@@ -173,23 +173,29 @@ namespace
 		return Stats;
 	}
 
-	/// Checks every bucket lies within `RelativeTolerance` of the expectation
-	/// and that the chi-square statistic is within 5 sigma of its mean
-	/// (mean = df, sigma = sqrt(2 df)).
-	void CheckUniformBuckets(VaelenTest::Context& Ctx, const BucketStats& Stats, uint64 BucketCount,
-							 double RelativeTolerance)
+	/// Checks every bucket lies within `SigmaBand` standard deviations of its
+	/// expectation and that the chi-square statistic is below the Z = 5.5
+	/// upper quantile (Wilson-Hilferty approximation, valid for small df too).
+	/// Family-wise false-alarm rates for a CORRECT generator: with SigmaBand
+	/// 6 (7 buckets) ~1e-8, SigmaBand 5.5 (1000 buckets) ~4e-5; the chi-square
+	/// tail is ~2e-8. The seeds are fixed, so the tests are deterministic
+	/// anyway; the bands only need to be wide enough not to fail for a
+	/// correct generator on some other seed.
+	void CheckUniformBuckets(VaelenTest::Context& Ctx, const BucketStats& Stats, uint64 BucketCount, double SigmaBand)
 	{
 		VT_CHECK_EQ(Stats.OutOfRange, uint64{0});
-		const double Low = Stats.Expected * (1.0 - RelativeTolerance);
-		const double High = Stats.Expected * (1.0 + RelativeTolerance);
+		const double Sigma = std::sqrt(Stats.Expected);
+		const double Low = Stats.Expected - SigmaBand * Sigma;
+		const double High = Stats.Expected + SigmaBand * Sigma;
 		VT_CHECK_MSG(static_cast<double>(Stats.MinCount) >= Low, "min bucket %llu below %.1f (expected %.1f)",
 					 static_cast<unsigned long long>(Stats.MinCount), Low, Stats.Expected);
 		VT_CHECK_MSG(static_cast<double>(Stats.MaxCount) <= High, "max bucket %llu above %.1f (expected %.1f)",
 					 static_cast<unsigned long long>(Stats.MaxCount), High, Stats.Expected);
-		const double DegreesOfFreedom = static_cast<double>(BucketCount - 1);
-		const double ChiSigma = std::sqrt(2.0 * DegreesOfFreedom);
-		VT_CHECK_MSG(Stats.ChiSquare <= DegreesOfFreedom + 5.0 * ChiSigma, "chi-square %.2f too high (df %.0f)",
-					 Stats.ChiSquare, DegreesOfFreedom);
+		const double K = static_cast<double>(BucketCount - 1);
+		const double Z = 5.5;
+		const double Limit = K * std::pow(1.0 - 2.0 / (9.0 * K) + Z * std::sqrt(2.0 / (9.0 * K)), 3.0);
+		VT_CHECK_MSG(Stats.ChiSquare <= Limit, "chi-square %.2f above the Z=5.5 quantile %.2f (df %.0f)",
+					 Stats.ChiSquare, Limit, K);
 	}
 } // namespace
 
@@ -634,30 +640,27 @@ VAELEN_TEST(Random, BelowBounds)
 
 VAELEN_TEST(Random, BelowDistribution)
 {
-	// n = 7, 100k draws: expected 14285.7 per bucket, sigma ~110, so the 15%
-	// band (+-2143) is ~19 sigma wide.
+	// n = 7, 100k draws: expected 14285.7 per bucket, sigma ~120; band 6 sigma.
 	{
 		RandomStream Stream(7001);
 		const BucketStats Stats = CollectBelowBuckets(Stream, 7, 100000);
-		CheckUniformBuckets(Ctx, Stats, 7, 0.15);
+		CheckUniformBuckets(Ctx, Stats, 7, 6.0);
 	}
 
-	// n = 1000, 100k draws: expected 100 per bucket with sigma 10. A 15% band
-	// would be only 1.5 sigma and a CORRECT generator would fail ~13% of the
-	// 1000 buckets, so here the per-bucket band is 50% (5 sigma) and the
+	// n = 1000, 100k draws: expected 100 per bucket with sigma 10; with 1000
+	// buckets the per-bucket band must be 5.5 sigma (Bonferroni) and the
 	// chi-square statistic carries the real test.
 	{
 		RandomStream Stream(7002);
 		const BucketStats Stats = CollectBelowBuckets(Stream, 1000, 100000);
-		CheckUniformBuckets(Ctx, Stats, 1000, 0.50);
+		CheckUniformBuckets(Ctx, Stats, 1000, 5.5);
 	}
 
-	// n = 1000, 1M draws: expected 1000 per bucket with sigma 31.6, so the
-	// 15% band (+-150) is ~4.7 sigma and the requested tolerance is meaningful.
+	// n = 1000, 1M draws: expected 1000 per bucket with sigma 31.6; same bands.
 	{
 		RandomStream Stream(7003);
 		const BucketStats Stats = CollectBelowBuckets(Stream, 1000, 1000000);
-		CheckUniformBuckets(Ctx, Stats, 1000, 0.15);
+		CheckUniformBuckets(Ctx, Stats, 1000, 5.5);
 	}
 }
 
@@ -1311,4 +1314,134 @@ VAELEN_TEST(Random, AssertRangeInclusiveUInverted)
 	VT_CHECK_EQ(Capture.EnsureCount, 0);
 	VT_CHECK(Stream.GetDrawCount() >= 1);
 	VT_CHECK(Stream.GetDrawCount() < 16);
+}
+
+// ── Frozen values and remaining header promises ──────────────────────────────
+
+VAELEN_TEST(Random, DerivationFrozenValues)
+{
+	// These freeze today's derivation (salts + HashCombine nesting). Changing
+	// any of them changes every derived stream of every saved world: it needs
+	// a new ADR and a save-format version bump.
+	VT_CHECK_EQ(RandomStream(1234).Derive("hydrology").GetSeed(), 0x9413ca706de1534cull);
+	VT_CHECK_EQ(RandomStream(1234).Fork(7).GetSeed(), 0x12d6ed251076921cull);
+	VT_CHECK_EQ(RandomStream(0).Derive("").GetSeed(), 0xa6f19b148a394552ull);
+	VT_CHECK_EQ(RandomStream(0).Fork(0).GetSeed(), 0x1e0a385934de3c58ull);
+	RandomStream Chain = RandomStream(42).Derive("economy").Fork(3);
+	VT_CHECK_EQ(Chain.GetSeed(), 0x9580a5215de98b72ull);
+	VT_CHECK_EQ(Chain.NextU64(), 0xffdceb114815f6bfull);
+
+	// The seeded sequence itself.
+	RandomStream Seeded(42);
+	VT_CHECK_EQ(Seeded.NextU64(), 0x15780b2e0c2ec716ull);
+	VT_CHECK_EQ(Seeded.NextU64(), 0x6104d9866d113a7eull);
+	VT_CHECK_EQ(Seeded.NextU64(), 0xae17533239e499a1ull);
+}
+
+VAELEN_TEST(Random, MaximumOutputMapsBelowOne)
+{
+	// S[1] chosen so that RotL(S[1] * 5, 7) * 9 == 2^64 - 1 (inverses of 9
+	// and 5 modulo 2^64, rotated right by 7): the largest possible draw.
+	const RandomStreamState St = MakeRawState(1, 0x4fc71c71c71c71c7ull, 2, 3);
+	RandomStream A(St);
+	VT_CHECK_EQ(A.NextU64(), ~uint64{0});
+	RandomStream B(St);
+	const double D = B.NextDouble();
+	VT_CHECK(D < 1.0);
+	VT_CHECK_EQ(D, 1.0 - 0x1.0p-53);
+	RandomStream C(St);
+	const float F = C.NextFloat();
+	VT_CHECK(F < 1.0f);
+	VT_CHECK_EQ(F, 1.0f - 0x1.0p-24f);
+}
+
+VAELEN_TEST(Random, NextNormalIsDeterministicForSameSeed)
+{
+	RandomStream A(99);
+	RandomStream B(99);
+	int Mismatches = 0;
+	for (int i = 0; i < 10000; ++i)
+	{
+		if (A.NextNormal() != B.NextNormal())
+		{
+			++Mismatches;
+		}
+	}
+	VT_CHECK_EQ(Mismatches, 0);
+	VT_CHECK_EQ(A.GetDrawCount(), B.GetDrawCount());
+}
+
+VAELEN_TEST(Random, RangeDoubleStaysBelowMaxNearLargeMagnitudes)
+{
+	// ulp(1e16) is 2, so Min + span * u rounds to Max about half the time
+	// without the clamp.
+	RandomStream Stream(5150);
+	const double Min = 1e16;
+	const double Max = 1e16 + 2.0;
+	int AtOrAboveMax = 0;
+	int BelowMin = 0;
+	for (int i = 0; i < 100000; ++i)
+	{
+		const double V = Stream.RangeDouble(Min, Max);
+		AtOrAboveMax += V >= Max ? 1 : 0;
+		BelowMin += V < Min ? 1 : 0;
+	}
+	VT_CHECK_EQ(AtOrAboveMax, 0);
+	VT_CHECK_EQ(BelowMin, 0);
+	// Min == Max still returns Min (and, as documented, consumes one draw).
+	const uint64 Before = Stream.GetDrawCount();
+	VT_CHECK_EQ(Stream.RangeDouble(3.0, 3.0), 3.0);
+	VT_CHECK_EQ(Stream.GetDrawCount(), Before + 1);
+}
+
+VAELEN_TEST(Random, ZeroStateIsSanitisedByConstructorAndSetState)
+{
+	// RandomStreamState{} is the xoshiro fixed point; both entry points must
+	// restore a non-zero state, report it (when assertions are enabled) and
+	// leave the stream usable (NextNormal terminates).
+	VaelenTest::ScopedAssertCapture Capture;
+	RandomStream FromCtor{RandomStreamState{}};
+	VT_CHECK((FromCtor.GetState().S[0] | FromCtor.GetState().S[1] | FromCtor.GetState().S[2] |
+			  FromCtor.GetState().S[3]) != 0);
+	// The sanitised state has S[1] == 0, so the very first output is 0 by
+	// construction; the stream must leave that neighbourhood immediately.
+	uint64 NonZeroDraws = 0;
+	for (int i = 0; i < 8; ++i)
+	{
+		NonZeroDraws += FromCtor.NextU64() != 0 ? uint64{1} : uint64{0};
+	}
+	VT_CHECK(NonZeroDraws >= 6);
+	(void)FromCtor.NextNormal();
+
+	RandomStream Restored(7);
+	Restored.SetState(RandomStreamState{});
+	VT_CHECK((Restored.GetState().S[0] | Restored.GetState().S[1] | Restored.GetState().S[2] |
+			  Restored.GetState().S[3]) != 0);
+	(void)Restored.NextNormal();
+#if VAELEN_ASSERTS_ENABLED
+	VT_CHECK_EQ(Capture.EnsureCount, 2);
+#else
+	VT_CHECK_EQ(Capture.EnsureCount, 0);
+#endif
+
+	// A valid state is restored verbatim (no sanitising side effect).
+	RandomStream Source(11);
+	(void)Source.NextU64();
+	RandomStream Copy(Source.GetState());
+	VT_CHECK(Copy.GetState() == Source.GetState());
+}
+
+VAELEN_TEST(Random, ChanceNaNIsACheckFailure)
+{
+	VaelenTest::ScopedAssertCapture Capture;
+	RandomStream Stream(3);
+	const uint64 Before = Stream.GetDrawCount();
+	const bool Result = Stream.Chance(std::numeric_limits<double>::quiet_NaN());
+	VT_CHECK(!Result);
+	VT_CHECK_EQ(Stream.GetDrawCount(), Before + 1); // falls through the clamps and draws
+#if VAELEN_ASSERTS_ENABLED
+	VT_CHECK_EQ(Capture.CheckCount, 1);
+#else
+	VT_CHECK_EQ(Capture.CheckCount, 0);
+#endif
 }

@@ -223,6 +223,11 @@ VAELEN_TEST(Hash, BytesAreHashedAsOctets)
 	// Zero length yields the seed regardless of the (unread) data pointer.
 	VT_CHECK_EQ(HashBytes(WithNul, 0), Vaelen::HashConstants::Fnv1a64Offset);
 	VT_CHECK_EQ(HashBytes(WithNul, 0, 12345), uint64{12345});
+
+	// The empty name (null data pointer, size 0) is the common Derive("") case.
+	VT_CHECK_EQ(Vaelen::HashString(std::string_view{}), Vaelen::HashConstants::Fnv1a64Offset);
+	VT_CHECK_EQ(HashBytes(nullptr, 0), Vaelen::HashConstants::Fnv1a64Offset);
+	static_assert(Vaelen::HashString(std::string_view{}) == Vaelen::HashConstants::Fnv1a64Offset);
 }
 
 VAELEN_TEST(Hash, HashStringEqualsHashBytes)

@@ -834,3 +834,42 @@ VAELEN_TEST(Ids, AllocatorExhaustionTriggersCheck)
 	VT_CHECK_EQ(Allocator.Allocate(IdKind::Law).Serial(), uint64{1});
 	VT_CHECK_EQ_ASSERTS(Capture.CheckCount, 5);
 }
+
+VAELEN_TEST(Ids, AllocatorSetStateClampsCountersBeyondSerialSpace)
+{
+	// A counter beyond the 56-bit serial space can only come from a corrupt
+	// save: it is clamped to the exhausted sentinel and reported, so that
+	// PeekNext can never mask it into a valid-looking, already-used id.
+	VaelenTest::ScopedAssertCapture Capture;
+	IdAllocator::State Bad{};
+	Bad.NextSerial[ToUnderlying(IdKind::Person)] = PersistentId::MaxSerial + 6;
+	Bad.NextSerial[ToUnderlying(IdKind::Family)] = PersistentId::MaxSerial + 1; // exhausted, legal
+	Bad.NextSerial[ToUnderlying(IdKind::Item)] = 12;
+	IdAllocator Allocator;
+	Allocator.SetState(Bad);
+	VT_CHECK_EQ_ASSERTS(Capture.EnsureCount, 1);
+
+	VT_CHECK_EQ(Allocator.GetState().NextSerial[ToUnderlying(IdKind::Person)], PersistentId::MaxSerial + 1);
+	VT_CHECK(!Allocator.PeekNext(IdKind::Person).IsValid());
+	VT_CHECK(!Allocator.PeekNext(IdKind::Family).IsValid());
+	VT_CHECK(Allocator.PeekNext(IdKind::Person) == Allocator.Allocate(IdKind::Person));
+	VT_CHECK_EQ(Allocator.GetAllocatedCount(IdKind::Person), PersistentId::MaxSerial);
+	VT_CHECK_EQ(Allocator.PeekNext(IdKind::Item).Serial(), uint64{12});
+	VT_CHECK(!Allocator.PeekNext(IdKind::None).IsValid());
+}
+
+VAELEN_TEST(Ids, GetTypeHashIsUsableForUnrealContainers)
+{
+	// Found by ADL, constexpr, derived from Hash(), differs between ids.
+	static_assert(GetTypeHash(PersistentId::Make(IdKind::Person, 1)) !=
+				  GetTypeHash(PersistentId::Make(IdKind::Person, 2)));
+	const PersistentId Id = PersistentId::Make(IdKind::Settlement, 77);
+	const uint64 H = Id.Hash();
+	VT_CHECK_EQ(GetTypeHash(Id), static_cast<uint32>(H ^ (H >> 32)));
+	std::unordered_set<uint32> Seen;
+	for (uint64 i = 1; i <= 10000; ++i)
+	{
+		Seen.insert(GetTypeHash(PersistentId::Make(IdKind::Item, i)));
+	}
+	VT_CHECK(Seen.size() > 9990); // 32-bit hash: a handful of collisions is possible
+}

@@ -7,6 +7,18 @@
 
 #include <cmath>
 
+// Floating-point contraction (fused multiply-add) changes rounding and would
+// make RangeDouble/NextNormal differ between compilers and targets. The build
+// systems pass the equivalent flag, but the source protects itself so that any
+// consumer (Unreal Build Tool included) gets the same results (ADR-0009).
+#if defined(__clang__)
+#	pragma clang fp contract(off)
+#elif defined(__GNUC__)
+#	pragma GCC optimize("fp-contract=off")
+#elif defined(_MSC_VER)
+#	pragma fp_contract(off)
+#endif
+
 namespace Vaelen
 {
 	namespace
@@ -40,7 +52,24 @@ namespace Vaelen
 		Reseed(Seed);
 	}
 
-	RandomStream::RandomStream(const RandomStreamState& InState) noexcept : State(InState) {}
+	RandomStream::RandomStream(const RandomStreamState& InState) noexcept
+	{
+		SetState(InState);
+	}
+
+	void RandomStream::SetState(const RandomStreamState& InState) noexcept
+	{
+		State = InState;
+		// The all-zero state is the xoshiro fixed point (every draw is 0 and
+		// NextNormal never terminates). Restore the invariant the same way
+		// Reseed does, and report it: a zero state means a corrupt or
+		// uninitialised save.
+		const bool AllZero = (State.S[0] | State.S[1] | State.S[2] | State.S[3]) == 0;
+		if (!VAELEN_ENSURE(!AllZero))
+		{
+			State.S[0] = 0x9e3779b97f4a7c15ull;
+		}
+	}
 
 	void RandomStream::Reseed(uint64 Seed) noexcept
 	{
@@ -157,11 +186,17 @@ namespace Vaelen
 
 	double RandomStream::RangeDouble(double Min, double Max) noexcept
 	{
-		return Min + (Max - Min) * NextDouble();
+		VAELEN_CHECK(Min <= Max);
+		VAELEN_CHECK(std::isfinite(Max - Min));
+		const double Result = Min + (Max - Min) * NextDouble();
+		// Rounding of the final addition can reach Max when ulp(Min) exceeds
+		// the scaled draw; keep the documented half-open interval.
+		return Result < Max ? Result : std::nextafter(Max, Min);
 	}
 
 	bool RandomStream::Chance(double Probability) noexcept
 	{
+		VAELEN_CHECK(Probability == Probability); // NaN is not a probability
 		if (Probability <= 0.0)
 		{
 			return false;

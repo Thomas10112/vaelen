@@ -87,6 +87,13 @@ namespace Vaelen
 			{
 				Next = 1;
 			}
+			else if (!VAELEN_ENSURE(Next <= PersistentId::MaxSerial + 1))
+			{
+				// Beyond the 56-bit serial space: only a corrupt save can
+				// produce this. Clamp to the exhausted sentinel so that no
+				// masked, already-used serial can ever be handed out.
+				Next = PersistentId::MaxSerial + 1;
+			}
 		}
 	}
 
@@ -113,12 +120,18 @@ namespace Vaelen
 
 	uint64 IdAllocator::GetAllocatedCount(IdKind Kind) const noexcept
 	{
-		return Current.NextSerial[ToUnderlying(Kind)] - 1;
+		const uint64 Next = Current.NextSerial[ToUnderlying(Kind)];
+		return Next > PersistentId::MaxSerial ? PersistentId::MaxSerial : Next - 1;
 	}
 
 	PersistentId IdAllocator::PeekNext(IdKind Kind) const noexcept
 	{
-		return PersistentId::Make(Kind, Current.NextSerial[ToUnderlying(Kind)]);
+		const uint64 Next = Current.NextSerial[ToUnderlying(Kind)];
+		if (Kind == IdKind::None || Next > PersistentId::MaxSerial)
+		{
+			return PersistentId::Invalid();
+		}
+		return PersistentId::Make(Kind, Next);
 	}
 
 	bool IdAllocator::ReserveUpTo(IdKind Kind, uint64 Serial) noexcept

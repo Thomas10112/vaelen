@@ -3,7 +3,7 @@ Binaries/
 DerivedDataCache/
 Intermediate/
 Saved/
-Build/
+# Build/ is NOT ignored: it holds versioned packaging resources (icons, splash)
 .vs/
 .vscode/
 .idea/

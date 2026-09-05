@@ -1,5 +1,5 @@
 // VAELEN - VaelenCore
-// Assertion reporting: pluggable handler, failure counter, default log-and-abort.
+// Assertion reporting: pluggable handler, failure counter, default report-and-abort.
 //
 // STATUS: VALIDATED (Phase 00) - covered by Tests/Core/Test_Assert.cpp
 #include "Vaelen/Core/Assert.h"
@@ -9,28 +9,58 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <mutex>
 
 namespace Vaelen
 {
 	namespace
 	{
-		std::atomic<AssertHandler> GHandler{nullptr};
-		std::atomic<void*> GHandlerUserData{nullptr};
+		struct HandlerSlot
+		{
+			AssertHandler Handler = nullptr;
+			void* UserData = nullptr;
+		};
+
+		// The (handler, user data) pair is installed and read under one lock so
+		// a concurrent SetAssertHandler can never deliver a torn pair.
+		std::mutex& HandlerMutex()
+		{
+			static std::mutex Mutex;
+			return Mutex;
+		}
+
+		HandlerSlot& Slot()
+		{
+			static HandlerSlot Current;
+			return Current;
+		}
+
 		std::atomic<uint64> GFailureCount{0};
 
-		void DefaultHandler(const AssertInfo& Info, void*)
+		constexpr usize MessageBufferSize = 1024;
+
+		/// Marks a truncated snprintf result so that a cut line is recognisable.
+		void MarkTruncated(char* Buffer, usize BufferSize, int Written)
+		{
+			if (Written >= 0 && static_cast<usize>(Written) >= BufferSize && BufferSize >= 4)
+			{
+				std::memcpy(Buffer + BufferSize - 4, "...", 4);
+			}
+		}
+
+		void DefaultHandler(const AssertInfo& Info)
 		{
 			const char* KindName = Info.Kind == AssertKind::Check ? "CHECK" : "ENSURE";
-			if (Info.Message[0] != '\0')
-			{
-				VAELEN_LOG_ERROR(LogCore, "%s failed: %s (%s) at %s:%d in %s", KindName, Info.Expression, Info.Message,
-								 Info.File, Info.Line, Info.Function);
-			}
-			else
-			{
-				VAELEN_LOG_ERROR(LogCore, "%s failed: %s at %s:%d in %s", KindName, Info.Expression, Info.File,
-								 Info.Line, Info.Function);
-			}
+
+			// Unconditional stderr trace: independent of sinks and level filters,
+			// so a failure is never silent. Location first, message last.
+			std::fprintf(stderr, "VAELEN %s failed at %s:%d (%s): %s%s%s\n", KindName, Info.File, Info.Line,
+						 Info.Function, Info.Expression, Info.Message[0] != '\0' ? " -- " : "", Info.Message);
+			std::fflush(stderr);
+
+			VAELEN_LOG_ERROR(LogCore, "%s failed at %s:%d (%s): %s%s%s", KindName, Info.File, Info.Line, Info.Function,
+							 Info.Expression, Info.Message[0] != '\0' ? " -- " : "", Info.Message);
 			Log::Flush();
 
 			if (Info.Kind == AssertKind::Check)
@@ -42,18 +72,19 @@ namespace Vaelen
 
 	void SetAssertHandler(AssertHandler Handler, void* UserData) noexcept
 	{
-		GHandlerUserData.store(UserData, std::memory_order_relaxed);
-		GHandler.store(Handler, std::memory_order_release);
+		std::lock_guard<std::mutex> Lock(HandlerMutex());
+		Slot().Handler = Handler;
+		Slot().UserData = UserData;
 	}
 
 	AssertHandler GetAssertHandler(void** OutUserData) noexcept
 	{
-		AssertHandler Handler = GHandler.load(std::memory_order_acquire);
+		std::lock_guard<std::mutex> Lock(HandlerMutex());
 		if (OutUserData != nullptr)
 		{
-			*OutUserData = GHandlerUserData.load(std::memory_order_relaxed);
+			*OutUserData = Slot().UserData;
 		}
-		return Handler;
+		return Slot().Handler;
 	}
 
 	uint64 GetAssertFailureCount() noexcept
@@ -78,15 +109,18 @@ namespace Vaelen
 				Info.Function = Function;
 				Info.Message = Message;
 
-				AssertHandler Handler = GHandler.load(std::memory_order_acquire);
-				void* UserData = GHandlerUserData.load(std::memory_order_relaxed);
-				if (Handler != nullptr)
+				HandlerSlot Installed;
 				{
-					Handler(Info, UserData);
+					std::lock_guard<std::mutex> Lock(HandlerMutex());
+					Installed = Slot();
+				}
+				if (Installed.Handler != nullptr)
+				{
+					Installed.Handler(Info, Installed.UserData);
 				}
 				else
 				{
-					DefaultHandler(Info, nullptr);
+					DefaultHandler(Info);
 				}
 			}
 		} // namespace
@@ -99,7 +133,7 @@ namespace Vaelen
 		void ReportAssertF(AssertKind Kind, const char* Expression, const char* File, int32 Line, const char* Function,
 						   const char* Format, ...)
 		{
-			char MessageBuffer[1024];
+			char MessageBuffer[MessageBufferSize];
 			MessageBuffer[0] = '\0';
 			std::va_list Args;
 			va_start(Args, Format);
@@ -111,6 +145,7 @@ namespace Vaelen
 				// it to the handler.
 				MessageBuffer[0] = '\0';
 			}
+			MarkTruncated(MessageBuffer, sizeof(MessageBuffer), Written);
 			Dispatch(Kind, Expression, File, Line, Function, MessageBuffer);
 		}
 
@@ -118,7 +153,6 @@ namespace Vaelen
 		{
 			std::fflush(stdout);
 			std::fflush(stderr);
-			VAELEN_DEBUG_BREAK();
 			std::abort();
 		}
 	} // namespace Detail

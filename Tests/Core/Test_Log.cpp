@@ -50,6 +50,14 @@ namespace
 	VAELEN_DEFINE_LOG_CATEGORY_LEVEL(LogTestWarning, Warning);
 	VAELEN_DEFINE_LOG_CATEGORY_LEVEL(LogTestThreads, Trace);
 
+	// With assertions enabled the default handler logs the failure through the
+	// sink lock the sink is already holding; without them nothing is reported.
+#if VAELEN_ASSERTS_ENABLED
+#	define VT_ENSURE_FROM_SINK() ((void)VAELEN_ENSURE(false))
+#else
+#	define VT_ENSURE_FROM_SINK() ((void)0)
+#endif
+
 	// ── Sinks ────────────────────────────────────────────────────────────────
 	struct CapturedRecord
 	{
@@ -125,23 +133,10 @@ namespace
 		void Write(const LogRecord&) override {}
 	};
 
-	/// The kernel cannot enumerate sinks. Filling the table with throw-away
-	/// probes until AddSink fails reveals how many sinks are registered
-	/// (MaxSinks minus the number of probes that fitted); the probes are
-	/// removed again before returning.
+	/// Number of registered sinks, straight from the kernel.
 	usize CountRegisteredSinks() noexcept
 	{
-		NullSink Probes[MaxSinks];
-		usize Fitted = 0;
-		while (Fitted < MaxSinks && Log::AddSink(&Probes[Fitted]))
-		{
-			++Fitted;
-		}
-		for (usize i = 0; i < Fitted; ++i)
-		{
-			Log::RemoveSink(&Probes[i]);
-		}
-		return MaxSinks - Fitted;
+		return Log::GetSinkCount();
 	}
 
 	/// Tests/Harness/TestMain.cpp registers a StdioLogSink for --verbose runs.
@@ -710,14 +705,179 @@ VAELEN_TEST(Log, RecordDefaultsAndStdioSinkWithoutCategory)
 	VT_CHECK_STREQ(Record.File, "");
 	VT_CHECK_EQ(Record.Line, int32{0});
 
-	// The stdout sink must cope with a record that has no category (prints
-	// "?"); the single line below on stdout is expected output.
-	StdioLogSink Sink;
-	Record.Level = LogLevel::Trace;
-	Record.Message = "StdioLogSink self-test (expected output)";
-	Sink.Write(Record);
-	Sink.Flush();
-	VT_CHECK(true);
+	// The stdio sink is exercised on two temporary files: a record without a
+	// category prints "?", Warning and above go to the error stream.
+	std::FILE* Out = std::tmpfile();
+	std::FILE* Err = std::tmpfile();
+	VT_REQUIRE(Out != nullptr && Err != nullptr);
+	{
+		StdioLogSink Sink(Out, Err);
+		Record.Level = LogLevel::Trace;
+		Record.Message = "no category";
+		Sink.Write(Record);
+		LogRecord Warning;
+		Warning.Category = &LogCore;
+		Warning.Level = LogLevel::Warning;
+		Warning.Message = "to stderr";
+		Sink.Write(Warning);
+		LogRecord Info;
+		Info.Category = &LogCore;
+		Info.Level = LogLevel::Info;
+		Info.Message = "to stdout";
+		Sink.Write(Info);
+		Sink.Flush();
+	}
+	auto ReadAll = [](std::FILE* File)
+	{
+		std::rewind(File);
+		std::string Text;
+		char Line[256];
+		while (std::fgets(Line, sizeof(Line), File) != nullptr)
+		{
+			Text += Line;
+		}
+		return Text;
+	};
+	const std::string OutText = ReadAll(Out);
+	const std::string ErrText = ReadAll(Err);
+	std::fclose(Out);
+	std::fclose(Err);
+	VT_CHECK(OutText == "[Trace] ?: no category\n[Info] LogCore: to stdout\n");
+	VT_CHECK(ErrText == "[Warning] LogCore: to stderr\n");
+}
+
+VAELEN_TEST(Log, SinkCountTracksAddAndRemove)
+{
+	const usize Base = Log::GetSinkCount();
+	CapturingSink A;
+	CapturingSink B;
+	VT_CHECK(Log::AddSink(&A));
+	VT_CHECK_EQ(Log::GetSinkCount(), Base + 1);
+	VT_CHECK(Log::AddSink(&A)); // idempotent
+	VT_CHECK_EQ(Log::GetSinkCount(), Base + 1);
+	VT_CHECK(Log::AddSink(&B));
+	VT_CHECK_EQ(Log::GetSinkCount(), Base + 2);
+	VT_CHECK(Log::RemoveSink(&A));
+	VT_CHECK_EQ(Log::GetSinkCount(), Base + 1);
+	VT_CHECK(!Log::AddSink(nullptr));
+	VT_CHECK_EQ(Log::GetSinkCount(), Base + 1);
+	VT_CHECK(Log::RemoveSink(&B));
+	VT_CHECK_EQ(Log::GetSinkCount(), Base);
+}
+
+namespace
+{
+	/// Detects two overlapping Write() calls: proves sinks are serialised.
+	class OverlapDetectingSink final : public ILogSink
+	{
+	public:
+		void Write(const LogRecord&) override
+		{
+			if (InWrite.exchange(true, std::memory_order_acq_rel))
+			{
+				Overlaps.fetch_add(1, std::memory_order_relaxed);
+			}
+			++PlainCount; // safe only if the kernel serialises sinks
+			std::this_thread::yield();
+			InWrite.store(false, std::memory_order_release);
+		}
+		std::atomic<bool> InWrite{false};
+		std::atomic<uint64> Overlaps{0};
+		uint64 PlainCount = 0;
+	};
+
+	/// A sink that logs, flushes, counts sinks and removes itself from inside
+	/// Write(): every re-entrant path into Log::* from a sink.
+	class ReentrantSink final : public ILogSink
+	{
+	public:
+		void Write(const LogRecord& Record) override
+		{
+			++Calls;
+			if (Depth > 0)
+			{
+				++NestedDeliveries;
+				return;
+			}
+			++Depth;
+			VAELEN_LOG_INFO(LogTestTrace, "nested from %s", Record.Message);
+			Log::Flush();
+			SinksSeen = Log::GetSinkCount();
+			VT_ENSURE_FROM_SINK();
+			Log::RemoveSink(this);
+			--Depth;
+		}
+		void Flush() override { ++Flushes; }
+		int32 Calls = 0;
+		int32 NestedDeliveries = 0;
+		int32 Flushes = 0;
+		int32 Depth = 0;
+		usize SinksSeen = 0;
+	};
+} // namespace
+
+VAELEN_TEST(Log, SinksAreSerialisedAcrossThreads)
+{
+	OverlapDetectingSink Sink;
+	VT_REQUIRE(Log::AddSink(&Sink));
+	constexpr int32 Threads = 8;
+	constexpr int32 PerThread = 500;
+	std::vector<std::thread> Workers;
+	for (int32 t = 0; t < Threads; ++t)
+	{
+		Workers.emplace_back(
+			[t]()
+			{
+				for (int32 i = 0; i < PerThread; ++i)
+				{
+					VAELEN_LOG_INFO(LogTestThreads, "t=%d i=%d", t, i);
+				}
+			});
+	}
+	for (std::thread& Worker : Workers)
+	{
+		Worker.join();
+	}
+	VT_CHECK(Log::RemoveSink(&Sink));
+	VT_CHECK_EQ(Sink.Overlaps.load(), uint64{0});
+	VT_CHECK_EQ(Sink.PlainCount, static_cast<uint64>(Threads * PerThread));
+}
+
+VAELEN_TEST(Log, ReentrantSinkDoesNotDeadlock)
+{
+	// A sink may log, flush, inspect and edit the sink table and fail an
+	// ensure while being called; the default assertion handler logs through
+	// the same lock. (The stderr line from the ensure is expected output.)
+	ScopedSink Capture;
+	VT_REQUIRE(Capture.Added);
+	ReentrantSink Sink;
+	VT_REQUIRE(Log::AddSink(&Sink));
+	const usize Registered = Log::GetSinkCount();
+
+	VAELEN_LOG_INFO(LogTestTrace, "outer");
+
+#if VAELEN_ASSERTS_ENABLED
+	// "outer", its own nested record, and the default handler's error record.
+	VT_CHECK_EQ(Sink.Calls, 3);
+	VT_CHECK_EQ(Sink.NestedDeliveries, 2);
+#else
+	VT_CHECK_EQ(Sink.Calls, 2); // "outer" and its own nested record
+	VT_CHECK_EQ(Sink.NestedDeliveries, 1);
+#endif
+	VT_CHECK(Sink.Flushes >= 1);
+	VT_CHECK_EQ(Sink.SinksSeen, Registered);
+	VT_CHECK_EQ(Log::GetSinkCount(), Registered - 1); // it removed itself
+	VT_CHECK(!Log::RemoveSink(&Sink));
+	// The capturing sink saw outer, nested, and the ensure's error record.
+	bool SawOuter = false;
+	bool SawNested = false;
+	for (const CapturedRecord& Record : Capture.Sink.Records)
+	{
+		SawOuter = SawOuter || Record.Message == "outer";
+		SawNested = SawNested || Record.Message == "nested from outer";
+	}
+	VT_CHECK(SawOuter);
+	VT_CHECK(SawNested);
 }
 
 // ── Robustness ───────────────────────────────────────────────────────────────
@@ -734,7 +894,10 @@ VAELEN_TEST(Log, LongMessageIsTruncatedSafely)
 		const std::string& Message = Scope.Sink.Last().Message;
 		VT_CHECK(Message.size() < MessageBufferSize);
 		VT_CHECK_EQ(Message.size(), MessageBufferSize - 1);
-		VT_CHECK(Message.find_first_not_of('A') == std::string::npos);
+		// A truncated message ends with the "..." marker; everything before it
+		// is the original prefix.
+		VT_CHECK(Message.compare(Message.size() - 3, 3, "...") == 0);
+		VT_CHECK(Message.find_first_not_of('A') == Message.size() - 3);
 	}
 
 	// The prefix survives; only the tail is cut.
@@ -744,7 +907,8 @@ VAELEN_TEST(Log, LongMessageIsTruncatedSafely)
 		const std::string& Message = Scope.Sink.Last().Message;
 		VT_CHECK_EQ(Message.size(), MessageBufferSize - 1);
 		VT_CHECK(Message.compare(0, 5, "head:") == 0);
-		VT_CHECK(Message.find_first_not_of('A', 5) == std::string::npos);
+		VT_CHECK(Message.find_first_not_of('A', 5) == Message.size() - 3);
+		VT_CHECK(Message.compare(Message.size() - 3, 3, "...") == 0);
 	}
 
 	// Exactly fitting: MessageBufferSize - 1 characters pass untouched.
@@ -758,7 +922,8 @@ VAELEN_TEST(Log, LongMessageIsTruncatedSafely)
 	VAELEN_LOG_INFO(LogTestTrace, "%s", Over.c_str());
 	VT_REQUIRE_EQ(Scope.Sink.Count(), usize{4});
 	VT_CHECK_EQ(Scope.Sink.Last().Message.size(), MessageBufferSize - 1);
-	VT_CHECK(Scope.Sink.Last().Message.find_first_not_of('C') == std::string::npos);
+	VT_CHECK(Scope.Sink.Last().Message.find_first_not_of('C') == MessageBufferSize - 4);
+	VT_CHECK(Scope.Sink.Last().Message.compare(MessageBufferSize - 4, 3, "...") == 0);
 
 	// Logging still works normally afterwards.
 	VAELEN_LOG_INFO(LogTestTrace, "short");

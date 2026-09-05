@@ -10,7 +10,8 @@ class FVaelenCoreModule : public IModuleInterface
 public:
 	virtual void StartupModule() override {}
 	virtual void ShutdownModule() override {}
-	virtual bool IsGameModule() const override { return false; }
+	// A project-owned module: hot-reloadable like the game module.
+	virtual bool IsGameModule() const override { return true; }
 };
 
 IMPLEMENT_MODULE(FVaelenCoreModule, VaelenCore)

@@ -1,7 +1,8 @@
 // VAELEN - VaelenCore
 // Deterministic random streams.
 //
-// STATUS: VALIDATED (Phase 00)
+// STATUS: VALIDATED (Phase 00) - unit/deterministic/edge tests in Tests/Core;
+//         integration and long-duration tests deferred to Phase 01 (ROADMAP 01.07, 01.08).
 //
 // Generator: xoshiro256** (Blackman & Vigna) seeded through SplitMix64.
 //   - 256-bit state, period 2^256 - 1, excellent statistical quality.
@@ -28,6 +29,9 @@
 namespace Vaelen
 {
 	/// Serializable state of a RandomStream (persisted verbatim in saves).
+	/// Invariant: S[] is never all zero (the xoshiro fixed point). Every entry
+	/// point that accepts a state (constructor, SetState) restores the
+	/// invariant and reports it with VAELEN_ENSURE when it was violated.
 	struct RandomStreamState
 	{
 		uint64 Seed = 0;			///< Root seed of this stream (used for derivation).
@@ -37,7 +41,7 @@ namespace Vaelen
 		constexpr bool operator==(const RandomStreamState&) const = default;
 	};
 
-	class VAELENCORE_API RandomStream
+	class VAELEN_CORE_API RandomStream
 	{
 	public:
 		/// A stream seeded with 0 is valid but MUST be reseeded before use in
@@ -75,10 +79,14 @@ namespace Vaelen
 		/// Uniform float in [0, 1) with 24 bits of randomness.
 		float NextFloat() noexcept;
 
-		/// Uniform double in [Min, Max).
+		/// Uniform double in [Min, Max). Requires Min <= Max and a finite span
+		/// (Max - Min must not overflow). The result is clamped below Max even
+		/// when rounding near large magnitudes would otherwise reach it.
 		double RangeDouble(double Min, double Max) noexcept;
 
-		/// Returns true with the given probability in [0, 1].
+		/// Returns true with the given probability in [0, 1]. Probabilities <= 0
+		/// and >= 1 return without drawing; NaN is a Check failure (returns
+		/// false after consuming one draw when checks are disabled).
 		bool Chance(double Probability) noexcept;
 
 		/// Standard normal (mean 0, deviation 1), Marsaglia polar method.
@@ -86,7 +94,8 @@ namespace Vaelen
 
 		// ── State ────────────────────────────────────────────────────────────
 		const RandomStreamState& GetState() const noexcept { return State; }
-		void SetState(const RandomStreamState& InState) noexcept { State = InState; }
+		/// Restores a state; an all-zero S[] is sanitised (see RandomStreamState).
+		void SetState(const RandomStreamState& InState) noexcept;
 		uint64 GetSeed() const noexcept { return State.Seed; }
 		uint64 GetDrawCount() const noexcept { return State.DrawCount; }
 
@@ -102,5 +111,5 @@ namespace Vaelen
 	};
 
 	/// SplitMix64 step: returns the next output and advances the state.
-	VAELENCORE_API uint64 SplitMix64Next(uint64& State) noexcept;
+	VAELEN_CORE_API uint64 SplitMix64Next(uint64& State) noexcept;
 } // namespace Vaelen

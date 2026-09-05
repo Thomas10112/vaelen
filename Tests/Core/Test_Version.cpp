@@ -204,5 +204,4 @@ VAELEN_TEST(Version, SaveFormatVersionMatchesMacro)
 	VT_CHECK_EQ(Constexpr, static_cast<uint32>(VAELEN_SAVE_FORMAT_VERSION));
 	VT_CHECK_EQ(GetSaveFormatVersion(), static_cast<uint32>(VAELEN_SAVE_FORMAT_VERSION));
 	VT_CHECK(GetSaveFormatVersion() >= 1u);
-	VT_CHECK_EQ(GetSaveFormatVersion(), GetSaveFormatVersion());
 }

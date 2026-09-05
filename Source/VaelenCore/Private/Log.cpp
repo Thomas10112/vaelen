@@ -8,6 +8,7 @@
 #include <atomic>
 #include <cstdarg>
 #include <cstdio>
+#include <cstring>
 #include <mutex>
 
 namespace Vaelen
@@ -36,17 +37,19 @@ namespace Vaelen
 		return "Unknown";
 	}
 
+	StdioLogSink::StdioLogSink(std::FILE* InOut, std::FILE* InErr) noexcept : Out(InOut), Err(InErr) {}
+
 	void StdioLogSink::Write(const LogRecord& Record)
 	{
-		std::FILE* Stream = Record.Level >= LogLevel::Warning ? stderr : stdout;
+		std::FILE* Stream = Record.Level >= LogLevel::Warning ? Err : Out;
 		std::fprintf(Stream, "[%s] %s: %s\n", LogLevelToString(Record.Level),
 					 Record.Category != nullptr ? Record.Category->Name : "?", Record.Message);
 	}
 
 	void StdioLogSink::Flush()
 	{
-		std::fflush(stdout);
-		std::fflush(stderr);
+		std::fflush(Out);
+		std::fflush(Err);
 	}
 
 	namespace Log
@@ -58,12 +61,14 @@ namespace Vaelen
 			std::atomic<LogLevel> GGlobalMinLevel{LogLevel::Trace};
 			std::atomic<uint64> GDispatched{0};
 
-			// Sinks are protected by a mutex: logging is rare relative to
-			// simulation work and must never reorder simulation state, so a
-			// simple lock is the robust choice.
-			std::mutex& SinkMutex()
+			// Sinks are protected by a recursive mutex: logging is rare relative
+			// to simulation work and must never reorder simulation state, so a
+			// simple lock is the robust choice. Recursive so that a sink (or the
+			// default assertion handler running inside a sink) may log, flush or
+			// edit the sink table without deadlocking the calling thread.
+			std::recursive_mutex& SinkMutex()
 			{
-				static std::mutex Mutex;
+				static std::recursive_mutex Mutex;
 				return Mutex;
 			}
 
@@ -96,7 +101,7 @@ namespace Vaelen
 			{
 				return false;
 			}
-			std::lock_guard<std::mutex> Lock(SinkMutex());
+			std::lock_guard<std::recursive_mutex> Lock(SinkMutex());
 			SinkTable& Table = Sinks();
 			for (usize i = 0; i < Table.Count; ++i)
 			{
@@ -115,7 +120,7 @@ namespace Vaelen
 
 		bool RemoveSink(ILogSink* Sink) noexcept
 		{
-			std::lock_guard<std::mutex> Lock(SinkMutex());
+			std::lock_guard<std::recursive_mutex> Lock(SinkMutex());
 			SinkTable& Table = Sinks();
 			for (usize i = 0; i < Table.Count; ++i)
 			{
@@ -135,23 +140,24 @@ namespace Vaelen
 
 		void RemoveAllSinks() noexcept
 		{
-			std::lock_guard<std::mutex> Lock(SinkMutex());
+			std::lock_guard<std::recursive_mutex> Lock(SinkMutex());
 			Sinks() = SinkTable{};
 		}
 
 		usize GetSinkCount() noexcept
 		{
-			std::lock_guard<std::mutex> Lock(SinkMutex());
+			std::lock_guard<std::recursive_mutex> Lock(SinkMutex());
 			return Sinks().Count;
 		}
 
 		void Flush()
 		{
-			std::lock_guard<std::mutex> Lock(SinkMutex());
-			SinkTable& Table = Sinks();
-			for (usize i = 0; i < Table.Count; ++i)
+			std::lock_guard<std::recursive_mutex> Lock(SinkMutex());
+			// Snapshot: a sink may add or remove sinks while being called.
+			const SinkTable Snapshot = Sinks();
+			for (usize i = 0; i < Snapshot.Count; ++i)
 			{
-				Table.Sinks[i]->Flush();
+				Snapshot.Sinks[i]->Flush();
 			}
 		}
 
@@ -171,6 +177,11 @@ namespace Vaelen
 			{
 				Buffer[0] = '\0';
 			}
+			else if (static_cast<usize>(Written) >= sizeof(Buffer))
+			{
+				// Truncated: make the cut visible.
+				std::memcpy(Buffer + sizeof(Buffer) - 4, "...", 4);
+			}
 
 			LogRecord Record;
 			Record.Category = &Category;
@@ -179,12 +190,14 @@ namespace Vaelen
 			Record.File = File;
 			Record.Line = Line;
 
-			std::lock_guard<std::mutex> Lock(SinkMutex());
+			std::lock_guard<std::recursive_mutex> Lock(SinkMutex());
 			GDispatched.fetch_add(1, std::memory_order_relaxed);
-			SinkTable& Table = Sinks();
-			for (usize i = 0; i < Table.Count; ++i)
+			// Snapshot: a sink may add or remove sinks (itself included) while
+			// being called; nested Log::Write from a sink is allowed (recursive lock).
+			const SinkTable Snapshot = Sinks();
+			for (usize i = 0; i < Snapshot.Count; ++i)
 			{
-				Table.Sinks[i]->Write(Record);
+				Snapshot.Sinks[i]->Write(Record);
 			}
 		}
 	} // namespace Log

@@ -13,6 +13,13 @@
 // STATUS: VALIDATED
 #include "VaelenTest.h"
 
+#include "Vaelen/Core/Log.h"
+
+#include <atomic>
+#include <string>
+#include <thread>
+#include <vector>
+
 #include "Vaelen/Core/Assert.h"
 
 #include <cstring>
@@ -90,8 +97,8 @@ namespace
 		return ElseCount;
 	}
 
-#if VAELEN_ASSERTS_ENABLED
-	// Helpers only used by the tests that expect reports.
+	// Helpers used by the tests that expect reports (in every build:
+	// Detail::ReportAssert is compiled in even when the macros are not).
 
 	// Bounded copy that never emits format diagnostics; always NUL-terminates.
 	void CopyString(char* Dst, usize DstSize, const char* Src) noexcept
@@ -176,7 +183,7 @@ namespace
 	void* GProbeLastUserData = nullptr;
 	int32 GProbeCalls = 0;
 
-	void ProbeHandler(const AssertInfo& /*Info*/, void* UserData)
+	[[maybe_unused]] void ProbeHandler(const AssertInfo& /*Info*/, void* UserData)
 	{
 		++GProbeCalls;
 		GProbeLastUserData = UserData;
@@ -186,7 +193,7 @@ namespace
 	{
 		int32 Tag = 0;
 	};
-#endif // VAELEN_ASSERTS_ENABLED
+
 } // namespace
 
 // ── AssertInfo ──────────────────────────────────────────────────────────────
@@ -645,13 +652,16 @@ VAELEN_TEST(Assert, LongMessageIsTruncatedSafely)
 	VAELEN_CHECKF(false, "%s", Long);
 	VT_REQUIRE_EQ(Handler.CallCount, 1);
 	VT_CHECK(!Handler.LastMessageWasNull);
-	VT_CHECK(Handler.LastMessageLength < usize{1024});
-	VT_CHECK(Handler.LastMessageLength > usize{0});
+	// The kernel buffer is exactly 1024 bytes (Assert.cpp MessageBufferSize):
+	// 1023 characters survive, the last three of which are the "..." marker.
+	constexpr usize AssertMessageBufferSize = 1024;
+	VT_CHECK_EQ(Handler.LastMessageLength, AssertMessageBufferSize - 1);
 	VT_CHECK_EQ(std::strlen(Handler.LastMessage), Handler.LastMessageLength);
+	VT_CHECK(std::strcmp(Handler.LastMessage + Handler.LastMessageLength - 3, "...") == 0);
 
-	// What survived is a prefix of the original: only fill characters.
+	// What survived before the marker is a prefix of the original.
 	bool OnlyFill = true;
-	for (usize i = 0; i < Handler.LastMessageLength; ++i)
+	for (usize i = 0; i + 3 < Handler.LastMessageLength; ++i)
 	{
 		if (Handler.LastMessage[i] != 'x')
 		{
@@ -669,9 +679,9 @@ VAELEN_TEST(Assert, LongMessageIsTruncatedSafely)
 	LongFormat[LongLength + 2] = '\0';
 	VAELEN_CHECKF(false, "%s%d", LongFormat, 5);
 	VT_REQUIRE_EQ(Handler.CallCount, 2);
-	VT_CHECK(Handler.LastMessageLength < usize{1024});
-	VT_CHECK(Handler.LastMessageLength > usize{0});
+	VT_CHECK_EQ(Handler.LastMessageLength, AssertMessageBufferSize - 1);
 	VT_CHECK_EQ(Handler.LastMessage[0], 'y');
+	VT_CHECK(std::strcmp(Handler.LastMessage + Handler.LastMessageLength - 3, "...") == 0);
 	VT_CHECK_EQ(std::strlen(Handler.LastMessage), Handler.LastMessageLength);
 
 	// The capture in the harness copes with the long message as well.
@@ -687,14 +697,23 @@ VAELEN_TEST(Assert, LongMessageIsTruncatedSafely)
 VAELEN_TEST(Assert, MessageJustBelowLimitIsIntact)
 {
 	RecordingHandler Handler;
-	constexpr usize Length = 1000;
-	char Text[Length + 1];
-	std::memset(Text, 'z', Length);
+	// Exactly 1023 characters fit untouched; 1024 lose one character and get the marker.
+	constexpr usize Length = 1023;
+	char Text[Length + 2];
+	std::memset(Text, 'z', Length + 1);
 	Text[Length] = '\0';
 	VAELEN_CHECKF(false, "%s", Text);
 	VT_REQUIRE_EQ(Handler.CallCount, 1);
 	VT_CHECK_EQ(Handler.LastMessageLength, Length);
 	VT_CHECK_STREQ(Handler.LastMessage, Text);
+
+	Text[Length] = 'z';
+	Text[Length + 1] = '\0';
+	VAELEN_CHECKF(false, "%s", Text);
+	VT_REQUIRE_EQ(Handler.CallCount, 2);
+	VT_CHECK_EQ(Handler.LastMessageLength, Length);
+	VT_CHECK(std::strncmp(Handler.LastMessage, Text, Length - 3) == 0);
+	VT_CHECK(std::strcmp(Handler.LastMessage + Length - 3, "...") == 0);
 }
 
 // ── Statement-context safety ────────────────────────────────────────────────
@@ -828,3 +847,193 @@ VAELEN_TEST(Assert, DisabledEnsureYieldsResultWithoutReport)
 }
 
 #endif // VAELEN_ASSERTS_ENABLED
+
+// ── Build-independent API (Detail::ReportAssert is compiled in every build) ──
+
+namespace
+{
+	struct CountingHandler
+	{
+		std::atomic<int32> Calls{0};
+		std::atomic<int32> WrongUserData{0};
+
+		static void OnAssert(const AssertInfo&, void* UserData)
+		{
+			// UserData is the handler itself: the (handler, user data) pair must
+			// never be torn, and every report must reach this handler.
+			auto* Self = static_cast<CountingHandler*>(UserData);
+			if (Self == nullptr)
+			{
+				return;
+			}
+			Self->Calls.fetch_add(1, std::memory_order_relaxed);
+		}
+	};
+
+	class CapturingLogSink final : public Vaelen::ILogSink
+	{
+	public:
+		void Write(const Vaelen::LogRecord& Record) override
+		{
+			++Count;
+			Last = Record.Message != nullptr ? Record.Message : "";
+			LastLevel = Record.Level;
+		}
+		int32 Count = 0;
+		std::string Last;
+		Vaelen::LogLevel LastLevel = Vaelen::LogLevel::Trace;
+	};
+} // namespace
+
+VAELEN_TEST(Assert, ReportAssertReachesHandlerInEveryBuild)
+{
+	RecordingHandler Handler;
+	const uint64 Before = GetAssertFailureCount();
+
+	Vaelen::Detail::ReportAssert(AssertKind::Ensure, "p != nullptr", "file.cpp", 42, "Func");
+	VT_REQUIRE_EQ(Handler.CallCount, 1);
+	VT_CHECK_EQ(Handler.LastKind, AssertKind::Ensure);
+	VT_CHECK_EQ(Handler.LastLine, 42);
+	VT_CHECK_STREQ(Handler.LastExpression, "p != nullptr");
+	VT_CHECK_STREQ(Handler.LastFile, "file.cpp");
+	VT_CHECK_STREQ(Handler.LastFunction, "Func");
+	VT_CHECK_EQ(Handler.LastMessageLength, usize{0});
+	VT_CHECK(Handler.LastUserData == static_cast<void*>(&Handler));
+
+	Vaelen::Detail::ReportAssertF(AssertKind::Check, "x", "f.cpp", 7, "F", "v=%d %s", 7, "seven");
+	VT_REQUIRE_EQ(Handler.CallCount, 2);
+	VT_CHECK_EQ(Handler.LastKind, AssertKind::Check);
+	VT_CHECK_STREQ(Handler.LastMessage, "v=7 seven");
+	VT_CHECK_EQ(GetAssertFailureCount() - Before, uint64{2});
+}
+
+VAELEN_TEST(Assert, GetAssertHandlerReportsDefaultAndInstalled)
+{
+	AssertHandler Previous = nullptr;
+	void* PreviousData = nullptr;
+	Previous = Vaelen::GetAssertHandler(&PreviousData);
+	{
+		RecordingHandler Handler;
+		void* Data = nullptr;
+		VT_CHECK(Vaelen::GetAssertHandler(&Data) == &RecordingHandler::OnAssert);
+		VT_CHECK(Data == static_cast<void*>(&Handler));
+		VT_CHECK(Vaelen::GetAssertHandler() == &RecordingHandler::OnAssert);
+	}
+	// RecordingHandler restores the default: nullptr, no user data.
+	void* Data = reinterpret_cast<void*>(1);
+	VT_CHECK(Vaelen::GetAssertHandler(&Data) == nullptr);
+	VT_CHECK(Data == nullptr);
+	VT_CHECK(Vaelen::GetAssertHandler() == nullptr);
+	SetAssertHandler(Previous, PreviousData);
+}
+
+VAELEN_TEST(Assert, DefaultHandlerLogsEnsureAndContinues)
+{
+	// With no handler installed an Ensure is reported to stderr and to LogCore,
+	// and execution continues (only Check aborts). The stderr line is expected output.
+	AssertHandler Previous = nullptr;
+	void* PreviousData = nullptr;
+	Previous = Vaelen::GetAssertHandler(&PreviousData);
+	SetAssertHandler(nullptr);
+
+	CapturingLogSink Sink;
+	VT_REQUIRE(Vaelen::Log::AddSink(&Sink));
+	const uint64 Before = GetAssertFailureCount();
+	Vaelen::Detail::ReportAssertF(AssertKind::Ensure, "Value == 4", "Test_Assert.cpp", 1, "TestFunc", "value was %d",
+								  3);
+	Vaelen::Log::RemoveSink(&Sink);
+	SetAssertHandler(Previous, PreviousData);
+
+	VT_CHECK_EQ(GetAssertFailureCount() - Before, uint64{1});
+	VT_REQUIRE_EQ(Sink.Count, 1);
+	VT_CHECK_EQ(Sink.LastLevel, Vaelen::LogLevel::Error);
+	VT_CHECK(Sink.Last.find("ENSURE failed at Test_Assert.cpp:1") != std::string::npos);
+	VT_CHECK(Sink.Last.find("Value == 4 -- value was 3") != std::string::npos);
+}
+
+VAELEN_TEST(Assert, ConcurrentReportsAreAllCountedWithTheirUserData)
+{
+	CountingHandler Handler;
+	SetAssertHandler(&CountingHandler::OnAssert, &Handler);
+	const uint64 Before = GetAssertFailureCount();
+
+	constexpr int32 Threads = 8;
+	constexpr int32 PerThread = 1000;
+	std::vector<std::thread> Workers;
+	for (int32 t = 0; t < Threads; ++t)
+	{
+		Workers.emplace_back(
+			[]()
+			{
+				for (int32 i = 0; i < PerThread; ++i)
+				{
+					Vaelen::Detail::ReportAssert(AssertKind::Ensure, "concurrent", "f.cpp", i, "F");
+				}
+			});
+	}
+	for (std::thread& Worker : Workers)
+	{
+		Worker.join();
+	}
+	SetAssertHandler(nullptr);
+
+	VT_CHECK_EQ(Handler.Calls.load(), Threads * PerThread);
+	VT_CHECK_EQ(GetAssertFailureCount() - Before, static_cast<uint64>(Threads * PerThread));
+}
+
+VAELEN_TEST(Assert, HandlerSwapDuringReportsNeverTearsThePair)
+{
+	// Two handlers with their own user data are swapped while other threads
+	// report; each report must arrive at a handler with ITS OWN user data.
+	struct PairHandler
+	{
+		std::atomic<int32> Calls{0};
+		std::atomic<int32> Mismatches{0};
+		static void A(const AssertInfo&, void* UserData) { Record(UserData, 'A'); }
+		static void B(const AssertInfo&, void* UserData) { Record(UserData, 'B'); }
+		static void Record(void* UserData, char Expected)
+		{
+			auto* Self = static_cast<PairHandler*>(UserData);
+			Self->Calls.fetch_add(1, std::memory_order_relaxed);
+			if (Self->Tag != Expected)
+			{
+				Self->Mismatches.fetch_add(1, std::memory_order_relaxed);
+			}
+		}
+		char Tag = ' ';
+	};
+	PairHandler HandlerA;
+	HandlerA.Tag = 'A';
+	PairHandler HandlerB;
+	HandlerB.Tag = 'B';
+
+	SetAssertHandler(&PairHandler::A, &HandlerA);
+	std::atomic<bool> Stop{false};
+	std::vector<std::thread> Reporters;
+	for (int32 t = 0; t < 4; ++t)
+	{
+		Reporters.emplace_back(
+			[&Stop]()
+			{
+				while (!Stop.load(std::memory_order_relaxed))
+				{
+					Vaelen::Detail::ReportAssert(AssertKind::Ensure, "swap", "f.cpp", 1, "F");
+				}
+			});
+	}
+	for (int32 i = 0; i < 2000; ++i)
+	{
+		SetAssertHandler((i & 1) ? &PairHandler::B : &PairHandler::A,
+						 (i & 1) ? static_cast<void*>(&HandlerB) : static_cast<void*>(&HandlerA));
+	}
+	Stop.store(true, std::memory_order_relaxed);
+	for (std::thread& Reporter : Reporters)
+	{
+		Reporter.join();
+	}
+	SetAssertHandler(nullptr);
+
+	VT_CHECK(HandlerA.Calls.load() + HandlerB.Calls.load() > 0);
+	VT_CHECK_EQ(HandlerA.Mismatches.load(), 0);
+	VT_CHECK_EQ(HandlerB.Mismatches.load(), 0);
+}

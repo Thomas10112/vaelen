@@ -6,8 +6,10 @@
 
 void FVaelenLogSink::Write(const Vaelen::LogRecord& Record)
 {
+	// Category names are ASCII literals; messages are UTF-8 (kernel strings
+	// are formatted with vsnprintf and may carry generated names).
 	const FString Category = ANSI_TO_TCHAR(Record.Category ? Record.Category->Name : "?");
-	const FString Message = ANSI_TO_TCHAR(Record.Message);
+	const FString Message = UTF8_TO_TCHAR(Record.Message);
 
 	switch (Record.Level)
 	{

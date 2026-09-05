@@ -38,8 +38,14 @@ if(MSVC)
   # Unreal builds with _HAS_EXCEPTIONS=0 and /GR-. We do the same.
   string(REGEX REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
   string(REGEX REPLACE "/GR " "/GR- " CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ")
-  # /fp:precise (MSVC default) forbids FMA contraction; kept explicit for determinism.
-  target_compile_options(vaelen_build_flags INTERFACE /W4 /permissive- /utf-8 /GR- /fp:precise)
+  # /EHs-c-: exceptions explicitly off (without an explicit /EH mode, MSVC
+  # emits C4577 on every noexcept, fatal under /WX; /wd4577 covers old cl).
+  # /fp:precise forbids FMA contraction on Microsoft cl (VS 2022 17.0+); on
+  # clang-cl it does not, hence the explicit -ffp-contract=off below.
+  target_compile_options(vaelen_build_flags INTERFACE /W4 /permissive- /utf-8 /GR- /EHs-c- /wd4577 /fp:precise)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(vaelen_build_flags INTERFACE /clang:-ffp-contract=off)
+  endif()
   target_compile_definitions(vaelen_build_flags INTERFACE _HAS_EXCEPTIONS=0 _CRT_SECURE_NO_WARNINGS NOMINMAX)
   if(VAELEN_WARNINGS_AS_ERRORS)
     target_compile_options(vaelen_build_flags INTERFACE /WX)
@@ -57,10 +63,9 @@ else()
   endif()
 endif()
 
-# Unreal Build Tool generates <MODULE>_API export macros; headless static
-# libraries need them to expand to nothing.
+# Export macros are owned by the kernel (VAELEN_CORE_API in CoreTypes.h):
+# nothing is defined here, so static libraries get an empty macro.
 target_compile_definitions(vaelen_build_flags INTERFACE
-  VAELENCORE_API=
   VAELEN_HEADLESS_BUILD=1
   $<$<BOOL:${VAELEN_ENABLE_ASSERTS}>:VAELEN_ASSERTS_ENABLED=1>
   $<$<NOT:$<BOOL:${VAELEN_ENABLE_ASSERTS}>>:VAELEN_ASSERTS_ENABLED=0>)
