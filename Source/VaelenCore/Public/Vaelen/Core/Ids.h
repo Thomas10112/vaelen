@@ -48,6 +48,7 @@ namespace Vaelen
 		River = 12,
 		ResourceDeposit = 13,
 		Lake = 14,
+		Era = 15,
 
 		// -- History & society (Phases 03-05) --
 		Culture = 20,

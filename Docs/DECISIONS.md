@@ -46,6 +46,7 @@ Rules for this file:
 | [0021](#adr-0021-regions-grow-from-lattice-seeds-by-terrain-cost-with-a-merge-floor-the-adjacency-graph-is-derived-not-stored) | Regions grow from lattice seeds by terrain cost with a merge floor; the adjacency graph is derived, not stored | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0022](#adr-0022-deposits-come-from-an-explicit-suitability-table-hashed-draws-and-one-per-kind-per-cell-spacing) | Deposits come from an explicit suitability table, hashed draws and one-per-kind-per-cell spacing | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0023](#adr-0023-the-world-is-a-function-of-seed-and-config-through-one-pipeline-call-frozen-as-whole-world-digests-at-three-sizes) | The world is a function of seed and config through one pipeline call, frozen as whole-world digests at three sizes | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0024](#adr-0024-history-is-eras-opened-by-span-or-caused-request-plus-a-chronicle-of-record-entities-with-every-piece-of-state-in-components) | History is eras opened by span or caused request plus a chronicle of Record entities, with every piece of state in components | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -1493,6 +1494,61 @@ snapshot runs identically.
 Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/WorldGenPipeline.h`,
 `Source/VaelenSim/Private/WorldGenPipeline.cpp`, `Tests/Sim/Test_WorldPipeline.cpp`
 (4 tests). Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0024: History is eras opened by span or caused request plus a chronicle of Record entities, with every piece of state in components
+
+### Context
+
+Phase 03 simulates the past. The master prompt wants every historical fact to be an
+event with a cause, history to be queryable ("why did this happen"), and the world to
+be addressable by era. The kernel already has an append-only event log with cause
+links (ADR-0014) and stateless systems over components (ADR-0015).
+
+### Decision
+
+1. Eras are entities. A yearly system founds the first era, closes the open one when
+   it reaches its span or when a request is pending, and opens the next; both
+   transitions are events whose subject is the era and whose cause is the request's
+   event. Systems and listeners request eras through `RequestEra(cause)`; the first
+   cause wins until the yearly tick.
+2. The chronicle is a listener over chosen event types: each such event becomes a
+   Record entity carrying the era at its tick and the region of its subject when the
+   subject is a region. Records are the historical record's index; the event log stays
+   the source.
+3. The era system's own state (pending request, open era, counts) lives in one
+   `HistoryState` component on a history entity created once by `InitializeHistory`
+   on a fresh world - never by setup code, so a restored world keeps its own.
+4. Queries are functions over the log and the components: era at a tick, event by id
+   (binary search on monotonic ids), cause chain to the root, events in an era, events
+   about a subject.
+
+### Alternatives and decision rule
+
+- Eras as a fixed calendar (every N years): rejected; the prompt wants eras to be
+  caused (a collapse, a founding) and the span rule stays as the fallback.
+- Records as plain log annotations: rejected; later phases hang names, documents and
+  maps on records, which entities with persistent ids support.
+- Keeping the pending request inside the system object: rejected by ADR-0015 rule 6
+  and proven by the snapshot test taken three ticks before the yearly tick.
+- Decided by robustness (state in components, causes mandatory on requests) and
+  simplicity.
+
+### Consequences
+
+- Era boundaries fall on yearly ticks: a request made mid-year opens the era at the
+  next yearly tick, and its cause chain still points at the mid-year event.
+- Every chronicled event costs one entity; later phases choose which types to
+  chronicle and may summarise instead of recording each event.
+- `IdKind::Era` is added; records use `IdKind::Document`.
+
+### Status
+
+Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/History.h`,
+`Source/VaelenSim/Private/History.cpp`, `Source/VaelenCore/Public/Vaelen/Core/Ids.h`,
+`Tests/Sim/Test_History.cpp` (3 tests). Headless VALIDATED on the six Linux presets;
+engine side UNVERIFIED.
 
 ---
 

@@ -33,6 +33,7 @@ namespace
 		IdKind::River,
 		IdKind::ResourceDeposit,
 		IdKind::Lake,
+		IdKind::Era,
 		IdKind::Culture,
 		IdKind::Language,
 		IdKind::Religion,

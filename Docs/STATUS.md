@@ -12,39 +12,37 @@ refresh").
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 02 — WORLD (closed, headless) → 03 — HISTORY (planned)
-TASK        : 02.08 — WORLD-GEN DETERMINISM AND LONG-DURATION GATE
+PHASE       : 03 — HISTORY
+TASK        : 03.01 — ERAS, THE ERA CALENDAR AND THE HISTORICAL RECORD
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████████████████ 100%  (Phase 02)
+███░░░░░░░░░░░░░░░░░░░░░ 12%
 
 CURRENTLY
-→ Phase 02 closed against ROADMAP section 2: one-call pipeline, whole-world digests frozen
-  at 64 / 256 / 1024, regeneration byte for byte, snapshot re-hash, drowned and 1 x 1
-  worlds, simulation and replay over a generated world
+→ 03.01 closed: Era entities opened yearly by span or by a caused request, Record entities
+  per chronicled event with era and region, history state in a singleton component,
+  cause-chain and era/subject queries
 
 COMPLETED
-✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION
-✓ 02.01 Grid (CI 18) ; 02.02 Fixed point and noise (CI 19) ; 02.03 Elevation (CI 20)
-✓ 02.04 Climate (CI 21) ; 02.05 Hydrology (CI 22) ; 02.06 Regions (CI 23) ; 02.07 Deposits (CI 24)
-✓ 02.08 Gate (4 tests: WorldPipeline) ; Phase 03 HISTORY broken down (03.01-03.08)
+✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD (headless)
+✓ 03.01 Eras and the historical record (3 tests: History)
 
 NEXT
-→ 03.01 Eras and the historical record (era calendar, chronicle entries as entities)
-→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist) to clear UNVERIFIED
+→ 03.02 Cultures and coarse population (Culture entities, RegionPopulation, growth, migration)
+→ 03.03 Languages and naming
+→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/WorldGenPipeline.h, Private/WorldGenPipeline.cpp
-+ Tests/Sim/Test_WorldPipeline.cpp
++ Source/VaelenSim/Public/Vaelen/Sim/History.h, Private/History.cpp
+~ Ids.h/.cpp (IdKind::Era = 15)
++ Tests/Sim/Test_History.cpp
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 127 (124 without asserts); ctest 41/41 in all six Linux presets
-✓ Frozen whole-world digests (AELVOR seed): 64 31bd627b7440357a, 256 044cf4cce94d3853,
-  1024 1211462eedf18e82 (clang = gcc; MSVC and AppleClang checked by CI)
-✓ AELVOR 1024: 413 641 land tiles, 10 land biomes, 43 rivers, 25 lakes, 166 regions,
-  18 523 deposits, 18 757 entities; full pipeline 25 s debug
-✓ Purity: 50 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 130 (127 without asserts); ctest 42/42 in all six Linux presets
+✓ 260 simulated years: eras contiguous without gaps, 52 requested eras each with a two-link cause chain
+  (collapse <- omen), span eras exactly every 30 years, records = chronicled events
+✓ Purity: 52 files, 0 violations
 
 BLOCKERS
 None
@@ -113,6 +111,13 @@ world) categories present; (5) ADR-0016 to ADR-0023 cover the phase's decisions,
 updated. Verdict: **Phase 02 VALIDATED on the headless side, UNVERIFIED on the engine
 side until the first UE 5.6 build.**
 
+## Phase 03 task breakdown (canonical numbering: `Docs/ROADMAP.md` section 7)
+
+| Task | Content | Status |
+|---|---|---|
+| 03.01 | Eras, era calendar, chronicle records, history queries | VALIDATED: History 3 tests |
+| 03.02-03.08 | Cultures and population, languages, religions, disasters, pre-history run, queries, gate | PLANNED |
+
 ## File status
 
 Every file under `Source/`, `Tests/` and `Tools/` carries a `// STATUS:` line (rule R5 of
@@ -147,6 +152,7 @@ the purity checker, applied to headers and sources).
 | `Public/Vaelen/Sim/Regions.h`, `Private/Regions.cpp` | VALIDATED (Phase 02) — covered by `Tests/Sim/Test_Regions.cpp` |
 | `Public/Vaelen/Sim/Deposits.h`, `Private/Deposits.cpp` | VALIDATED (Phase 02) — covered by `Tests/Sim/Test_Deposits.cpp` |
 | `Public/Vaelen/Sim/WorldGenPipeline.h`, `Private/WorldGenPipeline.cpp` | VALIDATED (Phase 02) — covered by `Tests/Sim/Test_WorldPipeline.cpp` |
+| `Public/Vaelen/Sim/History.h`, `Private/History.cpp` | VALIDATED (Phase 03) — covered by `Tests/Sim/Test_History.cpp` |
 
 ### Tests/
 
@@ -177,8 +183,9 @@ the purity checker, applied to headers and sources).
 | `Sim/Test_Regions.cpp` (Phase 02) | VALIDATED | 5 |
 | `Sim/Test_Deposits.cpp` (Phase 02) | VALIDATED | 5 |
 | `Sim/Test_WorldPipeline.cpp` (Phase 02 gate) | VALIDATED | 4 |
+| `Sim/Test_History.cpp` (Phase 03) | VALIDATED | 3 |
 
-Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 5, Deposits 5, WorldPipeline 4 (127 tests; 124 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.Registry`, `Sim.Shuffled` (41 entries in total).
+Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 5, Deposits 5, WorldPipeline 4, History 3 (130 tests; 127 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.History`, `Sim.Registry`, `Sim.Shuffled` (42 entries in total).
 
 ### Tools/ and CI
 
@@ -195,12 +202,12 @@ Toolchain: clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.1
 
 | Preset | Build | `ctest` | `VaelenCoreTests` | `VaelenSimTests` |
 |---|---|---|---|---|
-| linux-clang-debug | 0 warnings | 41/41 passed | 133 run, 133 passed, 22005 checks | 127 run, 127 passed |
-| linux-gcc-debug | 0 warnings | 41/41 passed | 133 run, 133 passed, 22005 checks | 127 run, 127 passed |
-| linux-clang-release | 0 warnings | 41/41 passed | 133 run, 133 passed, 22005 checks | 127 run, 127 passed |
-| linux-gcc-release | 0 warnings | 41/41 passed | 133 run, 133 passed, 22005 checks | 127 run, 127 passed |
-| linux-clang-noasserts | 0 warnings | 41/41 passed | 108 run, 108 passed, 21792 checks | 124 run, 124 passed |
-| linux-gcc-noasserts | 0 warnings | 41/41 passed | 108 run, 108 passed, 21792 checks | 124 run, 124 passed |
+| linux-clang-debug | 0 warnings | 42/42 passed | 133 run, 133 passed, 22005 checks | 130 run, 130 passed |
+| linux-gcc-debug | 0 warnings | 42/42 passed | 133 run, 133 passed, 22005 checks | 130 run, 130 passed |
+| linux-clang-release | 0 warnings | 42/42 passed | 133 run, 133 passed, 22005 checks | 130 run, 130 passed |
+| linux-gcc-release | 0 warnings | 42/42 passed | 133 run, 133 passed, 22005 checks | 130 run, 130 passed |
+| linux-clang-noasserts | 0 warnings | 42/42 passed | 108 run, 108 passed, 21792 checks | 127 run, 127 passed |
+| linux-gcc-noasserts | 0 warnings | 42/42 passed | 108 run, 108 passed, 21792 checks | 127 run, 127 passed |
 
 Mini-world baseline (100 000 ticks, 41 entities, 305 027 events, 34 168 227-byte snapshot), logged by `Sim.MiniWorld`, not asserted: clang debug 0.39 s (255 k ticks/s), gcc debug 0.40 s, clang release 0.135 s (739 k ticks/s), gcc release without assertions 0.127 s (790 k ticks/s); snapshot 0.09-0.14 s.
 

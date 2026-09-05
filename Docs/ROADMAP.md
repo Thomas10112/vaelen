@@ -70,7 +70,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
-| 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | PLANNED (task breakdown in section 7) |
+| 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | IN PROGRESS (03.01 VALIDATED headless; 03.02-03.08 PLANNED) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
@@ -639,7 +639,7 @@ categories present; (5) ADR-0016 to ADR-0023, docs updated. Verdict: **Phase 02
 VALIDATED on the headless side, UNVERIFIED on the engine side until the first UE 5.6
 build.**
 
-## 7. Phase 03 - HISTORY: task breakdown (PLANNED)
+## 7. Phase 03 - HISTORY: task breakdown and real status
 
 Goal: the simulated pre-history everything later inherits - eras, cultures, languages,
 religions, migrations and the historical record - produced by the Phase 01 kernel
@@ -660,14 +660,33 @@ Decisions taken up front (each becomes an ADR when its task closes):
 - Frozen digests per era of the reference history at 256 so any change to a system is
   deliberate.
 
-### 03.01 Eras, the era calendar and the historical record
+### 03.01 Eras, the era calendar and the historical record - VALIDATED (headless)
 
-- `Era` entities (index, start and end tick, name from the language of the dominant
-  culture once 03.03 exists), an `EraSystem` at LOD 4 that opens a new era on
-  configured triggers (span, collapse, founding), `Record` entities summarising
-  events per era and region, query helpers over the event log (by subject, by cause
-  chain, by era).
-- Tests: eras cover time without gaps, records match the log, cause chains resolve.
+- Delivered: `History.h/.cpp` - `EraInfo` (index, trigger founding / span / requested,
+  start, end, cause event), `RecordInfo` (event, tick, type, subject, era, region),
+  `HistoryState` singleton component (pending request and its cause, open era, counts),
+  `HistoryTypes::Declare`, `InitializeHistory` (creates the history entity once, on a
+  fresh world only), `EraSystem` (LOD World: founds the first era, closes the open one at
+  its span or when a request is pending and opens the next, publishing EraClosed and
+  EraOpened with the era as subject and the request's event as cause),
+  `EraSystem::RequestEra` (first cause wins until the yearly tick), `Chronicle`
+  listener (one Record entity per event of every subscribed type, era at the event's
+  tick, region when the subject is a region entity), queries `EraAt`, `FindEvent`
+  (binary search on monotonic ids), `CauseChain` (root-cause walk, guarded against
+  links that cannot precede their effect), `EventsInEra`, `EventsAbout`;
+  `IdKind::Era`. Era and record ids use kinds Era and Document.
+- Tests (3): 260 simulated years over a generated 32 x 32 world with an omen system
+  and a collapse listener (eras contiguous from tick 0 without gap or overlap, exactly
+  one open, the founding era first, 52 requested eras each with a resolving two-link
+  cause chain collapse <- omen, the first requested era opening at the yearly tick after
+  the request; span eras exactly every 30 years without a cause in a world without
+  collapses); the chronicle (one record per chronicled event, fields equal to the
+  event, era equal to `EraAt`, regions only on collapses, the state's record count,
+  era and subject queries, unknown ids); determinism across two worlds, a pending
+  request surviving a snapshot taken three ticks before the yearly tick and the
+  restored world continuing identically for twenty years, double initialisation
+  refused, ticking without history reported and harmless.
+- Decision: ADR-0024.
 
 ### 03.02 Cultures and coarse population
 
@@ -731,39 +750,37 @@ class and Enhanced Input mappings arrive in Phase 10.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 02 — WORLD (closed, headless) → 03 — HISTORY (planned)
-TASK        : 02.08 — WORLD-GEN DETERMINISM AND LONG-DURATION GATE
+PHASE       : 03 — HISTORY
+TASK        : 03.01 — ERAS, THE ERA CALENDAR AND THE HISTORICAL RECORD
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████████████████ 100%  (Phase 02)
+███░░░░░░░░░░░░░░░░░░░░░ 12%
 
 CURRENTLY
-→ Phase 02 closed against ROADMAP section 2: one-call pipeline, whole-world digests frozen
-  at 64 / 256 / 1024, regeneration byte for byte, snapshot re-hash, drowned and 1 x 1
-  worlds, simulation and replay over a generated world
+→ 03.01 closed: Era entities opened yearly by span or by a caused request, Record entities
+  per chronicled event with era and region, history state in a singleton component,
+  cause-chain and era/subject queries
 
 COMPLETED
-✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION
-✓ 02.01 Grid (CI 18) ; 02.02 Fixed point and noise (CI 19) ; 02.03 Elevation (CI 20)
-✓ 02.04 Climate (CI 21) ; 02.05 Hydrology (CI 22) ; 02.06 Regions (CI 23) ; 02.07 Deposits (CI 24)
-✓ 02.08 Gate (4 tests: WorldPipeline) ; Phase 03 HISTORY broken down (03.01-03.08)
+✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD (headless)
+✓ 03.01 Eras and the historical record (3 tests: History)
 
 NEXT
-→ 03.01 Eras and the historical record (era calendar, chronicle entries as entities)
-→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist) to clear UNVERIFIED
+→ 03.02 Cultures and coarse population (Culture entities, RegionPopulation, growth, migration)
+→ 03.03 Languages and naming
+→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/WorldGenPipeline.h, Private/WorldGenPipeline.cpp
-+ Tests/Sim/Test_WorldPipeline.cpp
++ Source/VaelenSim/Public/Vaelen/Sim/History.h, Private/History.cpp
+~ Ids.h/.cpp (IdKind::Era = 15)
++ Tests/Sim/Test_History.cpp
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 127 (124 without asserts); ctest 41/41 in all six Linux presets
-✓ Frozen whole-world digests (AELVOR seed): 64 31bd627b7440357a, 256 044cf4cce94d3853,
-  1024 1211462eedf18e82 (clang = gcc; MSVC and AppleClang checked by CI)
-✓ AELVOR 1024: 413 641 land tiles, 10 land biomes, 43 rivers, 25 lakes, 166 regions,
-  18 523 deposits, 18 757 entities; full pipeline 25 s debug
-✓ Purity: 50 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 130 (127 without asserts); ctest 42/42 in all six Linux presets
+✓ 260 simulated years: eras contiguous without gaps, 52 requested eras each with a two-link cause chain
+  (collapse <- omen), span eras exactly every 30 years, records = chronicled events
+✓ Purity: 52 files, 0 violations
 
 BLOCKERS
 None
