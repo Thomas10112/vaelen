@@ -34,9 +34,13 @@ namespace Vaelen::WorldGen
 	/// function on every side of a snapshot).
 	struct WorldLayers
 	{
-		TileLayerId<int64> Elevation; ///< Fix64 raw, 0 = sea level by default
-		TileLayerId<uint8> Terrain;	  ///< TerrainFlag bits
-		TileLayerId<int64> Slope;	  ///< Fix64 raw, max |dz| over the 8 neighbours
+		TileLayerId<int64> Elevation;	 ///< Fix64 raw, 0 = sea level by default
+		TileLayerId<uint8> Terrain;		 ///< TerrainFlag bits
+		TileLayerId<int64> Slope;		 ///< Fix64 raw, max |dz| over the 8 neighbours
+		TileLayerId<uint16> SeaDistance; ///< 4-connected tiles to the nearest sea tile (0 on sea), 02.04
+		TileLayerId<int64> Temperature;	 ///< Fix64 raw, annual mean in degrees, 02.04
+		TileLayerId<int64> Moisture;	 ///< Fix64 raw in [0, 1], 02.04
+		TileLayerId<uint8> Biome;		 ///< Biome enum, 02.04
 
 		static WorldLayers Declare(WorldMap& Map);
 	};
@@ -54,6 +58,17 @@ namespace Vaelen::WorldGen
 		inline constexpr uint32 EdgeFalloff = 6;		///< fraction of the half-size where the sea begins
 		inline constexpr uint32 ContinentBias = 7;		///< added to the mask (positive = more land)
 		inline constexpr uint32 ElevationOctaves = 8;	///< integer
+		// 02.04 climate
+		inline constexpr uint32 EquatorTemperature = 9; ///< degrees at the equator (map middle row)
+		inline constexpr uint32 PoleTemperature = 10;	///< degrees at the top and bottom rows
+		inline constexpr uint32 LapseRate = 11;			///< degrees lost per 1000 elevation units
+		inline constexpr uint32 TemperatureNoise = 12;	///< degrees of local variation
+		inline constexpr uint32 RainDecay = 13;		 ///< e-folding distance of a parcel, as a fraction of the map width
+		inline constexpr uint32 OrographicRain = 14; ///< extra fraction per 1000 units of climb
+		inline constexpr uint32 SeaRecovery = 15;	 ///< humidity regained per sea tile
+		inline constexpr uint32 MoistureNoise = 16;	 ///< fraction of local variation
+		inline constexpr uint32 ProximityRange = 17; ///< sea-proximity half-range, as a fraction of the map width
+		inline constexpr uint32 ProximityWeight = 18; ///< share of moisture that comes from sea proximity
 	} // namespace ParamIndex
 
 	/// Resolved parameters of the elevation stage (defaults where the config says 0).
@@ -71,6 +86,77 @@ namespace Vaelen::WorldGen
 
 		static ElevationParams Resolve(const WorldGenConfig& Config) noexcept;
 	};
+
+	/// Resolved parameters of the climate stage (defaults where the config says 0).
+	struct ClimateParams
+	{
+		Fix64 EquatorTemperature = Fix64::FromInt(30);
+		Fix64 PoleTemperature = Fix64::FromInt(-15);
+		Fix64 LapseRate = Fix64::FromRatio(13, 2); ///< 6.5 degrees per 1000 units
+		Fix64 TemperatureNoise = Fix64::FromInt(2);
+		Fix64 RainDecay = Fix64::FromRatio(1, 4); ///< a parcel keeps 1/e of its humidity after a quarter of the width
+		Fix64 OrographicRain = Fix64::FromRatio(1, 2);
+		Fix64 SeaRecovery = Fix64::FromRatio(1, 6);
+		Fix64 MoistureNoise = Fix64::FromRatio(1, 8);
+		Fix64 ProximityRange = Fix64::FromRatio(1, 16);
+		Fix64 ProximityWeight = Fix64::FromRatio(3, 10);
+
+		static ClimateParams Resolve(const WorldGenConfig& Config) noexcept;
+	};
+
+	enum class Biome : uint8
+	{
+		Ocean = 0,
+		Ice,
+		Tundra,
+		BorealForest,
+		ColdSteppe,
+		TemperateForest,
+		Grassland,
+		Scrubland,
+		TropicalForest,
+		Savanna,
+		Desert,
+		Alpine,
+		Count
+	};
+	VAELEN_SIM_API const char* BiomeName(Biome B) noexcept;
+	VAELEN_SIM_API char BiomeGlyph(Biome B) noexcept;
+
+	/// Latitude in [-1, 1] of a row: -1 at the top row, 0 at the middle, +1 at the bottom.
+	VAELEN_SIM_API Fix64 LatitudeOfRow(const WorldGrid& Grid, uint32 Y) noexcept;
+
+	/// Prevailing wind of a latitude: +1 blows west -> east (westerlies), -1 blows
+	/// east -> west (trade and polar easterlies). Bands: |lat| < 1/3 easterly,
+	/// < 2/3 westerly, else easterly.
+	VAELEN_SIM_API int32 PrevailingWind(Fix64 Latitude) noexcept;
+
+	/// Seasonal offset added to the annual mean: season 0..3 = spring, summer,
+	/// autumn, winter; amplitude grows with |latitude| (4 + 16 |lat| degrees).
+	VAELEN_SIM_API Fix64 SeasonalOffset(Fix64 Latitude, uint32 Season) noexcept;
+
+	/// Biome from the annual mean temperature (degrees), moisture [0, 1],
+	/// elevation above sea level (units) and land flag.
+	VAELEN_SIM_API Biome ClassifyBiome(Fix64 Temperature, Fix64 Moisture, Fix64 ElevationAboveSea, bool Land) noexcept;
+
+	/// Stage 02.04: fills SeaDistance, Temperature, Moisture and Biome from the
+	/// elevation and terrain layers. Requires a generated elevation.
+	VAELEN_SIM_API bool GenerateClimate(WorldMap& Map, const WorldLayers& Layers, uint64 Seed);
+
+	struct ClimateStats
+	{
+		uint32 BiomeTiles[static_cast<uint32>(Biome::Count)] = {};
+		uint32 DistinctLandBiomes = 0;
+		Fix64 MinTemperature;
+		Fix64 MaxTemperature;
+		Fix64 MeanLandMoisture;
+		uint16 MaxSeaDistance = 0;
+	};
+	VAELEN_SIM_API ClimateStats MeasureClimate(const WorldMap& Map, const WorldLayers& Layers);
+
+	/// Downsampled ASCII picture of the biomes (BiomeGlyph per cell, majority glyph).
+	VAELEN_SIM_API void ExportBiomeAscii(const WorldMap& Map, const WorldLayers& Layers, uint32 Columns,
+										 std::string& Out);
 
 	/// Stage 02.03: fills Elevation, then Terrain flags and Slope from it.
 	/// Requires Map.IsReady(). Returns false (with a report) otherwise.

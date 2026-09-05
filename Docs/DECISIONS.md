@@ -41,6 +41,7 @@ Rules for this file:
 | [0016](#adr-0016-tiles-are-dense-typed-layers-not-entities-the-world-map-is-a-state-block-with-a-code-declared-layer-set) | Tiles are dense typed layers, not entities; the world map is a state block with a code-declared layer set | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0017](#adr-0017-world-generation-uses-q3232-fixed-point-and-integer-lattice-noise-no-floating-point-no-libm) | World generation uses Q32.32 fixed point and integer lattice noise; no floating point, no libm | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0018](#adr-0018-world-generation-is-a-pipeline-of-pure-stages-with-derived-seeds-a-32-slot-parameter-block-and-a-sea-bounded-continent) | World generation is a pipeline of pure stages with derived seeds, a 32-slot parameter block and a sea-bounded continent | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0019](#adr-0019-climate-is-a-row-wise-advection-model-with-resolution-independent-decay-and-a-threshold-biome-table) | Climate is a row-wise advection model with resolution-independent decay and a threshold biome table | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -1214,6 +1215,64 @@ Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/WorldGen.h`,
 `WorldMap.h`, `Source/VaelenSim/Private/WorldGen.cpp`,
 `Source/VaelenCore/Public/Vaelen/Core/Version.h`, `Tests/Sim/Test_WorldGen.cpp`
 (6 tests). Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0019: Climate is a row-wise advection model with resolution-independent decay and a threshold biome table
+
+### Context
+
+Biomes drive every later phase (deposits, settlement, agriculture, culture). The
+climate must be believable enough to give rain shadows, dry interiors and wet coasts,
+cheap enough to run per tile at 1024 x 1024, deterministic across platforms
+(ADR-0017), and independent of the grid resolution so the 64, 256 and 1024 worlds share
+one set of parameters.
+
+### Decision
+
+1. Temperature is a latitude band (equator at the middle row, poles at the top and
+   bottom rows) minus an altitude lapse per 1000 elevation units, plus bounded local
+   noise. Seasons are a separate offset function of latitude and season index that later
+   phases add on top of the annual mean; the layer stores the mean only.
+2. Moisture comes from a humidity parcel advected along each row by the prevailing
+   wind of that latitude (trade easterlies, westerlies, polar easterlies). Over land it
+   rains a base fraction per tile plus an orographic share of any climb; over sea it
+   recovers. The base fraction is one over the decay distance, and the decay distance
+   is a fraction of the map width, so the same parameters give the same climate at
+   every resolution. A rational sea-proximity term (from a multi-source BFS distance)
+   is blended in so coasts are never dry and interiors never reach zero.
+3. Biomes are a threshold table over (temperature, moisture, elevation above sea,
+   land): twelve entries with names and glyphs, ordered so every branch is reachable
+   and tested.
+4. Winds are per row, not per tile: no advection across rows and no global circulation.
+
+### Alternatives and decision rule
+
+- A 2D moisture diffusion or a global circulation model: rejected for Phase 02; an
+  order of magnitude more cost for no test that could distinguish it, and harder to
+  keep deterministic and resolution independent.
+- Moisture from sea distance only: rejected; no rain shadow, which the deposits and
+  cultures of later phases lean on.
+- Per-tile decay constants: rejected after the first version (a fixed 1/12 per tile
+  made the interior of a 256-wide continent a desert and would make a 1024-wide one
+  uniformly dry).
+- Decided by robustness across resolutions, then simplicity, consistent with
+  determinism.
+
+### Consequences
+
+- Every climate constant is a parameter slot (`ParamIndex` 9 to 18) with a default;
+  the frozen digests at 256 pin the defaults.
+- Later stages that edit elevation (hydrology's depression filling) rerun
+  `ClassifyTerrain` and `GenerateClimate` in that order.
+- Seasons are not stored: whoever needs a seasonal temperature calls
+  `SeasonalOffset` with the calendar's season.
+
+### Status
+
+Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/WorldGen.h`,
+`Source/VaelenSim/Private/WorldGen.cpp`, `Tests/Sim/Test_Climate.cpp` (6 tests).
+Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
 

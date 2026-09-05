@@ -69,7 +69,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 |---|---|---|---|
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
-| 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | IN PROGRESS (02.01-02.03 VALIDATED headless; 02.04-02.08 PLANNED) |
+| 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | IN PROGRESS (02.01-02.04 VALIDATED headless; 02.05-02.08 PLANNED) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | PLANNED |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
@@ -496,11 +496,38 @@ deterministic, and every one of these was checked against determinism first):
   in four slices.
 - Decision: ADR-0018.
 
-### 02.04 Climate and biomes
+### 02.04 Climate and biomes - VALIDATED (headless)
 
-- Latitude temperature bands, altitude lapse, prevailing winds and rain shadow,
-  moisture from sea distance, seasonal modulation hooks for the calendar, biome table.
-- Tests: frozen digests, monotonic lapse, every biome reachable at 256, no biome on sea.
+- Delivered (in `WorldGen.h/.cpp`): four new layers (sea distance uint16, temperature,
+  moisture, biome), `ClimateParams` with eight parameter slots, `LatitudeOfRow` (exact
+  -1 / 0 / +1), `PrevailingWind` (easterlies under 1/3, westerlies to 2/3, polar
+  easterlies), `SeasonalOffset` (spring, summer, autumn, winter; amplitude 4 + 16 |lat|),
+  `ClassifyBiome` (Ocean; Alpine above 2500; Ice, Tundra, Boreal forest / Cold steppe,
+  Temperate forest / Grassland / Scrubland, Tropical forest / Savanna / Desert by
+  temperature and moisture thresholds), `GenerateClimate` (multi-source BFS sea
+  distance in scan order; temperature = latitude band - lapse per 1000 units of
+  altitude + local noise; moisture from a humidity parcel advected along the row by
+  the prevailing wind that rains a base fraction per tile - one over the decay
+  distance, expressed as a fraction of the map width so the model does not depend on
+  the resolution - plus an orographic share of any climb, recovers over sea, blended
+  with a rational sea-proximity term and local noise), `MeasureClimate`,
+  `ExportBiomeAscii`.
+- Tests (6): exact latitudes, wind bands and their edges, seasonal offsets, every
+  biome reachable through the table, names and glyphs; the AELVOR map at 256 (sea
+  tiles are Ocean with distance 0, land never Ocean, moisture in [0, 1], temperature
+  never above its band plus the noise amplitude, Alpine iff above 2500, equator rows
+  20 degrees warmer than polar rows, at least 7 distinct land biomes - 10 measured -,
+  sea distance and moisture in plausible bands, the biome map logged in slices); a
+  synthetic 64 x 9 ridge map proving the rain shadow (ridge wetter than windward,
+  leeward and far leeward drier, never zero, decay with distance, exact sea distances);
+  seed and warm-parameter sensitivity with the elevation layer untouched and misuse
+  before Reset; snapshot round trip of all seven layers; frozen digests at 256 for
+  temperature, moisture and biome reproduced by clang and gcc (MSVC and AppleClang by
+  CI).
+- Lesson: the first moisture model lost a fixed 1/12 per tile and turned the interior
+  into desert (mean land moisture 0.15); a decay defined per fraction of the map width
+  plus a sea-proximity share gives 0.45 and every biome family at 256.
+- Decision: ADR-0019.
 
 ### 02.05 Hydrology
 
@@ -550,37 +577,36 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 02 — WORLD
-TASK        : 02.03 — ELEVATION AND COASTLINE
+TASK        : 02.04 — CLIMATE AND BIOMES
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-█████████░░░░░░░░░░░░░░░ 37%
+████████████░░░░░░░░░░░░ 50%
 
 CURRENTLY
-→ 02.03 closed: the first map of AELVOR - warped continental mask, fractal relief,
-  sharpened ridges, sea all around; land/sea/coast/shore/border flags, slope, ASCII export
+→ 02.04 closed: sea distance, latitude bands with altitude lapse, wind-advected moisture
+  with rain shadow and sea proximity, 12-entry biome table, seasonal offset hook
 
 COMPLETED
 ✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION (CI 9/9 on every run)
 ✓ 02.01 Grid, tile layers, config, snapshot section (10 tests, CI run 18)
 ✓ 02.02 Fixed-point math and deterministic noise (9 tests, CI run 19)
-✓ 02.03 Elevation and coastline (6 tests: WorldGen)
+✓ 02.03 Elevation and coastline (6 tests, CI run 20)
+✓ 02.04 Climate and biomes (6 tests: Climate)
 
 NEXT
-→ 02.04 Climate and biomes (latitude bands, lapse, winds and rain shadow, moisture, biome table)
-→ 02.05 Hydrology (D8 flow, depression filling, rivers and lakes as entities)
+→ 02.05 Hydrology (D8 flow with deterministic tie-break, depression filling, rivers and lakes as entities)
+→ 02.06 Regions ; 02.07 Deposits ; 02.08 Phase 02 gate
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/WorldGen.h, Private/WorldGen.cpp
-~ WorldMap.h (32-slot parameter block), Version.h (save format 3), FixedPoint.h (Div fast path)
-+ Tests/Sim/Test_WorldGen.cpp ; replay/mini-world state digests refrozen for format 3
+~ Source/VaelenSim/Public/Vaelen/Sim/WorldGen.h, Private/WorldGen.cpp (four new layers, climate stage)
++ Tests/Sim/Test_Climate.cpp
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 102 (99 without asserts); ctest 36/36 in all six Linux presets
-✓ AELVOR seed at 256: land 39.4 %, largest landmass 98.4 % of land, 1607 coast tiles, elevation -6126..2071
-✓ Frozen: elevation64 d60a6e03b595c384, elevation256 ccb1b28371d1fbbb, terrain256 7676272e3fcdf6be (clang = gcc)
-✓ Baseline 1024 x 1024: 6.7 s debug, 0.74 s release (1.4 M tiles/s)
+✓ Core 133 (108 without asserts) + Sim 108 (105 without asserts); ctest 37/37 in all six Linux presets
+✓ AELVOR at 256: 10 distinct land biomes, mean land moisture 0.45, temperature -15.7..30.5, max sea distance 48
+✓ Frozen: temperature256 a9c96b39c6085337, moisture256 871f1b4ad5cfe535, biome256 56503eefd26ec6d5 (clang = gcc)
 ✓ Purity: 42 files, 0 violations
 
 BLOCKERS

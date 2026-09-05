@@ -6,6 +6,7 @@
 #include "Vaelen/Core/Assert.h"
 #include "Vaelen/Sim/Noise.h"
 
+#include <algorithm>
 #include <vector>
 
 namespace Vaelen::WorldGen
@@ -16,6 +17,10 @@ namespace Vaelen::WorldGen
 		L.Elevation = Map.AddLayer<int64>("elevation");
 		L.Terrain = Map.AddLayer<uint8>("terrain");
 		L.Slope = Map.AddLayer<int64>("slope");
+		L.SeaDistance = Map.AddLayer<uint16>("seadistance");
+		L.Temperature = Map.AddLayer<int64>("temperature");
+		L.Moisture = Map.AddLayer<int64>("moisture");
+		L.Biome = Map.AddLayer<uint8>("biome");
 		return L;
 	}
 
@@ -290,6 +295,374 @@ namespace Vaelen::WorldGen
 					Glyph = '-';
 				}
 				Out.push_back(Glyph);
+			}
+			Out.push_back('\n');
+		}
+	}
+	// ── 02.04 climate and biomes ─────────────────────────────────────────────
+
+	ClimateParams ClimateParams::Resolve(const WorldGenConfig& Config) noexcept
+	{
+		ClimateParams P;
+		P.EquatorTemperature = ParamOr(Config, ParamIndex::EquatorTemperature, P.EquatorTemperature);
+		P.PoleTemperature = ParamOr(Config, ParamIndex::PoleTemperature, P.PoleTemperature);
+		P.LapseRate = ParamOr(Config, ParamIndex::LapseRate, P.LapseRate);
+		P.TemperatureNoise = ParamOr(Config, ParamIndex::TemperatureNoise, P.TemperatureNoise);
+		P.RainDecay = ParamOr(Config, ParamIndex::RainDecay, P.RainDecay);
+		P.OrographicRain = ParamOr(Config, ParamIndex::OrographicRain, P.OrographicRain);
+		P.SeaRecovery = ParamOr(Config, ParamIndex::SeaRecovery, P.SeaRecovery);
+		P.MoistureNoise = ParamOr(Config, ParamIndex::MoistureNoise, P.MoistureNoise);
+		P.ProximityRange = ParamOr(Config, ParamIndex::ProximityRange, P.ProximityRange);
+		P.ProximityWeight = ParamOr(Config, ParamIndex::ProximityWeight, P.ProximityWeight);
+		return P;
+	}
+
+	const char* BiomeName(Biome B) noexcept
+	{
+		switch (B)
+		{
+		case Biome::Ocean:
+			return "Ocean";
+		case Biome::Ice:
+			return "Ice";
+		case Biome::Tundra:
+			return "Tundra";
+		case Biome::BorealForest:
+			return "BorealForest";
+		case Biome::ColdSteppe:
+			return "ColdSteppe";
+		case Biome::TemperateForest:
+			return "TemperateForest";
+		case Biome::Grassland:
+			return "Grassland";
+		case Biome::Scrubland:
+			return "Scrubland";
+		case Biome::TropicalForest:
+			return "TropicalForest";
+		case Biome::Savanna:
+			return "Savanna";
+		case Biome::Desert:
+			return "Desert";
+		case Biome::Alpine:
+			return "Alpine";
+		case Biome::Count:
+			break;
+		}
+		return "Unknown";
+	}
+
+	char BiomeGlyph(Biome B) noexcept
+	{
+		switch (B)
+		{
+		case Biome::Ocean:
+			return '~';
+		case Biome::Ice:
+			return '*';
+		case Biome::Tundra:
+			return '-';
+		case Biome::BorealForest:
+			return 'f';
+		case Biome::ColdSteppe:
+			return ',';
+		case Biome::TemperateForest:
+			return 'F';
+		case Biome::Grassland:
+			return '"';
+		case Biome::Scrubland:
+			return ';';
+		case Biome::TropicalForest:
+			return 'T';
+		case Biome::Savanna:
+			return 's';
+		case Biome::Desert:
+			return 'd';
+		case Biome::Alpine:
+			return 'A';
+		case Biome::Count:
+			break;
+		}
+		return '?';
+	}
+
+	Fix64 LatitudeOfRow(const WorldGrid& Grid, uint32 Y) noexcept
+	{
+		if (Grid.Height < 2)
+		{
+			return Fix64::Zero();
+		}
+		// (2y - (H - 1)) / (H - 1): exactly -1 on the top row and +1 on the bottom row.
+		const int32 Span = static_cast<int32>(Grid.Height) - 1;
+		return Fix64::FromInt(2 * static_cast<int32>(Y) - Span) / Fix64::FromInt(Span);
+	}
+
+	int32 PrevailingWind(Fix64 Latitude) noexcept
+	{
+		const Fix64 A = Fix64::Abs(Latitude);
+		if (A < Fix64::FromRatio(1, 3))
+		{
+			return -1; // trade winds
+		}
+		if (A < Fix64::FromRatio(2, 3))
+		{
+			return +1; // westerlies
+		}
+		return -1; // polar easterlies
+	}
+
+	Fix64 SeasonalOffset(Fix64 Latitude, uint32 Season) noexcept
+	{
+		const Fix64 Amplitude = Fix64::FromInt(4) + Fix64::Abs(Latitude) * 16;
+		switch (Season % 4)
+		{
+		case 1:
+			return Amplitude;
+		case 3:
+			return -Amplitude;
+		default:
+			return Fix64::Zero();
+		}
+	}
+
+	Biome ClassifyBiome(Fix64 Temperature, Fix64 Moisture, Fix64 ElevationAboveSea, bool Land) noexcept
+	{
+		if (!Land)
+		{
+			return Biome::Ocean;
+		}
+		if (ElevationAboveSea > Fix64::FromInt(2500))
+		{
+			return Biome::Alpine;
+		}
+		if (Temperature < Fix64::FromInt(-10))
+		{
+			return Biome::Ice;
+		}
+		if (Temperature < Fix64::FromInt(0))
+		{
+			return Biome::Tundra;
+		}
+		if (Temperature < Fix64::FromInt(8))
+		{
+			return Moisture > Fix64::FromRatio(7, 20) ? Biome::BorealForest : Biome::ColdSteppe;
+		}
+		if (Temperature < Fix64::FromInt(20))
+		{
+			if (Moisture > Fix64::FromRatio(1, 2))
+			{
+				return Biome::TemperateForest;
+			}
+			return Moisture > Fix64::FromRatio(1, 4) ? Biome::Grassland : Biome::Scrubland;
+		}
+		if (Moisture > Fix64::FromRatio(3, 5))
+		{
+			return Biome::TropicalForest;
+		}
+		return Moisture > Fix64::FromRatio(3, 10) ? Biome::Savanna : Biome::Desert;
+	}
+
+	bool GenerateClimate(WorldMap& Map, const WorldLayers& Layers, uint64 Seed)
+	{
+		if (!Map.IsReady())
+		{
+			VAELEN_CHECKF(false, "GenerateClimate: the map has no grid (call WorldMap::Reset first)");
+			return false;
+		}
+		const WorldGrid& Grid = Map.Grid();
+		const ClimateParams P = ClimateParams::Resolve(Map.Config());
+		const TileLayer<int64>& Elevation = Map.GetLayer(Layers.Elevation);
+		const TileLayer<uint8>& Terrain = Map.GetLayer(Layers.Terrain);
+		TileLayer<uint16>& SeaDistance = Map.GetLayer(Layers.SeaDistance);
+		TileLayer<int64>& Temperature = Map.GetLayer(Layers.Temperature);
+		TileLayer<int64>& Moisture = Map.GetLayer(Layers.Moisture);
+		TileLayer<uint8>& BiomeLayer = Map.GetLayer(Layers.Biome);
+		const int64 Sea = Map.Config().SeaLevel;
+		const uint64 TempSeed = Noise::LatticeHash(Seed, static_cast<int32>(HashString("temperature") & 0x7fffffff), 3);
+		const uint64 RainSeed = Noise::LatticeHash(Seed, static_cast<int32>(HashString("moisture") & 0x7fffffff), 4);
+
+		// Sea distance: multi-source BFS from every sea tile, 4-connected, in
+		// scan order (deterministic); a world without sea gets the maximum.
+		{
+			std::vector<uint32> Queue;
+			Queue.reserve(Grid.TileCount());
+			for (uint32 i = 0; i < Grid.TileCount(); ++i)
+			{
+				const bool IsSea = (Terrain[i] & TerrainFlag::Land) == 0;
+				SeaDistance[i] = IsSea ? uint16{0} : uint16{0xffff};
+				if (IsSea)
+				{
+					Queue.push_back(i);
+				}
+			}
+			for (usize Head = 0; Head < Queue.size(); ++Head)
+			{
+				const uint32 I = Queue[Head];
+				const uint16 Next = static_cast<uint16>(SeaDistance[I] == 0xffff ? 0xffff : SeaDistance[I] + 1);
+				Grid.ForEachNeighbour(Grid.CoordOf(I), 4,
+									  [&](TileCoord N, uint32)
+									  {
+										  const uint32 J = Grid.IndexOf(N);
+										  if (SeaDistance[J] == 0xffff && Next != 0xffff)
+										  {
+											  SeaDistance[J] = Next;
+											  Queue.push_back(J);
+										  }
+									  });
+			}
+		}
+
+		// Temperature: latitude band, altitude lapse, local noise.
+		const Fix64 NoiseScale = Fix64::FromInt(12) / Fix64::FromInt(static_cast<int32>(Grid.Width));
+		Noise::FractalParams Local;
+		Local.Octaves = 3;
+		for (uint32 Y = 0; Y < Grid.Height; ++Y)
+		{
+			const Fix64 Lat = Fix64::Abs(LatitudeOfRow(Grid, Y));
+			const Fix64 Band = P.EquatorTemperature - (P.EquatorTemperature - P.PoleTemperature) * Lat;
+			for (uint32 X = 0; X < Grid.Width; ++X)
+			{
+				const uint32 I = Y * Grid.Width + X;
+				const Fix64 Above = Fix64::MaxOf(Fix64::FromRaw(Elevation[I] - Sea), Fix64::Zero());
+				const Fix64 Lapse = (Above / Fix64::FromInt(1000)) * P.LapseRate;
+				const Fix64 N = Noise::Fractal2D(TempSeed, Fix64::FromInt(static_cast<int32>(X)) * NoiseScale,
+												 Fix64::FromInt(static_cast<int32>(Y)) * NoiseScale, Local);
+				Temperature[I] = (Band - Lapse + N * P.TemperatureNoise).Raw;
+			}
+		}
+
+		// Moisture: per row, a parcel of humidity travels with the prevailing
+		// wind; over sea it recovers, over land it rains (a base fraction plus
+		// an orographic share of any climb). The base fraction is 1 / (decay
+		// distance in tiles) so the model does not depend on the grid
+		// resolution. What falls, scaled so a full parcel gives 1, is the
+		// advected moisture; sea proximity adds a resolution-independent share
+		// so no coast is ever dry and the interior never reaches exactly zero.
+		const Fix64 One = Fix64::One();
+		const Fix64 WidthF = Fix64::FromInt(static_cast<int32>(Grid.Width));
+		const Fix64 DecayTiles = Fix64::MaxOf(P.RainDecay * WidthF, One);
+		const Fix64 BaseRate = One / DecayTiles;
+		const Fix64 RangeTiles = Fix64::MaxOf(P.ProximityRange * WidthF, One);
+		const Fix64 AdvectionWeight = One - P.ProximityWeight;
+		for (uint32 Y = 0; Y < Grid.Height; ++Y)
+		{
+			const int32 Wind = PrevailingWind(LatitudeOfRow(Grid, Y));
+			Fix64 Humidity = One;
+			int64 Previous = Sea;
+			for (uint32 Step = 0; Step < Grid.Width; ++Step)
+			{
+				const uint32 X = Wind > 0 ? Step : Grid.Width - 1 - Step;
+				const uint32 I = Y * Grid.Width + X;
+				const bool Land = (Terrain[I] & TerrainFlag::Land) != 0;
+				Fix64 Advected = One;
+				if (Land)
+				{
+					const Fix64 Climb = Fix64::MaxOf(Fix64::FromRaw(Elevation[I] - Previous), Fix64::Zero());
+					const Fix64 Rate = Fix64::MinOf(BaseRate + (Climb / Fix64::FromInt(1000)) * P.OrographicRain, One);
+					const Fix64 Fallen = Humidity * Rate;
+					Humidity -= Fallen;
+					Advected = Fix64::MinOf(Fallen / BaseRate, One);
+				}
+				else
+				{
+					Humidity = Fix64::MinOf(Humidity + P.SeaRecovery, One);
+				}
+				Previous = Land ? Elevation[I] : Sea;
+				// Proximity: 1 on the coast, 1/2 at RangeTiles from the sea, rational decay.
+				const Fix64 Dist =
+					Fix64::FromInt(static_cast<int32>(SeaDistance[I] == 0xffff ? 0xffffu : SeaDistance[I]));
+				const Fix64 Proximity = One / (One + Dist / RangeTiles);
+				Fix64 M = Land ? Advected * AdvectionWeight + Proximity * P.ProximityWeight : One;
+				const Fix64 N = Noise::Fractal2D(RainSeed, Fix64::FromInt(static_cast<int32>(X)) * NoiseScale,
+												 Fix64::FromInt(static_cast<int32>(Y)) * NoiseScale, Local);
+				M = Fix64::Clamp(M + N * P.MoistureNoise, Fix64::Zero(), One);
+				Moisture[I] = M.Raw;
+			}
+		}
+
+		for (uint32 I = 0; I < Grid.TileCount(); ++I)
+		{
+			const bool Land = (Terrain[I] & TerrainFlag::Land) != 0;
+			BiomeLayer[I] = static_cast<uint8>(ClassifyBiome(
+				Fix64::FromRaw(Temperature[I]), Fix64::FromRaw(Moisture[I]), Fix64::FromRaw(Elevation[I] - Sea), Land));
+		}
+		return true;
+	}
+
+	ClimateStats MeasureClimate(const WorldMap& Map, const WorldLayers& Layers)
+	{
+		ClimateStats S;
+		if (!Map.IsReady())
+		{
+			return S;
+		}
+		const WorldGrid& Grid = Map.Grid();
+		const TileLayer<uint8>& Terrain = Map.GetLayer(Layers.Terrain);
+		const TileLayer<uint16>& SeaDistance = Map.GetLayer(Layers.SeaDistance);
+		const TileLayer<int64>& Temperature = Map.GetLayer(Layers.Temperature);
+		const TileLayer<int64>& Moisture = Map.GetLayer(Layers.Moisture);
+		const TileLayer<uint8>& BiomeLayer = Map.GetLayer(Layers.Biome);
+		S.MinTemperature = Fix64::Max();
+		S.MaxTemperature = Fix64::Min();
+		int64 MoistureSum = 0;
+		uint32 LandCount = 0;
+		for (uint32 I = 0; I < Grid.TileCount(); ++I)
+		{
+			const uint8 B = BiomeLayer[I] < static_cast<uint8>(Biome::Count) ? BiomeLayer[I] : 0;
+			++S.BiomeTiles[B];
+			S.MinTemperature = Fix64::MinOf(S.MinTemperature, Fix64::FromRaw(Temperature[I]));
+			S.MaxTemperature = Fix64::MaxOf(S.MaxTemperature, Fix64::FromRaw(Temperature[I]));
+			S.MaxSeaDistance =
+				SeaDistance[I] > S.MaxSeaDistance && SeaDistance[I] != 0xffff ? SeaDistance[I] : S.MaxSeaDistance;
+			if ((Terrain[I] & TerrainFlag::Land) != 0)
+			{
+				MoistureSum += Moisture[I] >> 16; // keep the sum in range
+				++LandCount;
+			}
+		}
+		for (uint32 B = 1; B < static_cast<uint32>(Biome::Count); ++B)
+		{
+			S.DistinctLandBiomes += S.BiomeTiles[B] > 0 ? 1u : 0u;
+		}
+		S.MeanLandMoisture = LandCount == 0 ? Fix64::Zero() : Fix64::FromRaw((MoistureSum / LandCount) << 16);
+		return S;
+	}
+
+	void ExportBiomeAscii(const WorldMap& Map, const WorldLayers& Layers, uint32 Columns, std::string& Out)
+	{
+		Out.clear();
+		if (!Map.IsReady() || Columns == 0)
+		{
+			return;
+		}
+		const WorldGrid& Grid = Map.Grid();
+		const TileLayer<uint8>& BiomeLayer = Map.GetLayer(Layers.Biome);
+		const uint32 Cols = Columns > Grid.Width ? Grid.Width : Columns;
+		const uint32 CellW = Grid.Width / Cols;
+		const uint32 CellH = CellW * 2 > Grid.Height ? Grid.Height : CellW * 2;
+		const uint32 Rows = Grid.Height / CellH;
+		Out.reserve(static_cast<usize>(Rows) * (Cols + 1));
+		for (uint32 R = 0; R < Rows; ++R)
+		{
+			for (uint32 C = 0; C < Cols; ++C)
+			{
+				uint32 Counts[static_cast<uint32>(Biome::Count)] = {};
+				for (uint32 Y = R * CellH; Y < (R + 1) * CellH; ++Y)
+				{
+					for (uint32 X = C * CellW; X < (C + 1) * CellW; ++X)
+					{
+						const uint8 B = BiomeLayer[Y * Grid.Width + X];
+						++Counts[B < static_cast<uint8>(Biome::Count) ? B : 0];
+					}
+				}
+				uint32 Best = 0;
+				for (uint32 B = 1; B < static_cast<uint32>(Biome::Count); ++B)
+				{
+					if (Counts[B] > Counts[Best])
+					{
+						Best = B;
+					}
+				}
+				Out.push_back(BiomeGlyph(static_cast<Biome>(Best)));
 			}
 			Out.push_back('\n');
 		}
