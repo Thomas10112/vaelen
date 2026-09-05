@@ -69,7 +69,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 |---|---|---|---|
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
-| 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | IN PROGRESS (02.01-02.02 VALIDATED headless; 02.03-02.08 PLANNED) |
+| 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | IN PROGRESS (02.01-02.03 VALIDATED headless; 02.04-02.08 PLANNED) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | PLANNED |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
@@ -469,13 +469,32 @@ deterministic, and every one of these was checked against determinism first):
   can share; sensitivity tests sample away from cell centres.
 - Decision: ADR-0017.
 
-### 02.03 Elevation and coastline
+### 02.03 Elevation and coastline - VALIDATED (headless)
 
-- Continental mask, fractal relief, uplift ridges, sea level, land/sea classification,
-  slope layer; the map has a coastline that is neither a blob nor confetti (measured:
-  land fraction in a configured band, largest landmass fraction, coastline length).
-- Tests: frozen elevation digest at 64 and 256, invariants (every tile classified,
-  sea below sea level, slope bounded), ASCII export for inspection.
+- Delivered: `WorldGen.h/.cpp` - `WorldLayers::Declare` (elevation Fix64, terrain
+  flags, slope), `ParamIndex` names into the 32-slot parameter block that replaced the
+  reserved words of `WorldGenConfig` (save format 3), `ElevationParams::Resolve` with
+  defaults where the config says zero, `GenerateElevation` (stage seeds derived from the
+  world seed and the stage name; a warped continental mask at 3 lattice cells across the
+  map plus a bias, an edge falloff that drops the mask to deep sea along the border, a
+  6-octave relief and cubed ridge noise that rises only where the continent is solid),
+  `ClassifyTerrain` (land above the sea level, coast and shore from the 4-neighbours,
+  border, slope as the max |dz| over the 8 neighbours), `MeasureElevation` (land and
+  sea tiles, coast tiles, border land, landmasses by 4-connected flood fill in scan
+  order, extremes), `LayerDigest`, `ExportAscii` (downsampled 2:1 cells, six glyphs).
+  A `Fix64::Div` fast path (dividend below 2^32) with the same result.
+- Tests (6): the AELVOR seed at 256 has 39.4 % land, a largest landmass holding 98.4 %
+  of the land, no land on the border, 1607 coast tiles, mountains above 1500 and sea
+  below -1000, slopes below 1500, and passes every invariant (flags versus elevation,
+  coast versus neighbours, border, slope recomputed); seeds change the world and the
+  same seed repeats it; continent bias adds land, a higher sea level drowns land
+  without touching the elevation layer; a 96 x 40 map; snapshot round trip and
+  regeneration in the restored world; misuse before Reset; frozen digests at 64 and
+  256 for elevation and terrain reproduced by clang and gcc (MSVC and AppleClang by
+  CI); the 1024 x 1024 baseline (6.7 s debug, 0.74 s release).
+- Lesson: the log line is capped at 2048 bytes; the 64 x 32 ASCII picture is logged
+  in four slices.
+- Decision: ADR-0018.
 
 ### 02.04 Climate and biomes
 
@@ -531,35 +550,38 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 02 — WORLD
-TASK        : 02.02 — FIXED-POINT MATH & DETERMINISTIC NOISE
+TASK        : 02.03 — ELEVATION AND COASTLINE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████░░░░░░░░░░░░░░░░░░ 25%
+█████████░░░░░░░░░░░░░░░ 37%
 
 CURRENTLY
-→ 02.02 closed: Fix64 Q32.32 (portable 128-bit multiply/divide, digit-by-digit sqrt,
-  wrapping defined everywhere), value/gradient/fractal/warped lattice noise, no libm
+→ 02.03 closed: the first map of AELVOR - warped continental mask, fractal relief,
+  sharpened ridges, sea all around; land/sea/coast/shore/border flags, slope, ASCII export
 
 COMPLETED
 ✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION (CI 9/9 on every run)
-✓ 02.01 Grid, tile layers, config, snapshot section (10 tests, CI run 18 green)
-✓ 02.02 Fixed-point math and deterministic noise (9 tests: FixedPoint 4, Noise 5)
+✓ 02.01 Grid, tile layers, config, snapshot section (10 tests, CI run 18)
+✓ 02.02 Fixed-point math and deterministic noise (9 tests, CI run 19)
+✓ 02.03 Elevation and coastline (6 tests: WorldGen)
 
 NEXT
-→ 02.03 Elevation and coastline (continental mask, relief, sea level, slope, ASCII export)
-→ 02.04 Climate and biomes
+→ 02.04 Climate and biomes (latitude bands, lapse, winds and rain shadow, moisture, biome table)
+→ 02.05 Hydrology (D8 flow, depression filling, rivers and lakes as entities)
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/{FixedPoint.h, Noise.h}, Private/Noise.cpp
-+ Tests/Sim/{Test_FixedPoint.cpp, Test_Noise.cpp}
++ Source/VaelenSim/Public/Vaelen/Sim/WorldGen.h, Private/WorldGen.cpp
+~ WorldMap.h (32-slot parameter block), Version.h (save format 3), FixedPoint.h (Div fast path)
++ Tests/Sim/Test_WorldGen.cpp ; replay/mini-world state digests refrozen for format 3
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 96 (93 without asserts); ctest 35/35 in all six Linux presets
-✓ Frozen noise values (lattice hash, value, gradient, fractal, warped, 128x128 field digest)
-  identical on clang 18 and gcc 13; MSVC and AppleClang checked by CI
-✓ Purity: 40 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 102 (99 without asserts); ctest 36/36 in all six Linux presets
+✓ AELVOR seed at 256: land 39.4 %, largest landmass 98.4 % of land, 1607 coast tiles, elevation -6126..2071
+✓ Frozen: elevation64 d60a6e03b595c384, elevation256 ccb1b28371d1fbbb, terrain256 7676272e3fcdf6be (clang = gcc)
+✓ Baseline 1024 x 1024: 6.7 s debug, 0.74 s release (1.4 M tiles/s)
+✓ Purity: 42 files, 0 violations
 
 BLOCKERS
 None

@@ -20,6 +20,7 @@ set(VAELEN_SIM_PUBLIC_HEADERS
   Public/Vaelen/Sim/WorldMap.h
   Public/Vaelen/Sim/FixedPoint.h
   Public/Vaelen/Sim/Noise.h
+  Public/Vaelen/Sim/WorldGen.h
 )
 
 set(VAELEN_SIM_SOURCES
@@ -33,6 +34,7 @@ set(VAELEN_SIM_SOURCES
   Private/Snapshot.cpp
   Private/WorldMap.cpp
   Private/Noise.cpp
+  Private/WorldGen.cpp
 )
 
 add_library(VaelenSim STATIC ${VAELEN_SIM_SOURCES} ${VAELEN_SIM_PUBLIC_HEADERS})

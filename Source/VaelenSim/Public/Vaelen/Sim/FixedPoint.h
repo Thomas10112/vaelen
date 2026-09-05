@@ -128,6 +128,12 @@ namespace Vaelen
 			const bool Negative = (A.Raw < 0) != (B.Raw < 0);
 			const uint64 UA = A.Raw < 0 ? uint64{0} - static_cast<uint64>(A.Raw) : static_cast<uint64>(A.Raw);
 			const uint64 UB = B.Raw < 0 ? uint64{0} - static_cast<uint64>(B.Raw) : static_cast<uint64>(B.Raw);
+			// Fast path (same result): a dividend below 2^32 shifted by 32 fits in 64 bits.
+			if ((UA >> 32) == 0)
+			{
+				const uint64 Q = (UA << 32) / UB;
+				return FromRaw(Negative ? static_cast<int64>(uint64{0} - Q) : static_cast<int64>(Q));
+			}
 			// Dividend = UA << 32 as (High, Low); long division bit by bit.
 			uint64 High = UA >> 32;
 			uint64 Low = UA << 32;

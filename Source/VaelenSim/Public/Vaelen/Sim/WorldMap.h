@@ -23,10 +23,14 @@ namespace Vaelen
 	/// Plain data: everything that parameterises world generation besides the seed.
 	struct WorldGenConfig
 	{
+		static constexpr uint32 ParamCount = 32;
+
 		uint32 Width = 256;
 		uint32 Height = 256;
-		int64 SeaLevel = 0;		 ///< Q32.32 elevation of the sea (02.03)
-		uint32 Reserved[4] = {}; ///< stage parameters arrive with their stages; zero until then
+		int64 SeaLevel = 0; ///< Q32.32 elevation of the sea (02.03)
+		/// Stage parameters as raw Q32.32 or integer values, addressed by the
+		/// named indices each stage declares (WorldGen.h); zero means "default".
+		int64 Params[ParamCount] = {};
 
 		constexpr bool IsValid() const noexcept { return WorldGrid{Width, Height}.IsValid(); }
 		constexpr WorldGrid Grid() const noexcept { return WorldGrid{Width, Height}; }

@@ -21,7 +21,8 @@ using namespace Vaelen;
 // Recorded on clang 18 / Linux x86_64 on 2026-09-05 (01.07).
 #define VAELEN_REPLAY_FROZEN_EVENTS 11229ull
 #define VAELEN_REPLAY_FROZEN_ALIVE 199ull
-#define VAELEN_REPLAY_FROZEN_STATE 0x73ad25a03c340ff5ull /* format 2 (02.01); format 1 was dbb98f0004e8cd91 */
+#define VAELEN_REPLAY_FROZEN_STATE                                                                                     \
+	0x2d6381bc5b561332ull /* format 3 (02.03); format 2 was 73ad25a03c340ff5, format 1 dbb98f0004e8cd91 */
 #define VAELEN_REPLAY_FROZEN_LOG 0x2c1e775e47e45051ull
 
 namespace

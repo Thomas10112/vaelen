@@ -15,8 +15,8 @@
 
 using namespace Vaelen;
 
-static_assert(VAELEN_SAVE_FORMAT_VERSION == 2, "02.01 introduced the map section as format 2");
-static_assert(sizeof(WorldGenConfig) == 4 + 4 + 8 + 16);
+static_assert(VAELEN_SAVE_FORMAT_VERSION == 3, "02.01 introduced the map section (2); 02.03 the parameter block (3)");
+static_assert(sizeof(WorldGenConfig) == 4 + 4 + 8 + 32 * 8);
 
 namespace
 {
@@ -180,7 +180,7 @@ VAELEN_TEST(WorldMap, UnsetMapRoundTripsAndVersionOneIsRejected)
 	VT_CHECK_EQ(B.Instance.Map().GetLayer(B.Elevation).Count(), 0u);
 	VT_CHECK(B.Save() == Image);
 
-	// An image stamped with the previous format is refused before any state changes.
+	// An image stamped with an older format is refused before any state changes.
 	std::vector<uint8> Old = Image;
 	uint8* Bytes = Old.data();
 	VT_REQUIRE(Bytes != nullptr && Old.size() > 16); // keeps gcc -O2 -Wnull-dereference honest

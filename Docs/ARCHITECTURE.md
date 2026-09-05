@@ -126,7 +126,7 @@ yet. Later kernel modules follow the same pattern with their own `VAELEN_<MODULE
 | Module | Kind | Layer | Depends on | Status |
 |---|---|---|---|---|
 | `VaelenCore` | Kernel (UBT Runtime module, `PreDefault`; CMake static library) | Foundation of SIMULATION and WORLD STATE | UBT: `Core` (module registration only). CMake: none. | VALIDATED headless; UNVERIFIED under UBT |
-| `VaelenSim` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 01 | SIMULATION (entities, components, systems, clock, events) | UBT: `Core`, `VaelenCore`. CMake: `Vaelen::Core`. | Phase 01 VALIDATED headless, 02.01-02.02 VALIDATED headless; UNVERIFIED under UBT |
+| `VaelenSim` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 01 | SIMULATION (entities, components, systems, clock, events) | UBT: `Core`, `VaelenCore`. CMake: `Vaelen::Core`. | Phase 01 VALIDATED headless, 02.01-02.03 VALIDATED headless; UNVERIFIED under UBT |
 | `Vaelen` | Unreal primary game module (`IMPLEMENT_PRIMARY_GAME_MODULE`, Runtime, `Default`) | Engine bridge (PRESENTATION side) | `Core`, `CoreUObject`, `Engine`, `InputCore`, `VaelenCore` | UNVERIFIED (requires UE 5.6) |
 
 `Vaelen` installs a kernel log sink (`FVaelenLogSink`, routes `Vaelen::LogRecord` to
@@ -140,7 +140,7 @@ in `ExtraModuleNames`.
 | Phase | Module | Kind | Notes |
 |---|---|---|---|
 | 00 FOUNDATION | `VaelenCore` | Kernel | Exists (see above). |
-| 01 CORE SIMULATION | `VaelenSim` | Kernel | Exists: entity handles and registry (01.01), component type registry, pools and store (01.02), systems, scheduler and LOD periods (01.03), clock and calendar (01.04), events, event log and bus (01.05), world, archives and versioned snapshot (01.06), deterministic replay gate (01.07), long-duration mini-world gate (01.08), tile grid, tile layers and world map state block (02.01), Q32.32 fixed point and deterministic lattice noise (02.02). Phase 01 closed (headless); Phase 02 in progress. |
+| 01 CORE SIMULATION | `VaelenSim` | Kernel | Exists: entity handles and registry (01.01), component type registry, pools and store (01.02), systems, scheduler and LOD periods (01.03), clock and calendar (01.04), events, event log and bus (01.05), world, archives and versioned snapshot (01.06), deterministic replay gate (01.07), long-duration mini-world gate (01.08), tile grid, tile layers and world map state block (02.01), Q32.32 fixed point and deterministic lattice noise (02.02), elevation and coastline generation with terrain flags, slope and ASCII export (02.03). Phase 01 closed (headless); Phase 02 in progress. |
 | 02 WORLD | `VaelenWorld` | Kernel | Regions, tiles, rivers, resource deposits (`IdKind` 10-13 already reserved). |
 | 03 HISTORY | `VaelenHistory` | Kernel | Historical record, eras, cultures, languages, religions. |
 | 04 POPULATION | `VaelenPopulation` | Kernel | Persons, families, demographics. |

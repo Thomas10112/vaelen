@@ -40,6 +40,7 @@ Rules for this file:
 | [0015](#adr-0015-one-world-object-owns-the-state-snapshots-are-a-symmetric-versioned-digest-checked-byte-image-stored-types-carry-no-padding) | One World object owns the state; snapshots are a symmetric, versioned, digest-checked byte image; stored types carry no padding | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0016](#adr-0016-tiles-are-dense-typed-layers-not-entities-the-world-map-is-a-state-block-with-a-code-declared-layer-set) | Tiles are dense typed layers, not entities; the world map is a state block with a code-declared layer set | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0017](#adr-0017-world-generation-uses-q3232-fixed-point-and-integer-lattice-noise-no-floating-point-no-libm) | World generation uses Q32.32 fixed point and integer lattice noise; no floating point, no libm | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0018](#adr-0018-world-generation-is-a-pipeline-of-pure-stages-with-derived-seeds-a-32-slot-parameter-block-and-a-sea-bounded-continent) | World generation is a pipeline of pure stages with derived seeds, a 32-slot parameter block and a sea-bounded continent | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -1154,6 +1155,65 @@ Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/FixedPoint.h`,
 `Noise.h`, `Source/VaelenSim/Private/Noise.cpp`, `Tests/Sim/Test_FixedPoint.cpp`,
 `Test_Noise.cpp` (9 tests). Headless VALIDATED on the six Linux presets; engine side
 UNVERIFIED.
+
+---
+
+## ADR-0018: World generation is a pipeline of pure stages with derived seeds, a 32-slot parameter block and a sea-bounded continent
+
+### Context
+
+02.03 is the first stage that turns the seed into terrain. The way it is shaped
+decides how every later stage (climate, hydrology, regions, deposits) plugs in, how
+parameters travel through snapshots, and what kind of world AELVOR is.
+
+### Decision
+
+1. Each stage is a pure function of (seed, config, earlier layers). It derives its own
+   seeds from the world seed and its stage name through the lattice hash, writes only
+   its own layers, and has a frozen digest, so a change is confined to that stage and
+   what follows it.
+2. Stage parameters live in `WorldGenConfig::Params`, 32 raw Q32.32 / integer slots
+   addressed by named indices; zero means "use the stage's default". Adding a parameter
+   does not change the config's layout or the save format. The slots replaced the
+   reserved words of 02.01 (save format 3).
+3. The world is a sea-bounded continent: a warped low-frequency mask plus a bias makes
+   the land, an edge falloff sinks everything near the border, fractal relief adds
+   detail everywhere and cubed ridge noise raises mountains only where the mask is
+   solid. Sea level is a config value; classification (land, coast, shore, border) and
+   slope derive from elevation and are recomputed by `ClassifyTerrain` whenever a later
+   stage edits elevation.
+4. Inspection is by numbers and ASCII: `MeasureElevation` (land fraction, largest
+   landmass, coast tiles, border land, extremes) and `ExportAscii`, both used by the
+   tests and readable on a phone.
+
+### Alternatives and decision rule
+
+- One monolithic generator: rejected; a frozen digest per stage localises changes and
+  lets later phases regenerate a single layer.
+- Typed parameter structs per stage inside the config: rejected for now; every new
+  stage would change the config layout and the save format.
+- A wrapping (toroidal) world or coast-to-edge land: rejected; a sea-bounded continent
+  keeps every later algorithm (flow, regions, routes) free of edge cases and matches a
+  single-continent AELVOR; the parameters can still shrink the falloff later.
+- Decided by evolvability (stages, slots) and robustness (bounded world), consistent
+  with determinism (derived seeds, integer math per ADR-0017).
+
+### Consequences
+
+- Later stages append to `WorldLayers::Declare` and `ParamIndex`; they never edit
+  another stage's layer except elevation through documented calls followed by
+  `ClassifyTerrain`.
+- The elevation digest depends on the parameter defaults: changing a default is a
+  deliberate change of every world and of the frozen tests.
+- Generation time is dominated by three fractal evaluations per tile (0.74 s at
+  1024 x 1024 in release); the 02.08 baseline records the whole pipeline.
+
+### Status
+
+Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/WorldGen.h`,
+`WorldMap.h`, `Source/VaelenSim/Private/WorldGen.cpp`,
+`Source/VaelenCore/Public/Vaelen/Core/Version.h`, `Tests/Sim/Test_WorldGen.cpp`
+(6 tests). Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
 

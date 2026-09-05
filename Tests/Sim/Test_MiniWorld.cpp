@@ -22,7 +22,8 @@ using namespace Vaelen;
 
 // Frozen end-state of the reference run (see MiniWorld.FrozenEndStateIsReproduced).
 // Recorded on clang 18 / Linux x86_64 on 2026-09-05 (01.08).
-#define VAELEN_MINIWORLD_FROZEN_STATE 0x1d5174a4c8f9be17ull /* format 2 (02.01); format 1 was 0b6f6e9bd5887d35 */
+#define VAELEN_MINIWORLD_FROZEN_STATE                                                                                  \
+	0xae5502465ee0a9acull /* format 3 (02.03); format 2 was 1d5174a4c8f9be17, format 1 0b6f6e9bd5887d35 */
 #define VAELEN_MINIWORLD_FROZEN_LOG 0x60cd10a389895804ull
 #define VAELEN_MINIWORLD_FROZEN_EVENTS 305027ull
 #define VAELEN_MINIWORLD_FROZEN_ALIVE 41ull
