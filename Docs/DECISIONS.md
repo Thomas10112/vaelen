@@ -49,6 +49,7 @@ Rules for this file:
 | [0024](#adr-0024-history-is-eras-opened-by-span-or-caused-request-plus-a-chronicle-of-record-entities-with-every-piece-of-state-in-components) | History is eras opened by span or caused request plus a chronicle of Record entities, with every piece of state in components | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0025](#adr-0025-population-is-coarse-per-region-cultures-are-entities-and-a-culture-splits-by-graph-distance-with-lineage-spacing) | Population is coarse per region, cultures are entities, and a culture splits by graph distance with lineage spacing | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0026](#adr-0026-names-are-built-from-a-per-language-phonology-pronounceable-by-construction-unique-per-scope-and-stored-as-fixed-size-components) | Names are built from a per-language phonology, pronounceable by construction, unique per scope, and stored as fixed-size components | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0027](#adr-0027-religions-are-entities-born-from-a-founding-event-with-believers-per-region-bounded-by-its-people-spreading-along-the-graph-and-with-migration) | Religions are entities born from a founding event, with believers per region bounded by its people, spreading along the graph and with migration | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -1676,6 +1677,69 @@ piece of state must survive snapshots byte for byte.
 Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/Naming.h`,
 `Source/VaelenSim/Private/Naming.cpp`, `Tests/Sim/Test_Naming.cpp` (5 tests). Headless
 VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0027: Religions are entities born from a founding event, with believers per region bounded by its people, spreading along the graph and with migration
+
+### Context
+
+The master prompt wants religions to be born from cultures and events, to spread along
+migration, to split, and to carry tenets that later phases (politics, persons, dialogue)
+read. Phase 03 already has cultures and coarse population per region (ADR-0025), the
+region graph (ADR-0021), eras with causes (ADR-0024) and languages (ADR-0026). Disasters
+and omens arrive in 03.05 and must be able to found religions too.
+
+### Decision
+
+1. A religion is an entity whose component records the founding event id, and that id
+   is never zero: foundings come only through a request queue that carries the causing
+   event. Two sources exist today (a new era, a culture split where a faith is held) and
+   `RequestFounding(region, cause, kind)` is the door for every later source.
+2. Believers are counted per region in a `RegionFaith` component (four slots) and are
+   bounded by the region's people: the yearly step clamps first, every conversion is
+   capped by the live room, and a migration wave carries believers in the source's
+   proportions and never beyond the destination's people. The bound is exact once the
+   waves of the last tick are delivered (the bus dispatches at the start of the next
+   tick).
+3. Spread is local: the majority faith of a region converts a share of that region's
+   unconverted and a smaller share of its neighbours' unconverted, decided on the
+   start-of-year state in region order. Faith reaches a new region only from an
+   adjacent majority or with a wave, so it follows the graph by construction.
+4. A schism is a founding whose parent is the majority faith of the region; its tenets
+   are the parent's with one or two axes moved. Tenets are eight bytes derived from the
+   identity, exposed as data and not interpreted here.
+5. Pending requests live in a singleton `FaithState` component (eight slots, first
+   request per region wins) so a snapshot taken between a request and the yearly tick
+   restores the request; the listener and the system hold no state.
+
+### Alternatives and decision rule
+
+- One religion per culture at founding: rejected; the prompt wants religions caused by
+  events, and a culture without a faith is a valid state.
+- Believers per person: not possible before Phase 04; per region matches the
+  population model and keeps 500 years at 128 in a fraction of a second.
+- Spread as a global diffusion: rejected; the graph-local rule is what the test can
+  prove (a region gains a faith only next to a converted region) and what the world
+  reads as history.
+- Decided by robustness (bound enforced at every entry point, requests bounded and
+  refused with a counter) and simplicity (one rule table, integer only).
+
+### Consequences
+
+- Four faith slots per region: a fifth faith cannot enter until one fades below the
+  fade share; the refused counter and the unchanged state make this visible.
+- A founding request in a region with nobody in it is refused at the yearly tick, not
+  when requested, so the request's cause is still recorded in `Refused`.
+- Religion names depend on the language of the founding culture existing; a religion
+  founded before its culture's language is named the following year.
+
+### Status
+
+Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/Religion.h`,
+`Source/VaelenSim/Private/Religion.cpp`, `Source/VaelenSim/Public/Vaelen/Sim/Naming.h`
+(`NameScope::Religion`), `Tests/Sim/Test_Religion.cpp` (5 tests). Headless VALIDATED on
+the six Linux presets; engine side UNVERIFIED.
 
 ---
 

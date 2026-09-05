@@ -87,6 +87,7 @@ namespace Vaelen::History
 		Lake,
 		Era,
 		Person,
+		Religion,
 		Count
 	};
 

@@ -70,7 +70,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
-| 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | IN PROGRESS (03.01-03.03 VALIDATED headless; 03.04-03.08 PLANNED) |
+| 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | IN PROGRESS (03.01-03.04 VALIDATED headless; 03.05-03.08 PLANNED) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
@@ -760,11 +760,50 @@ Decisions taken up front (each becomes an ADR when its task closes):
   128: state `871cdd11bea18906`, 154 names, culture 1 "Oldegedim", region 1 "Thuthanyo".
 - Decision: ADR-0026.
 
-### 03.04 Religions
+### 03.04 Religions - VALIDATED (headless)
 
-- `Religion` entities born from cultures and events (omens, disasters, founders), spread
-  along migration, schisms; tenets as data that later phases read.
-- Tests: spread follows the graph, no religion without a founding event.
+- Delivered: `Religion.h/.cpp` - `Tenets` (eight axes 0-255: authority, nature,
+  ancestors, war, trade, mystery, purity, tolerance), `ReligionInfo` (culture, parent,
+  generation, home region, founding kind, founding tick, founding event id - never 0,
+  identity, creed; 56 bytes), `RegionFaith` component on regions (four faith slots with
+  believers, majority; exact bookkeeping, saturating add, zero adds take no slot),
+  `FaithState` singleton (religion count, up to eight pending founding requests,
+  requested and refused counters), `ReligionTypes::Declare`, `InitializeFaith` (once, on
+  a fresh world), `ReligionRules` (era foundings, schisms on splits with a hashed chance,
+  founding share, yearly conversion inside a region and spread to neighbours, fade share),
+  `DeriveTenets`, `SchismTenets` (one or two axes moved visibly), `ReligionSystem` (LOD
+  World, after Population: clamps believers to the people of each region, founds the
+  pending requests in order - a schism when the region's majority faith is the parent -
+  with `FoundingSharePerMille` of the region converted at once, spreads every majority
+  faith inside its region and into its neighbours' unconverted, capped by the live room,
+  publishes RegionConverted when a majority changes, names religions in the founding
+  culture's language when `NameWith` is set), `ReligionSystem::RequestFounding(region,
+  cause, kind)` for later phases (first request per region wins, null causes refused),
+  `FaithListener` (MigrationWave carries believers with the wave in the source's
+  proportions, never beyond the destination's people; CultureSplit requests a schism
+  where a faith is held; EraOpened requests a founding in the largest culture's home
+  when it has no faith), events ReligionFounded and Schism (subject the religion, cause
+  the founding event), RegionConverted; `MeasureFaith`, `ExportFaithAscii`;
+  `NameScope::Religion`.
+- Rule: no religion without a founding event. Believers never exceed a region's people
+  once the waves of the last tick are delivered (the bus dispatches at the start of the
+  next tick).
+- Tests (5): exact bookkeeping (ties to the lowest index, four slots, saturation,
+  removals clamped), tenets derived deterministically and schisms moving one or two axes,
+  component sizes; 500 years on AELVOR 128 with the invariants each century (believers
+  bounded and consistent), at least three religions and one schism, most people and
+  regions converted, every religion's founding event found in the log before its
+  founding and of the right kind (era opening or culture split at the same region), every
+  founding event caused by that event and matching the entity, conversions beyond the
+  founding regions, names in the founding culture's language, faith map logged; spread
+  along the graph proven by running the yearly step by hand for 40 years (a region gains
+  a faith only next to a region where it was the majority; believers only where people
+  live), the request queue (duplicates, null cause, overflow to eight, unsettled region
+  refused at the yearly tick, no faith state), double initialisation refused; two worlds
+  identical, a pending request surviving a snapshot and the restored world continuing
+  identically, silent rules leaving the world faithless, zeal converting more; frozen 500
+  years at 128: state `3d9bf5c1c7732241`, 10 religions, 45 480 believers.
+- Decision: ADR-0027.
 
 ### 03.05 Disasters and omens
 
@@ -806,6 +845,43 @@ class and Enhanced Input mappings arrive in Phase 10.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VAELEN BUILD STATUS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PHASE       : 03 — HISTORY
+TASK        : 03.04 — RELIGIONS
+STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
+
+PROGRESS
+████████████░░░░░░░░░░░░ 50%
+
+CURRENTLY
+→ 03.04 closed: religions are entities born from an event (a new era, a culture split as
+  schism, or a requested founding with its cause), believers counted per region and bounded
+  by its people, faith spreading yearly along the region graph and travelling with migration
+  waves, eight tenet axes as data, names in the founding culture's language
+
+COMPLETED
+✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD (headless)
+✓ 03.01 Eras (CI 26) ; 03.02 Cultures (CI 27) ; 03.03 Languages (CI 28) ; 03.04 Religions (5 tests: Religion)
+
+NEXT
+→ 03.05 Disasters and omens (drought, flood, eruption, plague with causal consequences)
+→ 03.06 Pre-history run and the starting state ; 03.07 Queryable history ; 03.08 gate
+→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
+
+FILES
++ Source/VaelenSim/Public/Vaelen/Sim/Religion.h, Private/Religion.cpp
+~ Naming.h (NameScope::Religion)
++ Tests/Sim/Test_Religion.cpp
+
+TESTS
+✓ Core 133 (108 without asserts) + Sim 145 (142 without asserts); ctest 45/45 in all six Linux presets
+✓ AELVOR 128 after 500 years: 10 religions (8 schisms), 45 480 believers of 47 587 people, 74/99 regions
+  with a majority faith, every religion traced to its founding event; frozen state 3d9bf5c1c7732241
+✓ Purity: 58 files, 0 violations
+
+BLOCKERS
+∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 03 — HISTORY
