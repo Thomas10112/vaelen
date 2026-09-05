@@ -44,6 +44,7 @@ Rules for this file:
 | [0019](#adr-0019-climate-is-a-row-wise-advection-model-with-resolution-independent-decay-and-a-threshold-biome-table) | Climate is a row-wise advection model with resolution-independent decay and a threshold biome table | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0020](#adr-0020-hydrology-fills-depressions-by-priority-flood-fills-shallow-basins-with-sediment-and-keeps-deep-ones-as-lakes-rivers-and-lakes-are-entities) | Hydrology fills depressions by priority flood, fills shallow basins with sediment and keeps deep ones as lakes; rivers and lakes are entities | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0021](#adr-0021-regions-grow-from-lattice-seeds-by-terrain-cost-with-a-merge-floor-the-adjacency-graph-is-derived-not-stored) | Regions grow from lattice seeds by terrain cost with a merge floor; the adjacency graph is derived, not stored | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0022](#adr-0022-deposits-come-from-an-explicit-suitability-table-hashed-draws-and-one-per-kind-per-cell-spacing) | Deposits come from an explicit suitability table, hashed draws and one-per-kind-per-cell spacing | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -1389,6 +1390,56 @@ and cheaply at 1024 x 1024.
 
 Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/Regions.h`,
 `Source/VaelenSim/Private/Regions.cpp`, `Tests/Sim/Test_Regions.cpp` (5 tests).
+Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0022: Deposits come from an explicit suitability table, hashed draws and one-per-kind-per-cell spacing
+
+### Context
+
+Resources drive the economy, settlement and conflict of later phases. The master
+prompt forbids hand placement: deposits must follow from the seed and the terrain,
+be explainable ("why is there iron here"), be spread rather than clumped, and stay
+deterministic and cheap.
+
+### Decision
+
+1. Suitability is an explicit, public, pure function of (kind, land, coast, biome,
+   elevation above sea, slope, river, lake adjacency, river adjacency) returning 0 to
+   1000. Every rule is a line in one table and every line has a test.
+2. Placement is a per-tile, per-kind hashed draw: chance = base chance of the kind
+   times suitability times density. The hash is the lattice hash of the stage seed,
+   the kind and the coordinates, so a tile's outcome never depends on scan order.
+3. Spacing: one deposit per kind per cell of `DepositSpacing` tiles, the cell keeping
+   the best (suitability, hash) draw; one deposit per tile, first kind wins.
+4. Richness is seven tenths suitability plus a hashed share; the tier is the kind's
+   base tier (common, uncommon, rare) raised for the richest draws. Each deposit is an
+   entity of kind ResourceDeposit carrying its region index.
+
+### Alternatives and decision rule
+
+- Poisson-disc sampling per kind: rejected; the cell rule gives a comparable spread
+  with no iteration and an obvious determinism argument.
+- Suitability by learned or noise-driven fields: rejected; explainability and
+  testability of every rule matter more than variety, and the hash already adds it.
+- Placing deposits per region (quotas): deferred to the economy phases, which can
+  still add region-level resources on top of tile deposits.
+- Decided by robustness (explicit rules, frozen counts) and simplicity, consistent
+  with determinism.
+
+### Consequences
+
+- Balancing is a table edit plus a refreeze; the frozen counts at 256 make every
+  balance change deliberate.
+- The parameter block gains two deposit slots (27 and 28); slots 29 to 31 remain.
+- A deposit's `Region` is a snapshot of the region layer at generation time; if
+  regions are regenerated, deposits must be regenerated after them.
+
+### Status
+
+Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/Deposits.h`,
+`Source/VaelenSim/Private/Deposits.cpp`, `Tests/Sim/Test_Deposits.cpp` (5 tests).
 Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---

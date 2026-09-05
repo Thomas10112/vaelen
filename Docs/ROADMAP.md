@@ -69,7 +69,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 |---|---|---|---|
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
-| 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | IN PROGRESS (02.01-02.06 VALIDATED headless; 02.07-02.08 PLANNED) |
+| 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | IN PROGRESS (02.01-02.07 VALIDATED headless; 02.08 PLANNED) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | PLANNED |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
@@ -586,12 +586,32 @@ deterministic, and every one of these was checked against determinism first):
   baseline (2.2 s debug, 0.35 s release).
 - Decision: ADR-0021.
 
-### 02.07 Resource deposits
+### 02.07 Resource deposits - VALIDATED (headless)
 
-- Deposit placement from biome, elevation and hydrology (stone, ore, timber, clay,
-  salt, fertile soil) with rarity tiers, as entities with components; nothing is placed
-  by hand.
-- Tests: distribution bands per biome, no deposit on sea, frozen digests.
+- Delivered: `Deposits.h/.cpp` - `ResourceKind` (Stone, Timber, Clay, FertileSoil, Salt,
+  IronOre, CopperOre, Gold) with names, `DepositInfo` component (tile, kind, tier 1-3,
+  richness 1-1000, region), `DepositTypes` / `DepositLayers`, two parameter slots
+  (density, spacing), `DepositSuitability` (public, pure: timber on forests, clay on
+  wet lowland, fertile soil on arable lowland doubled by water, salt on hot dry coasts
+  or desert flats, stone on slopes and uplands away from rivers, iron and copper by
+  altitude with biome factors, gold above 1400 units and richer on mountain rivers),
+  `GenerateDeposits` (per tile and kind a hashed draw against base chance times
+  suitability times density; one deposit per kind per spacing cell keeps the best
+  draw; materialised in tile order with one deposit per tile; richness seven tenths
+  from suitability; the base tier of the kind raised for the richest draws; one entity
+  per deposit tagged with its region), `MeasureDeposits`.
+- Tests (5): every rule of the suitability table checked explicitly; the AELVOR map at
+  256 (every deposit on land where its rule allows it, layer and entities agree, fields
+  in range, region matches, every kind present, 1 % to 12.5 % of the land, tiers
+  strictly rarer upwards, gold rarer than stone, most regions hold something - 1364
+  deposits, 99 of 126 regions); determinism across worlds, snapshot round trip of
+  fourteen layers, lower density and wider spacing give fewer deposits, rerun replaces
+  the entities, misuse; frozen digest and count at 256; the 1024 x 1024 baseline
+  (0.6 s debug, 0.3 s release, 18 523 deposits).
+- Lesson: the first richness formula saturated at 1000 and promoted every deposit a
+  tier; the first slope limits left plains without clay or soil. Both are now pinned
+  by the frozen counts.
+- Decision: ADR-0022.
 
 ### 02.08 World-gen determinism and long-duration gate; Phase 02 close
 
@@ -618,38 +638,38 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 02 — WORLD
-TASK        : 02.06 — REGIONS
+TASK        : 02.07 — RESOURCE DEPOSITS
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████████████████░░░░░░ 75%
+█████████████████████░░░ 87%
 
 CURRENTLY
-→ 02.06 closed: land partitioned into contiguous regions grown from a jittered lattice by
-  terrain-cost search (ridges and rivers as borders), size floor by merging, region
-  entities with statistics, derived adjacency graph
+→ 02.07 closed: eight resource kinds placed from explicit suitability rules (biome,
+  elevation, slope, coast, rivers and lakes), hashed draws, one per kind per spacing cell,
+  richness and three rarity tiers, one entity per deposit
 
 COMPLETED
 ✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION (CI 9/9 on every run)
 ✓ 02.01 Grid (CI 18) ; 02.02 Fixed point and noise (CI 19) ; 02.03 Elevation (CI 20)
-✓ 02.04 Climate (CI 21) ; 02.05 Hydrology (CI 22)
-✓ 02.06 Regions (5 tests: Regions)
+✓ 02.04 Climate (CI 21) ; 02.05 Hydrology (CI 22) ; 02.06 Regions (CI pending)
+✓ 02.07 Resource deposits (5 tests: Deposits)
 
 NEXT
-→ 02.07 Resource deposits (biome/elevation/hydrology-driven placement, rarity tiers, entities)
-→ 02.08 Phase 02 gate (full pipeline frozen at 64/256/1024, regenerate twice, snapshot, baseline)
+→ 02.08 Phase 02 gate: one-call pipeline, frozen full-world digests at 64/256/1024 on four
+  compilers, regenerate twice byte for byte, snapshot re-hash, baseline; Phase 02 close
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/Regions.h, Private/Regions.cpp
-+ Tests/Sim/Test_Regions.cpp
++ Source/VaelenSim/Public/Vaelen/Sim/Deposits.h, Private/Deposits.cpp
++ Tests/Sim/Test_Deposits.cpp
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 118 (115 without asserts); ctest 39/39 in all six Linux presets
-✓ AELVOR at 256: 126 contiguous regions covering exactly the land, symmetric graph, max 8 neighbours;
-  frozen region256 02f8414a20107c30 (clang = gcc)
-✓ Baseline 1024 x 1024 regions: 2.2 s debug, 0.35 s release
-✓ Purity: 46 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 123 (120 without asserts); ctest 40/40 in all six Linux presets
+✓ AELVOR at 256: 1364 deposits, every kind present, tiers 1086/267/11, none on sea;
+  frozen deposit256 c0b544dc8c210da6 (clang = gcc)
+✓ Baseline 1024 x 1024 deposits: 0.6 s debug, 0.3 s release
+✓ Purity: 48 files, 0 violations
 
 BLOCKERS
 None

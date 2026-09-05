@@ -13,38 +13,38 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 02 — WORLD
-TASK        : 02.06 — REGIONS
+TASK        : 02.07 — RESOURCE DEPOSITS
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████████████████░░░░░░ 75%
+█████████████████████░░░ 87%
 
 CURRENTLY
-→ 02.06 closed: land partitioned into contiguous regions grown from a jittered lattice by
-  terrain-cost search (ridges and rivers as borders), size floor by merging, region
-  entities with statistics, derived adjacency graph
+→ 02.07 closed: eight resource kinds placed from explicit suitability rules (biome,
+  elevation, slope, coast, rivers and lakes), hashed draws, one per kind per spacing cell,
+  richness and three rarity tiers, one entity per deposit
 
 COMPLETED
 ✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION (CI 9/9 on every run)
 ✓ 02.01 Grid (CI 18) ; 02.02 Fixed point and noise (CI 19) ; 02.03 Elevation (CI 20)
-✓ 02.04 Climate (CI 21) ; 02.05 Hydrology (CI 22)
-✓ 02.06 Regions (5 tests: Regions)
+✓ 02.04 Climate (CI 21) ; 02.05 Hydrology (CI 22) ; 02.06 Regions (CI pending)
+✓ 02.07 Resource deposits (5 tests: Deposits)
 
 NEXT
-→ 02.07 Resource deposits (biome/elevation/hydrology-driven placement, rarity tiers, entities)
-→ 02.08 Phase 02 gate (full pipeline frozen at 64/256/1024, regenerate twice, snapshot, baseline)
+→ 02.08 Phase 02 gate: one-call pipeline, frozen full-world digests at 64/256/1024 on four
+  compilers, regenerate twice byte for byte, snapshot re-hash, baseline; Phase 02 close
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/Regions.h, Private/Regions.cpp
-+ Tests/Sim/Test_Regions.cpp
++ Source/VaelenSim/Public/Vaelen/Sim/Deposits.h, Private/Deposits.cpp
++ Tests/Sim/Test_Deposits.cpp
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 118 (115 without asserts); ctest 39/39 in all six Linux presets
-✓ AELVOR at 256: 126 contiguous regions covering exactly the land, symmetric graph, max 8 neighbours;
-  frozen region256 02f8414a20107c30 (clang = gcc)
-✓ Baseline 1024 x 1024 regions: 2.2 s debug, 0.35 s release
-✓ Purity: 46 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 123 (120 without asserts); ctest 40/40 in all six Linux presets
+✓ AELVOR at 256: 1364 deposits, every kind present, tiers 1086/267/11, none on sea;
+  frozen deposit256 c0b544dc8c210da6 (clang = gcc)
+✓ Baseline 1024 x 1024 deposits: 0.6 s debug, 0.3 s release
+✓ Purity: 48 files, 0 violations
 
 BLOCKERS
 None
@@ -95,7 +95,8 @@ on the engine side until the first UE 5.6 build.**
 | 02.04 | Climate and biomes: sea distance, latitude and lapse, advected moisture with rain shadow, biome table, seasons hook | VALIDATED: Climate 6 tests |
 | 02.05 | Hydrology: depression filling, D8 flow, accumulation, sediment fill vs lakes, rivers and lakes as entities | VALIDATED: Hydrology 5 tests |
 | 02.06 | Regions: jittered-lattice seeds, terrain-cost growth, size-floor merging, entities, adjacency graph | VALIDATED: Regions 5 tests |
-| 02.07-02.08 | Deposits, gate | PLANNED |
+| 02.07 | Resource deposits: suitability rules, hashed draws, spacing cells, richness and tiers, entities | VALIDATED: Deposits 5 tests |
+| 02.08 | Phase 02 gate | PLANNED |
 
 ## File status
 
@@ -129,6 +130,7 @@ the purity checker, applied to headers and sources).
 | `Public/Vaelen/Sim/WorldGen.h`, `Private/WorldGen.cpp` | VALIDATED (Phase 02) — covered by `Tests/Sim/Test_WorldGen.cpp`, `Test_Climate.cpp` |
 | `Public/Vaelen/Sim/Hydrology.h`, `Private/Hydrology.cpp` | VALIDATED (Phase 02) — covered by `Tests/Sim/Test_Hydrology.cpp` |
 | `Public/Vaelen/Sim/Regions.h`, `Private/Regions.cpp` | VALIDATED (Phase 02) — covered by `Tests/Sim/Test_Regions.cpp` |
+| `Public/Vaelen/Sim/Deposits.h`, `Private/Deposits.cpp` | VALIDATED (Phase 02) — covered by `Tests/Sim/Test_Deposits.cpp` |
 
 ### Tests/
 
@@ -157,8 +159,9 @@ the purity checker, applied to headers and sources).
 | `Sim/Test_Climate.cpp` (Phase 02) | VALIDATED | 6 |
 | `Sim/Test_Hydrology.cpp` (Phase 02) | VALIDATED | 5 |
 | `Sim/Test_Regions.cpp` (Phase 02) | VALIDATED | 5 |
+| `Sim/Test_Deposits.cpp` (Phase 02) | VALIDATED | 5 |
 
-Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 5 (118 tests, 2 124 947 checks; 115 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Registry`, `Sim.Shuffled` (39 entries in total).
+Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 5, Deposits 5 (123 tests, 2 125 027 checks; 120 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.Registry`, `Sim.Shuffled` (40 entries in total).
 
 ### Tools/ and CI
 
@@ -175,12 +178,12 @@ Toolchain: clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.1
 
 | Preset | Build | `ctest` | `VaelenCoreTests` | `VaelenSimTests` |
 |---|---|---|---|---|
-| linux-clang-debug | 0 warnings | 39/39 passed | 133 run, 133 passed, 22005 checks | 118 run, 118 passed, 2 124 947 checks |
-| linux-gcc-debug | 0 warnings | 39/39 passed | 133 run, 133 passed, 22005 checks | 118 run, 118 passed |
-| linux-clang-release | 0 warnings | 39/39 passed | 133 run, 133 passed, 22005 checks | 118 run, 118 passed |
-| linux-gcc-release | 0 warnings | 39/39 passed | 133 run, 133 passed, 22005 checks | 118 run, 118 passed |
-| linux-clang-noasserts | 0 warnings | 39/39 passed | 108 run, 108 passed, 21792 checks | 115 run, 115 passed |
-| linux-gcc-noasserts | 0 warnings | 39/39 passed | 108 run, 108 passed, 21792 checks | 115 run, 115 passed |
+| linux-clang-debug | 0 warnings | 40/40 passed | 133 run, 133 passed, 22005 checks | 123 run, 123 passed, 2 125 027 checks |
+| linux-gcc-debug | 0 warnings | 40/40 passed | 133 run, 133 passed, 22005 checks | 123 run, 123 passed |
+| linux-clang-release | 0 warnings | 40/40 passed | 133 run, 133 passed, 22005 checks | 123 run, 123 passed |
+| linux-gcc-release | 0 warnings | 40/40 passed | 133 run, 133 passed, 22005 checks | 123 run, 123 passed |
+| linux-clang-noasserts | 0 warnings | 40/40 passed | 108 run, 108 passed, 21792 checks | 120 run, 120 passed |
+| linux-gcc-noasserts | 0 warnings | 40/40 passed | 108 run, 108 passed, 21792 checks | 120 run, 120 passed |
 
 Mini-world baseline (100 000 ticks, 41 entities, 305 027 events, 34 168 227-byte snapshot), logged by `Sim.MiniWorld`, not asserted: clang debug 0.39 s (255 k ticks/s), gcc debug 0.40 s, clang release 0.135 s (739 k ticks/s), gcc release without assertions 0.127 s (790 k ticks/s); snapshot 0.09-0.14 s.
 
