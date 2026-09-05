@@ -95,7 +95,7 @@ Planned module names per phase are listed in `Docs/ARCHITECTURE.md` section 3.2.
 ## 4. Phase 00 - FOUNDATION: task breakdown and real status
 
 Status below was established by reading the code and the tests in `Tests/Core` and by
-running them (section 8). Test counts are from `VaelenCoreTests --list`. This numbering
+running them (section 9). Test counts are from `VaelenCoreTests --list`. This numbering
 is canonical: `Docs/STATUS.md` and commit subjects (`<phase>.<task>: ...`) use it.
 
 Master prompt scope item "interfaces de base": Phase 00 delivers only the two interfaces
@@ -128,7 +128,7 @@ Deliverables present:
   `.editorconfig`, `.gitattributes` (LF), `.gitignore`.
 - Layering and module plan: `Docs/ARCHITECTURE.md` sections 1-4.
 
-Verified: headless configure, build and `ctest` for all six Linux presets (section 8),
+Verified: headless configure, build and `ctest` for all six Linux presets (section 9),
 and the full GitHub CI matrix including Windows MSVC and macOS AppleClang (run 5, all
 9 jobs green). Not verified: any UBT build; every engine-facing file is labelled
 UNVERIFIED and has never been compiled in this repository.
@@ -389,9 +389,97 @@ and long-duration categories present; (5) ADR-0010 to ADR-0015, docs updated. Ve
 **Phase 01 VALIDATED on the headless side, UNVERIFIED on the engine side until the first
 UE 5.6 build.**
 
-## 6. Phases 02-20: notes
+## 6. Phase 02 - WORLD: task breakdown (PLANNED)
 
-No task breakdown exists yet for Phases 02-20; each is broken down when the previous
+Goal: the world of AELVOR derived from the seed alone - grid, terrain, climate,
+hydrology, regions, resource deposits - as simulation state that the Phase 01 kernel
+snapshots, replays and hashes like everything else. No content authoring, no rendering:
+inspection happens through an ASCII map export and through numbers.
+
+Decisions taken up front (each becomes an ADR when its task closes; the decision rule of
+the master prompt applies: robust, then simple, then performant, then evolvable, then
+deterministic, and every one of these was checked against determinism first):
+
+- Integer arithmetic only in world generation. Noise, interpolation, slopes and flow use
+  fixed-point (`int64`, Q32.32) and hash-based gradients; no `<cmath>`. Floating-point
+  results are bit-stable inside one toolchain (ADR-0009) but `sin`, `exp` and friends
+  differ between libm implementations, and the world must hash identically on clang,
+  gcc, MSVC and AppleClang like the Phase 01 frozen values do.
+- Tiles are not entities. A square grid of dense typed layers (`TileLayer<T>`, row-major,
+  one value per tile) is a new state block of the `World`, serialised as its own snapshot
+  section (`VAELEN_SAVE_FORMAT_VERSION` 1 -> 2). Regions, rivers, lakes and deposits are
+  entities with components: there are thousands of them, not millions.
+- Generation is a pipeline of stages, each a pure function of the seed, the
+  `WorldGenConfig` and the previous stages, each with its own derived stream
+  (`Root.Derive("elevation")`...) and its own frozen digest, so a change in one stage
+  is localised to that stage and everything after it.
+- Three reference sizes: 64x64 (unit tests), 256x256 (integration, frozen hashes),
+  1024x1024 (the AELVOR default; long-duration and performance baseline).
+
+### 02.01 Grid, tile layers, world-gen config and snapshot section
+
+- `TileCoord`, `WorldGrid` (width, height, bounds, neighbours in a fixed order),
+  `TileLayer<T>` (dense, plain data, hashable), `WorldGenConfig` (size, sea level,
+  stage parameters; plain data), the `WorldMap` state block owned by `World`, its
+  snapshot section and the format version bump with a test that version-1 images are
+  rejected explicitly.
+- Tests: coordinates and neighbour order, layer round trip and hash, snapshot section
+  round trip, old version rejected, empty map.
+
+### 02.02 Fixed-point math and deterministic noise
+
+- Q32.32 helpers (mul, div, sqrt by integer Newton, lerp, clamp), value and gradient
+  noise over integer lattices seeded from a stream, fractal sum, domain warp.
+- Tests: exactness of the helpers at the edges, frozen values for the noise at fixed
+  points, cross-compiler equality by CI, statistical range of the fractal sum.
+
+### 02.03 Elevation and coastline
+
+- Continental mask, fractal relief, uplift ridges, sea level, land/sea classification,
+  slope layer; the map has a coastline that is neither a blob nor confetti (measured:
+  land fraction in a configured band, largest landmass fraction, coastline length).
+- Tests: frozen elevation digest at 64 and 256, invariants (every tile classified,
+  sea below sea level, slope bounded), ASCII export for inspection.
+
+### 02.04 Climate and biomes
+
+- Latitude temperature bands, altitude lapse, prevailing winds and rain shadow,
+  moisture from sea distance, seasonal modulation hooks for the calendar, biome table.
+- Tests: frozen digests, monotonic lapse, every biome reachable at 256, no biome on sea.
+
+### 02.05 Hydrology
+
+- D8 flow direction with deterministic tie-break, depression filling, flow
+  accumulation, river extraction above a threshold, lakes; rivers and lakes as entities
+  with components (source, mouth, length, tiles), river ids of kind `River`.
+- Tests: every land tile drains to sea or lake, no flow cycles, river count band at
+  256, frozen digests, one-million-tile long run at 1024 with baseline logged.
+
+### 02.06 Regions
+
+- Partition of land into regions (watershed-seeded flood fill with a size band),
+  region entities (`Region` ids) with centroid, tiles, biome mix, neighbours in a fixed
+  order; region graph used by every later phase.
+- Tests: partition covers exactly the land, adjacency symmetric, region size band,
+  frozen digests.
+
+### 02.07 Resource deposits
+
+- Deposit placement from biome, elevation and hydrology (stone, ore, timber, clay,
+  salt, fertile soil) with rarity tiers, as entities with components; nothing is placed
+  by hand.
+- Tests: distribution bands per biome, no deposit on sea, frozen digests.
+
+### 02.08 World-gen determinism and long-duration gate; Phase 02 close
+
+- Full pipeline frozen hashes at the three sizes on the four compilers; regenerate
+  from the same seed twice and compare byte for byte; snapshot of a generated world
+  restores and re-hashes identically; generation baseline at 1024 logged; Phase 02
+  closed against section 2.
+
+## 7. Phases 03-20: notes
+
+No task breakdown exists yet for Phases 03-20; each is broken down when the previous
 phase closes. Fixed points already in the code: `IdKind` values for Region, Tile, River,
 ResourceDeposit (Phase 02), Culture, Language, Religion, Person, Family, Organization
 (Phases 03-05), Item, Building, Settlement, Market, Route (Phases 06, 09), Polity, Law,
@@ -399,7 +487,7 @@ Army, War (Phases 07-08), Document, Map (Phase 12); `VAELEN_SAVE_FORMAT_VERSION`
 (Phase 16); `Config/DefaultEngine.ini` and `DefaultInput.ini` note that the game engine
 class and Enhanced Input mappings arrive in Phase 10.
 
-## 7. Current BUILD STATUS
+## 8. Current BUILD STATUS
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -449,7 +537,7 @@ None
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-## 8. Verification record
+## 9. Verification record
 
 Commands run on 2026-09-05 (clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.15, clang-format 18.1.3, Linux x86_64) with the checked-in presets, each into
 `out/build/<preset>`:
