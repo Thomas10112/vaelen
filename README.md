@@ -29,7 +29,7 @@ design goal (planned); the repository currently contains the Phase 00 foundation
 5. The simulation is the single source of truth: rendering, dialogue and any LLM narration only
    read world state; none of them may modify it.
 6. Determinism: same seed + same inputs = same result, through controlled random streams and
-   persistent ids (exist), event logs, replay and checkpoints (planned, Phase 01).
+   persistent ids, event logs, replay and checkpoints (Phase 01, VALIDATED headless).
 
 ## Architecture
 
@@ -135,7 +135,7 @@ available in this repository's environment, so every Unreal-facing file is marke
 | Kernel primitives: CoreTypes, Version, Assert, Log, Hash, Random, Ids | `Source/VaelenCore` | VALIDATED (Phase 00) headless with clang 18 and gcc 13; UNVERIFIED under UBT |
 | Kernel module registration | `Source/VaelenCore/Private/VaelenCoreModule.cpp` | UNVERIFIED (requires UE5) |
 | Unreal bridge module `Vaelen` | `Source/Vaelen` | UNVERIFIED (requires UE5) |
-| Simulation module (01.01 entities, 01.02 components, 01.03 systems and scheduler, 01.04 clock and calendar, 01.05 events, 01.06 world and snapshot, 01.07 deterministic replay gate) | `Source/VaelenSim` | VALIDATED (Phase 01) headless; UNVERIFIED under UBT |
+| Simulation module (01.01 entities, 01.02 components, 01.03 systems and scheduler, 01.04 clock and calendar, 01.05 events, 01.06 world and snapshot, 01.07 deterministic replay gate, 01.08 long-duration mini-world gate) | `Source/VaelenSim` | VALIDATED (Phase 01) headless; UNVERIFIED under UBT |
 | Test harness and runner | `Tests/Harness` | VALIDATED (Phase 00) |
 | Core test suites (133 tests, 108 without assertions) | `Tests/Core` | VALIDATED |
 | Kernel purity checker | `Tools/check_kernel_purity.py` | VALIDATED (Phase 00) |

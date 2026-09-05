@@ -120,6 +120,13 @@ namespace Vaelen
 			return Found != nullptr ? *Found : Scratch;
 		}
 
+		const T& Get(EntityHandle Handle) const noexcept
+		{
+			const T* Found = TryGet(Handle);
+			VAELEN_CHECKF(Found != nullptr, "entity has no component of type %u", unsigned{Type.Id});
+			return Found != nullptr ? *Found : Scratch;
+		}
+
 		/// Removes by swapping the last dense entry into the hole. Returns
 		/// false when the entity has no component.
 		bool Remove(EntityHandle Handle) noexcept override

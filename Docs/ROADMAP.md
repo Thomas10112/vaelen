@@ -68,7 +68,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | Phase | Name | Objective (one line) | Status |
 |---|---|---|---|
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
-| 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | IN PROGRESS (01.01-01.07 VALIDATED headless; 01.08 PLANNED) |
+| 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | PLANNED |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | PLANNED |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
@@ -199,9 +199,10 @@ deferred to Phase 01 and stated in every STATUS line; (5) docs present, closing 
 `Docs/STATUS.md`. Verdict: **Phase 00 VALIDATED on the headless side, UNVERIFIED on the
 engine side until the first UE 5.6 build.**
 
-## 5. Phase 01 - CORE SIMULATION: task breakdown (PLANNED)
+## 5. Phase 01 - CORE SIMULATION: task breakdown and real status
 
-Module `VaelenSim` (kernel) exists since 01.01; tasks 01.02-01.08 are PLANNED. Directory
+Module `VaelenSim` (kernel) exists since 01.01; tasks 01.01-01.08 are VALIDATED
+(headless). Directory
 `Source/VaelenSim` with `Public/Vaelen/Sim/`, listed in `Tools/kernel_modules.txt`,
 `/CMakeLists.txt`, `Vaelen.uproject` and both targets (`Docs/ARCHITECTURE.md` section 3.3,
 rule 6). Tests in `Tests/Sim/Test_<Suite>.cpp` building `VaelenSimTests`. Each task ends
@@ -352,17 +353,41 @@ design choice below that survives implementation gets an ADR (planned numbers 00
   the first version of the snapshot test kept a "born" list inside a system and could
   not continue identically after a restore.
 
-### 01.08 Abstract mini-world end-to-end test
+### 01.08 Abstract mini-world end-to-end test - VALIDATED (headless)
 
-- Goal: exercise every Phase 01 piece together over a long run, without any AELVOR
-  content.
-- Planned: a toy world with three or four systems (a population counter, a resource
-  pool, a random event producer, an LOD-sensitive system), run for a long duration
-  (order of 100,000 ticks) with periodic snapshots and replays; invariants checked every
-  N ticks; a performance baseline logged, not asserted.
-- Tests: this task is a test suite (`Test_MiniWorld.cpp`); it is the phase's
-  long-duration gate.
-- Exit: VALIDATED; Phase 01 closed against section 2.
+- Delivered: `Tests/Sim/Test_MiniWorld.cpp`, the phase's long-duration gate. Four
+  systems at four LOD levels (Demography every tick with capacity-driven deaths,
+  Stockpile every 4 ticks, Omens monthly - random omen events, founding and abandoning
+  villages, bounded by a land capacity of 40 villages -, Years yearly) and an Annals
+  listener whose tallies live in a `Tally` component on a chronicle entity, so the
+  listener's effects are world state. 100 000 ticks (11 years, 208 days) from seed
+  `0x41454c564f52`.
+- Tests (4): the long run holds every invariant at each of 100 checkpoints (village and
+  stock pools in step, alive entities = villages + chronicle, no component on a dead
+  entity, population ledger initial + births = alive + deaths, new-year tally = year
+  boundaries passed, log grows monotonically with a moving digest, calendar date agrees
+  with the tick, registry state re-validates) and logs the baseline; every 10 000 ticks a
+  snapshot restored into a fresh world is byte-identical and, 700 ticks later, both
+  worlds still share state and log digests (10 replays); the LOD systems fire exactly
+  100 000 / 25 000 / 139 / 12 times and every NewYear sits on a year boundary; the frozen
+  end state (state `0b6f6e9bd5887d35`, log `60cd10a389895804`, 305 027 events, 41
+  entities) is reproduced by clang and gcc, and by MSVC and AppleClang in CI.
+- Baseline (logged, not asserted): clang debug 255 k ticks/s, clang release 739 k
+  ticks/s, gcc release without assertions 790 k ticks/s; snapshot of 34 MB (mostly the
+  event log) in about 0.1 s. The event log is the dominant memory cost of long runs;
+  Phase 16 decides on compaction and on-disk paging.
+- Lesson: the first version had no land capacity and grew exponentially until the
+  process was killed; every long-running system needs an explicit bound derived from
+  state.
+- Exit: VALIDATED; Phase 01 closed against section 2 (record in `Docs/STATUS.md`).
+
+Phase 01 against the exit criteria of section 2: (1) green on the whole CI matrix for
+01.06 and 01.07 (runs 13, 14), 01.08 checked by its own run; (2) determinism tests for
+every system, snapshot round trips, frozen replay and mini-world values; (3) no
+INCOMPLETE file, engine files UNVERIFIED; (4) unit, integration, deterministic, edge-case
+and long-duration categories present; (5) ADR-0010 to ADR-0015, docs updated. Verdict:
+**Phase 01 VALIDATED on the headless side, UNVERIFIED on the engine side until the first
+UE 5.6 build.**
 
 ## 6. Phases 02-20: notes
 
@@ -382,15 +407,16 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 01 — CORE SIMULATION
-TASK        : 01.07 — DETERMINISTIC REPLAY TEST
+TASK        : 01.08 — ABSTRACT MINI-WORLD LONG-DURATION TEST (phase close)
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-█████████████████████░░░ 87%
+████████████████████████ 100%
 
 CURRENTLY
-→ 01.07 closed: seed + input stream replay, checkpoint/restore at six ticks and eight
-  chained generations equal the uninterrupted run; frozen hashes reproduced by gcc
+→ Phase 01 closed against ROADMAP section 2: 100 000-tick mini-world with four LOD
+  levels, invariants every 1 000 ticks, snapshot/restore/replay every 10 000 ticks,
+  frozen end state; performance baseline 255 k ticks/s (debug), 740 k ticks/s (release)
 
 COMPLETED
 ✓ Phase 00 — FOUNDATION (CI 9/9)
@@ -401,18 +427,20 @@ COMPLETED
 ✓ 01.05 Event bus & event log (10 tests)
 ✓ 01.06 Persistence interfaces & snapshot (15 tests)
 ✓ 01.07 Deterministic replay test (5 tests)
+✓ 01.08 Abstract mini-world long-duration test (4 tests)
 
 NEXT
-→ 01.08 Abstract mini-world long-duration test (~100 000 ticks, snapshots, invariants, baseline)
-→ Phase 01 exit review, then Phase 02 WORLD
+→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist) to clear UNVERIFIED
+→ Phase 02 — WORLD: regions, tiles, terrain, climate, hydrology, deposits from the seed
 
 FILES
-+ Tests/Sim/Test_Replay.cpp
++ Tests/Sim/Test_MiniWorld.cpp
+~ Source/VaelenSim/Public/Vaelen/Sim/ComponentPool.h (const Get)
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 73 (70 without asserts); ctest 30/30 in all six Linux presets
-✓ Replay reference (seed 0x5641454c454e, 2000 ticks): state dbb98f0004e8cd91, log 2c1e775e47e45051,
-  11229 events, 199 entities — identical on clang 18 and gcc 13
+✓ Core 133 (108 without asserts) + Sim 77 (74 without asserts); ctest 31/31 in all six Linux presets
+✓ Mini-world end state (seed 0x41454c564f52, 100 000 ticks): state 0b6f6e9bd5887d35,
+  log 60cd10a389895804, 305 027 events, 41 entities — identical on clang 18 and gcc 13
 ✓ Purity: 34 files, 0 violations
 ⚠ Unreal Build Tool: VaelenSim engine files UNVERIFIED
 

@@ -13,15 +13,16 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 01 — CORE SIMULATION
-TASK        : 01.07 — DETERMINISTIC REPLAY TEST
+TASK        : 01.08 — ABSTRACT MINI-WORLD LONG-DURATION TEST (phase close)
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-█████████████████████░░░ 87%
+████████████████████████ 100%
 
 CURRENTLY
-→ 01.07 closed: seed + input stream replay, checkpoint/restore at six ticks and eight
-  chained generations equal the uninterrupted run; frozen hashes reproduced by gcc
+→ Phase 01 closed against ROADMAP section 2: 100 000-tick mini-world with four LOD
+  levels, invariants every 1 000 ticks, snapshot/restore/replay every 10 000 ticks,
+  frozen end state; performance baseline 255 k ticks/s (debug), 740 k ticks/s (release)
 
 COMPLETED
 ✓ Phase 00 — FOUNDATION (CI 9/9)
@@ -32,18 +33,20 @@ COMPLETED
 ✓ 01.05 Event bus & event log (10 tests)
 ✓ 01.06 Persistence interfaces & snapshot (15 tests)
 ✓ 01.07 Deterministic replay test (5 tests)
+✓ 01.08 Abstract mini-world long-duration test (4 tests)
 
 NEXT
-→ 01.08 Abstract mini-world long-duration test (~100 000 ticks, snapshots, invariants, baseline)
-→ Phase 01 exit review, then Phase 02 WORLD
+→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist) to clear UNVERIFIED
+→ Phase 02 — WORLD: regions, tiles, terrain, climate, hydrology, deposits from the seed
 
 FILES
-+ Tests/Sim/Test_Replay.cpp
++ Tests/Sim/Test_MiniWorld.cpp
+~ Source/VaelenSim/Public/Vaelen/Sim/ComponentPool.h (const Get)
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 73 (70 without asserts); ctest 30/30 in all six Linux presets
-✓ Replay reference (seed 0x5641454c454e, 2000 ticks): state dbb98f0004e8cd91, log 2c1e775e47e45051,
-  11229 events, 199 entities — identical on clang 18 and gcc 13
+✓ Core 133 (108 without asserts) + Sim 77 (74 without asserts); ctest 31/31 in all six Linux presets
+✓ Mini-world end state (seed 0x41454c564f52, 100 000 ticks): state 0b6f6e9bd5887d35,
+  log 60cd10a389895804, 305 027 events, 41 entities — identical on clang 18 and gcc 13
 ✓ Purity: 34 files, 0 violations
 ⚠ Unreal Build Tool: VaelenSim engine files UNVERIFIED
 
@@ -61,6 +64,30 @@ None
 | 00.03 | Logging and assertions: `Log`, `Assert` | VALIDATED: Log 23, LogFloor 1, Assert 33 (23 of them in the assertions-off build) |
 | 00.04 | Test harness, runner, kernel purity checker | VALIDATED: Harness 5 tests, runner registry/shuffle/reverse entries, purity self-test 36 checks |
 | 00.05 | Adversarial review, fixes, documentation | VALIDATED (headless): 8 review lenses, 189 findings, fixes committed in `7d41751`; docs refreshed |
+
+## Phase 01 task breakdown (canonical numbering: `Docs/ROADMAP.md` section 5)
+
+| Task | Content | Status |
+|---|---|---|
+| 01.01 | Entity handles and registry | VALIDATED: EntityHandle 3, EntityRegistry 13 tests |
+| 01.02 | Component type registry, sparse-set pools, store | VALIDATED: ComponentType 4, ComponentPool 8, ComponentStore 3 |
+| 01.03 | Systems, deterministic scheduler, LOD periods | VALIDATED: Scheduler 8 |
+| 01.04 | Simulation clock and calendar | VALIDATED: SimClock 4 |
+| 01.05 | Events, append-only log, next-tick bus | VALIDATED: Event 2, EventLog 2, EventBus 6 |
+| 01.06 | World, archives, versioned snapshot, plain-data rule | VALIDATED: Archive 4, World 3, Snapshot 8 |
+| 01.07 | Deterministic replay gate | VALIDATED: Replay 5 (frozen hashes reproduced by clang, gcc, MSVC, AppleClang) |
+| 01.08 | Abstract mini-world long-duration gate | VALIDATED: MiniWorld 4 (100 000 ticks, invariants, periodic replays, frozen end state) |
+
+Phase 01 against the exit criteria of `Docs/ROADMAP.md` section 2: (1) green on the
+whole CI matrix (runs 13 and 14 for 01.06 and 01.07: six Linux presets, clang-format,
+Windows MSVC, macOS AppleClang; 01.08 is checked by the run of its own commit); (2)
+determinism tests exist for every system: identical runs give identical digests, state
+round-trips through snapshots, frozen values guard the RNG (Phase 00), the replay
+reference and the mini-world end state; (3) no INCOMPLETE file; engine files UNVERIFIED;
+(4) unit, integration (Scheduler, EventBus, Snapshot, Replay), deterministic, edge-case and
+long-duration (MiniWorld) categories present; (5) ADR-0010 to ADR-0015 cover the phase's
+decisions, docs updated. Verdict: **Phase 01 VALIDATED on the headless side, UNVERIFIED
+on the engine side until the first UE 5.6 build.**
 
 ## File status
 
@@ -104,8 +131,15 @@ the purity checker, applied to headers and sources).
 | `Core/Test_LogFloor.cpp` | VALIDATED | 1 |
 | `Core/Test_Random.cpp` | VALIDATED | 29 |
 | `Core/Test_Version.cpp` | VALIDATED | 7 |
+| `Sim/Test_EntityHandle.cpp`, `Test_EntityRegistry.cpp` | VALIDATED | 3, 13 |
+| `Sim/Test_ComponentType.cpp`, `Test_ComponentPool.cpp`, `Test_ComponentStore.cpp` | VALIDATED | 4, 8, 3 |
+| `Sim/Test_Scheduler.cpp`, `Test_SimClock.cpp` | VALIDATED | 8, 4 |
+| `Sim/Test_Event.cpp`, `Test_EventLog.cpp`, `Test_EventBus.cpp` | VALIDATED | 2, 2, 6 |
+| `Sim/Test_Archive.cpp`, `Test_World.cpp`, `Test_Snapshot.cpp` | VALIDATED | 4, 3, 8 |
+| `Sim/Test_Replay.cpp` (deterministic + integration gate) | VALIDATED | 5 |
+| `Sim/Test_MiniWorld.cpp` (long-duration gate) | VALIDATED | 4 |
 
-Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5 (73 tests, 2 018 227 checks; 70 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.Registry`, `Sim.Shuffled` (30 entries in total).
+Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4 (77 tests, 2 018 294 checks; 74 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.Registry`, `Sim.Shuffled` (31 entries in total).
 
 ### Tools/ and CI
 
@@ -120,16 +154,18 @@ Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, Lo
 Toolchain: clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.15, clang-format 18.1.3, Linux x86_64. Every preset was configured, built and tested with
 `cmake --preset`, `cmake --build --preset`, `ctest --preset` into `out/build/<preset>`:
 
-| Preset | Build | `ctest` | `VaelenCoreTests` |
-|---|---|---|---|
-| linux-clang-debug | 0 warnings | 14/14 passed | 133 run, 133 passed, 21914 checks |
-| linux-gcc-debug | 0 warnings | 14/14 passed | 133 run, 133 passed, 21914 checks |
-| linux-clang-release | 0 warnings | 14/14 passed | 133 run, 133 passed, 21914 checks |
-| linux-gcc-release | 0 warnings | 14/14 passed | 133 run, 133 passed, 21914 checks |
-| linux-clang-noasserts | 0 warnings | 14/14 passed | 108 run, 108 passed, 21701 checks |
-| linux-gcc-noasserts | 0 warnings | 14/14 passed | 108 run, 108 passed, 21701 checks |
+| Preset | Build | `ctest` | `VaelenCoreTests` | `VaelenSimTests` |
+|---|---|---|---|---|
+| linux-clang-debug | 0 warnings | 31/31 passed | 133 run, 133 passed, 21914 checks | 77 run, 77 passed, 2 018 294 checks |
+| linux-gcc-debug | 0 warnings | 31/31 passed | 133 run, 133 passed, 21914 checks | 77 run, 77 passed |
+| linux-clang-release | 0 warnings | 31/31 passed | 133 run, 133 passed, 21914 checks | 77 run, 77 passed |
+| linux-gcc-release | 0 warnings | 31/31 passed | 133 run, 133 passed, 21914 checks | 77 run, 77 passed |
+| linux-clang-noasserts | 0 warnings | 31/31 passed | 108 run, 108 passed, 21701 checks | 74 run, 74 passed |
+| linux-gcc-noasserts | 0 warnings | 31/31 passed | 108 run, 108 passed, 21701 checks | 74 run, 74 passed |
 
-GitHub Actions run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14).
+Mini-world baseline (100 000 ticks, 41 entities, 305 027 events, 34 168 227-byte snapshot), logged by `Sim.MiniWorld`, not asserted: clang debug 0.39 s (255 k ticks/s), gcc debug 0.40 s, clang release 0.135 s (739 k ticks/s), gcc release without assertions 0.127 s (790 k ticks/s); snapshot 0.09-0.14 s.
+
+GitHub Actions runs 13 and 14 (commits `21adcb6`, `b53be98`): all 9 jobs green each, so the frozen replay hashes hold on Windows MSVC and macOS AppleClang as well. Phase 00 record - run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14).
 
 Also run locally: `python3 Tools/check_kernel_purity.py --self-test` (36 checks, 0 failed),
 `python3 Tools/check_kernel_purity.py --root . --verbose` (12 files, 0 violations),
