@@ -126,6 +126,7 @@ yet. Later kernel modules follow the same pattern with their own `VAELEN_<MODULE
 | Module | Kind | Layer | Depends on | Status |
 |---|---|---|---|---|
 | `VaelenCore` | Kernel (UBT Runtime module, `PreDefault`; CMake static library) | Foundation of SIMULATION and WORLD STATE | UBT: `Core` (module registration only). CMake: none. | VALIDATED headless; UNVERIFIED under UBT |
+| `VaelenSim` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 01 | SIMULATION (entities, components, systems, clock, events) | UBT: `Core`, `VaelenCore`. CMake: `Vaelen::Core`. | 01.01 VALIDATED headless; UNVERIFIED under UBT |
 | `Vaelen` | Unreal primary game module (`IMPLEMENT_PRIMARY_GAME_MODULE`, Runtime, `Default`) | Engine bridge (PRESENTATION side) | `Core`, `CoreUObject`, `Engine`, `InputCore`, `VaelenCore` | UNVERIFIED (requires UE 5.6) |
 
 `Vaelen` installs a kernel log sink (`FVaelenLogSink`, routes `Vaelen::LogRecord` to
@@ -134,12 +135,12 @@ yet. Later kernel modules follow the same pattern with their own `VAELEN_<MODULE
 `ShutdownModule`. Both targets (`Vaelen`, `VaelenEditor`) list `VaelenCore` and `Vaelen`
 in `ExtraModuleNames`.
 
-### 3.2 Planned modules per phase (PLANNED - none of these exist)
+### 3.2 Planned modules per phase (PLANNED unless marked as existing)
 
 | Phase | Module | Kind | Notes |
 |---|---|---|---|
 | 00 FOUNDATION | `VaelenCore` | Kernel | Exists (see above). |
-| 01 CORE SIMULATION | `VaelenSim` | Kernel | Tick, systems, entity/component storage with generation handles, event log, checkpoints, replay, simulation LOD 0-4. |
+| 01 CORE SIMULATION | `VaelenSim` | Kernel | Exists since 01.01 (entity handles and registry); components, tick, systems, event log, checkpoints, replay, simulation LOD 0-4 follow in 01.02-01.08. |
 | 02 WORLD | `VaelenWorld` | Kernel | Regions, tiles, rivers, resource deposits (`IdKind` 10-13 already reserved). |
 | 03 HISTORY | `VaelenHistory` | Kernel | Historical record, eras, cultures, languages, religions. |
 | 04 POPULATION | `VaelenPopulation` | Kernel | Persons, families, demographics. |
@@ -266,6 +267,7 @@ military, 50-51 knowledge (Phase 12). Values are part of the save format: append
     VaelenCore/                   KERNEL MODULE
       VaelenCore.Build.cs         UBT rules (no PCH, no unity, no exceptions, no RTTI, C++20)
       CMakeLists.txt              explicit source list (VaelenCoreModule.cpp excluded)
+    VaelenSim/                    KERNEL MODULE (Phase 01): Public/Vaelen/Sim/*.h, Private/*.cpp, VaelenSim.Build.cs, CMakeLists.txt
       Public/Vaelen/Core/         CoreTypes.h Version.h Assert.h Log.h Hash.h Random.h Ids.h
       Private/                    Assert.cpp Log.cpp Random.cpp Ids.cpp Version.cpp
                                   VaelenCoreModule.cpp (Unreal-facing, UBT only)
@@ -279,7 +281,9 @@ military, 50-51 knowledge (Phase 12). Values are part of the save format: append
     Harness/VaelenTest.h          test macros, registry, ScopedAssertCapture
     Harness/TestMain.cpp          runner: --suite --filter --list --verbose --quiet-log
     Core/CMakeLists.txt           VaelenCoreTests; one CTest "Core.<Suite>" per Test_<Suite>.cpp
-    Core/Test_*.cpp               Assert Harness Hash Ids Log Random Version
+    Core/Test_*.cpp               Assert CoreTypes Harness Hash Ids Log LogFloor Random Version
+    Sim/CMakeLists.txt            VaelenSimTests; one CTest "Sim.<Suite>" per Test_<Suite>.cpp
+    Sim/Test_*.cpp                EntityHandle EntityRegistry
   Tools/
     check_kernel_purity.py        purity checker (rules R0-R7, --self-test)
     kernel_modules.txt            list of kernel modules to check (VaelenCore)

@@ -66,10 +66,12 @@ Docs/                            ARCHITECTURE.md, CONVENTIONS.md, DECISIONS.md, 
 Source/
   Vaelen.Target.cs, VaelenEditor.Target.cs
   VaelenCore/                    KERNEL: Public/Vaelen/Core/*.h, Private/*.cpp, CMakeLists.txt, VaelenCore.Build.cs
+  VaelenSim/                     KERNEL (Phase 01): entities, components, systems; Public/Vaelen/Sim/*.h
   Vaelen/                        Unreal primary game module (bridge to the kernel, UBT only)
 Tests/
   Harness/                       VaelenTest.h (macros, registry, ScopedAssertCapture), TestMain.cpp (runner)
   Core/                          Test_<Suite>.cpp -> CTest entry Core.<Suite>
+  Sim/                           Test_<Suite>.cpp -> CTest entry Sim.<Suite>
 Tools/                           check_kernel_purity.py, kernel_modules.txt
 ```
 
@@ -133,6 +135,7 @@ available in this repository's environment, so every Unreal-facing file is marke
 | Kernel primitives: CoreTypes, Version, Assert, Log, Hash, Random, Ids | `Source/VaelenCore` | VALIDATED (Phase 00) headless with clang 18 and gcc 13; UNVERIFIED under UBT |
 | Kernel module registration | `Source/VaelenCore/Private/VaelenCoreModule.cpp` | UNVERIFIED (requires UE5) |
 | Unreal bridge module `Vaelen` | `Source/Vaelen` | UNVERIFIED (requires UE5) |
+| Simulation module (01.01: entity handles and registry) | `Source/VaelenSim` | VALIDATED (Phase 01) headless; UNVERIFIED under UBT |
 | Test harness and runner | `Tests/Harness` | VALIDATED (Phase 00) |
 | Core test suites (133 tests, 108 without assertions) | `Tests/Core` | VALIDATED |
 | Kernel purity checker | `Tools/check_kernel_purity.py` | VALIDATED (Phase 00) |

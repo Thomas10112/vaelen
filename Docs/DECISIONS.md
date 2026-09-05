@@ -32,6 +32,7 @@ Rules for this file:
 | [0007](#adr-0007-bitmask-with-rejection-for-unbiased-integer-ranges) | Bitmask-with-rejection for unbiased integer ranges | Accepted; VALIDATED |
 | [0008](#adr-0008-kernel-purity-enforced-by-a-ctest) | Kernel purity enforced by a CTest | Accepted; VALIDATED |
 | [0009](#adr-0009-floating-point-policy-no-contraction-integers-for-authoritative-state) | Floating-point policy: no contraction, integers for authoritative state | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0010](#adr-0010-runtime-entity-handles-with-generations-dense-registry-lifo-slot-reuse) | Runtime entity handles with generations, dense registry, LIFO slot reuse | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -664,6 +665,62 @@ implementation-defined across C runtimes.
 
 Accepted 2026-09-05. Files: `/CMakeLists.txt`, `Source/VaelenCore/Public/Vaelen/Core/Random.h`,
 `Docs/CONVENTIONS.md`. Headless VALIDATED (both compilers, six presets); engine side
+UNVERIFIED.
+
+---
+
+## ADR-0010: Runtime entity handles with generations, dense registry, LIFO slot reuse
+
+### Context
+
+Simulation systems touch hundreds of thousands of entities per tick. `PersistentId`
+(ADR-0004) is the right identity for anything saved or referenced across time, but it is
+a 64-bit key into a hash map, not an index into dense component arrays, and it cannot
+tell a caller cheaply whether the entity still exists. The runtime needs an accessor
+that is (a) an array index, (b) safe against use after destruction, and (c) reproducible:
+two runs with the same operations must hand out the same handles, because handles end up
+in per-tick ordering decisions.
+
+### Decision
+
+`Vaelen::EntityHandle` (`Source/VaelenSim/Public/Vaelen/Sim/EntityHandle.h`) is 64 bits:
+the high 32 bits are a generation, the low 32 bits a slot index; value 0 is the null
+handle and live generations start at 1. `Vaelen::EntityRegistry` (`EntityRegistry.h/.cpp`)
+keeps a dense slot table, bumps the slot generation on `Destroy`, recycles free slots
+through a LIFO free list, retires a slot whose generation reaches `MaxGeneration`, and
+maps `PersistentId` to slot through an `unordered_map` that is only ever used for lookups.
+Iteration and snapshot state are in slot-index order. Handles are not persisted: a
+snapshot restores the slot table (`State`), which reproduces every handle exactly, and
+`SetState` validates the state (unique ids, consistent free list and counters) before
+accepting it.
+
+### Alternatives and decision rule
+
+- Raw pointers or bare indices: rejected for robustness (use after destruction is
+  undetectable).
+- `PersistentId` everywhere with hash-map lookups: rejected for performance and for
+  determinism of iteration (hash-map order is not stable).
+- 128-bit handles or separate generation arrays: rejected for simplicity; 32+32 bits with
+  slot retirement gives 4 billion slots and 4 billion generations per slot.
+- FIFO free list (delays reuse): rejected for simplicity; LIFO is equally deterministic
+  and generations already guarantee stale-handle detection.
+- Decided by robustness, then determinism and performance.
+
+### Consequences
+
+- Every component store of 01.02 can be indexed by `EntityHandle::Index()` and verified by
+  the registry in debug builds.
+- Handles must never be saved or compared across snapshots taken from different
+  histories; `PersistentId` remains the identity in events, saves and references.
+- A retired slot is never reused (bounded, documented leak of one slot per 2^32 - 1
+  destructions of the same slot).
+
+### Status
+
+Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/EntityHandle.h`,
+`EntityRegistry.h`, `Source/VaelenSim/Private/EntityRegistry.cpp`,
+`Tests/Sim/Test_EntityHandle.cpp`, `Tests/Sim/Test_EntityRegistry.cpp` (16 tests, one
+million create/destroy cycles). Headless VALIDATED on the six Linux presets; engine side
 UNVERIFIED.
 
 ---
