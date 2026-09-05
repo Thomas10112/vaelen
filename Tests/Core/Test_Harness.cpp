@@ -3,6 +3,8 @@
 // STATUS: VALIDATED (Phase 00)
 #include "VaelenTest.h"
 
+#include <limits>
+
 VAELEN_TEST(Harness, ChecksPass)
 {
 	VT_CHECK(true);
@@ -25,7 +27,7 @@ namespace
 		VT_CHECK_NE(3, 3);
 		VT_CHECK_STREQ("a", "b");
 		VT_CHECK_STREQ(nullptr, "");
-		VT_CHECK_NEAR(0.0 / 0.0, 0.0, 1.0); // NaN is never near
+		VT_CHECK_NEAR(std::numeric_limits<double>::quiet_NaN(), 0.0, 1.0); // NaN is never near
 		VT_REQUIRE_EQ(1, 2);
 		VT_CHECK(true); // must not be reached: VT_REQUIRE_EQ returned
 	}

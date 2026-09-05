@@ -707,8 +707,15 @@ VAELEN_TEST(Log, RecordDefaultsAndStdioSinkWithoutCategory)
 
 	// The stdio sink is exercised on two temporary files: a record without a
 	// category prints "?", Warning and above go to the error stream.
-	std::FILE* Out = std::tmpfile();
-	std::FILE* Err = std::tmpfile();
+	// std::tmpfile() may be refused on Windows (it creates the file in the
+	// drive root); fall back to named files in the working directory.
+	auto OpenScratch = [](const char* Fallback)
+	{
+		std::FILE* File = std::tmpfile();
+		return File != nullptr ? File : std::fopen(Fallback, "w+");
+	};
+	std::FILE* Out = OpenScratch("vaelen_test_stdio_out.tmp");
+	std::FILE* Err = OpenScratch("vaelen_test_stdio_err.tmp");
 	VT_REQUIRE(Out != nullptr && Err != nullptr);
 	{
 		StdioLogSink Sink(Out, Err);
@@ -742,6 +749,8 @@ VAELEN_TEST(Log, RecordDefaultsAndStdioSinkWithoutCategory)
 	const std::string ErrText = ReadAll(Err);
 	std::fclose(Out);
 	std::fclose(Err);
+	std::remove("vaelen_test_stdio_out.tmp"); // no-op when tmpfile() was used
+	std::remove("vaelen_test_stdio_err.tmp");
 	VT_CHECK(OutText == "[Trace] ?: no category\n[Info] LogCore: to stdout\n");
 	VT_CHECK(ErrText == "[Warning] LogCore: to stderr\n");
 }

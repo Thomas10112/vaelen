@@ -43,10 +43,13 @@ static_assert(std::is_same_v<decltype(Vaelen::ArrayCount(Seven)), Vaelen::usize>
 static_assert(std::is_same_v<decltype(Vaelen::ToUnderlying(Vaelen::IdKind::Map)), Vaelen::uint8>);
 static_assert(Vaelen::ToUnderlying(Vaelen::IdKind::Map) == 51);
 
-// The export macro expands to nothing in the headless static build.
-#define VAELEN_STRINGIFY_(x) #x
-#define VAELEN_STRINGIFY(x) VAELEN_STRINGIFY_(x)
-static_assert(sizeof(VAELEN_STRINGIFY(VAELEN_CORE_API)) == 1, "static build: VAELEN_CORE_API must be empty");
+// The export macro expands to nothing in the headless static build: neither
+// switch may be defined, and the macro must be usable on a declaration.
+#if defined(VAELEN_CORE_EXPORTS) || defined(VAELEN_CORE_IMPORTS)
+#	error "the headless static build must not define VAELEN_CORE_EXPORTS / VAELEN_CORE_IMPORTS"
+#endif
+VAELEN_CORE_API constexpr int ExportMacroIsUsableOnDeclarations = 1;
+static_assert(ExportMacroIsUsableOnDeclarations == 1);
 
 VAELEN_TEST(CoreTypes, MoveOnlyOwnerBehaves)
 {
