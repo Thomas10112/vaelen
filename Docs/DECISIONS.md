@@ -34,6 +34,8 @@ Rules for this file:
 | [0009](#adr-0009-floating-point-policy-no-contraction-integers-for-authoritative-state) | Floating-point policy: no contraction, integers for authoritative state | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0010](#adr-0010-runtime-entity-handles-with-generations-dense-registry-lifo-slot-reuse) | Runtime entity handles with generations, dense registry, LIFO slot reuse | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0011](#adr-0011-components-are-plain-data-in-typed-sparse-sets-registered-explicitly) | Components are plain data in typed sparse sets, registered explicitly | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0012](#adr-0012-systems-are-ordered-by-declared-dependencies-with-a-name-hash-tie-break-each-gets-a-per-tick-derived-stream) | Systems ordered by declared dependencies with a name-hash tie-break; per-tick derived streams | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0013](#adr-0013-simulation-time-is-an-integer-tick-count-the-calendar-is-data-derived-from-it) | Simulation time is an integer tick count; the calendar is data derived from it | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -786,6 +788,115 @@ Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/ComponentType.h`
 `ComponentStore.cpp`, `Tests/Sim/Test_ComponentType.cpp`, `Test_ComponentPool.cpp`,
 `Test_ComponentStore.cpp` (15 tests, one million operations against a live registry).
 Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0012: Systems are ordered by declared dependencies with a name-hash tie-break; each gets a per-tick derived stream
+
+### Context
+
+The master prompt requires that the world evolve the same way for the same seed and
+inputs (section 35), that systems be schedulable at several levels of detail (section
+36), and that adding a random draw in one system never perturbs another (ADR-0003).
+Execution order must therefore be a property of the set of systems, not of the order
+in which code happened to register them or of memory addresses, and it must stay valid
+when systems are later spread over threads.
+
+### Decision
+
+`Scheduler` (`Source/VaelenSim/Public/Vaelen/Sim/System.h`, `Private/Scheduler.cpp`):
+
+- Systems declare their name and the names of the systems that must run before them
+  (`ISystem::GetDependencies`). `Build()` runs Kahn's algorithm and, among the ready
+  systems, always picks the smallest name hash (FNV-1a, then the name itself on a
+  collision). Unknown dependencies, cycles (including self-dependencies), duplicate
+  names and invalid LOD schedules are build errors; the scheduler refuses to run.
+- Simulation LOD: every system has a `SimLod` 0-4; the `LodSchedule` gives one tick
+  period per level (defaults 1, 4, 24, 720, 8640 ticks: every tick, every 4 hours, daily,
+  monthly, yearly). A system ticks when `tick % period == 0`.
+- Random streams: on every tick the scheduler hands each system
+  `WorldStream.Derive(nameHash).Fork(tick)`. The stream is a function of the world seed,
+  the system's name and the tick only, so it is unaffected by other systems, by the
+  order of execution and by how many draws the system made on earlier ticks.
+- `RunTick` runs the due systems in order with a `TickContext` (tick, clock, registry,
+  components, stream, event bus) and then advances the clock by one tick; the scheduler
+  is the only caller of `SimClock::Advance` in normal operation.
+
+### Alternatives and decision rule
+
+- Registration order as execution order: rejected for determinism (results would depend
+  on module load order and code layout).
+- Priorities (integers) instead of dependencies: rejected for evolvability (priorities
+  need global coordination; dependencies are local statements that compose).
+- One stream per system advanced across ticks: rejected for robustness of replay and
+  partial re-simulation (a system's sequence would depend on its own history of draws;
+  per-tick forking makes every tick self-contained).
+- Variable LOD periods per entity rather than per system: deferred; per-system periods
+  are the simple hook the master prompt asks for in Phase 01, per-entity LOD is Phase 15.
+- Decided by determinism, then evolvability and simplicity.
+
+### Consequences
+
+- Renaming a system changes its execution position among independent systems and its
+  random sequence: a name is part of the save-format contract of a world.
+- The order is a total order today (single-threaded). The declared dependencies are
+  exactly the information a parallel scheduler needs later; results must not change.
+- Systems must not hold pointers into the `TickContext` beyond the call.
+
+### Status
+
+Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/System.h`,
+`Source/VaelenSim/Private/Scheduler.cpp`, `Tests/Sim/Test_Scheduler.cpp` (8 tests).
+Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0013: Simulation time is an integer tick count; the calendar is data derived from it
+
+### Context
+
+Master prompt section 33: time is continuous for the player (days, seasons, years,
+generations; wait, sleep, travel, accelerate, pause) and the world keeps running while
+unobserved. Section 35 forbids anything that makes a run depend on the machine. A
+floating-point delta time would make results depend on frame rate and on accumulated
+rounding; the wall clock is already banned by the purity rules (R1/R4).
+
+### Decision
+
+`SimClock.h` (header-only, constexpr):
+
+- `SimTick` is a `uint64` count of fixed-duration ticks since the world epoch. The clock
+  only moves by `Advance()` (one tick) and `Restore(tick)` (snapshots). Accelerating
+  time means executing more ticks per real second; a tick never changes length.
+- `CalendarRules` is data (ticks per hour, hours per day, days per month, months per
+  year, months per season) with regular defaults: 1 tick = 1 hour, 24-hour days, 30-day
+  months, 12 months, 4 seasons of 3 months, a 360-day AELVOR year. `Calendar::ToDate` and
+  `ToTick` are exact inverses over the whole `uint64` range.
+- Irregular rules (leap days, intercalary months, per-culture calendars) are a data
+  decision for the world-generation phases; the kernel provides the regular skeleton and
+  the extension point, not a historical calendar.
+
+### Alternatives and decision rule
+
+- Floating-point simulation time (seconds as `double`): rejected for determinism.
+- Fixed real-world calendar (Gregorian rules): rejected for evolvability; AELVOR is not
+  Earth and cultures will carry their own calendars.
+- Variable tick length per LOD: rejected for simplicity; LOD is expressed as tick
+  periods (ADR-0012), not as time dilation.
+- Decided by determinism, then simplicity.
+
+### Consequences
+
+- 1 tick = 1 hour at the default rules; a year is 8640 ticks; `uint64` covers about
+  2 x 10^15 years, so overflow is not a practical concern and every tick value is valid.
+- Every duration in the simulation (gestation, travel, seasons) is expressed in ticks or
+  in calendar units converted through `CalendarRules`, never in real seconds.
+
+### Status
+
+Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/SimClock.h`,
+`Tests/Sim/Test_SimClock.cpp` (4 tests). Headless VALIDATED on the six Linux presets;
+engine side UNVERIFIED.
 
 ---
 

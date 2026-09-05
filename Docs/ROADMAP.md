@@ -68,7 +68,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | Phase | Name | Objective (one line) | Status |
 |---|---|---|---|
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
-| 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | IN PROGRESS (01.01-01.02 VALIDATED headless; 01.03-01.08 PLANNED) |
+| 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | IN PROGRESS (01.01-01.04 VALIDATED headless; 01.05-01.08 PLANNED) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | PLANNED |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | PLANNED |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
@@ -242,29 +242,36 @@ design choice below that survives implementation gets an ADR (planned numbers 00
 - Decision: ADR-0011. Dense order is a function of the operation sequence, not slot
   order; systems needing a canonical order iterate the registry or sort by id.
 
-### 01.03 Systems and tick scheduler
+### 01.03 Systems and tick scheduler - VALIDATED (headless)
 
-- Goal: systems run in a fixed, explicit order with their own random stream and LOD
-  hooks.
-- Planned: `ISystem` (name, declared dependencies, `Tick(context)`), `Scheduler` that
-  orders systems by explicit dependencies with a deterministic tie-break (name hash),
-  hands each system `WorldStream.Derive(name)` (ADR-0003) and a `TickContext` (tick,
-  clock, registry, event bus); per-system tick period per LOD level 0-4 (LOD 0 every
-  tick, higher levels less often); registration order must not change results.
-- Tests: two registration orders give the same execution order and identical world
-  state; adding a system leaves other systems' streams untouched; dependency cycle
-  detected and reported; LOD schedule counts per level; determinism across two worlds.
-- Exit: ADR for ordering and LOD semantics; VALIDATED.
+- Delivered (`System.h`, `Scheduler.cpp`): `ISystem` (stable name, dependencies by
+  name, `SimLod` 0-4, `Tick(TickContext&)`), `TickContext` (tick, clock, registry,
+  component store, the system's own stream, event bus slot for 01.05), `LodSchedule`
+  (periods 1, 4, 24, 720, 8640 ticks by default), `Scheduler` (`Add/Remove/Build/
+  RunTick`): Kahn's algorithm with a name-hash tie-break, so the execution order is a
+  pure function of the set of systems; unknown dependencies, cycles (self included),
+  duplicate names and invalid LOD schedules are reported and refuse to run. Each system
+  receives `WorldStream.Derive(name).Fork(tick)` every tick: its draws depend on the
+  world seed, its own name and the tick only. `RunTick` advances the clock.
+- Tests (`Tests/Sim/Test_Scheduler.cpp`, 8): order independent of registration order,
+  hash-ordered independent systems, error reporting, LOD tick counts over two years,
+  stream independence from other systems and equality with the documented derivation,
+  dependency-ordered execution log, identical evolution of two worlds with the same seed
+  (and divergence with another), misuse paths.
+- Decision: ADR-0012.
 
-### 01.04 Simulation clock and calendar
+### 01.04 Simulation clock and calendar - VALIDATED (headless)
 
-- Goal: time as world state, never wall-clock.
-- Planned: `SimTick` (`uint64`), fixed tick duration, `Calendar` converting tick to
-  year / season / month / day / hour of AELVOR (constants data-defined, defaults in
-  code), no use of `<chrono>` or `time()` (purity R1/R4 already forbid them).
-- Tests: tick <-> calendar round trips, boundaries (tick 0, year rollover, `uint64`
-  limits), leap or irregular rules if adopted, constexpr evaluation, determinism.
-- Exit: VALIDATED.
+- Delivered (`SimClock.h`, header-only, constexpr): `SimTick` (`uint64`),
+  `CalendarRules` (data: ticks per hour, hours per day, days per month, months per year,
+  months per season; defaults 1/24/30/12/3, i.e. a 360-day AELVOR year of four seasons),
+  `Calendar::ToDate/ToTick` (pure inverses over the whole `uint64` range), `SimClock`
+  (`Now`, `Advance` by exactly one tick, `Restore` for snapshots, `Date`).
+- Tests (`Tests/Sim/Test_SimClock.cpp`, 4): boundaries (last tick of a year, first of
+  the next, season edges), round trips on samples up to `MaxTick` and exhaustively over
+  two years, custom rules and validation, clock advance/restore, constexpr evaluation.
+- Decision: ADR-0013. Irregular calendars (leap days) remain a data decision for Phase
+  02/03; `CalendarRules` is the extension point.
 
 ### 01.05 Event bus and event log
 
@@ -332,32 +339,35 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 01 — CORE SIMULATION
-TASK        : 01.02 — COMPONENT STORAGE
+TASK        : 01.04 — SIMULATION CLOCK & CALENDAR
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████░░░░░░░░░░░░░░░░░░ 25%
+████████████░░░░░░░░░░░░ 50%
 
 CURRENTLY
-→ 01.02 closed: ComponentTypeRegistry, ComponentPool<T>, ComponentStore
+→ 01.03 and 01.04 closed: ISystem, Scheduler (stable topological order, LOD periods,
+  per-system streams), SimClock and the AELVOR calendar
 
 COMPLETED
 ✓ Phase 00 — FOUNDATION (CI 9/9)
 ✓ 01.01 Entity handles & registry (16 tests)
-✓ 01.02 Component storage (15 tests, 2 M checks incl. a one-million-operation soak)
+✓ 01.02 Component storage (15 tests)
+✓ 01.03 Systems & tick scheduler (8 tests)
+✓ 01.04 Simulation clock & calendar (4 tests)
 
 NEXT
-→ 01.03 Systems & tick scheduler (ISystem, declared access sets, stable topological order)
-→ 01.04 Simulation clock & calendar
+→ 01.05 Event bus & event log (typed events, next-tick delivery, causal links)
+→ 01.06 Persistence interfaces & snapshot
 
 FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/{ComponentType.h, ComponentPool.h, ComponentStore.h}
-+ Source/VaelenSim/Private/{ComponentType.cpp, ComponentStore.cpp}
-+ Tests/Sim/{Test_ComponentType.cpp, Test_ComponentPool.cpp, Test_ComponentStore.cpp}
++ Source/VaelenSim/Public/Vaelen/Sim/{SimClock.h, System.h}
++ Source/VaelenSim/Private/Scheduler.cpp
++ Tests/Sim/{Test_SimClock.cpp, Test_Scheduler.cpp}
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 31 (30 without asserts); ctest 21/21 in all six Linux presets
-✓ Purity: 21 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 43 (41 without asserts); ctest 23/23 in all six Linux presets
+✓ Purity: 24 files, 0 violations
 ⚠ Unreal Build Tool: VaelenSim engine files UNVERIFIED
 
 BLOCKERS

@@ -8,12 +8,15 @@ set(VAELEN_SIM_PUBLIC_HEADERS
   Public/Vaelen/Sim/ComponentType.h
   Public/Vaelen/Sim/ComponentPool.h
   Public/Vaelen/Sim/ComponentStore.h
+  Public/Vaelen/Sim/SimClock.h
+  Public/Vaelen/Sim/System.h
 )
 
 set(VAELEN_SIM_SOURCES
   Private/EntityRegistry.cpp
   Private/ComponentType.cpp
   Private/ComponentStore.cpp
+  Private/Scheduler.cpp
 )
 
 add_library(VaelenSim STATIC ${VAELEN_SIM_SOURCES} ${VAELEN_SIM_PUBLIC_HEADERS})
