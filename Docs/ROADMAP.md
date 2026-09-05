@@ -44,8 +44,9 @@ A phase is closed, and may be used as a foundation by the next one, when all of 
 following hold:
 
 1. All tests are green on the CI matrix defined in `.github/workflows/kernel-ci.yml`
-   and `CMakePresets.json`: Linux clang and gcc in Debug and RelWithDebInfo, Windows
-   MSVC Debug, macOS AppleClang Debug, including the `Kernel.Purity` entry.
+   and `CMakePresets.json`: Linux clang and gcc in Debug, RelWithDebInfo and
+   RelWithDebInfo without assertions, clang-format, Windows MSVC Debug, macOS AppleClang
+   Debug, including the `Kernel.Purity` and `Kernel.PuritySelfTest` entries.
 2. Determinism tests exist and pass for every system of the phase: same seed and same
    inputs give identical results; state round-trips through save and restore; frozen
    values guard anything that feeds the save format.
@@ -66,7 +67,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 
 | Phase | Name | Objective (one line) | Status |
 |---|---|---|---|
-| 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), test harness, purity check, CI and documentation. | INCOMPLETE (00.01-00.04 VALIDATED headless; 00.05 in progress; engine build UNVERIFIED) |
+| 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | PLANNED |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | PLANNED |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | PLANNED |
@@ -94,101 +95,108 @@ Planned module names per phase are listed in `Docs/ARCHITECTURE.md` section 3.2.
 ## 4. Phase 00 - FOUNDATION: task breakdown and real status
 
 Status below was established by reading the code and the tests in `Tests/Core` and by
-running them (section 8). Test counts are from `VaelenCoreTests --list`.
+running them (section 8). Test counts are from `VaelenCoreTests --list`. This numbering
+is canonical: `Docs/STATUS.md` and commit subjects (`<phase>.<task>: ...`) use it.
+
+Master prompt scope item "interfaces de base": Phase 00 delivers only the two interfaces
+the foundation itself needs, `ILogSink` (`Log.h`) and the `AssertHandler` function
+pointer (`Assert.h`). `ISystem`/`TickContext`, `IArchive`/snapshot and the command
+interface are deliberately deferred to 01.03, 01.06 and Phase 10, because their shape
+depends on the entity/component model that Phase 01 introduces. This scope change is
+recorded here so that it stays visible.
 
 ### 00.01 Project architecture - VALIDATED (headless) / UNVERIFIED (engine)
 
 Deliverables present:
 
 - Unreal project: `Vaelen.uproject` (UE 5.6; modules `VaelenCore` PreDefault, `Vaelen`
-  Default), `Source/Vaelen.Target.cs`, `Source/VaelenEditor.Target.cs`,
-  `Source/VaelenCore/VaelenCore.Build.cs`, `Source/Vaelen/Vaelen.Build.cs`,
-  `Config/Default{Engine,Game,Editor,Input}.ini`.
+  Default; plugins EnhancedInput, ModelingToolsEditorMode), `Source/Vaelen.Target.cs`,
+  `Source/VaelenEditor.Target.cs`, `Source/VaelenCore/VaelenCore.Build.cs`
+  (export/assert/log-floor definitions from the target configuration),
+  `Source/Vaelen/Vaelen.Build.cs`, `Config/Default{Engine,Game,Editor,Input}.ini`.
 - Engine bridge module `Source/Vaelen`: `FVaelenModule` installs `FVaelenLogSink`
-  (kernel records to `UE_LOG`) and the kernel assertion handler.
-- Headless build: `/CMakeLists.txt` (options, warning set, `-fno-exceptions -fno-rtti`,
-  MSVC equivalents, defines), `Source/VaelenCore/CMakeLists.txt` (explicit source list),
-  `Tests/CMakeLists.txt`, `Tests/Core/CMakeLists.txt`, `CMakePresets.json`.
-- CI: `.github/workflows/kernel-ci.yml` (Linux clang/gcc x Debug/RelWithDebInfo, Windows
-  MSVC, macOS).
-- Style: `.clang-format`, `.editorconfig`, `.gitignore`.
+  (kernel records to `UE_LOG`, UTF-8), the kernel assertion handler (per-site ensure
+  dedupe) and aligns the kernel log floor with `LogVaelen`.
+- Headless build: `/CMakeLists.txt` (options, warning set, `-fno-exceptions -fno-rtti
+  -ffp-contract=off`, MSVC equivalents), `Source/VaelenCore/CMakeLists.txt` (explicit
+  source list), `Tests/CMakeLists.txt`, `Tests/Core/CMakeLists.txt`, `CMakePresets.json`
+  (schema 5, CMake >= 3.24; six Linux presets, macOS, Windows).
+- CI: `.github/workflows/kernel-ci.yml` (Linux clang/gcc x Debug/RelWithDebInfo/
+  no-asserts, clang-format 18, Windows MSVC, macOS `macos-15`; least-privilege token,
+  concurrency cancellation, timeouts).
+- Style and repository hygiene: `.clang-format` (reproduces the code, checked in CI),
+  `.editorconfig`, `.gitattributes` (LF), `.gitignore`.
 - Layering and module plan: `Docs/ARCHITECTURE.md` sections 1-4.
 
-Verified: headless configure, build and `ctest` with clang++ and g++ in Debug and
-RelWithDebInfo (section 8). Not verified: any UBT build; every engine-facing file is
-labelled UNVERIFIED and has never been compiled in this repository. Known gap: the
-checked-in `.clang-format` does not reproduce the checked-in code
-(`Docs/CONVENTIONS.md` section 2).
+Verified: headless configure, build and `ctest` for all six Linux presets (section 8).
+Not verified: any UBT build; every engine-facing file is labelled UNVERIFIED and has never
+been compiled in this repository.
 
 ### 00.02 Core primitives: ids, hash, random - VALIDATED
 
 | Piece | Files | Tests (suite: count) |
 |---|---|---|
-| Fixed-width types, helpers | `CoreTypes.h` | indirectly by every suite |
+| Fixed-width types (`long long` 64-bit aliases matching Unreal), export macro, endianness and IEEE-754 asserts, helpers | `CoreTypes.h` | CoreTypes: 1 (+ compile-time asserts); every suite indirectly |
 | Versions | `Version.h`, `Version.cpp` | Version: 7 |
 | Hashing (FNV-1a 64, `Mix64`, `HashCombine`, `_vhash`) | `Hash.h` | Hash: 15 |
-| Random streams (xoshiro256**, SplitMix64, `Derive`/`Fork`, `Jump`, draws) | `Random.h`, `Random.cpp` | Random: 23 |
-| Persistent ids and allocator | `Ids.h`, `Ids.cpp` | Ids: 17 |
+| Random streams (xoshiro256**, SplitMix64, `Derive`/`Fork`, `Jump`, draws; zero-state sanitising; fp-contract pragmas) | `Random.h`, `Random.cpp` | Random: 29 |
+| Persistent ids and allocator (never-reused serials, corrupt-state clamping, `GetTypeHash`) | `Ids.h`, `Ids.cpp` | Ids: 19 |
 
-All headers carry `STATUS: VALIDATED (Phase 00)`. Tests include known answers against
-independent reference implementations, frozen regression values for `HashCombine`,
-determinism and state round trips, edge cases (full 64-bit ranges, serial exhaustion) and
-assertion paths. Decisions: ADR-0003, ADR-0004, ADR-0007. Known discrepancies: `Random.h`
-names Lemire's method where the code uses bitmask-with-rejection; `Ids.cpp`,
-`Random.cpp`, `Version.cpp` have no STATUS line.
+All headers carry `STATUS: VALIDATED (Phase 00)` with the note that integration and
+long-duration tests are deferred to Phase 01. Tests include known answers against
+independent reference implementations, frozen regression values for `HashCombine` and for
+`Derive`/`Fork` seeds, determinism and state round trips, edge cases (full 64-bit ranges,
+serial exhaustion, all-zero state, rounding at large magnitudes) and assertion paths.
+Decisions: ADR-0003, ADR-0004, ADR-0007, ADR-0009.
 
 ### 00.03 Logging and assertions - VALIDATED
 
 | Piece | Files | Tests (suite: count) |
 |---|---|---|
-| Categories, levels, macros, sinks, thresholds | `Log.h`, `Log.cpp` | Log: 20 (includes an 8-thread dispatch test) |
-| `VAELEN_CHECK/CHECKF/VERIFY/ENSURE/UNREACHABLE`, pluggable handler, failure counter | `Assert.h`, `Assert.cpp` | Assert: 28 with assertions enabled, 5 with them disabled |
+| Categories (atomic thresholds), levels, literal-only macros, sinks (recursive lock, snapshot dispatch), compile-time floor | `Log.h`, `Log.cpp` | Log: 23 (8-thread serialisation and re-entrancy tests), LogFloor: 1 |
+| `VAELEN_CHECK/CHECKF/VERIFY/ENSURE/UNREACHABLE`, pluggable handler installed as one unit, failure counter, stderr + log default handler, `std::abort` | `Assert.h`, `Assert.cpp` | Assert: 33 with assertions enabled, 23 with them disabled |
 
-Decisions: ADR-0002, ADR-0005. Known discrepancies: `Log.h` says the headless build
-installs a stdout sink, but the runner does so only with `--verbose`; `Assert.cpp` has no
-STATUS line; the assertions-disabled configuration is not part of CI (see 00.04).
+Decisions: ADR-0002, ADR-0005.
 
 ### 00.04 Test harness and purity - VALIDATED
 
-- Harness `Tests/Harness/VaelenTest.h`, runner `Tests/Harness/TestMain.cpp`, self-test
-  `Tests/Core/Test_Harness.cpp` (Harness: 2). One CTest entry per `Test_<Suite>.cpp`.
-- Purity checker `Tools/check_kernel_purity.py` (rules R0-R7, exemptions, `--self-test`:
-  32 checks, 0 failed), module list `Tools/kernel_modules.txt`, CTest entry
-  `Kernel.Purity` (12 files, 0 violations).
+- Harness `Tests/Harness/VaelenTest.h` (mathematically correct integer comparisons,
+  negative self-test), runner `Tests/Harness/TestMain.cpp` (registry check: suite name
+  must match the file, `--shuffle`, `--reverse`, zero-check warning), self-test
+  `Tests/Core/Test_Harness.cpp` (Harness: 5). One CTest entry per `Test_<Suite>.cpp`
+  plus `Core.Registry`, `Core.Shuffled`, `Core.Reversed`; 300 s timeouts.
+- Purity checker `Tools/check_kernel_purity.py` (rules R0-R7 on headers and sources,
+  exemptions, BOM/CRLF-safe, rejects symlinks, path-component module names and empty
+  modules; `--self-test`: 36 checks, 0 failed), module list `Tools/kernel_modules.txt`,
+  CTest entries `Kernel.Purity` (12 files, 0 violations) and `Kernel.PuritySelfTest`.
 
-Decisions: ADR-0006, ADR-0008. Known gaps: `Test_Harness.cpp` is not guarded by
-`VAELEN_ASSERTS_ENABLED`, so a build with `-DVAELEN_ENABLE_ASSERTS=OFF` fails one test
-(observed: 89 run, 88 passed); no CI preset builds that configuration. The harness
-comment says `ScopedAssertCapture` restores the previous handler; it installs the default
-one.
+Decisions: ADR-0006, ADR-0008.
 
-### 00.05 Foundation validation and docs - INCOMPLETE
+### 00.05 Foundation validation and docs - VALIDATED (headless)
 
 Done:
 
-- `Docs/ARCHITECTURE.md` (layers, dual build, module map, primitives, tests, pipeline,
-  known discrepancies) and `Docs/CONVENTIONS.md` (language, formatting, naming, purity,
-  determinism, logging, assertions, labels, tests, process).
-- `Docs/DECISIONS.md` (ADR-0001 to ADR-0008) and this roadmap.
-- Cross-check of code against comments and documents; the discrepancies are listed in
-  `Docs/ARCHITECTURE.md` section 11, in the ADR consequences, and in section 4 above.
+- Adversarial review of the whole repository by eight independent lenses (kernel
+  correctness, determinism/portability, Unreal integration, test quality, build/CI,
+  documentation accuracy, master-prompt compliance, robustness/security): 189 findings,
+  triaged and applied in commit `7d41751` (kernel: export macro owned by the kernel,
+  Unreal-compatible 64-bit types, assertion policy from the target configuration,
+  re-entrant logging, zero-state and corrupt-counter handling, fp-contract pragmas;
+  harness, tests, build, CI, tools and the Unreal bridge as listed in that commit).
+- `Docs/ARCHITECTURE.md`, `Docs/CONVENTIONS.md`, `Docs/DECISIONS.md` (ADR-0001 to
+  ADR-0009), `Docs/STATUS.md`, `README.md` and this roadmap, refreshed against the final
+  code.
 
-Open:
+Deliberately not applied (see `Docs/STATUS.md`, "Discrepancies"): `FPSemantics` in the
+module rules, SHA-pinned GitHub Actions, trimming the `IdKind` placeholders.
 
-- No `README.md` (referenced by `Config/DefaultEditor.ini`).
-- The discrepancies listed above are reported, not fixed (`Random.h` wording, `Log.h`
-  wording, `VaelenTest.h` wording, missing STATUS lines in four kernel `.cpp` files,
-  `Test_Harness.cpp` under assertions off, `.clang-format` mismatch, the CI workflow
-  comment that claims an engine-backed runner).
-- Windows, macOS and RelWithDebInfo CI legs are defined but their results have not been
-  observed from this repository; the engine build has no pipeline at all.
-- Final review and the closing progress report of Phase 00.
-
-Phase 00 against the exit criteria of section 2: (1) green on the Linux legs as run
-locally, other legs unobserved; (2) met for Random, Ids, Hash; (3) met: no INCOMPLETE file
-exists, engine files are UNVERIFIED; (4) unit, deterministic and edge-case present,
-integration limited to cross-primitive use, long-duration not applicable yet; (5) docs
-present except README, closing report pending.
+Phase 00 against the exit criteria of section 2: (1) green on all six Linux presets as
+run locally; Windows and macOS legs unobserved; (2) met for Random, Ids, Hash, including
+frozen derivation values; (3) met: no INCOMPLETE file exists, engine files are
+UNVERIFIED; (4) unit, deterministic and edge-case present; integration and long-duration
+deferred to Phase 01 and stated in every STATUS line; (5) docs present, closing report in
+`Docs/STATUS.md`. Verdict: **Phase 00 VALIDATED on the headless side, UNVERIFIED on the
+engine side until the first UE 5.6 build.**
 
 ## 5. Phase 01 - CORE SIMULATION: task breakdown (PLANNED)
 
@@ -198,7 +206,7 @@ Nothing in this section exists. Planned module: `VaelenSim` (kernel), directory
 rule 6). Tests in `Tests/Sim/Test_<Suite>.cpp` building `VaelenSimTests`. Each task ends
 VALIDATED only with unit, deterministic and edge-case tests on both compilers; 01.07 and
 01.08 supply the integration and long-duration categories for the whole phase. Every
-design choice below that survives implementation gets an ADR (planned numbers 0009+).
+design choice below that survives implementation gets an ADR (planned numbers 0010+).
 
 ### 01.01 Entity handles and registry
 
@@ -319,37 +327,39 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 00 — FOUNDATION
-TASK        : 00.05 — FOUNDATION VALIDATION & DOCS
-STATUS      : IN PROGRESS
+TASK        : 00.05 — FOUNDATION VALIDATION
+STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███████████████████░░░░░ 80%
+████████████████████████ 100%
 
 CURRENTLY
-→ Architecture decision records
-→ Roadmap
-→ Cross-check of code, comments and documents
+→ Phase 00 closed on the headless side
+→ Engine-side files await the first UE 5.6 build (Docs/ARCHITECTURE.md § 8)
 
 COMPLETED
-✓ 00.01 Project architecture (headless VALIDATED, engine UNVERIFIED)
+✓ 00.01 Project architecture (UE5 project, dual build, CMake presets, CI)
 ✓ 00.02 Core primitives: ids, hash, random
 ✓ 00.03 Logging and assertions
-✓ 00.04 Test harness and purity check
+✓ 00.04 Test harness and kernel purity check
+✓ 00.05 Adversarial review (189 findings triaged, 60+ fixes), docs
 
 NEXT
-→ README.md
-→ Fix the reported discrepancies
-→ Closing report of Phase 00, then 01.01
+→ 01.01 Entity handles and registry (Phase 01 — CORE SIMULATION)
+→ First engine build on a machine with UE 5.6 (validates the UNVERIFIED files)
 
 FILES
-+ Docs/DECISIONS.md
-+ Docs/ROADMAP.md
+Source/VaelenCore (7 headers, 5 sources, 1 UE module file)
+Tests/Harness (2), Tests/Core (9 suites), Tools/check_kernel_purity.py
+Docs/{ARCHITECTURE,CONVENTIONS,DECISIONS,ROADMAP,STATUS}.md, README.md
 
 TESTS
-✓ 112/112 clang++ 18 Debug, g++ 13 Debug
-✓ 112/112 clang++ 18 RelWithDebInfo, g++ 13 RelWithDebInfo
-✓ ctest 8/8 (incl. Kernel.Purity) in all four configurations
-⚠ 88/89 with -DVAELEN_ENABLE_ASSERTS=OFF (not a CI configuration)
+✓ 133/133 tests, 21 914 checks: clang++ 18 and g++ 13, Debug and RelWithDebInfo
+✓ 108/108 with assertions off (linux-*-noasserts), both compilers
+✓ ctest 14/14 in all six Linux presets (incl. Kernel.Purity, PuritySelfTest 36 checks)
+✓ clang-format 18: 0 drift on Source/VaelenCore and Tests
+⚠ Windows MSVC, macOS AppleClang: CI legs defined, not observed from here
+⚠ Unreal Build Tool (UE 5.6): never run, engine-facing files UNVERIFIED
 
 BLOCKERS
 None
@@ -358,19 +368,23 @@ None
 
 ## 8. Verification record
 
-Commands run on 2026-09-05 (Linux, clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja,
-Python 3.11.15), each in a private build directory:
+Commands run on 2026-09-05 (clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.15, clang-format 18.1.3, Linux x86_64) with the checked-in presets, each into
+`out/build/<preset>`:
 
 ```
-cmake -S . -B out/build/agent-doc-adr-clang -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++
-cmake --build out/build/agent-doc-adr-clang
-ctest --test-dir out/build/agent-doc-adr-clang --output-on-failure   # 8/8 passed
-out/build/agent-doc-adr-clang/Tests/Core/VaelenCoreTests             # 112 run, 112 passed, 21785 checks
-# same with -DCMAKE_CXX_COMPILER=g++ into agent-doc-adr-gcc            # 8/8, 112/112
-# same with -DCMAKE_BUILD_TYPE=RelWithDebInfo (clang++, g++)           # 8/8, 112/112 each
-# same with -DVAELEN_ENABLE_ASSERTS=OFF (clang++, Debug)               # 89 run, 88 passed, 1 failed
-python3 Tools/check_kernel_purity.py --self-test                       # 32 checks, 0 failed
+cmake --preset <preset> && cmake --build --preset <preset> && ctest --preset <preset>
+out/build/<preset>/Tests/Core/VaelenCoreTests
+python3 Tools/check_kernel_purity.py --self-test                       # 36 checks, 0 failed
 python3 Tools/check_kernel_purity.py --root . --verbose                # 12 files, 0 violations
 ```
 
-Not run: any UBT/engine build, the Windows and macOS CI legs.
+| Preset | Build | `ctest` | `VaelenCoreTests` |
+|---|---|---|---|
+| linux-clang-debug | 0 warnings | 14/14 passed | 133 run, 133 passed, 21914 checks |
+| linux-gcc-debug | 0 warnings | 14/14 passed | 133 run, 133 passed, 21914 checks |
+| linux-clang-release | 0 warnings | 14/14 passed | 133 run, 133 passed, 21914 checks |
+| linux-gcc-release | 0 warnings | 14/14 passed | 133 run, 133 passed, 21914 checks |
+| linux-clang-noasserts | 0 warnings | 14/14 passed | 108 run, 108 passed, 21701 checks |
+| linux-gcc-noasserts | 0 warnings | 14/14 passed | 108 run, 108 passed, 21701 checks |
+
+Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). Not run: any UBT/engine build, the Windows and macOS CI legs.

@@ -7,9 +7,11 @@ this document. Statements about alternatives that were not chosen are engineerin
 rationale, not verified code.
 
 Purpose: one record per architecture decision that later phases must not silently
-undo. Each record has four parts: Context (the forces), Decision (what is in the code),
-Consequences (what it costs and what it enables), Status (accepted / superseded, and the
-validation state of the implementation).
+undo. Each record has five parts: Context (the forces), Decision (what is in the code),
+Alternatives and decision rule (what was rejected and which criterion of the project's
+decision rule decided: robustness, then architectural simplicity, performance,
+evolvability, determinism), Consequences (what it costs and what it enables), Status
+(accepted / superseded, and the validation state of the implementation).
 
 Rules for this file:
 
@@ -56,9 +58,16 @@ files:
   `CppStandardVersion.Cpp20`, dependency on `Core` only, `PublicDefinitions` adds
   `VAELEN_UNREAL_BUILD=1`);
 - by CMake as the static library `VaelenCore` / `Vaelen::Core` (`/CMakeLists.txt`,
-  `Source/VaelenCore/CMakeLists.txt`), with `VAELENCORE_API=` (empty),
-  `VAELEN_HEADLESS_BUILD=1` and `VAELEN_ASSERTS_ENABLED` set from the option
-  `VAELEN_ENABLE_ASSERTS`.
+  `Source/VaelenCore/CMakeLists.txt`), with `VAELEN_HEADLESS_BUILD=1` and
+  `VAELEN_ASSERTS_ENABLED` set from the option `VAELEN_ENABLE_ASSERTS`.
+
+The export macro is owned by the kernel: `CoreTypes.h` defines `VAELEN_CORE_API` from
+`VAELEN_CORE_EXPORTS` (private definition of the module in modular builds) and
+`VAELEN_CORE_IMPORTS` (public definition for dependants), empty otherwise. UBT's
+generated `VAELENCORE_API=DLLEXPORT` is never used, because `DLLEXPORT` is only defined
+by `HAL/Platform.h`, which the kernel never includes. In `VaelenCore.Build.cs` the
+assertion switch and the compile-time log floor are likewise defined from the target
+configuration, since UBT defines `NDEBUG` in every non-debug-CRT configuration.
 
 Kernel files include only `"Vaelen/..."` headers and non-banned standard headers
 (`Tools/check_kernel_purity.py`, rule R1). The single Unreal-facing translation unit of a
@@ -93,10 +102,20 @@ the kernel's public API (command interface PLANNED, Phase 01/10).
   conversions in the Unreal modules (PLANNED, Phase 13). The kernel never depends on
   the presentation's data model.
 
+### Alternatives and decision rule
+
+- A kernel that includes Unreal headers and is tested only through Unreal Automation:
+  rejected for robustness and simplicity (every test needs an engine install, no CI
+  without a licensed runner, no headless stress tests).
+- A separately built third-party library linked into UE as `PublicAdditionalLibraries`:
+  rejected for simplicity (per-platform prebuilt binaries to maintain). Compiling the
+  same sources twice keeps one source of truth.
+- Decided by robustness (testability without the engine), then simplicity.
+
 ### Status
 
-Accepted. Headless build VALIDATED: clang++ 18.1.3 and g++ 13.3.0, Debug and
-RelWithDebInfo, 8/8 CTest entries, 112/112 tests, 0 warnings (see
+Accepted. Headless build VALIDATED: clang++ 18.1.3 and g++ 13.3.0, six presets,
+14/14 CTest entries, 133/133 tests (108/108 without assertions), 0 warnings (see
 [Verification record](#verification-record)). Engine build UNVERIFIED. Verified against:
 `/CMakeLists.txt`, `Source/VaelenCore/CMakeLists.txt`, `Source/VaelenCore/VaelenCore.Build.cs`,
 `Source/Vaelen/Vaelen.Build.cs`, `Source/Vaelen/Private/Vaelen.cpp`, `Vaelen.uproject`,
@@ -118,8 +137,9 @@ where the same `throw` is a compile error.
 ### Decision
 
 Both builds disable exceptions and RTTI: GCC/Clang `-fno-exceptions -fno-rtti`; MSVC
-`/GR-`, `_HAS_EXCEPTIONS=0` and `/EHsc` stripped from `CMAKE_CXX_FLAGS` (`/CMakeLists.txt`,
-`vaelen_build_flags`); UBT flags as above. The purity checker rejects `throw`, `try {`,
+`/GR-`, `_HAS_EXCEPTIONS=0`, `/EHsc` stripped from `CMAKE_CXX_FLAGS` and replaced by the
+explicit `/EHs-c-` (plus `/wd4577`, since MSVC otherwise warns on every `noexcept`)
+(`/CMakeLists.txt`, `vaelen_build_flags`); UBT flags as above. The purity checker rejects `throw`, `try {`,
 `catch (` (R2), `dynamic_cast`, `typeid` (R3) and the headers `<exception>`,
 `<stdexcept>`, `<typeinfo>`, `<typeindex>`, `<csetjmp>`, `<setjmp.h>` (R1).
 
@@ -128,7 +148,8 @@ code):
 
 1. Assertions for programming errors: `VAELEN_CHECK`, `VAELEN_CHECKF`, `VAELEN_VERIFY`
    (`Assert.h`), reported through a pluggable handler and fatal by default
-   (`Assert.cpp`, `DefaultHandler` calls `Detail::AbortProcess`).
+   (`Assert.cpp`, `DefaultHandler` writes to stderr, logs, then calls
+   `Detail::AbortProcess`, which flushes stdio and calls `std::abort()`, SIGABRT).
 2. "Check, then guard": after a failed check the function still returns a safe value,
    because a handler may return (the tests install one). `IdAllocator::Allocate`
    returns `PersistentId::Invalid()`; `RandomStream::Below(0)` returns 0;
@@ -147,19 +168,28 @@ identification uses explicit enums (`IdKind`, `AssertKind`, `LogLevel`).
   terminate the process instead. The kernel must validate inputs before calling them.
 - Third-party test frameworks built around exceptions cannot be used as-is (ADR-0006);
   `VT_REQUIRE` returns from the test function instead of throwing.
-- Abort paths cannot be unit-tested in-process: `VAELEN_UNREACHABLE()` and the default
-  assertion handler are only proven to compile and to terminate control flow
-  (`Test_Assert.cpp`, `SignOf`).
+- The abort itself cannot be unit-tested in-process: `VAELEN_UNREACHABLE()` is proven to
+  compile and to terminate control flow (`Test_Assert.cpp`, `SignOf`); the default
+  handler's reporting path is tested through an `Ensure` report
+  (`Assert.DefaultHandlerLogsEnsureAndContinues`).
 - Every fallible kernel API documents its failure value in its header comment; callers
   must check it. No `errno`-style globals, no `std::optional` in public APIs yet (allowed).
+
+### Alternatives and decision rule
+
+- Exceptions and RTTI enabled in the headless build only: rejected for robustness (two
+  semantics for the same code, `throw` a compile error in one build).
+- `std::expected`/error codes for programming errors: rejected for simplicity; they are
+  used for expected failures, assertions for invariants.
+- Decided by robustness (identical behaviour in both builds).
 
 ### Status
 
 Accepted; VALIDATED. Verified against: `/CMakeLists.txt`, `Source/VaelenCore/VaelenCore.Build.cs`,
 `Source/VaelenCore/Public/Vaelen/Core/Assert.h`, `Source/VaelenCore/Private/Assert.cpp`,
 `Source/VaelenCore/Private/Ids.cpp`, `Source/VaelenCore/Private/Random.cpp`,
-`Tools/check_kernel_purity.py` (R1-R3), `Tests/Core/Test_Assert.cpp` (28 tests with
-assertions enabled, 5 with assertions disabled).
+`Tools/check_kernel_purity.py` (R1-R3), `Tests/Core/Test_Assert.cpp` (33 tests with
+assertions enabled, 23 with assertions disabled).
 
 ---
 
@@ -183,7 +213,8 @@ independently in a test.
   is `RandomStreamState{uint64 Seed; uint64 S[4]; uint64 DrawCount}` (48 bytes), saved
   and restored verbatim (`GetState`/`SetState`, constructor from state).
 - Seeding: `Reseed(Seed)` fills `S[0..3]` with four consecutive `SplitMix64Next` outputs
-  and guards against the all-zero state.
+  and guards against the all-zero state; the state constructor and `SetState` apply
+  the same guard and report a violated invariant with `VAELEN_ENSURE`.
 - Hierarchy by name: `Derive(std::string_view Name)` = `Derive(HashString(Name))` =
   `RandomStream(HashCombine(HashCombine(Seed, DeriveByNameSalt), NameHash))`, salt
   `0x5641454c454e2d4e` ("VAELEN-N"). Hierarchy by index: `Fork(uint64 Index)` with salt
@@ -370,6 +401,16 @@ Logging is printf-style (`Log.h`, `Log.cpp`):
 - Moving to `std::format` later would change every call site; it is only worth doing once
   every toolchain in the matrix and the engine's Linux toolchain guarantee it.
 
+### Alternatives and decision rule
+
+- `std::format`: rejected for robustness (not guaranteed in the libc++ shipped with
+  Unreal's Linux toolchain at the time of the decision) and portability parity across
+  MSVC, GCC and Clang.
+- A custom type-safe formatter: rejected for simplicity in Phase 00; printf formats are
+  compile-time checked (`-Wformat=2`) and, independently of compiler flags, forced to be
+  string literals by the macros.
+- Decided by robustness, then simplicity.
+
 ### Status
 
 Accepted; VALIDATED. Verified against: `Source/VaelenCore/Public/Vaelen/Core/Log.h`,
@@ -431,6 +472,13 @@ and, later, the option to run the same tests from Unreal Automation (noted in
   `-DVAELEN_ENABLE_ASSERTS=OFF` its `AssertCaptureDoesNotAbort` test fails (observed, see
   [Verification record](#verification-record)). No CI preset builds that configuration.
 
+### Alternatives and decision rule
+
+- GoogleTest or Catch2: rejected for robustness (both assume exceptions or RTTI for
+  their default configurations, and add a dependency to the UBT-side build).
+- Unreal Automation tests only: rejected for the same reason as ADR-0001.
+- Decided by robustness (no exceptions, single binary, no dependency), then simplicity.
+
 ### Status
 
 Accepted; VALIDATED for the configurations CI builds (assertions enabled). Verified
@@ -479,9 +527,6 @@ with a single-draw shortcut when the span is the full 64-bit range, and a Check 
   most 2^-n.
 - Switching to another method later changes every generated sequence and therefore the
   save format.
-- `Random.h` still documents `RangeInclusive` as "Unbiased (Lemire)"; the implementation
-  and the `Random.cpp` comment say bitmask-with-rejection. The result is unbiased; the
-  algorithm name in the header is wrong (reported, not fixed here).
 
 ### Status
 
@@ -526,7 +571,7 @@ R7 fixed-width (no bare `long` family outside `static_cast<...>`). Exemption:
 `// PURITY-ALLOW(Rn[, Rm]): reason` on the offending line (file-level R5 on any line).
 Exit codes: 0 clean, 1 violations (`path:line: Rn rule-name: message`), 2 configuration
 error. `--self-test` builds a synthetic repository in a temporary directory and checks
-every rule, every exemption form, the lexer corner cases and the command line (32 checks).
+every rule, every exemption form, the lexer corner cases and the command line (36 checks).
 
 ### Consequences
 
@@ -548,11 +593,20 @@ every rule, every exemption form, the lexer corner cases and the command line (3
   (`Assert.cpp`, `Ids.cpp`, `Random.cpp`, `Version.cpp`) have none, although the project
   rule asks for one in every kernel file (reported, not fixed here).
 
+### Alternatives and decision rule
+
+- clang-tidy / include-what-you-use: rejected for robustness and simplicity (an extra
+  toolchain on four CI images, no rule for STATUS lines or Unreal includes).
+- Relying on the headless build failing when an Unreal header is included: rejected as
+  incomplete (it would not catch `<random>`, `throw` in dead code, missing STATUS lines,
+  or an empty module scanned vacuously).
+- Decided by robustness (self-tested, no dependency), then simplicity.
+
 ### Status
 
 Accepted; VALIDATED. Verified against: `Tools/check_kernel_purity.py`,
 `Tools/kernel_modules.txt`, `Tests/CMakeLists.txt`, `.github/workflows/kernel-ci.yml`;
-runs executed: `--self-test` (32 checks, 0 failed), `--root /home/user/vaelen --verbose`
+runs executed: `--self-test` (36 checks, 0 failed), `--root /home/user/vaelen --verbose`
 (12 files, 0 violations, 0 exemptions), `ctest` entry `Kernel.Purity` passed in all four
 Linux configurations below.
 
@@ -597,6 +651,15 @@ implementation-defined across C runtimes.
 - A small performance cost on targets where FMA would otherwise be emitted; accepted, the
   kernel is integer-heavy by design.
 
+### Alternatives and decision rule
+
+- Build flags only (`-ffp-contract=off`): rejected for robustness, since the Unreal
+  build does not see the CMake flags; the in-source pragmas make the kernel
+  self-protecting under every toolchain.
+- Fixed-point everywhere: kept as the policy for authoritative state, but not imposed on
+  the random primitives, whose floating-point outputs are derived from integer draws.
+- Decided by determinism and robustness.
+
 ### Status
 
 Accepted 2026-09-05. Files: `/CMakeLists.txt`, `Source/VaelenCore/Public/Vaelen/Core/Random.h`,
@@ -607,32 +670,19 @@ UNVERIFIED.
 
 ## Verification record
 
-Executed on 2026-09-05 for this document, in private build directories
-(`out/build/agent-doc-adr-*`), with clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja,
-Python 3.11.15, Linux:
-
-| Configuration | Build | `ctest` | `VaelenCoreTests` |
-|---|---|---|---|
-| clang++, Debug, asserts ON | 0 warnings | 8/8 passed | 112 run, 112 passed, 21785 checks |
-| g++, Debug, asserts ON | 0 warnings | 8/8 passed | 112 run, 112 passed, 21785 checks |
-| clang++, RelWithDebInfo, asserts ON | 0 warnings | 8/8 passed | 112 run, 112 passed, 21785 checks |
-| g++, RelWithDebInfo, asserts ON | 0 warnings | 8/8 passed | 112 run, 112 passed, 21785 checks |
-| clang++, Debug, `-DVAELEN_ENABLE_ASSERTS=OFF` (not in CI) | 0 warnings | not run | 89 run, 88 passed, 1 failed (`Harness.AssertCaptureDoesNotAbort`) |
-
-Re-run after the 00.05 integration pass (harness test guarded, `GetAssertHandler` added,
-`*-noasserts` presets added to CI, `-ffp-contract=off`, clang-format applied), same
-toolchain, preset build directories `out/build/<preset>`:
+Executed on 2026-09-05 after the Phase 00 review pass (clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.15, clang-format 18.1.3, Linux x86_64), with the checked-in
+presets into `out/build/<preset>`:
 
 | Preset | Build | `ctest` | `VaelenCoreTests` |
 |---|---|---|---|
-| linux-clang-debug | 0 warnings | 8/8 passed | 114 run, 114 passed, 21792 checks |
-| linux-gcc-debug | 0 warnings | 8/8 passed | 114 run, 114 passed, 21792 checks |
-| linux-clang-release | 0 warnings | 8/8 passed | 114 run, 114 passed, 21792 checks |
-| linux-gcc-release | 0 warnings | 8/8 passed | 114 run, 114 passed, 21792 checks |
-| linux-clang-noasserts | 0 warnings | 8/8 passed | 89 run, 89 passed, 21584 checks |
-| linux-gcc-noasserts | 0 warnings | 8/8 passed | 89 run, 89 passed, 21584 checks |
+| linux-clang-debug | 0 warnings | 14/14 passed | 133 run, 133 passed, 21914 checks |
+| linux-gcc-debug | 0 warnings | 14/14 passed | 133 run, 133 passed, 21914 checks |
+| linux-clang-release | 0 warnings | 14/14 passed | 133 run, 133 passed, 21914 checks |
+| linux-gcc-release | 0 warnings | 14/14 passed | 133 run, 133 passed, 21914 checks |
+| linux-clang-noasserts | 0 warnings | 14/14 passed | 108 run, 108 passed, 21701 checks |
+| linux-gcc-noasserts | 0 warnings | 14/14 passed | 108 run, 108 passed, 21701 checks |
 
-Tests per suite (from `--list`): Assert 28, Harness 2, Hash 15, Ids 17, Log 20, Random 23,
-Version 7. Purity: `python3 Tools/check_kernel_purity.py --self-test` -> 32 checks,
-0 failed; `--root /home/user/vaelen --verbose` -> 12 files, 0 violations. The Windows,
-macOS and engine (UBT) builds were not executed.
+Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). Purity: `python3 Tools/check_kernel_purity.py --self-test`
+-> 36 checks, 0 failed; `--root . --verbose` -> 12 files, 0 violations, 2 exemptions.
+clang-format 18 dry run: 0 drift. The Windows, macOS and engine (UBT) builds were not
+executed.

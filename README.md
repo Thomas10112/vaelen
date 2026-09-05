@@ -60,9 +60,9 @@ flowchart TB
 Vaelen.uproject                  UE 5.6 project: modules VaelenCore (PreDefault), Vaelen (Default)
 CMakeLists.txt                   headless kernel build (root): options, warning flags, defines
 CMakePresets.json                configure / build / test presets
-.github/workflows/kernel-ci.yml  headless CI: Linux clang/gcc, Windows MSVC, macOS AppleClang
+.github/workflows/kernel-ci.yml  headless CI: Linux clang/gcc (with and without asserts), clang-format, Windows MSVC, macOS
 Config/                          DefaultEngine/Game/Editor/Input.ini
-Docs/                            ARCHITECTURE.md, CONVENTIONS.md, DECISIONS.md, STATUS.md
+Docs/                            ARCHITECTURE.md, CONVENTIONS.md, DECISIONS.md, ROADMAP.md, STATUS.md
 Source/
   Vaelen.Target.cs, VaelenEditor.Target.cs
   VaelenCore/                    KERNEL: Public/Vaelen/Core/*.h, Private/*.cpp, CMakeLists.txt, VaelenCore.Build.cs
@@ -92,6 +92,8 @@ Presets in `CMakePresets.json` (each builds into `out/build/<preset>`):
 | `linux-clang-release` | same name | Linux | clang++, RelWithDebInfo |
 | `linux-gcc-debug` | same name | Linux | g++, Debug |
 | `linux-gcc-release` | same name | Linux | g++, RelWithDebInfo |
+| `linux-clang-noasserts` | same name | Linux | clang++, RelWithDebInfo, `VAELEN_ENABLE_ASSERTS=OFF` |
+| `linux-gcc-noasserts` | same name | Linux | g++, RelWithDebInfo, `VAELEN_ENABLE_ASSERTS=OFF` |
 | `macos-debug` | same name | macOS | default compiler, Debug |
 | `windows-msvc` | `windows-msvc-debug`, `windows-msvc-release` | Windows | Visual Studio 17 2022, x64 |
 
@@ -101,13 +103,15 @@ Without presets, in any build directory:
 cmake -S . -B out/build/my-clang -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++
 cmake --build out/build/my-clang
 ctest --test-dir out/build/my-clang --output-on-failure
-out/build/my-clang/Tests/Core/VaelenCoreTests [--suite Random] [--filter Text] [--list] [--verbose]
+out/build/my-clang/Tests/Core/VaelenCoreTests [--suite Random] [--filter Text] [--list] [--verbose] [--shuffle 1]
 python3 Tools/check_kernel_purity.py --root . [--verbose]        # --self-test exercises every rule
 ```
 
-CTest entries: `Kernel.Purity` plus one `Core.<Suite>` per `Tests/Core/Test_<Suite>.cpp`
-(Assert, Harness, Hash, Ids, Log, Random, Version). CMake options: `VAELEN_BUILD_TESTS` (ON),
-`VAELEN_WARNINGS_AS_ERRORS` (ON), `VAELEN_ENABLE_ASSERTS` (ON).
+CTest entries (14): `Kernel.Purity`, `Kernel.PuritySelfTest`, one `Core.<Suite>` per
+`Tests/Core/Test_<Suite>.cpp` (Assert, CoreTypes, Harness, Hash, Ids, Log, LogFloor, Random,
+Version) and `Core.Registry`, `Core.Shuffled`, `Core.Reversed`. CMake options:
+`VAELEN_BUILD_TESTS` (ON), `VAELEN_WARNINGS_AS_ERRORS` (ON), `VAELEN_ENABLE_ASSERTS` (ON),
+`VAELEN_REQUIRE_PURITY_CHECK` (ON).
 
 ## Open the Unreal project (UNVERIFIED)
 
@@ -117,7 +121,7 @@ CTest entries: `Kernel.Purity` plus one `Core.<Suite>` per `Tests/Core/Test_<Sui
    (`Vaelen.sln` is git-ignored and always regenerated).
 3. Open the solution, build the `VaelenEditor` target in Development Editor, then launch the
    editor from `Vaelen.uproject`. On start the `Vaelen` module logs
-   `VAELEN <version> - kernel save format v<n> - module started`.
+   `VAELEN <version> - kernel save format v<n> - kernel asserts on - module started`.
 
 This path has not been exercised: no UE 5.6 installation or engine-backed CI runner is
 available in this repository's environment, so every Unreal-facing file is marked `UNVERIFIED`.
@@ -130,9 +134,9 @@ available in this repository's environment, so every Unreal-facing file is marke
 | Kernel module registration | `Source/VaelenCore/Private/VaelenCoreModule.cpp` | UNVERIFIED (requires UE5) |
 | Unreal bridge module `Vaelen` | `Source/Vaelen` | UNVERIFIED (requires UE5) |
 | Test harness and runner | `Tests/Harness` | VALIDATED (Phase 00) |
-| Core test suites (112 tests) | `Tests/Core` | VALIDATED |
+| Core test suites (133 tests, 108 without assertions) | `Tests/Core` | VALIDATED |
 | Kernel purity checker | `Tools/check_kernel_purity.py` | VALIDATED (Phase 00) |
-| Headless CI workflow | `.github/workflows/kernel-ci.yml` | Linux legs reproduced locally; Windows and macOS runs not observed |
+| Headless CI workflow | `.github/workflows/kernel-ci.yml` | Six Linux legs reproduced locally; clang-format, Windows and macOS runs not observed |
 | Modules of Phases 01-20 | - | PLANNED (do not exist) |
 
 Numbers, commands and the current BUILD STATUS block: [Docs/STATUS.md](Docs/STATUS.md).
