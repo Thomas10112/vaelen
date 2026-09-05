@@ -48,6 +48,7 @@ Rules for this file:
 | [0023](#adr-0023-the-world-is-a-function-of-seed-and-config-through-one-pipeline-call-frozen-as-whole-world-digests-at-three-sizes) | The world is a function of seed and config through one pipeline call, frozen as whole-world digests at three sizes | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0024](#adr-0024-history-is-eras-opened-by-span-or-caused-request-plus-a-chronicle-of-record-entities-with-every-piece-of-state-in-components) | History is eras opened by span or caused request plus a chronicle of Record entities, with every piece of state in components | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0025](#adr-0025-population-is-coarse-per-region-cultures-are-entities-and-a-culture-splits-by-graph-distance-with-lineage-spacing) | Population is coarse per region, cultures are entities, and a culture splits by graph distance with lineage spacing | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0026](#adr-0026-names-are-built-from-a-per-language-phonology-pronounceable-by-construction-unique-per-scope-and-stored-as-fixed-size-components) | Names are built from a per-language phonology, pronounceable by construction, unique per scope, and stored as fixed-size components | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -1616,6 +1617,65 @@ regions, their adjacency graph, biomes, rivers and fertile deposits.
 Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/Population.h`,
 `Source/VaelenSim/Private/Population.cpp`, `Tests/Sim/Test_Population.cpp` (5 tests).
 Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0026: Names are built from a per-language phonology, pronounceable by construction, unique per scope, and stored as fixed-size components
+
+### Context
+
+From Phase 03 on, everything the player reads has a name: regions, rivers, cultures,
+eras, later persons and documents. The master prompt wants names to feel like they
+belong to a people, to change as peoples split, and to be reproducible from the seed.
+The kernel forbids floats, external data and non-deterministic randomness, and every
+piece of state must survive snapshots byte for byte.
+
+### Decision
+
+1. A language is an entity per culture with a `Phonology`: bit inventories over fixed
+   onset, coda and vowel tables, four syllable-shape weights and a syllable range, 20
+   bytes with no padding. A root language is derived from the culture's identity hash;
+   a child culture's language is the parent's phonology with one sound change; every
+   `DriftTicks` (150 years) a language changes one more sound. Names already given
+   keep their text; the generation at naming time is recorded on the name.
+2. A name is a pure function of (phonology, scope, key, salt): a hash stream draws the
+   syllables; the construction rules (no vowel across a boundary, single consonant
+   after a single coda and never the same letter twice, vowel after a cluster coda, no
+   repeated syllable, two-syllable floor without suffix, stem cap) guarantee the
+   `IsPronounceable` invariant, which the generator asserts on every result.
+3. Names are `NameInfo` components on the named entity: language, scope, key, salt,
+   generation and a 24-byte NUL-terminated text. Uniqueness is per scope: the yearly
+   system retries the salt until the text is unused, so two regions never share a name
+   while a river and a region may.
+4. The `LanguageSystem` runs after Population, founds languages, drifts them, then
+   names cultures, languages, settled regions, rivers and lakes whose source region is
+   settled, and eras in the language of the largest culture. Every naming is a Named
+   event with the entity as subject, so the chronicle can record it.
+
+### Alternatives and decision rule
+
+- Word lists or syllable data files: rejected; the kernel carries no external data and
+  fixed tables in code keep names identical on every platform.
+- Names as std::string fields: rejected; components are plain data (ADR-0011) and a
+  fixed 24-byte text serialises without a length prefix.
+- Global uniqueness across scopes: rejected; scope-local uniqueness keeps salts low
+  (at most 1 on AELVOR 128) and lets a river carry its region's name.
+- Decided by robustness (the invariant is asserted, not hoped for) and determinism
+  (hash stream, integer only); simplicity over linguistic realism.
+
+### Consequences
+
+- The sound tables are part of the frozen contract: moving an entry changes every
+  name, so additions go at the end and any change re-freezes the naming digest.
+- `MaxSalt` bounds the uniqueness search; a scope with more entities than the
+  phonology can name distinctly leaves the rest nameless rather than duplicating.
+- Persons (Phase 04) use `NameScope::Person` with the same generator.
+
+### Status
+
+Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/Naming.h`,
+`Source/VaelenSim/Private/Naming.cpp`, `Tests/Sim/Test_Naming.cpp` (5 tests). Headless
+VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
 

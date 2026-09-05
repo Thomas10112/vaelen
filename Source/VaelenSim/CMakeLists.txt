@@ -27,6 +27,7 @@ set(VAELEN_SIM_PUBLIC_HEADERS
   Public/Vaelen/Sim/WorldGenPipeline.h
   Public/Vaelen/Sim/History.h
   Public/Vaelen/Sim/Population.h
+  Public/Vaelen/Sim/Naming.h
 )
 
 set(VAELEN_SIM_SOURCES
@@ -47,6 +48,7 @@ set(VAELEN_SIM_SOURCES
   Private/WorldGenPipeline.cpp
   Private/History.cpp
   Private/Population.cpp
+  Private/Naming.cpp
 )
 
 add_library(VaelenSim STATIC ${VAELEN_SIM_SOURCES} ${VAELEN_SIM_PUBLIC_HEADERS})

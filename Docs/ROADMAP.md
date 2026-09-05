@@ -70,7 +70,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
-| 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | IN PROGRESS (03.01-03.02 VALIDATED headless; 03.03-03.08 PLANNED) |
+| 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | IN PROGRESS (03.01-03.03 VALIDATED headless; 03.04-03.08 PLANNED) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
@@ -721,12 +721,44 @@ Decisions taken up front (each becomes an ADR when its task closes):
   `f2afaa068c0f717d`, 47 587 people, 18 cultures.
 - Decision: ADR-0025.
 
-### 03.03 Languages and naming
+### 03.03 Languages and naming - VALIDATED (headless)
 
-- `Language` entities per culture with a phonology (syllable inventory drawn from the
-  seed), deterministic name generation for regions, rivers, eras, cultures and later
-  persons; drift and split when cultures split.
-- Tests: names are pronounceable by construction, unique per scope, frozen.
+- Delivered: `Naming.h/.cpp` - `Phonology` (bit inventories over fixed onset, coda and
+  vowel tables, syllable-shape weights, syllable range; 20 bytes), `LanguageInfo`
+  (culture, parent language, generation, founding tick, identity, sounds, names given),
+  `NameText` (24-byte NUL-terminated), `NameScope` (culture, language, region, river,
+  lake, era, person), `NameInfo` component on the named entity (language, scope, key,
+  salt, generation, text), `LanguageTypes::Declare`, `LanguageRules` (drift span, salt
+  budget, river / lake / era toggles), pure functions `DerivePhonology`,
+  `MutatePhonology`, `NormalisePhonology`, `IsNormalised`, `GenerateName`,
+  `IsPronounceable`, `NameLength`, `NameEquals`; `LanguageSystem` (LOD World, after
+  Population: founds a language per culture, a child of the parent culture's language
+  after a split, drifts one sound per `DriftTicks`, then names nameless cultures,
+  languages, settled regions, rivers and lakes whose source region is settled, and eras
+  in the language of the largest culture; every name unique in its scope by salt
+  retry); events LanguageFounded, LanguageDrifted, Named (subject = the named entity);
+  queries `NameOf`, `IsNameUsed`, `MeasureNames`, `ExportNames`.
+- Name construction: syllables are onset + vowel + coda drawn by a hash stream over
+  (phonology, scope, key, salt); never two vowels across a boundary, a single
+  consonant only after a single coda and never the same letter twice, a vowel after a
+  cluster coda, no syllable repeating its predecessor, a two-syllable floor for
+  un-suffixed scopes, a language-specific river / lake suffix chosen by the stem's
+  last letter, stems capped at 12 letters. `IsPronounceable` (letters only, capital
+  then lower case, 2-23 letters, at most three consonants or two vowels in a row) is
+  asserted on every generated name.
+- Tests (5): phonologies derived, normalised, deterministic and drifting by at most
+  two bits or one weight, an empty phonology repaired, component sizes; 14 336 names
+  over 16 phonologies and every scope all pronounceable, 3-16 letters, at least 113 of
+  128 distinct per scope, salt changes 14 334 of them, two languages agree on at most 2
+  of 64 keys, the invariant rejects hand-written counter-examples and hidden bytes; 500
+  years on AELVOR 128 (one language per culture, parents follow splits, root
+  generations 3, drift / founded / named events equal to the state, every settled
+  region named with its index as key, eras named, no duplicates, sample names logged);
+  two worlds identical, names surviving a snapshot byte for byte and the restored world
+  continuing identically, a different seed naming differently, rules honoured (no
+  drift, no river / lake / era names), a drowned world nameless; frozen 500 years at
+  128: state `871cdd11bea18906`, 154 names, culture 1 "Oldegedim", region 1 "Thuthanyo".
+- Decision: ADR-0026.
 
 ### 03.04 Religions
 
@@ -774,6 +806,42 @@ class and Enhanced Input mappings arrive in Phase 10.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VAELEN BUILD STATUS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PHASE       : 03 — HISTORY
+TASK        : 03.03 — LANGUAGES AND NAMING
+STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
+
+PROGRESS
+█████████░░░░░░░░░░░░░░░ 37%
+
+CURRENTLY
+→ 03.03 closed: one language per culture (phonology derived from the culture's identity or
+  drifted from the parent's on a split, one sound change every 150 years), names built
+  syllable by syllable and pronounceable by construction, unique per scope, given yearly to
+  cultures, languages, settled regions, rivers, lakes and eras as components on the named entity
+
+COMPLETED
+✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD (headless)
+✓ 03.01 Eras (CI 26) ; 03.02 Cultures and population (CI 27) ; 03.03 Languages and naming (5 tests: Naming)
+
+NEXT
+→ 03.04 Religions (born from cultures and events, spread along migration, schisms)
+→ 03.05 Disasters and omens ; 03.06 Pre-history run
+→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
+
+FILES
++ Source/VaelenSim/Public/Vaelen/Sim/Naming.h, Private/Naming.cpp
++ Tests/Sim/Test_Naming.cpp
+
+TESTS
+✓ Core 133 (108 without asserts) + Sim 140 (137 without asserts); ctest 44/44 in all six Linux presets
+✓ 14 336 generated names all pronounceable, 3-16 letters, at least 113/128 distinct per scope;
+  AELVOR 128 after 500 years: 18 languages, 154 names, 0 duplicates, frozen state 871cdd11bea18906
+✓ Purity: 56 files, 0 violations
+
+BLOCKERS
+∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 03 — HISTORY
