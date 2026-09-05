@@ -43,6 +43,7 @@ Rules for this file:
 | [0018](#adr-0018-world-generation-is-a-pipeline-of-pure-stages-with-derived-seeds-a-32-slot-parameter-block-and-a-sea-bounded-continent) | World generation is a pipeline of pure stages with derived seeds, a 32-slot parameter block and a sea-bounded continent | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0019](#adr-0019-climate-is-a-row-wise-advection-model-with-resolution-independent-decay-and-a-threshold-biome-table) | Climate is a row-wise advection model with resolution-independent decay and a threshold biome table | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0020](#adr-0020-hydrology-fills-depressions-by-priority-flood-fills-shallow-basins-with-sediment-and-keeps-deep-ones-as-lakes-rivers-and-lakes-are-entities) | Hydrology fills depressions by priority flood, fills shallow basins with sediment and keeps deep ones as lakes; rivers and lakes are entities | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0021](#adr-0021-regions-grow-from-lattice-seeds-by-terrain-cost-with-a-merge-floor-the-adjacency-graph-is-derived-not-stored) | Regions grow from lattice seeds by terrain cost with a merge floor; the adjacency graph is derived, not stored | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -1333,6 +1334,62 @@ Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/Hydrology.h`,
 `Source/VaelenSim/Private/Hydrology.cpp`, `Source/VaelenCore/Public/Vaelen/Core/Ids.h`,
 `Tests/Sim/Test_Hydrology.cpp` (5 tests). Headless VALIDATED on the six Linux presets;
 engine side UNVERIFIED.
+
+---
+
+## ADR-0021: Regions grow from lattice seeds by terrain cost with a merge floor; the adjacency graph is derived, not stored
+
+### Context
+
+Every later phase addresses the world by region: settlement, polities, routes, wars,
+maps. Regions must cover the land exactly, be contiguous, follow the terrain, have a
+usable size, be entities with ids, and expose their neighbours - all deterministically
+and cheaply at 1024 x 1024.
+
+### Decision
+
+1. Seeds come from a jittered lattice over the land (the land tile nearest to a hashed
+   offset in each cell) plus one seed for every landmass that received none, so every
+   island has a region.
+2. Regions grow by a multi-source least-cost search on the 4-neighbourhood whose step
+   cost rises with elevation change and with stepping onto a river tile; ties are
+   broken by tile index. Ridges and rivers therefore become borders without any
+   explicit watershed computation.
+3. Regions below a size floor merge into the neighbour they share the longest border
+   with, smallest first; an island below the floor keeps its own region. Indices are
+   compacted in seed order and one entity with a `RegionInfo` component is created per
+   region.
+4. The adjacency graph (sorted neighbour lists with shared-border lengths) is derived
+   from the region-index layer on demand and never stored: the layer is the single
+   source of truth and the snapshot carries no redundant structure.
+
+### Alternatives and decision rule
+
+- Strict watershed regions (one per river basin): rejected; basins vary from a few
+  tiles to a quarter of the continent, and the size band matters more to later
+  phases than hydrological purity. Rivers still shape borders through the cost.
+- Voronoi cells on plain distance: rejected; borders would cut across mountains and
+  rivers, which is what regions exist to avoid.
+- Lloyd relaxation of the seeds: deferred; the lattice plus merging gives a usable
+  band (126 regions at 256, 166 at 1024) without iteration.
+- Storing neighbour lists in the component: rejected; a fixed-size list caps the
+  degree and duplicates the layer, and rebuilding is cheap.
+- Decided by robustness (exact cover, contiguity, floor) and simplicity, consistent
+  with determinism.
+
+### Consequences
+
+- Region ids, like river and lake ids, are fresh on every generation; a world is
+  reproduced only from a fresh world.
+- Later phases that need the graph call `BuildRegionGraph` once and keep the result
+  for as long as the layer is unchanged.
+- The parameter block gains four region slots (23 to 26).
+
+### Status
+
+Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/Regions.h`,
+`Source/VaelenSim/Private/Regions.cpp`, `Tests/Sim/Test_Regions.cpp` (5 tests).
+Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
 

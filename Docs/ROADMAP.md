@@ -69,7 +69,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 |---|---|---|---|
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
-| 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | IN PROGRESS (02.01-02.05 VALIDATED headless; 02.06-02.08 PLANNED) |
+| 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | IN PROGRESS (02.01-02.06 VALIDATED headless; 02.07-02.08 PLANNED) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | PLANNED |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
@@ -561,13 +561,30 @@ deterministic, and every one of these was checked against determinism first):
   filled plains.
 - Decision: ADR-0020.
 
-### 02.06 Regions
+### 02.06 Regions - VALIDATED (headless)
 
-- Partition of land into regions (watershed-seeded flood fill with a size band),
-  region entities (`Region` ids) with centroid, tiles, biome mix, neighbours in a fixed
-  order; region graph used by every later phase.
-- Tests: partition covers exactly the land, adjacency symmetric, region size band,
-  frozen digests.
+- Delivered: `Regions.h/.cpp` - `RegionInfo` component (tiles, seed, centroid, coast,
+  river and lake tiles, dominant biome, mean elevation), `RegionTypes` / `RegionLayers`
+  declared by setup code, four parameter slots (seed spacing as a fraction of the
+  width, size floor, slope and river costs), `GenerateRegions` (seeds on a jittered
+  lattice - the land tile nearest to the jittered cell centre, scan order on ties -
+  plus one seed per landmass left without; multi-source least-cost growth over the 4
+  neighbours with cost 1 + slope cost per 1000 units of climb + river cost, ties by
+  index, so ridges and rivers become borders; regions below the floor merge into the
+  neighbour with the longest shared border, smallest first, islands below the floor
+  kept; indices compacted in seed order; one entity per region), `BuildRegionGraph`
+  (derived, sorted neighbour lists with shared 4-edge counts, never stored),
+  `MeasureRegions`, `ExportRegionAscii`.
+- Tests (5): the AELVOR map at 256 (exact cover of the land, every region contiguous
+  from its seed, seed and centroid inside, dominant biome never Ocean, regions below
+  the floor have no neighbours, adjacency and shared borders symmetric, no self
+  adjacency, 126 regions with at most 8 neighbours, the region map logged); a
+  two-island synthetic map where no region straddles the channel and the graph has no
+  edge between islands; determinism across worlds including the entities, snapshot
+  round trip of thirteen layers, wider spacing gives fewer regions, a rerun replaces
+  the entities, misuse before Reset; frozen digest and count at 256; the 1024 x 1024
+  baseline (2.2 s debug, 0.35 s release).
+- Decision: ADR-0021.
 
 ### 02.07 Resource deposits
 
@@ -601,38 +618,38 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 02 — WORLD
-TASK        : 02.05 — HYDROLOGY
+TASK        : 02.06 — REGIONS
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███████████████░░░░░░░░░ 62%
+██████████████████░░░░░░ 75%
 
 CURRENTLY
-→ 02.05 closed: priority-flood+epsilon depression filling, D8 flow, accumulation,
-  sediment-filled shallow basins vs deep lakes, rivers and lakes as entities
+→ 02.06 closed: land partitioned into contiguous regions grown from a jittered lattice by
+  terrain-cost search (ridges and rivers as borders), size floor by merging, region
+  entities with statistics, derived adjacency graph
 
 COMPLETED
 ✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION (CI 9/9 on every run)
-✓ 02.01 Grid and layers (CI 18) ; 02.02 Fixed point and noise (CI 19)
-✓ 02.03 Elevation and coastline (CI 20) ; 02.04 Climate and biomes (CI 21)
-✓ 02.05 Hydrology (5 tests: Hydrology)
+✓ 02.01 Grid (CI 18) ; 02.02 Fixed point and noise (CI 19) ; 02.03 Elevation (CI 20)
+✓ 02.04 Climate (CI 21) ; 02.05 Hydrology (CI 22)
+✓ 02.06 Regions (5 tests: Regions)
 
 NEXT
-→ 02.06 Regions (watershed-seeded partition of the land, region entities and adjacency)
-→ 02.07 Deposits ; 02.08 Phase 02 gate (frozen full pipeline at 64/256/1024, baseline)
+→ 02.07 Resource deposits (biome/elevation/hydrology-driven placement, rarity tiers, entities)
+→ 02.08 Phase 02 gate (full pipeline frozen at 64/256/1024, regenerate twice, snapshot, baseline)
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/Hydrology.h, Private/Hydrology.cpp
-~ Ids.h/.cpp (IdKind::Lake = 14)
-+ Tests/Sim/Test_Hydrology.cpp
++ Source/VaelenSim/Public/Vaelen/Sim/Regions.h, Private/Regions.cpp
++ Tests/Sim/Test_Regions.cpp
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 113 (110 without asserts); ctest 38/38 in all six Linux presets
-✓ AELVOR at 256: every land tile drains to the sea, 40 rivers (longest 46 tiles), 22 lakes; frozen
-  flow256 7b6f14f39284c7a0, acc256 09daae8f9829deed, river256 00f52817ba9dcda8 (clang = gcc)
-✓ Baseline 1024 x 1024 hydrology: 1.5 s debug, 0.36 s release
-✓ Purity: 44 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 118 (115 without asserts); ctest 39/39 in all six Linux presets
+✓ AELVOR at 256: 126 contiguous regions covering exactly the land, symmetric graph, max 8 neighbours;
+  frozen region256 02f8414a20107c30 (clang = gcc)
+✓ Baseline 1024 x 1024 regions: 2.2 s debug, 0.35 s release
+✓ Purity: 46 files, 0 violations
 
 BLOCKERS
 None
