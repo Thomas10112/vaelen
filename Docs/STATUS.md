@@ -13,15 +13,15 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 01 — CORE SIMULATION
-TASK        : 01.06 — PERSISTENCE INTERFACES & SNAPSHOT
+TASK        : 01.07 — DETERMINISTIC REPLAY TEST
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████████████████░░░░░░ 75%
+█████████████████████░░░ 87%
 
 CURRENTLY
-→ 01.06 closed: World (owns every state block), IArchive + memory writer/reader,
-  versioned snapshot with layout digest and trailer digest, plain-data (no padding) rule
+→ 01.07 closed: seed + input stream replay, checkpoint/restore at six ticks and eight
+  chained generations equal the uninterrupted run; frozen hashes reproduced by gcc
 
 COMPLETED
 ✓ Phase 00 — FOUNDATION (CI 9/9)
@@ -30,21 +30,20 @@ COMPLETED
 ✓ 01.03 Systems & tick scheduler (8 tests)
 ✓ 01.04 Simulation clock & calendar (4 tests)
 ✓ 01.05 Event bus & event log (10 tests)
-✓ 01.06 Persistence interfaces & snapshot (15 tests: Archive 4, World 3, Snapshot 8)
+✓ 01.06 Persistence interfaces & snapshot (15 tests)
+✓ 01.07 Deterministic replay test (5 tests)
 
 NEXT
-→ 01.07 Deterministic replay test (checkpoint/restore vs uninterrupted run, clang = gcc hashes)
-→ 01.08 Abstract mini-world long-duration test
+→ 01.08 Abstract mini-world long-duration test (~100 000 ticks, snapshots, invariants, baseline)
+→ Phase 01 exit review, then Phase 02 WORLD
 
 FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/{PlainData.h, Archive.h, World.h, Snapshot.h}
-+ Source/VaelenSim/Private/{Archive.cpp, World.cpp, Snapshot.cpp}
-~ ComponentPool.h (type-erased Serialize/ElementSize), EventBus.h/.cpp (pending queue as state),
-  ComponentType.h / Event.h (plain-data rule)
-+ Tests/Sim/{Test_Archive.cpp, Test_World.cpp, Test_Snapshot.cpp}
++ Tests/Sim/Test_Replay.cpp
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 68 (65 without asserts); ctest 29/29 in all six Linux presets
+✓ Core 133 (108 without asserts) + Sim 73 (70 without asserts); ctest 30/30 in all six Linux presets
+✓ Replay reference (seed 0x5641454c454e, 2000 ticks): state dbb98f0004e8cd91, log 2c1e775e47e45051,
+  11229 events, 199 entities — identical on clang 18 and gcc 13
 ✓ Purity: 34 files, 0 violations
 ⚠ Unreal Build Tool: VaelenSim engine files UNVERIFIED
 
@@ -106,7 +105,7 @@ the purity checker, applied to headers and sources).
 | `Core/Test_Random.cpp` | VALIDATED | 29 |
 | `Core/Test_Version.cpp` | VALIDATED | 7 |
 
-Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8 (68 tests, 2 018 171 checks; 65 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Registry`, `Sim.Shuffled` (29 entries in total).
+Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5 (73 tests, 2 018 227 checks; 70 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.Registry`, `Sim.Shuffled` (30 entries in total).
 
 ### Tools/ and CI
 

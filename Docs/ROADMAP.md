@@ -68,7 +68,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | Phase | Name | Objective (one line) | Status |
 |---|---|---|---|
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
-| 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | IN PROGRESS (01.01-01.06 VALIDATED headless; 01.07-01.08 PLANNED) |
+| 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | IN PROGRESS (01.01-01.07 VALIDATED headless; 01.08 PLANNED) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | PLANNED |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | PLANNED |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
@@ -324,16 +324,33 @@ design choice below that survives implementation gets an ADR (planned numbers 00
   different component layout, missing pool, 50 000-entity world.
 - Decision: ADR-0015.
 
-### 01.07 Deterministic replay test
+### 01.07 Deterministic replay test - VALIDATED (headless)
 
-- Goal: prove the determinism rule end to end.
-- Planned: record seed plus the command/input stream; replay gives an identical event
-  log hash and snapshot; checkpoint at tick k, restore, run to tick N, compare with the
-  uninterrupted run; the same hashes printed by the clang and gcc binaries and compared
-  by a CTest script.
-- Tests: this task is a test suite (`Test_Replay.cpp`); it is the phase's deterministic
-  and integration gate.
-- Exit: VALIDATED on both compilers; hashes recorded in the closing report.
+- Delivered: `Tests/Sim/Test_Replay.cpp`, the phase's deterministic and integration
+  gate. A replay world with three systems at three LOD levels (Population every tick,
+  Harvest daily with a famine path, Migration monthly founding and abandoning
+  settlements, so entities are created and destroyed mid-run), a listener that turns
+  every famine into a decree next tick (causal chain through the bus), and a recorded
+  external input stream (found / raid / decree at given ticks, generated from a script
+  seed). The reference run is 2000 ticks (83 days, so daily and monthly systems both
+  fire many times).
+- Tests (5): seed + inputs replayed in a fresh world give the identical event log
+  (event by event), state digest and snapshot image; checkpoint at ticks 0, 1, 37, 720,
+  721 and 1999, restore into a fresh world, run to 2000: state and log digests equal
+  the uninterrupted run; eight chained generations of restore (every 250 ticks, each
+  from the previous checkpoint) equal the uninterrupted run; any change (seed, tick
+  count, one input value, one input tick, one dropped input) diverges in state and log;
+  frozen reference values (state `dbb98f0004e8cd91`, log `2c1e775e47e45051`, 11 229
+  events, 199 live entities) that every compiler and platform in CI must reproduce -
+  clang 18 and gcc 13 do; Windows MSVC and macOS AppleClang are checked by the GitHub
+  workflow on every push.
+- Decision: the cross-compiler comparison is done with frozen constants inside the test
+  rather than a CTest script diffing two binaries: it also covers MSVC and AppleClang,
+  which never share a build directory with the Linux compilers, and a change of the
+  simulation's observable behaviour becomes a deliberate edit of the constants.
+- Rule confirmed by this task (ADR-0015 rule 6): systems hold no state of their own;
+  the first version of the snapshot test kept a "born" list inside a system and could
+  not continue identically after a restore.
 
 ### 01.08 Abstract mini-world end-to-end test
 
@@ -365,15 +382,15 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 01 — CORE SIMULATION
-TASK        : 01.06 — PERSISTENCE INTERFACES & SNAPSHOT
+TASK        : 01.07 — DETERMINISTIC REPLAY TEST
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████████████████░░░░░░ 75%
+█████████████████████░░░ 87%
 
 CURRENTLY
-→ 01.06 closed: World (owns every state block), IArchive + memory writer/reader,
-  versioned snapshot with layout digest and trailer digest, plain-data (no padding) rule
+→ 01.07 closed: seed + input stream replay, checkpoint/restore at six ticks and eight
+  chained generations equal the uninterrupted run; frozen hashes reproduced by gcc
 
 COMPLETED
 ✓ Phase 00 — FOUNDATION (CI 9/9)
@@ -382,21 +399,20 @@ COMPLETED
 ✓ 01.03 Systems & tick scheduler (8 tests)
 ✓ 01.04 Simulation clock & calendar (4 tests)
 ✓ 01.05 Event bus & event log (10 tests)
-✓ 01.06 Persistence interfaces & snapshot (15 tests: Archive 4, World 3, Snapshot 8)
+✓ 01.06 Persistence interfaces & snapshot (15 tests)
+✓ 01.07 Deterministic replay test (5 tests)
 
 NEXT
-→ 01.07 Deterministic replay test (checkpoint/restore vs uninterrupted run, clang = gcc hashes)
-→ 01.08 Abstract mini-world long-duration test
+→ 01.08 Abstract mini-world long-duration test (~100 000 ticks, snapshots, invariants, baseline)
+→ Phase 01 exit review, then Phase 02 WORLD
 
 FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/{PlainData.h, Archive.h, World.h, Snapshot.h}
-+ Source/VaelenSim/Private/{Archive.cpp, World.cpp, Snapshot.cpp}
-~ ComponentPool.h (type-erased Serialize/ElementSize), EventBus.h/.cpp (pending queue as state),
-  ComponentType.h / Event.h (plain-data rule)
-+ Tests/Sim/{Test_Archive.cpp, Test_World.cpp, Test_Snapshot.cpp}
++ Tests/Sim/Test_Replay.cpp
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 68 (65 without asserts); ctest 29/29 in all six Linux presets
+✓ Core 133 (108 without asserts) + Sim 73 (70 without asserts); ctest 30/30 in all six Linux presets
+✓ Replay reference (seed 0x5641454c454e, 2000 ticks): state dbb98f0004e8cd91, log 2c1e775e47e45051,
+  11229 events, 199 entities — identical on clang 18 and gcc 13
 ✓ Purity: 34 files, 0 violations
 ⚠ Unreal Build Tool: VaelenSim engine files UNVERIFIED
 
