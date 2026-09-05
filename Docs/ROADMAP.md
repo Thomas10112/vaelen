@@ -69,7 +69,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 |---|---|---|---|
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
-| 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | IN PROGRESS (02.01 VALIDATED headless; 02.02-02.08 PLANNED) |
+| 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | IN PROGRESS (02.01-02.02 VALIDATED headless; 02.03-02.08 PLANNED) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | PLANNED |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
@@ -440,12 +440,34 @@ deterministic, and every one of these was checked against determinism first):
   itself did not move).
 - Decision: ADR-0016.
 
-### 02.02 Fixed-point math and deterministic noise
+### 02.02 Fixed-point math and deterministic noise - VALIDATED (headless)
 
-- Q32.32 helpers (mul, div, sqrt by integer Newton, lerp, clamp), value and gradient
-  noise over integer lattices seeded from a stream, fractal sum, domain warp.
-- Tests: exactness of the helpers at the edges, frozen values for the noise at fixed
-  points, cross-compiler equality by CI, statistical range of the fractal sum.
+- Delivered: `FixedPoint.h` (`Fix64`, Q32.32 in a signed 64-bit raw: constexpr
+  FromInt/FromRatio/FromRaw, add/sub/neg wrapping on unsigned arithmetic (never
+  undefined), Mul through a portable 64 x 64 -> 128 multiply in 32-bit halves rounding
+  towards -inf, Div by 128-bit long division truncating towards zero with a saturating
+  zero divisor, digit-by-digit Sqrt exact for perfect squares, Floor/Fraction/
+  FloorToInt, Abs/Min/Max/Clamp/Lerp/SmoothStep, shifts, integer scaling, `_fx`
+  literal), `Noise.h/.cpp` (SplitMix-style `LatticeHash(seed, x, y)`, `LatticeValue`
+  in [-1, 1), `Value2D` bilinear with SmoothStep weights, `Gradient2D` with eight
+  integer gradients and zero on the lattice, `Fractal2D` with per-octave derived seeds
+  normalised to the base range, `Warped2D` domain warp from two derived seeds). No
+  `<cmath>`, no floating point anywhere in these files.
+- Tests (9): compile-time exactness of constants, ratios, zero divisors, square roots,
+  smoothstep, lerp, floors and wrapping; Mul against a double reference at 1 ulp over
+  200 000 pairs plus a full-precision product checked against Python big integers;
+  Div at 2 ulp over 100 000 pairs plus exact fractions and sign rules; Sqrt as the
+  floor of the exact root (100 000 random values, 2 000 perfect squares, sqrt 2 and
+  sqrt of Max against exact references); helpers and wrap cases; value noise equal to
+  lattice values on the lattice and inside the corner range between them; gradient
+  noise zero on the lattice, bounded and spread; continuity along a line; fractal
+  statistics over 65 536 samples (mean, standard deviation, range), seed and
+  parameter sensitivity, warp bounded and identity at zero strength; frozen values for
+  the hash, value, gradient, fractal and warped noise at a fixed point plus a 128 x 128
+  field digest, reproduced by clang and gcc and checked on MSVC and AppleClang by CI.
+- Lesson: at exact cell centres gradient noise takes quantised values that two seeds
+  can share; sensitivity tests sample away from cell centres.
+- Decision: ADR-0017.
 
 ### 02.03 Elevation and coastline
 
@@ -509,34 +531,35 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 02 — WORLD
-TASK        : 02.01 — GRID, TILE LAYERS, WORLD-GEN CONFIG, SNAPSHOT SECTION
+TASK        : 02.02 — FIXED-POINT MATH & DETERMINISTIC NOISE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███░░░░░░░░░░░░░░░░░░░░░ 12%
+██████░░░░░░░░░░░░░░░░░░ 25%
 
 CURRENTLY
-→ 02.01 closed: TileCoord/WorldGrid (fixed neighbour order), TileLayer<T> (dense,
-  plain data, hashable), WorldGenConfig, WorldMap state block in World, save format 2
+→ 02.02 closed: Fix64 Q32.32 (portable 128-bit multiply/divide, digit-by-digit sqrt,
+  wrapping defined everywhere), value/gradient/fractal/warped lattice noise, no libm
 
 COMPLETED
 ✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION (CI 9/9 on every run)
-✓ 02.01 Grid, tile layers, config, snapshot section (10 tests: TileGrid 4, WorldMap 6)
+✓ 02.01 Grid, tile layers, config, snapshot section (10 tests, CI run 18 green)
+✓ 02.02 Fixed-point math and deterministic noise (9 tests: FixedPoint 4, Noise 5)
 
 NEXT
-→ 02.02 Fixed-point Q32.32 helpers and deterministic lattice noise without libm
-→ 02.03 Elevation and coastline (frozen digests at 64 and 256, ASCII export)
+→ 02.03 Elevation and coastline (continental mask, relief, sea level, slope, ASCII export)
+→ 02.04 Climate and biomes
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/{TileGrid.h, WorldMap.h}, Private/WorldMap.cpp
-~ World.h (Map()), Snapshot.h/.cpp (map section, combined layout digest), Version.h (format 2)
-+ Tests/Sim/{Test_TileGrid.cpp, Test_WorldMap.cpp} ; frozen state digests refrozen for format 2
++ Source/VaelenSim/Public/Vaelen/Sim/{FixedPoint.h, Noise.h}, Private/Noise.cpp
++ Tests/Sim/{Test_FixedPoint.cpp, Test_Noise.cpp}
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 87 (84 without asserts); ctest 33/33 in all six Linux presets
-✓ Log digests of the replay and mini-world references unchanged (the simulation did not move)
-✓ Purity: 37 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 96 (93 without asserts); ctest 35/35 in all six Linux presets
+✓ Frozen noise values (lattice hash, value, gradient, fractal, warped, 128x128 field digest)
+  identical on clang 18 and gcc 13; MSVC and AppleClang checked by CI
+✓ Purity: 40 files, 0 violations
 
 BLOCKERS
 None

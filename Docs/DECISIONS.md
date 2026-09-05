@@ -39,6 +39,7 @@ Rules for this file:
 | [0014](#adr-0014-events-are-plain-112-byte-records-with-a-cause-delivered-next-tick-in-publish-order-the-log-is-append-only-with-a-running-digest) | Events are plain records with a cause, delivered next tick; append-only log with running digest | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0015](#adr-0015-one-world-object-owns-the-state-snapshots-are-a-symmetric-versioned-digest-checked-byte-image-stored-types-carry-no-padding) | One World object owns the state; snapshots are a symmetric, versioned, digest-checked byte image; stored types carry no padding | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0016](#adr-0016-tiles-are-dense-typed-layers-not-entities-the-world-map-is-a-state-block-with-a-code-declared-layer-set) | Tiles are dense typed layers, not entities; the world map is a state block with a code-declared layer set | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0017](#adr-0017-world-generation-uses-q3232-fixed-point-and-integer-lattice-noise-no-floating-point-no-libm) | World generation uses Q32.32 fixed point and integer lattice noise; no floating point, no libm | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -1093,6 +1094,66 @@ Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/TileGrid.h`,
 `Source/VaelenCore/Public/Vaelen/Core/Version.h`, `Tests/Sim/Test_TileGrid.cpp`,
 `Test_WorldMap.cpp` (10 tests). Headless VALIDATED on the six Linux presets; engine
 side UNVERIFIED.
+
+---
+
+## ADR-0017: World generation uses Q32.32 fixed point and integer lattice noise; no floating point, no libm
+
+### Context
+
+The world of AELVOR is derived from the seed and must hash identically on clang, gcc,
+MSVC and AppleClang (Phase 01 proved the simulation does). ADR-0009 makes floating
+point bit-stable inside one toolchain by forbidding contraction, but terrain
+generation needs noise, interpolation, roots and later trigonometry-like curves, and
+`sin`, `exp`, `pow` and friends are implemented differently by every libm: the same
+source would generate different worlds on different platforms.
+
+### Decision
+
+1. World generation computes in `Fix64`, a Q32.32 fixed-point number in a signed
+   64-bit raw value (range [-2^31, 2^31), resolution 2^-32). Every operation is
+   constexpr and defined for every input: wrapping arithmetic on unsigned values, a
+   saturating zero divisor, zero for roots of negatives.
+2. The 128-bit intermediates of multiplication and division are built from 32-bit
+   halves and bit-by-bit long division, not from `__int128` or compiler intrinsics,
+   so MSVC and the others agree bit for bit and the code stays constexpr.
+3. Noise is lattice-based: a SplitMix-style mixer of (seed, x, y) gives lattice values
+   and gradient directions; interpolation uses SmoothStep weights in Fix64; fractal
+   sums derive one seed per octave from the base seed; domain warping derives two more.
+4. `<cmath>` and floating-point types are banned from the world-generation files;
+   tests may use doubles as references with an explicit tolerance argument.
+5. Frozen values guard the noise at fixed points and over a field: a change of any
+   constant is a deliberate change of every generated world.
+
+### Alternatives and decision rule
+
+- Floating point with a private, deterministic math library (own sin/exp): rejected;
+  the rounding of every intermediate would still have to be reasoned about per
+  compiler, and fixed point makes exactness provable by construction.
+- 32-bit fixed point (Q16.16): rejected; not enough range for elevations, distances
+  and accumulated flows on a 4096-wide grid at sub-metre resolution.
+- Simplex or open-simplex noise: deferred; gradient noise on a square lattice is
+  simpler to make exact and its directional artefacts are hidden by fractal sums and
+  warping; the noise API keeps the door open.
+- Decided by determinism across platforms first, then robustness (defined
+  everywhere), then simplicity.
+
+### Consequences
+
+- World-generation code cannot use `float`/`double`; anything that needs a curve
+  gets a fixed-point implementation with a frozen test.
+- Division and square root cost a 64- or 128-step loop; generation stages must use
+  them per tile, not per neighbour pair, and the 1024 x 1024 baseline (02.08) records
+  the cost.
+- The simulation proper (Phases 03+) keeps ADR-0009 floats where it needs them; only
+  the seed-to-world pipeline is fixed point.
+
+### Status
+
+Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/FixedPoint.h`,
+`Noise.h`, `Source/VaelenSim/Private/Noise.cpp`, `Tests/Sim/Test_FixedPoint.cpp`,
+`Test_Noise.cpp` (9 tests). Headless VALIDATED on the six Linux presets; engine side
+UNVERIFIED.
 
 ---
 
