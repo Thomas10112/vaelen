@@ -13,34 +13,33 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 01 — CORE SIMULATION
-TASK        : 01.01 — ENTITY HANDLES & REGISTRY
+TASK        : 01.02 — COMPONENT STORAGE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███░░░░░░░░░░░░░░░░░░░░░ 12%
+██████░░░░░░░░░░░░░░░░░░ 25%
 
 CURRENTLY
-→ 01.01 closed: EntityHandle, EntityRegistry, module VaelenSim wired everywhere
+→ 01.02 closed: ComponentTypeRegistry, ComponentPool<T>, ComponentStore
 
 COMPLETED
 ✓ Phase 00 — FOUNDATION (CI 9/9)
-✓ 01.01 Entity handles & registry (16 tests, 1.5 M checks incl. a one-million-cycle soak)
+✓ 01.01 Entity handles & registry (16 tests)
+✓ 01.02 Component storage (15 tests, 2 M checks incl. a one-million-operation soak)
 
 NEXT
-→ 01.02 Component storage (typed sparse sets, explicit type registry)
-→ 01.03 Systems & tick scheduler
+→ 01.03 Systems & tick scheduler (ISystem, declared access sets, stable topological order)
+→ 01.04 Simulation clock & calendar
 
 FILES
-+ Source/VaelenSim/{VaelenSim.Build.cs, CMakeLists.txt}
-+ Source/VaelenSim/Public/Vaelen/Sim/{SimApi.h, EntityHandle.h, EntityRegistry.h}
-+ Source/VaelenSim/Private/{EntityRegistry.cpp, VaelenSimModule.cpp}
-+ Tests/Sim/{CMakeLists.txt, Test_EntityHandle.cpp, Test_EntityRegistry.cpp}
-~ CMakeLists.txt, Tests/CMakeLists.txt, Tools/kernel_modules.txt, Vaelen.uproject, *.Target.cs
++ Source/VaelenSim/Public/Vaelen/Sim/{ComponentType.h, ComponentPool.h, ComponentStore.h}
++ Source/VaelenSim/Private/{ComponentType.cpp, ComponentStore.cpp}
++ Tests/Sim/{Test_ComponentType.cpp, Test_ComponentPool.cpp, Test_ComponentStore.cpp}
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 16 tests; ctest 18/18 in all six Linux presets
-✓ Purity: 16 files, 0 violations
-⚠ Unreal Build Tool: VaelenSim.Build.cs and VaelenSimModule.cpp UNVERIFIED
+✓ Core 133 (108 without asserts) + Sim 31 (30 without asserts); ctest 21/21 in all six Linux presets
+✓ Purity: 21 files, 0 violations
+⚠ Unreal Build Tool: VaelenSim engine files UNVERIFIED
 
 BLOCKERS
 None
@@ -82,7 +81,7 @@ the purity checker, applied to headers and sources).
 
 | File | STATUS |
 |---|---|
-| `Public/Vaelen/Sim/SimApi.h`, `EntityHandle.h`, `EntityRegistry.h`, `Private/EntityRegistry.cpp` | VALIDATED (Phase 01) — integration and long-duration tests arrive with 01.07 / 01.08 |
+| `Public/Vaelen/Sim/SimApi.h`, `EntityHandle.h`, `EntityRegistry.h`, `ComponentType.h`, `ComponentPool.h`, `ComponentStore.h`, `Private/EntityRegistry.cpp`, `ComponentType.cpp`, `ComponentStore.cpp` | VALIDATED (Phase 01) — integration and long-duration tests arrive with 01.07 / 01.08 |
 | `Private/VaelenSimModule.cpp`, `VaelenSim.Build.cs` | UNVERIFIED (requires UE5) |
 
 ### Tests/
@@ -100,7 +99,7 @@ the purity checker, applied to headers and sources).
 | `Core/Test_Random.cpp` | VALIDATED | 29 |
 | `Core/Test_Version.cpp` | VALIDATED | 7 |
 
-Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13 (16 tests, 1 500 250 checks); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.Registry`, `Sim.Shuffled` (18 entries in total).
+Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3 (31 tests, 2 000 463 checks; 30 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.Registry`, `Sim.Shuffled` (21 entries in total).
 
 ### Tools/ and CI
 

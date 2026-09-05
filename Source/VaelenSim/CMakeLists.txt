@@ -5,10 +5,15 @@ set(VAELEN_SIM_PUBLIC_HEADERS
   Public/Vaelen/Sim/SimApi.h
   Public/Vaelen/Sim/EntityHandle.h
   Public/Vaelen/Sim/EntityRegistry.h
+  Public/Vaelen/Sim/ComponentType.h
+  Public/Vaelen/Sim/ComponentPool.h
+  Public/Vaelen/Sim/ComponentStore.h
 )
 
 set(VAELEN_SIM_SOURCES
   Private/EntityRegistry.cpp
+  Private/ComponentType.cpp
+  Private/ComponentStore.cpp
 )
 
 add_library(VaelenSim STATIC ${VAELEN_SIM_SOURCES} ${VAELEN_SIM_PUBLIC_HEADERS})

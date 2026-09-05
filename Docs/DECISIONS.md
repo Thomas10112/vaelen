@@ -33,6 +33,7 @@ Rules for this file:
 | [0008](#adr-0008-kernel-purity-enforced-by-a-ctest) | Kernel purity enforced by a CTest | Accepted; VALIDATED |
 | [0009](#adr-0009-floating-point-policy-no-contraction-integers-for-authoritative-state) | Floating-point policy: no contraction, integers for authoritative state | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0010](#adr-0010-runtime-entity-handles-with-generations-dense-registry-lifo-slot-reuse) | Runtime entity handles with generations, dense registry, LIFO slot reuse | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0011](#adr-0011-components-are-plain-data-in-typed-sparse-sets-registered-explicitly) | Components are plain data in typed sparse sets, registered explicitly | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -722,6 +723,69 @@ Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/EntityHandle.h`,
 `Tests/Sim/Test_EntityHandle.cpp`, `Tests/Sim/Test_EntityRegistry.cpp` (16 tests, one
 million create/destroy cycles). Headless VALIDATED on the six Linux presets; engine side
 UNVERIFIED.
+
+---
+
+## ADR-0011: Components are plain data in typed sparse sets, registered explicitly
+
+### Context
+
+Systems must iterate the entities that carry a given component quickly, in an order that
+is reproducible, and the whole component state must be snapshottable and comparable
+between two runs (01.06, 01.07). Component types must be identified without RTTI
+(ADR-0002) and without relying on static-initialisation order, which differs between
+link orders and would silently change type ids between builds.
+
+### Decision
+
+- `ComponentTypeRegistry` (`Source/VaelenSim/Public/Vaelen/Sim/ComponentType.h`): a world
+  registers its component types explicitly, in a fixed order, at setup. The id is the
+  registration index (`ComponentTypeId`, 16-bit), the FNV-1a hash of the name is the
+  stable identity used by snapshots and mods; `LayoutDigest()` summarises names, sizes
+  and alignments in order. `ComponentType<T>` carries the type at compile time so pool
+  lookups need neither RTTI nor a repeated type argument.
+- Components are trivially copyable, default constructible plain data (enforced by
+  `static_assert`): no pointers to other components, no owning resources. References
+  between entities are `PersistentId`s.
+- `ComponentPool<T>` (`ComponentPool.h`) is a sparse set: dense `std::vector<T>`, dense
+  `std::vector<EntityHandle>` (full handles, so stale generations never match), sparse
+  index by slot. Removal swaps the last entry into the hole. Snapshot state is the two
+  dense arrays; `SetState` rebuilds the sparse index and rejects inconsistent input.
+- `ComponentStore` (`ComponentStore.h`) owns one pool per created type and removes every
+  component of an entity in type-id order (`RemoveAll`), which the owner calls before
+  destroying an entity.
+
+### Alternatives and decision rule
+
+- Archetype storage (grouping entities by component set, as in Unreal Mass or flecs):
+  rejected for simplicity in Phase 01; sparse sets are simpler, iteration by single
+  component is optimal, and archetypes can be introduced behind the same `ComponentStore`
+  interface if the Phase 18 stress tests demand it.
+- Type ids from a template instantiation counter or `__COUNTER__`: rejected for
+  determinism (depends on translation-unit and link order).
+- Slot-ordered dense arrays (sorted insertion): rejected for performance; determinism
+  only requires the order to be a function of the operation sequence, which swap-remove
+  satisfies.
+- Non-trivial components with constructors and owning members: rejected for robustness
+  of persistence and replay comparison.
+- Decided by determinism and robustness, then simplicity.
+
+### Consequences
+
+- Dense iteration order is not slot order; a system that needs a canonical order sorts
+  by `PersistentId` or iterates the registry.
+- A component pool can be serialised as raw bytes (01.06) and hashed for replay
+  comparison (01.07).
+- Adding a component to a new generation of a slot whose stale entry was not removed is
+  reported (`VAELEN_ENSURE`) and repaired, never silently wrong.
+
+### Status
+
+Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/ComponentType.h`,
+`ComponentPool.h`, `ComponentStore.h`, `Source/VaelenSim/Private/ComponentType.cpp`,
+`ComponentStore.cpp`, `Tests/Sim/Test_ComponentType.cpp`, `Test_ComponentPool.cpp`,
+`Test_ComponentStore.cpp` (15 tests, one million operations against a live registry).
+Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
 

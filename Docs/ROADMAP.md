@@ -68,7 +68,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | Phase | Name | Objective (one line) | Status |
 |---|---|---|---|
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
-| 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | IN PROGRESS (01.01 VALIDATED headless; 01.02-01.08 PLANNED) |
+| 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | IN PROGRESS (01.01-01.02 VALIDATED headless; 01.03-01.08 PLANNED) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | PLANNED |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | PLANNED |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
@@ -226,18 +226,21 @@ design choice below that survives implementation gets an ADR (planned numbers 00
 - Decision: ADR-0010. Engine side (`VaelenSim.Build.cs`, `VaelenSimModule.cpp`)
   UNVERIFIED.
 
-### 01.02 Component storage
+### 01.02 Component storage - VALIDATED (headless)
 
-- Goal: typed, dense, deterministic storage of plain data per entity.
-- Planned: component type ids without RTTI (compile-time name hash via `_vhash` or an
-  explicit registry); `ComponentPool<T>` (structure of arrays or array of structs,
-  decided by ADR) with sparse slot index, `Add/Remove/Get/Has`; components are trivially
-  copyable so a pool can be snapshotted as bytes; iteration in slot order; removal by
-  swap-and-pop with index fix-up.
-- Tests: add/remove/has/get, iteration order after arbitrary removals, byte-snapshot
-  round trip, growth to large counts, no dependence on allocation addresses (two pools
-  built in different orders compare equal after the same operations).
-- Exit: ADR for layout and type-id scheme; VALIDATED.
+- Delivered: `ComponentTypeRegistry` (explicit, ordered registration of trivially
+  copyable types under unique names; ids are registration indices, name hashes the
+  stable identity; `LayoutDigest` for snapshot compatibility), `ComponentType<T>` (typed
+  id, no RTTI), `ComponentPool<T>` (sparse set: dense data + dense full handles + sparse
+  index by slot; `Add/Get/TryGet/Has/Remove`, swap-with-last removal, `ForEach`, validated
+  `GetState`/`SetState`; stale generations never match and are replaced with a report),
+  `ComponentStore` (one pool per created type, typed lookup, `RemoveAll` in id order).
+- Tests (`Tests/Sim`): ComponentType 4, ComponentPool 8, ComponentStore 3: ordered ids,
+  lookup and digest, add/get/remove, swap-remove consistency, stale handles, iteration,
+  state round trip and rejection, determinism across instances, one million operations
+  against a live registry, misuse paths.
+- Decision: ADR-0011. Dense order is a function of the operation sequence, not slot
+  order; systems needing a canonical order iterate the registry or sort by id.
 
 ### 01.03 Systems and tick scheduler
 
@@ -329,34 +332,33 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 01 — CORE SIMULATION
-TASK        : 01.01 — ENTITY HANDLES & REGISTRY
+TASK        : 01.02 — COMPONENT STORAGE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███░░░░░░░░░░░░░░░░░░░░░ 12%
+██████░░░░░░░░░░░░░░░░░░ 25%
 
 CURRENTLY
-→ 01.01 closed: EntityHandle, EntityRegistry, module VaelenSim wired everywhere
+→ 01.02 closed: ComponentTypeRegistry, ComponentPool<T>, ComponentStore
 
 COMPLETED
 ✓ Phase 00 — FOUNDATION (CI 9/9)
-✓ 01.01 Entity handles & registry (16 tests, 1.5 M checks incl. a one-million-cycle soak)
+✓ 01.01 Entity handles & registry (16 tests)
+✓ 01.02 Component storage (15 tests, 2 M checks incl. a one-million-operation soak)
 
 NEXT
-→ 01.02 Component storage (typed sparse sets, explicit type registry)
-→ 01.03 Systems & tick scheduler
+→ 01.03 Systems & tick scheduler (ISystem, declared access sets, stable topological order)
+→ 01.04 Simulation clock & calendar
 
 FILES
-+ Source/VaelenSim/{VaelenSim.Build.cs, CMakeLists.txt}
-+ Source/VaelenSim/Public/Vaelen/Sim/{SimApi.h, EntityHandle.h, EntityRegistry.h}
-+ Source/VaelenSim/Private/{EntityRegistry.cpp, VaelenSimModule.cpp}
-+ Tests/Sim/{CMakeLists.txt, Test_EntityHandle.cpp, Test_EntityRegistry.cpp}
-~ CMakeLists.txt, Tests/CMakeLists.txt, Tools/kernel_modules.txt, Vaelen.uproject, *.Target.cs
++ Source/VaelenSim/Public/Vaelen/Sim/{ComponentType.h, ComponentPool.h, ComponentStore.h}
++ Source/VaelenSim/Private/{ComponentType.cpp, ComponentStore.cpp}
++ Tests/Sim/{Test_ComponentType.cpp, Test_ComponentPool.cpp, Test_ComponentStore.cpp}
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 16 tests; ctest 18/18 in all six Linux presets
-✓ Purity: 16 files, 0 violations
-⚠ Unreal Build Tool: VaelenSim.Build.cs and VaelenSimModule.cpp UNVERIFIED
+✓ Core 133 (108 without asserts) + Sim 31 (30 without asserts); ctest 21/21 in all six Linux presets
+✓ Purity: 21 files, 0 violations
+⚠ Unreal Build Tool: VaelenSim engine files UNVERIFIED
 
 BLOCKERS
 None
