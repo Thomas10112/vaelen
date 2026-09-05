@@ -17,7 +17,7 @@
 #define VAELEN_VERSION_PATCH 1
 
 /// Bump when the on-disk world state layout changes. Never reuse a number.
-#define VAELEN_SAVE_FORMAT_VERSION 1
+#define VAELEN_SAVE_FORMAT_VERSION 2 /* 2: WorldMap section (02.01) */
 
 namespace Vaelen
 {

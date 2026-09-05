@@ -276,7 +276,9 @@ VAELEN_TEST(Snapshot, BadMagicTruncationAndCorruptionAreRejected)
 	}
 	{
 		std::vector<uint8> Bad = Image;
-		Bad[0] = 'X';
+		uint8* Bytes = Bad.data();
+		VT_REQUIRE(Bytes != nullptr); // keeps gcc -O2 -Wnull-dereference honest
+		Bytes[0] = 'X';
 		Reseal(Bad);
 		VT_CHECK(Load(Bad) == SnapshotResult::BadMagic);
 	}

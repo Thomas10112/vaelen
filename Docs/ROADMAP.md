@@ -69,7 +69,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 |---|---|---|---|
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
-| 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | PLANNED |
+| 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | IN PROGRESS (02.01 VALIDATED headless; 02.02-02.08 PLANNED) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | PLANNED |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
@@ -389,7 +389,7 @@ and long-duration categories present; (5) ADR-0010 to ADR-0015, docs updated. Ve
 **Phase 01 VALIDATED on the headless side, UNVERIFIED on the engine side until the first
 UE 5.6 build.**
 
-## 6. Phase 02 - WORLD: task breakdown (PLANNED)
+## 6. Phase 02 - WORLD: task breakdown and real status
 
 Goal: the world of AELVOR derived from the seed alone - grid, terrain, climate,
 hydrology, regions, resource deposits - as simulation state that the Phase 01 kernel
@@ -416,15 +416,29 @@ deterministic, and every one of these was checked against determinism first):
 - Three reference sizes: 64x64 (unit tests), 256x256 (integration, frozen hashes),
   1024x1024 (the AELVOR default; long-duration and performance baseline).
 
-### 02.01 Grid, tile layers, world-gen config and snapshot section
+### 02.01 Grid, tile layers, world-gen config and snapshot section - VALIDATED (headless)
 
-- `TileCoord`, `WorldGrid` (width, height, bounds, neighbours in a fixed order),
-  `TileLayer<T>` (dense, plain data, hashable), `WorldGenConfig` (size, sea level,
-  stage parameters; plain data), the `WorldMap` state block owned by `World`, its
-  snapshot section and the format version bump with a test that version-1 images are
-  rejected explicitly.
-- Tests: coordinates and neighbour order, layer round trip and hash, snapshot section
-  round trip, old version rejected, empty map.
+- Delivered: `TileGrid.h` (`TileCoord`, `WorldGrid` up to 4096 x 4096 with row-major
+  indexing, exact inverses, fixed neighbour order N, NE, E, SE, S, SW, W, NW clipped at
+  the border, 4 or 8 neighbours; `TileLayer<T>` dense plain-data values, name-seeded
+  digest, raw serialisation bounded by the maximum grid), `WorldMap.h/.cpp`
+  (`WorldGenConfig` plain data with width, height, sea level and reserved stage
+  parameters; layers declared by setup code under unique names and addressed by
+  `TileLayerId<T>`, layout digest of the declared set, `Reset` adopting a config and
+  zero-filling every layer, state digest, symmetric snapshot section), `World::Map()`,
+  save format 2 (the header's layout digest now combines component and layer layouts).
+  Misuse (duplicate name, invalid config, wrong element size, unknown id, out-of-range
+  tile) is reported and answered with a scratch value, never a crash.
+- Tests (10): index/coord inverses and bounds; neighbour order, clipping, 1x1 grid;
+  layer reset, fill, hash, round trip, name-sensitive digest, truncation; misuse paths
+  with capture counts; typed layer access and late-added layers; layout and state
+  digests; snapshot section round trip through `World` with byte-identical re-save and
+  layout mismatch on a different layer set; unset map round trip; a format-1 image
+  refused with the target untouched; a 1024 x 1024 map (11 MB) round trip.
+- Consequence: the frozen state digests of the replay and mini-world references were
+  refrozen for format 2 (their log digests are unchanged, which proves the simulation
+  itself did not move).
+- Decision: ADR-0016.
 
 ### 02.02 Fixed-point math and deterministic noise
 
@@ -494,43 +508,35 @@ class and Enhanced Input mappings arrive in Phase 10.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 01 — CORE SIMULATION
-TASK        : 01.08 — ABSTRACT MINI-WORLD LONG-DURATION TEST (phase close)
+PHASE       : 02 — WORLD
+TASK        : 02.01 — GRID, TILE LAYERS, WORLD-GEN CONFIG, SNAPSHOT SECTION
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████████████████ 100%
+███░░░░░░░░░░░░░░░░░░░░░ 12%
 
 CURRENTLY
-→ Phase 01 closed against ROADMAP section 2: 100 000-tick mini-world with four LOD
-  levels, invariants every 1 000 ticks, snapshot/restore/replay every 10 000 ticks,
-  frozen end state; performance baseline 255 k ticks/s (debug), 740 k ticks/s (release)
+→ 02.01 closed: TileCoord/WorldGrid (fixed neighbour order), TileLayer<T> (dense,
+  plain data, hashable), WorldGenConfig, WorldMap state block in World, save format 2
 
 COMPLETED
-✓ Phase 00 — FOUNDATION (CI 9/9)
-✓ 01.01 Entity handles & registry (16 tests)
-✓ 01.02 Component storage (15 tests)
-✓ 01.03 Systems & tick scheduler (8 tests)
-✓ 01.04 Simulation clock & calendar (4 tests)
-✓ 01.05 Event bus & event log (10 tests)
-✓ 01.06 Persistence interfaces & snapshot (15 tests)
-✓ 01.07 Deterministic replay test (5 tests)
-✓ 01.08 Abstract mini-world long-duration test (4 tests)
+✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION (CI 9/9 on every run)
+✓ 02.01 Grid, tile layers, config, snapshot section (10 tests: TileGrid 4, WorldMap 6)
 
 NEXT
-→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist) to clear UNVERIFIED
-→ Phase 02 — WORLD: regions, tiles, terrain, climate, hydrology, deposits from the seed
+→ 02.02 Fixed-point Q32.32 helpers and deterministic lattice noise without libm
+→ 02.03 Elevation and coastline (frozen digests at 64 and 256, ASCII export)
+→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Tests/Sim/Test_MiniWorld.cpp
-~ Source/VaelenSim/Public/Vaelen/Sim/ComponentPool.h (const Get)
++ Source/VaelenSim/Public/Vaelen/Sim/{TileGrid.h, WorldMap.h}, Private/WorldMap.cpp
+~ World.h (Map()), Snapshot.h/.cpp (map section, combined layout digest), Version.h (format 2)
++ Tests/Sim/{Test_TileGrid.cpp, Test_WorldMap.cpp} ; frozen state digests refrozen for format 2
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 77 (74 without asserts); ctest 31/31 in all six Linux presets
-✓ Mini-world end state (seed 0x41454c564f52, 100 000 ticks): state 0b6f6e9bd5887d35,
-  log 60cd10a389895804, 305 027 events, 41 entities — identical on clang 18 and gcc 13
-✓ Purity: 34 files, 0 violations
-⚠ Unreal Build Tool: VaelenSim engine files UNVERIFIED
+✓ Core 133 (108 without asserts) + Sim 87 (84 without asserts); ctest 33/33 in all six Linux presets
+✓ Log digests of the replay and mini-world references unchanged (the simulation did not move)
+✓ Purity: 37 files, 0 violations
 
 BLOCKERS
 None

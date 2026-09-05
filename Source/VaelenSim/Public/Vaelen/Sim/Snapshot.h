@@ -6,7 +6,8 @@
 //
 // Image layout (all little-endian, see CoreTypes.h):
 //   Header  : magic "VAELENSN", FormatVersion u32 (VAELEN_SAVE_FORMAT_VERSION),
-//             Flags u32 (0), ComponentLayoutDigest u64, Seed u64
+//             Flags u32 (0), LayoutDigest u64 (component layout combined with
+//             the map layer layout), Seed u64
 //   Clock   : tick u64, calendar rules (5 x u32)
 //   Root    : RandomStreamState (seed, 4 words, draw count)
 //   Ids     : 256 x u64 next serials
@@ -14,6 +15,8 @@
 //             generation u32, next-free u32, flags u8 = alive | retired << 1)
 //   Pools   : count u32, then per pool: type id u16, name hash u64, element
 //             size u32, entities (count u64 + raw), data (count u64 + raw)
+//   Map     : WorldGenConfig raw, width u32, height u32, layer count u32, then
+//             per layer: name hash u64, element size u32, values (count u64 + raw)
 //   Pending : events not yet delivered (count u64 + raw)
 //   Log     : count u64, digest u64, events raw
 //   Trailer : FNV-1a digest u64 over every preceding byte

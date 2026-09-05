@@ -16,6 +16,8 @@ set(VAELEN_SIM_PUBLIC_HEADERS
   Public/Vaelen/Sim/Archive.h
   Public/Vaelen/Sim/World.h
   Public/Vaelen/Sim/Snapshot.h
+  Public/Vaelen/Sim/TileGrid.h
+  Public/Vaelen/Sim/WorldMap.h
 )
 
 set(VAELEN_SIM_SOURCES
@@ -27,6 +29,7 @@ set(VAELEN_SIM_SOURCES
   Private/Archive.cpp
   Private/World.cpp
   Private/Snapshot.cpp
+  Private/WorldMap.cpp
 )
 
 add_library(VaelenSim STATIC ${VAELEN_SIM_SOURCES} ${VAELEN_SIM_PUBLIC_HEADERS})

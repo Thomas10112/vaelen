@@ -22,6 +22,7 @@
 #include "Vaelen/Sim/SimApi.h"
 #include "Vaelen/Sim/SimClock.h"
 #include "Vaelen/Sim/System.h"
+#include "Vaelen/Sim/WorldMap.h"
 
 namespace Vaelen
 {
@@ -64,6 +65,8 @@ namespace Vaelen
 		const EventBus& Events() const noexcept { return Bus; }
 		EventLog& Log() noexcept { return History; }
 		const EventLog& Log() const noexcept { return History; }
+		WorldMap& Map() noexcept { return TileMap; }
+		const WorldMap& Map() const noexcept { return TileMap; }
 
 		// ── Simulation ───────────────────────────────────────────────────────
 		/// One tick: pending events, due systems, clock + 1. Returns the number
@@ -86,6 +89,7 @@ namespace Vaelen
 		EntityRegistry Registry;
 		ComponentStore Store;
 		EventLog History;
+		WorldMap TileMap;
 		EventBus Bus;
 		Scheduler SystemScheduler;
 	};

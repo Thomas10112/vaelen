@@ -174,6 +174,12 @@ namespace Vaelen
 				}
 			}
 
+			// World map (format version 2).
+			if (!W.Map().Serialize(Ar))
+			{
+				return Ar.HasError() ? SnapshotResult::Truncated : SnapshotResult::Inconsistent;
+			}
+
 			// Pending events and the log.
 			{
 				VAELEN_CHECKF(!W.Events().IsDispatching(), "cannot snapshot while dispatching events");
@@ -238,7 +244,7 @@ namespace Vaelen
 		Ar.SerializeBytes(MagicBytes, 8);
 		uint32 Version = VAELEN_SAVE_FORMAT_VERSION;
 		uint32 Flags = 0;
-		Hash64 Layout = Source.Types().LayoutDigest();
+		Hash64 Layout = HashCombine(Source.Types().LayoutDigest(), Source.Map().LayoutDigest());
 		uint64 Seed = Source.Config().Seed;
 		Ar << Version << Flags << Layout << Seed;
 		// The body routine is symmetric and takes a mutable world; saving does
@@ -279,7 +285,7 @@ namespace Vaelen
 		{
 			return SnapshotResult::VersionMismatch;
 		}
-		if (Layout != Target.Types().LayoutDigest())
+		if (Layout != HashCombine(Target.Types().LayoutDigest(), Target.Map().LayoutDigest()))
 		{
 			return SnapshotResult::LayoutMismatch;
 		}

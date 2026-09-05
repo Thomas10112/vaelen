@@ -38,6 +38,7 @@ Rules for this file:
 | [0013](#adr-0013-simulation-time-is-an-integer-tick-count-the-calendar-is-data-derived-from-it) | Simulation time is an integer tick count; the calendar is data derived from it | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0014](#adr-0014-events-are-plain-112-byte-records-with-a-cause-delivered-next-tick-in-publish-order-the-log-is-append-only-with-a-running-digest) | Events are plain records with a cause, delivered next tick; append-only log with running digest | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0015](#adr-0015-one-world-object-owns-the-state-snapshots-are-a-symmetric-versioned-digest-checked-byte-image-stored-types-carry-no-padding) | One World object owns the state; snapshots are a symmetric, versioned, digest-checked byte image; stored types carry no padding | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0016](#adr-0016-tiles-are-dense-typed-layers-not-entities-the-world-map-is-a-state-block-with-a-code-declared-layer-set) | Tiles are dense typed layers, not entities; the world map is a state block with a code-declared layer set | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -1033,6 +1034,64 @@ Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/PlainData.h`,
 `Archive.h`, `World.h`, `Snapshot.h`, `Source/VaelenSim/Private/Archive.cpp`,
 `World.cpp`, `Snapshot.cpp`, `Tests/Sim/Test_Archive.cpp`, `Test_World.cpp`,
 `Test_Snapshot.cpp` (15 tests). Headless VALIDATED on the six Linux presets; engine
+side UNVERIFIED.
+
+---
+
+## ADR-0016: Tiles are dense typed layers, not entities; the world map is a state block with a code-declared layer set
+
+### Context
+
+Phase 02 derives AELVOR from the seed: a grid of up to 4096 x 4096 tiles (16.7 million)
+with elevation, climate, hydrology and more per tile. The Phase 01 entity model (a
+persistent id, a registry slot and sparse-set components per entity) costs tens of
+bytes of bookkeeping per entity and hashes pool by pool; regions, rivers and deposits
+number in the thousands and fit it, tiles do not. The map must still be snapshotted,
+restored, hashed and replayed exactly like every other state block (ADR-0015).
+
+### Decision
+
+1. Tiles are addressed by coordinate or row-major index on a `WorldGrid`; per-tile
+   values live in `TileLayer<T>` (one dense vector per layer, plain data under the
+   ADR-0015 rule, name-seeded digest). No tile has an id, a slot or a component.
+2. The neighbour order is fixed (N, NE, E, SE, S, SW, W, NW) and border-clipped, so
+   every algorithm that walks neighbours is deterministic by construction.
+3. `WorldMap` is a state block of `World`: its config, grid and layer contents are
+   state; its layer set (names, element sizes, order) is code declared by the setup
+   function, folded into the snapshot header's layout digest next to the component
+   layout, and verified layer by layer on load.
+4. The snapshot format is versioned by this change (`VAELEN_SAVE_FORMAT_VERSION` 2):
+   format-1 images are rejected explicitly, never migrated silently.
+5. Regions, rivers, lakes and deposits will be entities with components; they reference
+   tiles by index.
+
+### Alternatives and decision rule
+
+- Tiles as entities: rejected; 16.7 million registry slots and sparse indices for data
+  that is never created or destroyed individually, and a snapshot dominated by handles.
+- A fixed struct per tile: rejected; every stage would change one struct shared by all,
+  and hashing or serialising one field would touch all fields. Layers add and hash
+  independently per stage.
+- Layers registered at runtime by name from data: rejected for Phase 02; the set of
+  layers is part of the save-format contract and belongs to code, like component types.
+- Decided by robustness (explicit layout check, explicit version rejection), then
+  simplicity, then performance (dense arrays), consistent with determinism.
+
+### Consequences
+
+- Adding a layer or changing an element size changes the layout digest: old images are
+  rejected until Phase 16 provides migration.
+- Grid size is state: the same code can generate 64 x 64 test worlds and the 1024 x 1024
+  default, and a snapshot carries its own size.
+- The frozen state digests of the Phase 01 references changed with the format version;
+  their log digests did not.
+
+### Status
+
+Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/TileGrid.h`,
+`WorldMap.h`, `Source/VaelenSim/Private/WorldMap.cpp`, `Snapshot.cpp`,
+`Source/VaelenCore/Public/Vaelen/Core/Version.h`, `Tests/Sim/Test_TileGrid.cpp`,
+`Test_WorldMap.cpp` (10 tests). Headless VALIDATED on the six Linux presets; engine
 side UNVERIFIED.
 
 ---
