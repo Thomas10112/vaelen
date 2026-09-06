@@ -237,6 +237,11 @@ namespace Vaelen::History
 		}
 		const std::vector<EntityHandle> Regions = RegionHandles(W, Setup);
 		RandomStream& Random = *Context.Random;
+		auto IsDetailed = [&](EntityHandle E)
+		{
+			const RegionLod* L = HasLod ? W.Components().GetPool(Lod).TryGet(E) : nullptr;
+			return L != nullptr && L->Level <= RegionLod::DetailedLevel;
+		};
 
 		// 1. Last year's omens strike or pass.
 		const uint32 PendingCount = S->PendingCount;
@@ -272,7 +277,8 @@ namespace Vaelen::History
 			const uint32 PeopleBefore = P != nullptr ? P->Total : 0u;
 			const uint32 Wanted =
 				static_cast<uint32>(uint64{PeopleBefore} * Rules.DeathsPerMille[O.Kind][Severity - 1] / 1000u);
-			const uint32 Deaths = P != nullptr ? Kill(*P, Wanted) : 0u;
+			// A detailed region has persons: its deaths belong to the life systems.
+			const uint32 Deaths = P != nullptr && !IsDetailed(Regions[O.Region]) ? Kill(*P, Wanted) : 0u;
 
 			DisasterInfo D;
 			D.Index = ++S->Count;

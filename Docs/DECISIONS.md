@@ -55,6 +55,7 @@ Rules for this file:
 | [0030](#adr-0030-history-is-queried-through-the-log-and-the-records-and-read-as-text-built-from-names-with-deterministic-fallbacks) | History is queried through the log and the records, and read as text built from names with deterministic fallbacks | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0031](#adr-0031-believers-never-exceed-the-living-at-any-tick-boundary-carries-round-up-and-deaths-take-believers-first) | Believers never exceed the living at any tick boundary: carries round up and deaths take believers first | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0032](#adr-0032-population-has-two-grains-and-one-truth-persons-exist-only-in-detailed-regions-and-always-sum-to-the-coarse-counts) | Population has two grains and one truth: persons exist only in detailed regions and always sum to the coarse counts | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0033](#adr-0033-in-a-detailed-region-the-persons-drive-the-counts-and-the-coarse-systems-observe-an-opt-in-lod-marker) | In a detailed region the persons drive the counts and the coarse systems observe an opt-in LOD marker | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -2005,6 +2006,66 @@ the two million people of a 1024 world is neither needed nor affordable.
 
 Accepted 2026-09-06. Files: `Source/VaelenPopulation/*` (module rules, CMake, API
 header, `Persons.h/.cpp`, `VaelenPopulationModule.cpp`), `Tests/Population/*`. Headless
+VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0033: In a detailed region the persons drive the counts and the coarse systems observe an opt-in LOD marker
+
+### Context
+
+ADR-0032 left the coarse systems of Phase 03 moving the counts of a detailed region
+while its persons stood still. Two drivers of one number cannot both be right: either
+the counts follow the persons or the persons follow the counts, and the choice must
+not change a single Phase 03 digest, because those are frozen on four compilers.
+
+### Decision
+
+1. In a detailed region the persons are the truth. Every year the `LifeSystem` ages
+   them, kills by age band, lets couples have children and then rewrites the region's
+   counts per culture and believers per faith from the living. Capacity stays the
+   region's.
+2. The coarse systems leave detailed regions alone. `RegionLod` is a marker component
+   whose type is declared by the population module, not by the pre-history; the
+   population, migration and disaster systems learn it through `ObserveLod` and skip
+   marked regions (no growth, decline, assimilation, abandonment or split; no wave in
+   or out; disasters strike but do not kill there until the needs of 04.04 handle
+   persons). A world that never declares the marker behaves exactly as before, so every
+   Phase 03 digest is unchanged.
+3. Births scale with the room left in the region (480 per mille per fertile woman at
+   full room, 50 at capacity), which settles a detailed region near 80 percent of its
+   capacity, where the coarse logistic model keeps its regions. A promotion or a
+   demotion therefore changes the grain, not the size of the population.
+4. Every birth and death is an event about the person (PersonBorn, PersonDied), so
+   04.07 can chronicle the ones that matter and 04.04 can attach causes.
+
+### Alternatives and decision rule
+
+- Persons following the counts (materialising the coarse growth, killing to match the
+  coarse deaths): rejected; the coarse rules know nothing of age or couples, and the
+  persons would carry no history of their own.
+- A flag inside `RegionPopulation`: rejected; a layout change would bump the save
+  format and refreeze every Phase 03 digest for a bit the pre-history never sets.
+- Ordering the systems so a reconciliation always runs last: rejected; system order is
+  by name hash and the marker makes the order irrelevant.
+- Decided by determinism (opt-in, digests untouched) and robustness (one driver per
+  number, an invariant checked every year).
+
+### Consequences
+
+- Migration waves never reach or leave a detailed region; emigration and immigration
+  of persons belong to the LOD bridge of 04.06.
+- Disasters in detailed regions publish their events but kill nobody until 04.04 ties
+  needs, famine and disease to persons; the gate of 04.08 will check that no such gap
+  remains.
+- The life tables are a public rule table; a balance change refreezes the lives digest.
+
+### Status
+
+Accepted 2026-09-06. Files: `Source/VaelenPopulation/Public/Vaelen/Population/Lives.h`,
+`Source/VaelenPopulation/Private/Lives.cpp`, `Persons.h/.cpp`,
+`Source/VaelenSim/Public/Vaelen/Sim/Population.h`, `Private/Population.cpp`,
+`Disasters.h/.cpp`, `PreHistory.h`, `Tests/Population/Test_Lives.cpp` (5 tests). Headless
 VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---

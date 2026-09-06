@@ -64,6 +64,17 @@ namespace Vaelen::History
 		void Recount() noexcept;
 	};
 
+	/// Simulation LOD of a region, set by a later module (Phase 04) while the
+	/// region is detailed into persons. The coarse systems leave regions at or
+	/// below DetailedLevel alone: no growth, no split, no migration in or out,
+	/// no disaster deaths. The persons are the truth there.
+	struct RegionLod
+	{
+		static constexpr uint32 DetailedLevel = 2;
+		uint32 Level = 4;
+		uint32 Reserved = 0;
+	};
+
 	struct PopulationTypes
 	{
 		ComponentType<CultureInfo> Culture;
@@ -144,12 +155,21 @@ namespace Vaelen::History
 		const char* GetName() const noexcept override { return "Population"; }
 		SimLod GetLod() const noexcept override { return SimLod::World; }
 		void Tick(TickContext& Context) override;
+		/// Optional: the marker of detailed regions (RegionLod), which this
+		/// system then leaves alone.
+		void ObserveLod(ComponentType<RegionLod> InLod) noexcept
+		{
+			Lod = InLod;
+			HasLod = true;
+		}
 
 	private:
 		World* Owner;
 		WorldGen::WorldSetup Setup;
 		PopulationTypes Types;
 		PopulationRules Rules;
+		ComponentType<RegionLod> Lod;
+		bool HasLod = false;
 		Hash64 GraphDigest = 0;		 ///< derived cache, not state
 		WorldGen::RegionGraph Graph; ///< derived cache, not state
 	};
@@ -169,6 +189,13 @@ namespace Vaelen::History
 		SimLod GetLod() const noexcept override { return SimLod::Statistic; }
 		std::vector<std::string_view> GetDependencies() const override { return {"Population"}; }
 		void Tick(TickContext& Context) override;
+		/// Optional: the marker of detailed regions (RegionLod), which this
+		/// system then leaves alone.
+		void ObserveLod(ComponentType<RegionLod> InLod) noexcept
+		{
+			Lod = InLod;
+			HasLod = true;
+		}
 
 	private:
 		World* Owner;
@@ -176,6 +203,8 @@ namespace Vaelen::History
 		PopulationTypes Types;
 		PopulationRules Rules;
 		// Derived cache (not state): rebuilt when the region layer changes.
+		ComponentType<RegionLod> Lod;
+		bool HasLod = false;
 		Hash64 GraphDigest = 0;
 		WorldGen::RegionGraph Graph;
 	};

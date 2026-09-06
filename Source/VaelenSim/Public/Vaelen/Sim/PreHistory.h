@@ -80,6 +80,8 @@ namespace Vaelen::History
 		/// True once Generate succeeded or a snapshot with history was loaded.
 		bool HasHistory() const noexcept;
 
+		PopulationSystem& Peoples() noexcept { return *PopulationSystem_; }
+		MigrationSystem& Migrations() noexcept { return *MigrationSystem_; }
 		EraSystem& Eras() noexcept { return *EraSystem_; }
 		ReligionSystem& Religions() noexcept { return *ReligionSystem_; }
 		DisasterSystem& Disasters() noexcept { return *DisasterSystem_; }

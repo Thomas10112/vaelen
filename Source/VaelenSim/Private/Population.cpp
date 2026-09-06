@@ -249,6 +249,11 @@ namespace Vaelen::History
 			return;
 		}
 		World& W = *Owner;
+		auto IsDetailed = [&](EntityHandle E)
+		{
+			const RegionLod* L = HasLod ? W.Components().GetPool(Lod).TryGet(E) : nullptr;
+			return L != nullptr && L->Level <= RegionLod::DetailedLevel;
+		};
 		// The region layer is a pure function of the world seed and the generation
 		// config, so the config keys the derived graph cache.
 		const Hash64 Digest = HashBytes(reinterpret_cast<const char*>(&W.Map().Config()), sizeof(WorldGenConfig));
@@ -325,7 +330,7 @@ namespace Vaelen::History
 				[&](EntityHandle H, RegionPopulation& P)
 				{
 					const RegionInfo* R = W.Components().GetPool(Setup.RegionTypes_.Region).TryGet(H);
-					if (R == nullptr)
+					if (R == nullptr || IsDetailed(H))
 					{
 						return;
 					}
@@ -431,7 +436,7 @@ namespace Vaelen::History
 						continue;
 					}
 					const RegionPopulation* Q = W.Components().GetPool(Types.Population).TryGet(Handles[N]);
-					if (Q == nullptr || Q->Majority != OldCulture)
+					if (Q == nullptr || Q->Majority != OldCulture || IsDetailed(Handles[N]))
 					{
 						continue;
 					}
@@ -497,6 +502,11 @@ namespace Vaelen::History
 			return;
 		}
 		World& W = *Owner;
+		auto IsDetailed = [&](EntityHandle E)
+		{
+			const RegionLod* L = HasLod ? W.Components().GetPool(Lod).TryGet(E) : nullptr;
+			return L != nullptr && L->Level <= RegionLod::DetailedLevel;
+		};
 		const ITileLayer* RegionLayer = W.Map().GetLayerBase(Setup.Regions.RegionIndex.Index);
 		if (RegionLayer == nullptr)
 		{
@@ -524,7 +534,7 @@ namespace Vaelen::History
 		for (uint32 R = 1; R < Handles.size(); ++R)
 		{
 			const RegionPopulation* P = W.Components().GetPool(Types.Population).TryGet(Handles[R]);
-			if (P == nullptr || P->Capacity == 0 || P->Total == 0)
+			if (P == nullptr || P->Capacity == 0 || P->Total == 0 || IsDetailed(Handles[R]))
 			{
 				continue;
 			}
@@ -540,7 +550,7 @@ namespace Vaelen::History
 				for (uint16 N : Graph.Neighbours[R])
 				{
 					const RegionPopulation* Q = W.Components().GetPool(Types.Population).TryGet(Handles[N]);
-					if (Q == nullptr || Q->Capacity == 0)
+					if (Q == nullptr || Q->Capacity == 0 || IsDetailed(Handles[N]))
 					{
 						continue;
 					}

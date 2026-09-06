@@ -71,7 +71,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
-| 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | IN PROGRESS (04.01 VALIDATED headless; 04.02-04.08 PLANNED) |
+| 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | IN PROGRESS (04.01-04.02 VALIDATED headless; 04.03-04.08 PLANNED) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
@@ -1005,6 +1005,41 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   persons).
 - Decision: ADR-0032.
 
+### 04.02 Ageing, mortality, fertility and the reconciliation of the grains - VALIDATED (headless)
+
+- Delivered: `Lives.h/.cpp` - `LifeRules` (nine age bands with yearly deaths per mille:
+  60 / 15 / 3 / 4 / 8 / 18 / 40 / 150 / 500 for 0-1, 1-5, 5-15, 15-30, 30-45, 45-60,
+  60-75, 75-90, 90+; fertile ages 16-40, fathers 16-55, 480 births per mille per fertile
+  woman at full room falling to 50 at capacity, newborn sex), events PersonBorn and
+  PersonDied (subject the person; payload index, region, age, mother), `AgeYears`,
+  `BandOf`, `ReconcileRegion` (the coarse counts per culture and the believers per faith
+  become what the living persons say; capacity untouched), `LifeSystem` (LOD World, after
+  Population: for every detailed region in index order, deaths by band, births to
+  couples - a father of the mother's culture picked among the eligible men - with the
+  child inheriting culture, language, faith and family, then reconciliation),
+  `MeasureLives`. In `VaelenSim`: `RegionLod` (a marker with `DetailedLevel` 2),
+  `ObserveLod` on `PopulationSystem`, `MigrationSystem` and `DisasterSystem` (growth,
+  decline, assimilation, abandonment and splits skip detailed regions; waves neither
+  leave nor reach them; disasters strike them without deaths until 04.04), `PreHistory`
+  accessors `Peoples` and `Migrations`; `PersonTypes` gains the `Lod` type,
+  `Declare(World&, PreHistory&)` and `Attach`; promotion adds the marker, demotion
+  removes it. Opt-in, so every Phase 03 digest is unchanged.
+- Balance: a detailed region settles near 80 percent of its capacity, where the coarse
+  model keeps its regions too (region 26 of AELVOR 128: 1 460 people at year 300,
+  1 499 at year 500, never below 1 445 nor above 1 576 for a capacity of 1 878).
+- Tests (5): ages and bands; two centuries in the busiest region with the grains
+  consistent every year, the oldest under 110, births and deaths present, children
+  and elders, the region peopled at 70 percent or more of capacity and never above
+  120, one PersonBorn per person with a mother (who has a father and a birth in the
+  run) and one PersonDied per dead person, the rest of the world moving on; the coarse
+  systems leaving the detailed region alone (no wave leaves or reaches it in 30 years
+  while waves move elsewhere, the grains consistent) and picking it up again after
+  demotion, the life system doing nothing without a detailed region; two worlds
+  identical, a snapshot between yearly ticks continued identically with persons, rules
+  (no births leaves only deaths, no deaths leaves only births); frozen persons digest
+  `9f2615d35856a752` after 200 years (1 499 alive, 1 499 born there).
+- Decision: ADR-0033.
+
 ## 9. Phases 05-20: notes
 
 No task breakdown exists yet for Phases 05-20; each is broken down when the previous
@@ -1023,40 +1058,39 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 04 — POPULATION
-TASK        : 04.01 — PERSONS AND THE TWO GRAINS OF POPULATION
+TASK        : 04.02 — AGEING, MORTALITY, FERTILITY AND THE RECONCILIATION OF THE GRAINS
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███░░░░░░░░░░░░░░░░░░░░░ 12%
+██████░░░░░░░░░░░░░░░░░░ 25%
 
 CURRENTLY
-→ 04.01 closed: the third kernel module VaelenPopulation (UBT + CMake + purity), PersonInfo
-  entities of kind Person, RegionDetail on detailed regions, PromoteRegion materialising the
-  coarse counts exactly (culture, faith, sex, age from a hash stream), DemoteRegion folding
-  the living back and destroying the persons, consistency checks and a persons digest
+→ 04.02 closed: the yearly LifeSystem in detailed regions (deaths by nine age bands, births to
+  couples scaled by the room left, every birth and death an event about the person, the coarse
+  counts rewritten from the living), and the RegionLod marker the coarse systems observe so
+  that growth, splits, migration and disaster deaths leave detailed regions alone
 
 COMPLETED
-✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD ; Phase 03 — HISTORY (headless, CI 33)
-✓ 04.01 Persons and the two grains (5 tests: Persons)
+✓ Phases 00-03 (headless) ; 04.01 Persons and the two grains (CI 34)
+✓ 04.02 Life cycles (5 tests: Lives)
 
 NEXT
-→ 04.02 Ageing, mortality and fertility tables, births and deaths reconciled with the counts
-→ 04.03 Families and lineage
+→ 04.03 Families and lineage (FamilyInfo, marriages by culture and faith, genealogy queries)
+→ 04.04 Needs and body (famine from drought, disease from plague, deaths caused by the disaster's event)
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenPopulation/ (VaelenPopulation.Build.cs, CMakeLists.txt, Public/Vaelen/Population/PopulationApi.h,
-  Persons.h, Private/Persons.cpp, Private/VaelenPopulationModule.cpp)
-+ Tests/Population/ (CMakeLists.txt, Test_Persons.cpp)
-~ CMakeLists.txt, Tests/CMakeLists.txt, Tools/kernel_modules.txt, Vaelen.uproject, Vaelen.Target.cs,
-  VaelenEditor.Target.cs
++ Source/VaelenPopulation/Public/Vaelen/Population/Lives.h, Private/Lives.cpp
++ Tests/Population/Test_Lives.cpp
+~ Population.h/.cpp, Disasters.h/.cpp (RegionLod, ObserveLod, detailed regions skipped), PreHistory.h
+  (Peoples / Migrations accessors), Persons.h/.cpp (Lod type, Declare(World&, PreHistory&), Attach)
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 5 (5 without asserts);
-  ctest 52/52 in all six Linux presets
-✓ AELVOR 128 after 300 years: every settled region promoted into 19 781 persons, believers and counts
-  equal, every region demoted back to the same world; persons digest a92da70b85f09c0f
-✓ Purity: 67 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 10 (10 without asserts);
+  ctest 53/53 in all six Linux presets; every Phase 03 frozen digest unchanged
+✓ Region 26 of AELVOR 128 detailed at year 300 and lived through 200 years: 1 460 -> 1 499 people
+  (never below 1 445, never above 1 576, capacity 1 878), grains consistent every year; frozen 9f2615d35856a752
+✓ Purity: 69 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)

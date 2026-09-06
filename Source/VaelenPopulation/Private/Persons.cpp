@@ -60,9 +60,25 @@ namespace Vaelen::Population
 		PersonTypes T;
 		T.Person = W.Types().Register<PersonInfo>("PersonInfo");
 		T.Detail = W.Types().Register<RegionDetail>("RegionDetail");
+		T.Lod = W.Types().Register<History::RegionLod>("RegionLod");
 		W.Components().CreatePool(T.Person);
 		W.Components().CreatePool(T.Detail);
+		W.Components().CreatePool(T.Lod);
 		return T;
+	}
+
+	PersonTypes PersonTypes::Declare(World& W, History::PreHistory& Ages)
+	{
+		const PersonTypes T = Declare(W);
+		T.Attach(Ages);
+		return T;
+	}
+
+	void PersonTypes::Attach(History::PreHistory& Ages) const noexcept
+	{
+		Ages.Peoples().ObserveLod(Lod);
+		Ages.Migrations().ObserveLod(Lod);
+		Ages.Disasters().ObserveLod(Lod);
 	}
 
 	bool IsDetailed(const World& W, const History::PreHistoryTypes& Types, const PersonTypes& Persons, uint32 Region)
@@ -168,6 +184,9 @@ namespace Vaelen::Population
 		Detail.PromotedAt = Now;
 		Detail.Promotions = 1;
 		W.Components().GetPool(Persons.Detail).Add(H, Detail);
+		History::RegionLod Marker;
+		Marker.Level = History::RegionLod::DetailedLevel;
+		W.Components().GetPool(Persons.Lod).Add(H, Marker);
 		return Created;
 	}
 
@@ -336,6 +355,7 @@ namespace Vaelen::Population
 			W.DestroyEntity(E);
 		}
 		W.Components().GetPool(Persons.Detail).Remove(H);
+		W.Components().GetPool(Persons.Lod).Remove(H);
 		return static_cast<uint32>(Doomed.size());
 	}
 

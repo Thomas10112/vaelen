@@ -76,7 +76,15 @@ namespace Vaelen::Population
 	{
 		ComponentType<PersonInfo> Person;
 		ComponentType<RegionDetail> Detail;
+		ComponentType<History::RegionLod> Lod; ///< the marker the coarse systems observe
+		/// Declares the three types. The coarse systems of a PreHistory learn the
+		/// marker through Attach; without it they keep moving detailed regions.
 		static PersonTypes Declare(World& W);
+		/// Declare and Attach in one call.
+		static PersonTypes Declare(World& W, History::PreHistory& Ages);
+		/// Tells the population, migration and disaster systems of the
+		/// pre-history to leave detailed regions alone.
+		void Attach(History::PreHistory& Ages) const noexcept;
 	};
 
 	struct MaterialiseRules

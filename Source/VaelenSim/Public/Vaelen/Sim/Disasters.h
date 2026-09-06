@@ -170,6 +170,13 @@ namespace Vaelen::History
 		SimLod GetLod() const noexcept override { return SimLod::World; }
 		std::vector<std::string_view> GetDependencies() const override { return {"Population"}; }
 		void Tick(TickContext& Context) override;
+		/// Optional: the marker of detailed regions (RegionLod), which this
+		/// system then leaves alone.
+		void ObserveLod(ComponentType<RegionLod> InLod) noexcept
+		{
+			Lod = InLod;
+			HasLod = true;
+		}
 
 	private:
 		World* Owner;
@@ -181,6 +188,8 @@ namespace Vaelen::History
 		ReligionSystem* Religions = nullptr;
 		bool HasReligion = false;
 		EraSystem* Eras = nullptr;
+		ComponentType<RegionLod> Lod;
+		bool HasLod = false;
 		Hash64 HazardDigest = 0;		   ///< derived cache, not state
 		std::vector<RegionHazard> Hazards; ///< derived cache, not state
 	};
