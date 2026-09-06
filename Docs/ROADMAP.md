@@ -70,7 +70,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
-| 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | IN PROGRESS (03.01-03.04 VALIDATED headless; 03.05-03.08 PLANNED) |
+| 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | IN PROGRESS (03.01-03.05 VALIDATED headless; 03.06-03.08 PLANNED) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
@@ -803,14 +803,47 @@ Decisions taken up front (each becomes an ADR when its task closes):
   identical, a pending request surviving a snapshot and the restored world continuing
   identically, silent rules leaving the world faithless, zeal converting more; frozen 500
   years at 128: state `3d9bf5c1c7732241`, 10 religions, 45 480 believers.
+- Fixed after CI run 29 (Windows MSVC): `FaithListener` re-resolves the source region's
+  faith after `FaithOf` may have moved the pool (a dangling pointer made the migration
+  carry depend on the STL's vector growth factor: 2x on libstdc++, 1.5x on MSVC, so
+  only MSVC reallocated mid-carry). The Linux digest is unchanged; CI run 30 checks MSVC.
 - Decision: ADR-0027.
 
-### 03.05 Disasters and omens
+### 03.05 Disasters and omens - VALIDATED (headless)
 
-- Yearly random events tied to the world (drought from moisture, flood from rivers,
-  eruption from mountains, plague from population density) with causal consequences
-  in population and religion.
-- Tests: every disaster has a place and a cause; frequencies in bands.
+- Delivered: `Disasters.h/.cpp` - `DisasterKind` (drought, flood, eruption, plague),
+  `DisasterInfo` record component (kind, region, severity 1-3, tick, omen event id - never
+  0, deaths, people before; 40 bytes), `RegionHazard` (derived: tiles, river tiles,
+  mountain tiles, mean moisture, risk 0-1000 per kind), `DisasterState` singleton
+  (counters, up to 32 pending omens), `DisasterTypes::Declare`, `InitializeDisasters`,
+  `DisasterRules` (omen chance per kind at full risk, strike chance, deaths per mille by
+  kind and severity, drought moisture line, river and mountain shares for full risk,
+  mountain elevation, plague density, faith shaken share, founding and era severities,
+  era deaths), `ComputeHazards` (one pass over the tiles: drought where the mean moisture
+  is below the line, flood by river share, eruption by the share of tiles at least
+  1 200 m above the sea), `PlagueRisk` (people per tile), `DisasterSystem` (LOD World,
+  after Population, system stream: last year's omens strike with `StrikePerMille`,
+  severity escalating with the risk, deaths per culture in proportion, a record entity,
+  a DisasterStruck event caused by the omen; the majority faith loses a share of its
+  believers, a severe disaster requests a faith founding where none is held and a new
+  era when deadly enough; then this year's omens region by region and kind by kind as
+  Omen events about the region, queued for next year), `MeasureDisasters`.
+- Rule: every disaster has a place (its region) and a cause (its omen), and the
+  physical kinds strike only where the world allows them.
+- Tests (5): hazards derived from the world (each risk only where its cause exists, 29
+  / 40 / 34 of 99 AELVOR regions at drought / flood / eruption risk, deterministic,
+  plague risk by density, rules moving the lines, a drowned world without hazards);
+  500 years on AELVOR 128 with per-century logs (250 disasters, every kind between 2 and
+  300, both mild and severe, omens at least as many as disasters, no omen dropped, 56
+  regions struck, the world surviving), every record and every DisasterStruck event
+  traced to an Omen event about the same region and kind that precedes it, deaths within
+  the people found, faiths founded and eras opened by disasters; rules (no omens, omens
+  that never strike, a cursed world with more disasters, deaths and dropped omens, zero
+  deaths per mille, double initialisation refused); two worlds identical, pending omens
+  surviving a snapshot and the restored world continuing identically, another seed
+  striking differently; frozen 500 years at 128: state `2ac331b0540c3224`, 250
+  disasters, 4 691 deaths.
+- Decision: ADR-0028.
 
 ### 03.06 Pre-history run and the starting state
 
@@ -845,6 +878,44 @@ class and Enhanced Input mappings arrive in Phase 10.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VAELEN BUILD STATUS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PHASE       : 03 — HISTORY
+TASK        : 03.05 — DISASTERS AND OMENS
+STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
+
+PROGRESS
+███████████████░░░░░░░░░ 62%
+
+CURRENTLY
+→ 03.05 closed: drought, flood, eruption and plague tied to the world's moisture, rivers,
+  mountains and crowding; omens one year ahead as events about the region, disasters caused
+  by their omen with severity, deaths per culture, faith shaken, founding and era requests
+
+COMPLETED
+✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD (headless)
+✓ 03.01 Eras (CI 26) ; 03.02 Cultures (CI 27) ; 03.03 Languages (CI 28) ; 03.04 Religions (CI 29 red on MSVC, fixed here)
+✓ 03.05 Disasters and omens (5 tests: Disasters)
+
+NEXT
+→ 03.06 Pre-history run and the starting state (GeneratePreHistory, frozen per century)
+→ 03.07 Queryable history ; 03.08 Phase 03 gate
+→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
+
+FILES
++ Source/VaelenSim/Public/Vaelen/Sim/Disasters.h, Private/Disasters.cpp
++ Tests/Sim/Test_Disasters.cpp
+~ Religion.cpp (faith listener: re-resolve the source after FaithOf may move the pool)
+~ Tests/Sim/CMakeLists.txt (Sim.Shuffled timeout 1200 s)
+
+TESTS
+✓ Core 133 (108 without asserts) + Sim 150 (147 without asserts); ctest 46/46 in all six Linux presets
+✓ AELVOR 128 after 500 years: 250 disasters, 4 691 deaths, every disaster traced to its omen;
+  frozen state 2ac331b0540c3224; religion digest 3d9bf5c1c7732241 unchanged on Linux after the MSVC fix
+✓ Purity: 60 files, 0 violations
+
+BLOCKERS
+∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 03 — HISTORY

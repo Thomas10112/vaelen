@@ -604,7 +604,14 @@ namespace Vaelen::History
 				{
 					continue;
 				}
+				// FaithOf may add a component and move the pool: take the destination
+				// first, then re-resolve the source before touching it.
 				RegionFaith& Target = FaithOf(W, Types, Regions[To]);
+				Source = W.Components().GetPool(Types.Faith).TryGet(Regions[From]);
+				if (Source == nullptr)
+				{
+					return;
+				}
 				const uint32 Room = PopulationOf(W, Population, Regions[To]);
 				const uint32 Free = Room > Target.Total() ? Room - Target.Total() : 0u;
 				if (Free == 0)
@@ -615,11 +622,6 @@ namespace Vaelen::History
 				if (!Target.Add(Snapshot.Religion[K], Removed))
 				{
 					Source->Add(Snapshot.Religion[K], Removed); // no slot at the destination: they stay
-				}
-				Source = W.Components().GetPool(Types.Faith).TryGet(Regions[From]); // pool may have grown
-				if (Source == nullptr)
-				{
-					return;
 				}
 			}
 			return;

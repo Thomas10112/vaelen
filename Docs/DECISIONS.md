@@ -50,6 +50,7 @@ Rules for this file:
 | [0025](#adr-0025-population-is-coarse-per-region-cultures-are-entities-and-a-culture-splits-by-graph-distance-with-lineage-spacing) | Population is coarse per region, cultures are entities, and a culture splits by graph distance with lineage spacing | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0026](#adr-0026-names-are-built-from-a-per-language-phonology-pronounceable-by-construction-unique-per-scope-and-stored-as-fixed-size-components) | Names are built from a per-language phonology, pronounceable by construction, unique per scope, and stored as fixed-size components | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0027](#adr-0027-religions-are-entities-born-from-a-founding-event-with-believers-per-region-bounded-by-its-people-spreading-along-the-graph-and-with-migration) | Religions are entities born from a founding event, with believers per region bounded by its people, spreading along the graph and with migration | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0028](#adr-0028-disasters-are-drawn-from-world-hazards-announced-by-an-omen-a-year-ahead-and-caused-by-it-with-consequences-through-the-existing-request-doors) | Disasters are drawn from world hazards, announced by an omen a year ahead and caused by it, with consequences through the existing request doors | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -1740,6 +1741,65 @@ Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/Religion.h`,
 `Source/VaelenSim/Private/Religion.cpp`, `Source/VaelenSim/Public/Vaelen/Sim/Naming.h`
 (`NameScope::Religion`), `Tests/Sim/Test_Religion.cpp` (5 tests). Headless VALIDATED on
 the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0028: Disasters are drawn from world hazards, announced by an omen a year ahead and caused by it, with consequences through the existing request doors
+
+### Context
+
+The prompt asks for yearly random events tied to the world (drought from moisture,
+flood from rivers, eruption from mountains, plague from population density) with causal
+consequences in population and religion, and for every historical fact to be an event
+with a cause. Phase 03 already offers two request doors: `EraSystem::RequestEra(cause)`
+and `ReligionSystem::RequestFounding(region, cause, kind)`.
+
+### Decision
+
+1. Hazards are derived, not stored: one pass over the tiles gives each region its mean
+   moisture, river share and mountain share (tiles at least `MountainElevation` above
+   the sea; the Alpine biome starts at 2 500 m and is absent at small sizes), cached by
+   the region layer digest. Plague risk is computed each year from people per tile.
+2. An omen is an event about the region carrying the kind and the risk; it is queued in
+   a singleton component (32 slots, overflow counted). The next year the omen strikes
+   with a flat chance and a severity that escalates with the risk, and the disaster is
+   an event whose cause is the omen. A record entity keeps kind, region, severity,
+   deaths and the omen id, so "why did this happen" always resolves.
+3. Deaths are taken per culture in proportion through `RegionPopulation::Remove`, so the
+   population bookkeeping stays exact; the majority faith loses a share of its
+   believers; a disaster at or above `FoundingSeverity` in a faithless region requests a
+   founding; one at or above `EraSeverity` with at least `EraDeaths` deaths requests an
+   era. Consequences go through the doors, never by touching the other systems' state.
+4. Randomness is the system's own stream (a function of world seed, system name and
+   tick), so replay and snapshots reproduce every omen and strike.
+
+### Alternatives and decision rule
+
+- Striking in the same tick as the omen: rejected; the year of warning is what makes
+  omens readable history and gives 03.07 something to narrate.
+- Unbounded omen queue: rejected; a bounded queue keeps the state a fixed-size
+  component, and the dropped counter makes the bound visible (2 144 dropped in the
+  cursed test, 0 in the reference run).
+- Hazards as components: rejected; they are a pure function of the map and would only
+  duplicate state that the snapshot already carries.
+- Decided by robustness (every disaster provably caused and placed) and simplicity
+  (one rule table, one pass over the tiles).
+
+### Consequences
+
+- Frequencies are set by the rule table (about 250 disasters in 500 years on the
+  99-region reference continent, a dozen of them severe, a few eras and faiths born of
+  them); a balance change re-freezes the disaster digest.
+- Disasters kill only within the struck region; famine spreading to neighbours or
+  plague travelling with migration are left to later phases.
+- The DisasterInfo entity uses `IdKind::Entity`; a dedicated kind can be added without
+  changing the record.
+
+### Status
+
+Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/Disasters.h`,
+`Source/VaelenSim/Private/Disasters.cpp`, `Tests/Sim/Test_Disasters.cpp` (5 tests).
+Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
 

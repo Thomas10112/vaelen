@@ -23,3 +23,6 @@ add_test(NAME Sim.Shuffled COMMAND VaelenSimTests --shuffle 1)
 list(APPEND VAELEN_SIM_TEST_NAMES Sim.Registry Sim.Shuffled)
 
 set_tests_properties(${VAELEN_SIM_TEST_NAMES} PROPERTIES TIMEOUT 300)
+# The shuffled run repeats every Sim test, baselines included: MSVC debug needs
+# more than 300 s for it (CI run 29 timed out at 300 s).
+set_tests_properties(Sim.Shuffled PROPERTIES TIMEOUT 1200)
