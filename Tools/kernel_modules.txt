@@ -11,3 +11,4 @@
 VaelenCore
 VaelenSim
 VaelenPopulation
+VaelenSociety

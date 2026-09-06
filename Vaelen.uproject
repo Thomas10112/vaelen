@@ -27,6 +27,16 @@
 			]
 		},
 		{
+			"Name": "VaelenSociety",
+			"Type": "Runtime",
+			"LoadingPhase": "PreDefault",
+			"AdditionalDependencies": [
+				"VaelenCore",
+				"VaelenSim",
+				"VaelenPopulation"
+			]
+		},
+		{
 			"Name": "Vaelen",
 			"Type": "Runtime",
 			"LoadingPhase": "Default",

@@ -128,6 +128,7 @@ yet. Later kernel modules follow the same pattern with their own `VAELEN_<MODULE
 | `VaelenCore` | Kernel (UBT Runtime module, `PreDefault`; CMake static library) | Foundation of SIMULATION and WORLD STATE | UBT: `Core` (module registration only). CMake: none. | VALIDATED headless; UNVERIFIED under UBT |
 | `VaelenSim` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 01 | SIMULATION (entities, components, systems, clock, events) | UBT: `Core`, `VaelenCore`. CMake: `Vaelen::Core`. | Phases 01-03 VALIDATED headless; UNVERIFIED under UBT |
 | `VaelenPopulation` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 04 | SIMULATION (persons, families, demographics) | UBT: `Core`, `VaelenCore`, `VaelenSim`. CMake: `Vaelen::Sim`, `Vaelen::Core`. | VALIDATED headless (04.01-04.08, Phase 04 closed); UNVERIFIED under UBT |
+| `VaelenSociety` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 05 | SIMULATION (organisations, standing, norms, bondage) | UBT: `Core`, `VaelenCore`, `VaelenSim`, `VaelenPopulation`. CMake: `Vaelen::Population`, `Vaelen::Sim`, `Vaelen::Core`. | 05.01 VALIDATED headless; UNVERIFIED under UBT |
 | `Vaelen` | Unreal primary game module (`IMPLEMENT_PRIMARY_GAME_MODULE`, Runtime, `Default`) | Engine bridge (PRESENTATION side) | `Core`, `CoreUObject`, `Engine`, `InputCore`, `VaelenCore` | UNVERIFIED (requires UE 5.6) |
 
 `Vaelen` installs a kernel log sink (`FVaelenLogSink`, routes `Vaelen::LogRecord` to
@@ -145,7 +146,7 @@ in `ExtraModuleNames`.
 | 02 WORLD | `VaelenWorld` | Kernel | Regions, tiles, rivers, resource deposits (`IdKind` 10-13 already reserved). |
 | 03 HISTORY | `VaelenHistory` | Kernel | Historical record, eras, cultures, languages, religions. |
 | 04 POPULATION | `VaelenPopulation` | Kernel | Exists: the module, persons as entities and the two grains of population with promotion and demotion (04.01), the yearly life cycles of detailed regions with the coarse systems observing the RegionLod marker (04.02), families, marriages and lineage queries (04.03), needs and body - rations, famine from drought, disease from plague, deaths with the disaster event as cause (04.04), traits from identity and parents, skills through life and names in the person's language (04.05), the LOD bridge - requested regions promoted and demoted, persons crossing to and from the coarse grain (04.06), persons in the chronicle - the records that matter, one line per person event, stories and the why of a death (04.07); the Phase 04 gate runs all of it for 500 years over the 256 pre-history (04.08). Phase 05 (society) builds organisations, standing, norms and bondage on these persons.|
-| 05 SOCIETY | `VaelenSociety` | Kernel | Organisations, social structure. |
+| 05 SOCIETY | `VaelenSociety` | Kernel | Exists: the module, organisations as entities - councils seated by the heads of the largest houses, temples by the most pious of the majority faith - with seats refilled yearly, heads seated, the empty disbanded, coarse seats keeping their count (05.01). Planned: standing, norms, bondage and slavery, organisations acting, the social shape across the grains, society in history, the gate (05.02-05.08). |
 | 06 ECONOMY | `VaelenEconomy` | Kernel | Items, markets, production, trade. |
 | 07 POLITICS | `VaelenPolitics` | Kernel | Polities, laws. |
 | 08 MILITARY | `VaelenMilitary` | Kernel | Armies, wars. |
@@ -172,7 +173,7 @@ flowchart BT
         World["VaelenWorld (PLANNED)"]
         History["VaelenHistory (PLANNED)"]
         Population["VaelenPopulation (Phase 04)"]
-        Society["VaelenSociety (PLANNED)"]
+        Society["VaelenSociety (Phase 05)"]
         Economy["VaelenEconomy (PLANNED)"]
         Politics["VaelenPolitics (PLANNED)"]
         Military["VaelenMilitary (PLANNED)"]
@@ -270,6 +271,7 @@ military, 50-51 knowledge (Phase 12). Values are part of the save format: append
       CMakeLists.txt              explicit source list (VaelenCoreModule.cpp excluded)
     VaelenSim/                    KERNEL MODULE (Phase 01): Public/Vaelen/Sim/*.h, Private/*.cpp, VaelenSim.Build.cs, CMakeLists.txt
     VaelenPopulation/             KERNEL MODULE (Phase 04): Public/Vaelen/Population/*.h, Private/*.cpp, VaelenPopulation.Build.cs, CMakeLists.txt
+    VaelenSociety/                KERNEL MODULE (Phase 05): Public/Vaelen/Society/*.h, Private/*.cpp, VaelenSociety.Build.cs, CMakeLists.txt
       Public/Vaelen/Core/         CoreTypes.h Version.h Assert.h Log.h Hash.h Random.h Ids.h
       Private/                    Assert.cpp Log.cpp Random.cpp Ids.cpp Version.cpp
                                   VaelenCoreModule.cpp (Unreal-facing, UBT only)

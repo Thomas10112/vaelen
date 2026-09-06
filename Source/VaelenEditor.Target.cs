@@ -12,6 +12,6 @@ public class VaelenEditorTarget : TargetRules
 		// Build.cs files; a target-level override would need
 		// bOverrideBuildEnvironment on installed engines.
 
-		ExtraModuleNames.AddRange(new string[] { "VaelenCore", "VaelenSim", "VaelenPopulation", "Vaelen" });
+		ExtraModuleNames.AddRange(new string[] { "VaelenCore", "VaelenSim", "VaelenPopulation", "VaelenSociety", "Vaelen" });
 	}
 }

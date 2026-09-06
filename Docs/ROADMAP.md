@@ -72,7 +72,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
-| 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED (05.01-05.08 broken down, section 9) |
+| 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | IN PROGRESS (05.01 VALIDATED headless; 05.02-05.08 PLANNED) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
@@ -1268,6 +1268,45 @@ Decisions taken up front (each becomes an ADR when its task closes):
 
 Every task ends with the usual report block, the docs refreshed and a commit.
 
+### 05.01 VaelenSociety module and organisations - VALIDATED (headless)
+
+- Delivered: `Source/VaelenSociety` (fourth kernel module: `VaelenSociety.Build.cs` depending
+  on Core, VaelenCore, VaelenSim and VaelenPopulation; `CMakeLists.txt` with the explicit
+  source list; `SocietyApi.h`; the Unreal-facing `VaelenSocietyModule.cpp` excluded from the
+  headless build; listed in `Tools/kernel_modules.txt`, `Vaelen.uproject` and both targets),
+  `Organizations.h/.cpp` - `OrganizationKind` (council, temple; guild, warband and clan
+  reserved for 05.05), `OrganizationInfo` (64 bytes: index, kind, seat region, culture,
+  faith, head, members, seats, founded and disbanded ticks, identity from the world seed),
+  `Membership` on persons (organisation, role, since), `OrganizationTypes::Declare`,
+  `OrganizationRules` (a council from 300 people with 7 seats, a temple from 200 believers
+  of the majority faith with 50 per mille of them up to 64 seats, members from 20, disbanded
+  after 3 empty years), events OrganizationFounded, OrganizationDisbanded, MemberJoined,
+  MemberLeft, HeadSeated, `OrganizationSystem` (LOD World, after Families, `RunAfter` for
+  Lod and Traits: for every detailed region in index order found what the people and the
+  faith warrant, release the memberships of the dead and the departed, fill the empty
+  seats - the heads of the largest houses for a council, the most pious of the faith for a
+  temple, free persons of age only - seat a head when none is a living member - the eldest
+  of a council, the most pious of a temple - keep the member count and disband the empty
+  after the rule's years; coarse seats are left as they are), queries `OrganizationsOf`,
+  `MembersOf`, `OrganizationOf`, `MeasureOrganizations` (totals by kind, memberships,
+  astray links, heads alive, count mismatches, a digest of every organisation).
+  `Tests/Society` mirrors `Tests/Population` (runner `VaelenSocietyTests`, entries
+  `Society.<Suite>`, Registry and Shuffled).
+- Tests (5): three years after the busiest region of AELVOR 128 is detailed a council and a
+  temple exist with one founding and one head each, the council's seats are heads of houses
+  no smaller than any house left outside, its head the eldest, the temple's seats the most
+  pious of the majority faith, its head the most pious; sixty years keep every membership
+  on a living person of the seat, every count equal to its persons, every head a living
+  member, no seat over its number, with members released as they die and heads replaced;
+  a demotion keeps both organisations with their last count and no membership, a
+  promotion fills the same organisations again without a second founding; thresholds
+  nobody reaches found nothing, a council nobody of age can join is disbanded after
+  three years and founded again, nothing happens without a detailed region; two worlds
+  identical in state and organisations digest, a snapshot between yearly ticks continued
+  identically; frozen organisations digest `e4725ff3ae419103` after 100 years (2 organisations,
+  71 members).
+- Decision: ADR-0040.
+
 ## 10. Phases 06-20: notes
 
 No task breakdown exists yet for Phases 06-20; each is broken down when the previous
@@ -1286,45 +1325,42 @@ class and Enhanced Input mappings arrive in Phase 10.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 04 — POPULATION (CLOSED) → 05 — SOCIETY (BREAKDOWN)
-TASK        : 04.08 — PHASE 04 GATE AND CLOSE
+PHASE       : 05 — SOCIETY
+TASK        : 05.01 — VAELENSOCIETY MODULE AND ORGANISATIONS
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████████░░░░░░░░░░░░░░ 43%
+██████████░░░░░░░░░░░░░░ 44%
 
 CURRENTLY
-→ 04.08 closed: 500 years on AELVOR 256 with the busiest region detailed and every Phase 04 system
-  on (lives, families, needs, traits, the bridge, the person chronicle), every Phase 04 invariant
-  checked each decade, state frozen at 250 and 500 years with the persons and the log, the year
-  250 snapshot continued to the same year 500; Phase 04 closed against ROADMAP section 2;
-  Phase 05 (SOCIETY) broken down into 05.01-05.08 (ROADMAP section 9)
+→ 05.01 closed: the fourth kernel module VaelenSociety (UBT + CMake, purity-checked), organisations as
+  entities of kind Organization (kind, seat, culture, faith, head, members, seats, founding and
+  disbanding ticks, identity), Membership on persons, the yearly OrganizationSystem (a council once
+  a detailed region holds 300 people, seated by the heads of its largest houses; a temple once the
+  majority faith holds 200 believers, seated by the most pious; seats refilled as members die or
+  leave, a head seated, the empty disbanded after three years; coarse seats keep their last count)
 
 COMPLETED
-✓ Phases 00-03 (headless) ; 04.01-04.06 (CI 34-39) ; 04.07 Persons in history (CI 39)
-✓ 04.08 Phase 04 gate (1 test: PopulationGate) (CI 40) ; Phase 04 VALIDATED (headless)
+✓ Phases 00-04 (headless) (CI 41)
+✓ 05.01 VaelenSociety module and organisations (5 tests: Organizations)
 
 NEXT
-→ 05.01 VaelenSociety module, organisations as entities, membership, founding from a region's persons
-→ 05.02 Status and rank
+→ 05.02 Status and rank (standing from house, age, traits, skills and offices; the elite of a region)
+→ 05.03 Norms per culture
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Tests/Population/Test_PopulationGate.cpp
-~ Families.h/.cpp (the heads step reads a fresh index: a head who married out this year is replaced this
-  year; FamilySystem::RunAfter so heads and spouses follow the deaths of Needs and the departures of
-  Lod in the same tick), Test_PersonHistory.cpp (refrozen: 1222 records), Traits.cpp (a person without a language yet is named the next year, not
-  never), PersonHistory.h/.cpp (a PersonIndex built once per export or check instead of a pool scan
-  per name), Tests/Population/CMakeLists.txt (gate 1800 s, Shuffled 5400 s), Docs (Phase 04 verdict,
-  Phase 05 breakdown, ADR-0039)
++ Source/VaelenSociety/ (VaelenSociety.Build.cs, CMakeLists.txt, Public/Vaelen/Society/SocietyApi.h,
+  Organizations.h, Private/Organizations.cpp, Private/VaelenSocietyModule.cpp)
++ Tests/Society/ (CMakeLists.txt, Test_Organizations.cpp)
+~ CMakeLists.txt, Tests/CMakeLists.txt, Tools/kernel_modules.txt, Vaelen.uproject, Vaelen.Target.cs,
+  VaelenEditor.Target.cs
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 37 (37 without asserts);
-  ctest 59/59 in all six Linux presets; every Phase 03 and Phase 04 frozen digest unchanged
-✓ Gate: 500 years at 256 with region 42 detailed in 222.8 s (clang debug); frozen 250=04f8a05bee8c3313
-  500=de9467e086c9560e persons=f5f4643d97ce5068 log=ba7af3a8312954d8; 7617 alive at the end, 2602 families,
-  4667 person records
-✓ Purity: 79 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 37 (37 without asserts)
+  + Society 5 (5 without asserts); ctest 62/62 in all six Linux presets; every earlier frozen digest unchanged
+✓ Region 26 of AELVOR 128 for 100 years: 2 organisations, 71 living members; frozen organisations digest e4725ff3ae419103
+✓ Purity: 82 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)

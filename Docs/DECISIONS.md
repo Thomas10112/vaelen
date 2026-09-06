@@ -62,6 +62,7 @@ Rules for this file:
 | [0037](#adr-0037-detail-is-requested-not-decided-by-the-kernel-and-people-cross-the-grain-border-as-events) | Detail is requested, not decided by the kernel, and people cross the grain border as events | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0038](#adr-0038-persons-enter-the-chronicle-through-a-capped-listener-that-decides-what-matters-at-dispatch) | Persons enter the chronicle through a capped listener that decides what matters at dispatch | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0039](#adr-0039-the-phase-04-gate-runs-every-population-system-over-the-256-pre-history-and-freezes-the-state-at-250-and-500-years) | The Phase 04 gate runs every population system over the 256 pre-history and freezes the state at 250 and 500 years | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0040](#adr-0040-organisations-are-entities-seated-in-a-region-filled-from-its-persons-and-kept-as-counts-when-the-region-is-coarse) | Organisations are entities seated in a region, filled from its persons, and kept as counts when the region is coarse | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -2407,6 +2408,59 @@ the save format.
 
 Accepted 2026-09-06. Files: `Tests/Population/Test_PopulationGate.cpp` (1 test).
 Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0040: Organisations are entities seated in a region, filled from its persons, and kept as counts when the region is coarse
+
+### Context
+
+Phase 05 opens with organisations: the prompt wants councils, temples, guilds and
+warbands that persons found, join and leave, that survive their members and that the
+later phases (politics, war, economy) can act through. Persons exist only in detailed
+regions (ADR-0032); an organisation must outlive a demotion.
+
+### Decision
+
+1. An organisation is an entity of kind `Organization` with a seat region, a kind, a
+   culture, a faith for a temple, a head, a member count, a number of seats, founding
+   and disbanding ticks and an identity from the world seed. The kinds are a table;
+   05.01 fills councils and temples, 05.05 the guilds, warbands and clans.
+2. Membership is a component on the person (one organisation per person in 05.01, with
+   a role), so a person's affiliation is read where the person is, and a demotion drops
+   memberships with the persons while the organisation keeps its last member count.
+3. Seats are filled by rules of the kind from the region's living, in a deterministic
+   order: a council by the heads of the largest houses (house size, then person index),
+   a temple by the most pious of its faith (piety, then index); free persons of age
+   only. Seats are kept until death or departure; a head is seated when none of the
+   members is the head. The empty are disbanded after a few years in a detailed region,
+   never in a coarse one, and the world keeps the disbanded as history.
+4. The system runs after Families and, where they exist, after Needs and Lod
+   (`RunAfter`), so every year's deaths and departures are seen before the seats are
+   judged. The society module depends on the population module; nothing in the
+   population module knows about organisations.
+
+### Alternatives and decision rule
+
+- Organisations as counts only (coarse everywhere): rejected; persons must sit in them
+  for offices, standing and the chronicle to mean anything.
+- Members stored on the organisation: rejected; a list would need rewriting on every
+  death and demotion, and a person's affiliation would need a scan.
+- Decided by robustness (one owner of each link) and evolvability (kinds and rules are
+  tables; the fill order is one comparator per kind).
+
+### Consequences
+
+- A coarse organisation's member count is stale by construction until the next
+  promotion; it is a memory, not a truth, and is never judged against persons.
+- The organisations digest hashes every organisation in index order; heads and counts
+  make it sensitive to every seat decision.
+- 05.02 reads memberships and roles as offices for standing.
+
+### Status
+
+Accepted 2026-09-06. Files: `Source/VaelenSociety/*`, `Tests/Society/Test_Organizations.cpp`
+(5 tests). Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
 
