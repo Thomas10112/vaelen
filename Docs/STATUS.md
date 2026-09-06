@@ -13,224 +13,39 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 03 — HISTORY
-TASK        : 03.06 — PRE-HISTORY RUN AND THE STARTING STATE
+TASK        : 03.07 — QUERYABLE HISTORY
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████████████████░░░░░░ 75%
+█████████████████████░░░ 87%
 
 CURRENTLY
-→ 03.06 closed: one PreHistory object wires every Phase 03 system, one Generate call builds
-  the world, seeds the cultures and runs 500 years; the AELVOR 256 reference run is frozen
-  per century, a mid-history snapshot continues identically, the 1024 baseline is logged
+→ 03.07 closed: "why" from any event or entity to its cause chain with eras and regions,
+  per-region timelines of records, and the chronicle as deterministic text lines built from
+  records, names and the entities the events are about
 
 COMPLETED
 ✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD (headless)
 ✓ 03.01 Eras (CI 26) ; 03.02 Cultures (CI 27) ; 03.03 Languages (CI 28) ; 03.04 Religions ; 03.05 Disasters (CI 30)
-✓ 03.06 Pre-history run (5 tests: PreHistory)
+✓ 03.06 Pre-history run (CI 31) ; 03.07 Queryable history (5 tests: HistoryText)
 
 NEXT
-→ 03.07 Queryable history (why-queries, per-region timeline, chronicle text from records and names)
-→ 03.08 Phase 03 gate (2000 years at 256, invariants every decade, four compilers)
+→ 03.08 Phase 03 gate (2000 years at 256, invariants every decade, four compilers) and the phase close
+→ Phase 04 POPULATION breakdown (persons, families, demographics)
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/PreHistory.h, Private/PreHistory.cpp
-+ Tests/Sim/Test_PreHistory.cpp
-~ Population.h/.cpp (region graph cached per year instead of rebuilt), Religion.cpp, Disasters.cpp
-  (derived caches keyed by the generation config, not by hashing the region layer every tick)
++ Source/VaelenSim/Public/Vaelen/Sim/HistoryText.h, Private/HistoryText.cpp
++ Tests/Sim/Test_HistoryText.cpp
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 155 (152 without asserts); ctest 47/47 in all six Linux presets
-✓ AELVOR 256, 500 years: 187 398 people, 9 cultures, 6 religions, 182 disasters,
-  303 records; state 779f0e33912acd7b at year 500 (frozen per century), 2.6 s debug; 1024 in 29.3 s
-✓ Purity: 62 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 160 (157 without asserts); ctest 48/48 in all six Linux presets
+✓ AELVOR 128 after 300 years: 179 chronicle lines, every record resolved, era-consistent and described;
+  every disaster explained by its omen, every religion by its founding; frozen text c0a39beace60c36b
+✓ Purity: 64 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-PHASE       : 03 — HISTORY
-TASK        : 03.05 — DISASTERS AND OMENS
-STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
-
-PROGRESS
-███████████████░░░░░░░░░ 62%
-
-CURRENTLY
-→ 03.05 closed: drought, flood, eruption and plague tied to the world's moisture, rivers,
-  mountains and crowding; omens one year ahead as events about the region, disasters caused
-  by their omen with severity, deaths per culture, faith shaken, founding and era requests
-
-COMPLETED
-✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD (headless)
-✓ 03.01 Eras (CI 26) ; 03.02 Cultures (CI 27) ; 03.03 Languages (CI 28) ; 03.04 Religions (CI 29 red on MSVC, fixed here)
-✓ 03.05 Disasters and omens (5 tests: Disasters)
-
-NEXT
-→ 03.06 Pre-history run and the starting state (GeneratePreHistory, frozen per century)
-→ 03.07 Queryable history ; 03.08 Phase 03 gate
-→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
-
-FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/Disasters.h, Private/Disasters.cpp
-+ Tests/Sim/Test_Disasters.cpp
-~ Religion.cpp (faith listener: re-resolve the source after FaithOf may move the pool)
-~ Tests/Sim/CMakeLists.txt (Sim.Shuffled timeout 1200 s)
-
-TESTS
-✓ Core 133 (108 without asserts) + Sim 150 (147 without asserts); ctest 46/46 in all six Linux presets
-✓ AELVOR 128 after 500 years: 250 disasters, 4 691 deaths, every disaster traced to its omen;
-  frozen state 2ac331b0540c3224; religion digest 3d9bf5c1c7732241 unchanged on Linux after the MSVC fix
-✓ Purity: 60 files, 0 violations
-
-BLOCKERS
-∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-PHASE       : 03 — HISTORY
-TASK        : 03.04 — RELIGIONS
-STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
-
-PROGRESS
-████████████░░░░░░░░░░░░ 50%
-
-CURRENTLY
-→ 03.04 closed: religions are entities born from an event (a new era, a culture split as
-  schism, or a requested founding with its cause), believers counted per region and bounded
-  by its people, faith spreading yearly along the region graph and travelling with migration
-  waves, eight tenet axes as data, names in the founding culture's language
-
-COMPLETED
-✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD (headless)
-✓ 03.01 Eras (CI 26) ; 03.02 Cultures (CI 27) ; 03.03 Languages (CI 28) ; 03.04 Religions (5 tests: Religion)
-
-NEXT
-→ 03.05 Disasters and omens (drought, flood, eruption, plague with causal consequences)
-→ 03.06 Pre-history run and the starting state ; 03.07 Queryable history ; 03.08 gate
-→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
-
-FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/Religion.h, Private/Religion.cpp
-~ Naming.h (NameScope::Religion)
-+ Tests/Sim/Test_Religion.cpp
-
-TESTS
-✓ Core 133 (108 without asserts) + Sim 145 (142 without asserts); ctest 45/45 in all six Linux presets
-✓ AELVOR 128 after 500 years: 10 religions (8 schisms), 45 480 believers of 47 587 people, 74/99 regions
-  with a majority faith, every religion traced to its founding event; frozen state 3d9bf5c1c7732241
-✓ Purity: 58 files, 0 violations
-
-BLOCKERS
-∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-PHASE       : 03 — HISTORY
-TASK        : 03.03 — LANGUAGES AND NAMING
-STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
-
-PROGRESS
-█████████░░░░░░░░░░░░░░░ 37%
-
-CURRENTLY
-→ 03.03 closed: one language per culture (phonology derived from the culture's identity or
-  drifted from the parent's on a split, one sound change every 150 years), names built
-  syllable by syllable and pronounceable by construction, unique per scope, given yearly to
-  cultures, languages, settled regions, rivers, lakes and eras as components on the named entity
-
-COMPLETED
-✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD (headless)
-✓ 03.01 Eras (CI 26) ; 03.02 Cultures and population (CI 27) ; 03.03 Languages and naming (5 tests: Naming)
-
-NEXT
-→ 03.04 Religions (born from cultures and events, spread along migration, schisms)
-→ 03.05 Disasters and omens ; 03.06 Pre-history run
-→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
-
-FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/Naming.h, Private/Naming.cpp
-+ Tests/Sim/Test_Naming.cpp
-
-TESTS
-✓ Core 133 (108 without asserts) + Sim 140 (137 without asserts); ctest 44/44 in all six Linux presets
-✓ 14 336 generated names all pronounceable, 3-16 letters, at least 113/128 distinct per scope;
-  AELVOR 128 after 500 years: 18 languages, 154 names, 0 duplicates, frozen state 871cdd11bea18906
-✓ Purity: 56 files, 0 violations
-
-BLOCKERS
-∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-PHASE       : 03 — HISTORY
-TASK        : 03.02 — CULTURES AND COARSE POPULATION
-STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
-
-PROGRESS
-██████░░░░░░░░░░░░░░░░░░ 25%
-
-CURRENTLY
-→ 03.02 closed: Culture entities seeded on the best spread regions, coarse population per
-  region (six culture slots), yearly growth bounded by biome, river and fertile-deposit
-  capacity, monthly migration along the region graph, assimilation, abandonment and
-  culture splits by graph distance with lineage spacing
-
-COMPLETED
-✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD (headless)
-✓ 03.01 Eras and the historical record (CI 26) ; 03.02 Cultures and population (5 tests: Population)
-
-NEXT
-→ 03.03 Languages and naming (Language entities per culture, deterministic names)
-→ 03.04 Religions ; 03.05 Disasters and omens
-→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
-
-FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/Population.h, Private/Population.cpp
-+ Tests/Sim/Test_Population.cpp
-
-TESTS
-✓ Core 133 (108 without asserts) + Sim 135 (132 without asserts); ctest 43/43 in all six Linux presets
-✓ AELVOR 128, 500 years: 47 587 people of 55 174 capacity, 18 cultures from 4 seeds, 74/99 regions
-  settled; migration conserves people; frozen state f2afaa068c0f717d (clang = gcc)
-✓ Purity: 54 files, 0 violations
-
-BLOCKERS
-∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-PHASE       : 03 — HISTORY
-TASK        : 03.01 — ERAS, THE ERA CALENDAR AND THE HISTORICAL RECORD
-STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
-
-PROGRESS
-███░░░░░░░░░░░░░░░░░░░░░ 12%
-
-CURRENTLY
-→ 03.01 closed: Era entities opened yearly by span or by a caused request, Record entities
-  per chronicled event with era and region, history state in a singleton component,
-  cause-chain and era/subject queries
-
-COMPLETED
-✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD (headless)
-✓ 03.01 Eras and the historical record (3 tests: History)
-
-NEXT
-→ 03.02 Cultures and coarse population (Culture entities, RegionPopulation, growth, migration)
-→ 03.03 Languages and naming
-→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
-
-FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/History.h, Private/History.cpp
-~ Ids.h/.cpp (IdKind::Era = 15)
-+ Tests/Sim/Test_History.cpp
-
-TESTS
-✓ Core 133 (108 without asserts) + Sim 130 (127 without asserts); ctest 42/42 in all six Linux presets
-✓ 260 simulated years: eras contiguous without gaps, 52 requested eras each with a two-link cause chain
-  (collapse <- omen), span eras exactly every 30 years, records = chronicled events
-✓ Purity: 52 files, 0 violations
-
-BLOCKERS
-None
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -306,7 +121,8 @@ side until the first UE 5.6 build.**
 | 03.04 | Religions born from events, believers per region, spread along the graph and with migration, schisms, tenets | VALIDATED: Religion 5 tests |
 | 03.05 | Disasters and omens tied to the world, with deaths, faith and era consequences | VALIDATED: Disasters 5 tests |
 | 03.06 | PreHistory object and one-call run, per-century frozen reference at 256, mid-history snapshot, 1024 baseline | VALIDATED: PreHistory 5 tests |
-| 03.07-03.08 | Queries, gate | PLANNED |
+| 03.07 | Why-queries, region timelines, the chronicle as deterministic text | VALIDATED: HistoryText 5 tests |
+| 03.08 | Phase 03 gate | PLANNED |
 
 ## File status
 
@@ -348,6 +164,7 @@ the purity checker, applied to headers and sources).
 | `Public/Vaelen/Sim/Religion.h`, `Private/Religion.cpp` | VALIDATED (Phase 03) — covered by `Tests/Sim/Test_Religion.cpp` |
 | `Public/Vaelen/Sim/Disasters.h`, `Private/Disasters.cpp` | VALIDATED (Phase 03) — covered by `Tests/Sim/Test_Disasters.cpp` |
 | `Public/Vaelen/Sim/PreHistory.h`, `Private/PreHistory.cpp` | VALIDATED (Phase 03) — covered by `Tests/Sim/Test_PreHistory.cpp` |
+| `Public/Vaelen/Sim/HistoryText.h`, `Private/HistoryText.cpp` | VALIDATED (Phase 03) — covered by `Tests/Sim/Test_HistoryText.cpp` |
 
 ### Tests/
 
@@ -384,8 +201,9 @@ the purity checker, applied to headers and sources).
 | `Sim/Test_Religion.cpp` (Phase 03) | VALIDATED | 5 |
 | `Sim/Test_Disasters.cpp` (Phase 03) | VALIDATED | 5 |
 | `Sim/Test_PreHistory.cpp` (Phase 03) | VALIDATED | 5 |
+| `Sim/Test_HistoryText.cpp` (Phase 03) | VALIDATED | 5 |
 
-Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 5, Deposits 5, WorldPipeline 4, History 3, Population 5, Naming 5, Religion 5, Disasters 5, PreHistory 5 (155 tests; 152 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.History`, `Sim.Population`, `Sim.Naming`, `Sim.Religion`, `Sim.Disasters`, `Sim.PreHistory`, `Sim.Registry`, `Sim.Shuffled` (42 entries in total).
+Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 5, Deposits 5, WorldPipeline 4, History 3, Population 5, Naming 5, Religion 5, Disasters 5, PreHistory 5, HistoryText 5 (160 tests; 157 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.History`, `Sim.Population`, `Sim.Naming`, `Sim.Religion`, `Sim.Disasters`, `Sim.PreHistory`, `Sim.HistoryText`, `Sim.Registry`, `Sim.Shuffled` (42 entries in total).
 
 ### Tools/ and CI
 
@@ -402,16 +220,16 @@ Toolchain: clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.1
 
 | Preset | Build | `ctest` | `VaelenCoreTests` | `VaelenSimTests` |
 |---|---|---|---|---|
-| linux-clang-debug | 0 warnings | 47/47 passed | 133 run, 133 passed, 22097 checks | 155 run, 155 passed |
-| linux-gcc-debug | 0 warnings | 47/47 passed | 133 run, 133 passed, 22097 checks | 155 run, 155 passed |
-| linux-clang-release | 0 warnings | 47/47 passed | 133 run, 133 passed, 22097 checks | 155 run, 155 passed |
-| linux-gcc-release | 0 warnings | 47/47 passed | 133 run, 133 passed, 22097 checks | 155 run, 155 passed |
-| linux-clang-noasserts | 0 warnings | 47/47 passed | 108 run, 108 passed, 21884 checks | 152 run, 152 passed |
-| linux-gcc-noasserts | 0 warnings | 47/47 passed | 108 run, 108 passed, 21884 checks | 152 run, 152 passed |
+| linux-clang-debug | 0 warnings | 48/48 passed | 133 run, 133 passed, 22097 checks | 160 run, 160 passed |
+| linux-gcc-debug | 0 warnings | 48/48 passed | 133 run, 133 passed, 22097 checks | 160 run, 160 passed |
+| linux-clang-release | 0 warnings | 48/48 passed | 133 run, 133 passed, 22097 checks | 160 run, 160 passed |
+| linux-gcc-release | 0 warnings | 48/48 passed | 133 run, 133 passed, 22097 checks | 160 run, 160 passed |
+| linux-clang-noasserts | 0 warnings | 48/48 passed | 108 run, 108 passed, 21884 checks | 157 run, 157 passed |
+| linux-gcc-noasserts | 0 warnings | 48/48 passed | 108 run, 108 passed, 21884 checks | 157 run, 157 passed |
 
 Mini-world baseline (100 000 ticks, 41 entities, 305 027 events, 34 168 227-byte snapshot), logged by `Sim.MiniWorld`, not asserted: clang debug 0.39 s (255 k ticks/s), gcc debug 0.40 s, clang release 0.135 s (739 k ticks/s), gcc release without assertions 0.127 s (790 k ticks/s); snapshot 0.09-0.14 s.
 
-GitHub Actions runs 13 to 28 (01.06 through 03.03): all 9 jobs green each; run 29 (03.04) red on Windows MSVC only (a dangling pool pointer in the faith listener changed the religion digest, and `Sim.Shuffled` exceeded its 300 s CTest timeout), both fixed in the 03.05 commit and green again in run 30 (03.05), so the frozen replay, mini-world and snapshot values hold on Windows MSVC and macOS AppleClang as well. Phase 00 record - run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14).
+GitHub Actions runs 13 to 28 (01.06 through 03.03): all 9 jobs green each; run 29 (03.04) red on Windows MSVC only (a dangling pool pointer in the faith listener changed the religion digest, and `Sim.Shuffled` exceeded its 300 s CTest timeout), both fixed in the 03.05 commit and green again in runs 30 and 31 (03.05, 03.06), so the frozen replay, mini-world and snapshot values hold on Windows MSVC and macOS AppleClang as well. Phase 00 record - run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14).
 
 Also run locally: `python3 Tools/check_kernel_purity.py --self-test` (36 checks, 0 failed),
 `python3 Tools/check_kernel_purity.py --root . --verbose` (12 files, 0 violations),

@@ -31,6 +31,7 @@ set(VAELEN_SIM_PUBLIC_HEADERS
   Public/Vaelen/Sim/Religion.h
   Public/Vaelen/Sim/Disasters.h
   Public/Vaelen/Sim/PreHistory.h
+  Public/Vaelen/Sim/HistoryText.h
 )
 
 set(VAELEN_SIM_SOURCES
@@ -55,6 +56,7 @@ set(VAELEN_SIM_SOURCES
   Private/Religion.cpp
   Private/Disasters.cpp
   Private/PreHistory.cpp
+  Private/HistoryText.cpp
 )
 
 add_library(VaelenSim STATIC ${VAELEN_SIM_SOURCES} ${VAELEN_SIM_PUBLIC_HEADERS})

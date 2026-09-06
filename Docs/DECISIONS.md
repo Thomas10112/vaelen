@@ -52,6 +52,7 @@ Rules for this file:
 | [0027](#adr-0027-religions-are-entities-born-from-a-founding-event-with-believers-per-region-bounded-by-its-people-spreading-along-the-graph-and-with-migration) | Religions are entities born from a founding event, with believers per region bounded by its people, spreading along the graph and with migration | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0028](#adr-0028-disasters-are-drawn-from-world-hazards-announced-by-an-omen-a-year-ahead-and-caused-by-it-with-consequences-through-the-existing-request-doors) | Disasters are drawn from world hazards, announced by an omen a year ahead and caused by it, with consequences through the existing request doors | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0029](#adr-0029-the-pre-history-is-one-object-that-owns-the-phase-03-systems-and-one-call-on-a-fresh-world-frozen-per-century-as-the-starting-state) | The pre-history is one object that owns the Phase 03 systems and one call on a fresh world, frozen per century as the starting state | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0030](#adr-0030-history-is-queried-through-the-log-and-the-records-and-read-as-text-built-from-names-with-deterministic-fallbacks) | History is queried through the log and the records, and read as text built from names with deterministic fallbacks | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -1853,6 +1854,57 @@ The prompt wants "a `GeneratePreHistory` call" and a reference run frozen per ce
 Accepted 2026-09-06. Files: `Source/VaelenSim/Public/Vaelen/Sim/PreHistory.h`,
 `Source/VaelenSim/Private/PreHistory.cpp`, `Tests/Sim/Test_PreHistory.cpp` (5 tests).
 Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0030: History is queried through the log and the records, and read as text built from names with deterministic fallbacks
+
+### Context
+
+The prompt wants "why did this happen" answered from any entity or event, a timeline
+per region, and the chronicle readable as text. The kernel has the event log with
+cause links (ADR-0014), Record entities per chronicled event with era and region
+(ADR-0024) and names as components (ADR-0026). The text must be the same on every
+platform and after a snapshot, and must never depend on the presentation layer.
+
+### Decision
+
+1. Queries are pure functions over the log and the components. An event explains
+   itself by `CauseChain`; an entity explains itself through its origin, the earliest
+   record about it, so a religion leads to its founding event and from there to the
+   disaster or era that caused it. Every step carries the era at its tick and the
+   region of its subject.
+2. Timelines are the records about a region in tick then id order; they partition the
+   placed records, so a region's story and the chronicle agree.
+3. Text is built in the kernel from fixed English templates per event type, the names
+   given in 03.03 and deterministic fallbacks ("region 12", "entity 0") when a thing
+   has no name yet. Unknown event types get a generic line rather than nothing, so a
+   later phase's events are never silently dropped from the chronicle. The text of
+   AELVOR 128 after 300 years is frozen as an FNV digest.
+4. Disaster kinds read as common nouns inside a sentence; names keep their capital.
+
+### Alternatives and decision rule
+
+- Localised or data-driven templates: deferred to the presentation and modding
+  phases; the kernel text is a reference and a debugging tool, not the final prose.
+- Storing text on records: rejected; text is derived, names can change (drift) and
+  the log plus the components are enough to rebuild it.
+- Decided by determinism (a frozen text digest across compilers) and simplicity (one
+  function per query, no state).
+
+### Consequences
+
+- A change in any template, name rule or chronicled event set re-freezes the text
+  digest; the test names the line count too, so a missing record is visible.
+- `NameEntity` walks the component pools in a fixed order to classify an unnamed
+  entity; a new entity kind gets its fallback by adding one case.
+- Persons and documents (Phases 04 and 12) reuse `DescribeEvent` by adding cases.
+
+### Status
+
+Accepted 2026-09-06. Files: `Source/VaelenSim/Public/Vaelen/Sim/HistoryText.h`,
+`Source/VaelenSim/Private/HistoryText.cpp`, `Tests/Sim/Test_HistoryText.cpp` (5
+tests). Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
 

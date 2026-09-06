@@ -70,7 +70,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
-| 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | IN PROGRESS (03.01-03.06 VALIDATED headless; 03.07-03.08 PLANNED) |
+| 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | IN PROGRESS (03.01-03.07 VALIDATED headless; 03.08 PLANNED) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
@@ -880,11 +880,31 @@ Decisions taken up front (each becomes an ADR when its task closes):
   1024 x 500 years from 123 s to 29 s (clang debug).
 - Decision: ADR-0029.
 
-### 03.07 Queryable history
+### 03.07 Queryable history - VALIDATED (headless)
 
-- "Why" queries: from any entity or event to its cause chain and era; per-region
-  timeline; the chronicle as text lines built from records and names.
-- Tests: every record resolves; text is deterministic.
+- Delivered: `HistoryText.h/.cpp` - `WhyStep` (event, era, region), `NameEntity` /
+  `NameRegion` (the name given in 03.03 or a deterministic fallback such as "region 12",
+  "culture 3", "river 4", "entity 0"), `OriginOf` (the earliest chronicled event whose
+  subject is the entity), `Why` (from an event id, or from an entity through its origin,
+  the cause chain to the root with the era and region of every step), `RegionTimeline`
+  (every record about a region in tick then id order), `DescribeEvent` (one line per
+  event: "Year 25, age of Divik: a terrible flood struck Vushu." with type-specific
+  sentences for eras, cultures, settlements, migrations, languages, faiths, schisms,
+  conversions, omens, disasters and names, and a generic line for unknown types),
+  `DescribeRecord`, `ExportChronicle` (all records in order, capped when asked),
+  `ExportRegionChronicle`, `ExportWhy` ("because ..." lines to the root cause),
+  `CheckChronicle` (records resolved, era-consistent, placed, described).
+- Tests (5): every record of a 300-year run resolves to its event, agrees with `EraAt`,
+  is described by a specific line, every line starts with its year, ends with a full
+  stop and follows tick order, the head is capped; why-chains from every disaster (to its
+  omen) and every schism (to its split), from every religion entity (origin = founding,
+  root without a cause), explanation text, unknown ids explain nothing; region timelines
+  partition the placed records and are ordered, the longest story logged, region 0 and
+  unknown regions empty; name fallbacks deterministic (regions, entities, rivers with
+  an unsettled source), cultures named as on the entity, unknown event types generic;
+  the chronicle text identical across two worlds and a restored snapshot, frozen at
+  `c0a39beace60c36b` (179 lines) for AELVOR 128 after 300 years, another seed telling another story.
+- Decision: ADR-0030.
 
 ### 03.08 Phase 03 gate
 
@@ -909,224 +929,39 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 03 — HISTORY
-TASK        : 03.06 — PRE-HISTORY RUN AND THE STARTING STATE
+TASK        : 03.07 — QUERYABLE HISTORY
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████████████████░░░░░░ 75%
+█████████████████████░░░ 87%
 
 CURRENTLY
-→ 03.06 closed: one PreHistory object wires every Phase 03 system, one Generate call builds
-  the world, seeds the cultures and runs 500 years; the AELVOR 256 reference run is frozen
-  per century, a mid-history snapshot continues identically, the 1024 baseline is logged
+→ 03.07 closed: "why" from any event or entity to its cause chain with eras and regions,
+  per-region timelines of records, and the chronicle as deterministic text lines built from
+  records, names and the entities the events are about
 
 COMPLETED
 ✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD (headless)
 ✓ 03.01 Eras (CI 26) ; 03.02 Cultures (CI 27) ; 03.03 Languages (CI 28) ; 03.04 Religions ; 03.05 Disasters (CI 30)
-✓ 03.06 Pre-history run (5 tests: PreHistory)
+✓ 03.06 Pre-history run (CI 31) ; 03.07 Queryable history (5 tests: HistoryText)
 
 NEXT
-→ 03.07 Queryable history (why-queries, per-region timeline, chronicle text from records and names)
-→ 03.08 Phase 03 gate (2000 years at 256, invariants every decade, four compilers)
+→ 03.08 Phase 03 gate (2000 years at 256, invariants every decade, four compilers) and the phase close
+→ Phase 04 POPULATION breakdown (persons, families, demographics)
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/PreHistory.h, Private/PreHistory.cpp
-+ Tests/Sim/Test_PreHistory.cpp
-~ Population.h/.cpp (region graph cached per year instead of rebuilt), Religion.cpp, Disasters.cpp
-  (derived caches keyed by the generation config, not by hashing the region layer every tick)
++ Source/VaelenSim/Public/Vaelen/Sim/HistoryText.h, Private/HistoryText.cpp
++ Tests/Sim/Test_HistoryText.cpp
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 155 (152 without asserts); ctest 47/47 in all six Linux presets
-✓ AELVOR 256, 500 years: 187 398 people, 9 cultures, 6 religions, 182 disasters,
-  303 records; state 779f0e33912acd7b at year 500 (frozen per century), 2.6 s debug; 1024 in 29.3 s
-✓ Purity: 62 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 160 (157 without asserts); ctest 48/48 in all six Linux presets
+✓ AELVOR 128 after 300 years: 179 chronicle lines, every record resolved, era-consistent and described;
+  every disaster explained by its omen, every religion by its founding; frozen text c0a39beace60c36b
+✓ Purity: 64 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-PHASE       : 03 — HISTORY
-TASK        : 03.05 — DISASTERS AND OMENS
-STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
-
-PROGRESS
-███████████████░░░░░░░░░ 62%
-
-CURRENTLY
-→ 03.05 closed: drought, flood, eruption and plague tied to the world's moisture, rivers,
-  mountains and crowding; omens one year ahead as events about the region, disasters caused
-  by their omen with severity, deaths per culture, faith shaken, founding and era requests
-
-COMPLETED
-✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD (headless)
-✓ 03.01 Eras (CI 26) ; 03.02 Cultures (CI 27) ; 03.03 Languages (CI 28) ; 03.04 Religions (CI 29 red on MSVC, fixed here)
-✓ 03.05 Disasters and omens (5 tests: Disasters)
-
-NEXT
-→ 03.06 Pre-history run and the starting state (GeneratePreHistory, frozen per century)
-→ 03.07 Queryable history ; 03.08 Phase 03 gate
-→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
-
-FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/Disasters.h, Private/Disasters.cpp
-+ Tests/Sim/Test_Disasters.cpp
-~ Religion.cpp (faith listener: re-resolve the source after FaithOf may move the pool)
-~ Tests/Sim/CMakeLists.txt (Sim.Shuffled timeout 1200 s)
-
-TESTS
-✓ Core 133 (108 without asserts) + Sim 150 (147 without asserts); ctest 46/46 in all six Linux presets
-✓ AELVOR 128 after 500 years: 250 disasters, 4 691 deaths, every disaster traced to its omen;
-  frozen state 2ac331b0540c3224; religion digest 3d9bf5c1c7732241 unchanged on Linux after the MSVC fix
-✓ Purity: 60 files, 0 violations
-
-BLOCKERS
-∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-PHASE       : 03 — HISTORY
-TASK        : 03.04 — RELIGIONS
-STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
-
-PROGRESS
-████████████░░░░░░░░░░░░ 50%
-
-CURRENTLY
-→ 03.04 closed: religions are entities born from an event (a new era, a culture split as
-  schism, or a requested founding with its cause), believers counted per region and bounded
-  by its people, faith spreading yearly along the region graph and travelling with migration
-  waves, eight tenet axes as data, names in the founding culture's language
-
-COMPLETED
-✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD (headless)
-✓ 03.01 Eras (CI 26) ; 03.02 Cultures (CI 27) ; 03.03 Languages (CI 28) ; 03.04 Religions (5 tests: Religion)
-
-NEXT
-→ 03.05 Disasters and omens (drought, flood, eruption, plague with causal consequences)
-→ 03.06 Pre-history run and the starting state ; 03.07 Queryable history ; 03.08 gate
-→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
-
-FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/Religion.h, Private/Religion.cpp
-~ Naming.h (NameScope::Religion)
-+ Tests/Sim/Test_Religion.cpp
-
-TESTS
-✓ Core 133 (108 without asserts) + Sim 145 (142 without asserts); ctest 45/45 in all six Linux presets
-✓ AELVOR 128 after 500 years: 10 religions (8 schisms), 45 480 believers of 47 587 people, 74/99 regions
-  with a majority faith, every religion traced to its founding event; frozen state 3d9bf5c1c7732241
-✓ Purity: 58 files, 0 violations
-
-BLOCKERS
-∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-PHASE       : 03 — HISTORY
-TASK        : 03.03 — LANGUAGES AND NAMING
-STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
-
-PROGRESS
-█████████░░░░░░░░░░░░░░░ 37%
-
-CURRENTLY
-→ 03.03 closed: one language per culture (phonology derived from the culture's identity or
-  drifted from the parent's on a split, one sound change every 150 years), names built
-  syllable by syllable and pronounceable by construction, unique per scope, given yearly to
-  cultures, languages, settled regions, rivers, lakes and eras as components on the named entity
-
-COMPLETED
-✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD (headless)
-✓ 03.01 Eras (CI 26) ; 03.02 Cultures and population (CI 27) ; 03.03 Languages and naming (5 tests: Naming)
-
-NEXT
-→ 03.04 Religions (born from cultures and events, spread along migration, schisms)
-→ 03.05 Disasters and omens ; 03.06 Pre-history run
-→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
-
-FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/Naming.h, Private/Naming.cpp
-+ Tests/Sim/Test_Naming.cpp
-
-TESTS
-✓ Core 133 (108 without asserts) + Sim 140 (137 without asserts); ctest 44/44 in all six Linux presets
-✓ 14 336 generated names all pronounceable, 3-16 letters, at least 113/128 distinct per scope;
-  AELVOR 128 after 500 years: 18 languages, 154 names, 0 duplicates, frozen state 871cdd11bea18906
-✓ Purity: 56 files, 0 violations
-
-BLOCKERS
-∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-PHASE       : 03 — HISTORY
-TASK        : 03.02 — CULTURES AND COARSE POPULATION
-STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
-
-PROGRESS
-██████░░░░░░░░░░░░░░░░░░ 25%
-
-CURRENTLY
-→ 03.02 closed: Culture entities seeded on the best spread regions, coarse population per
-  region (six culture slots), yearly growth bounded by biome, river and fertile-deposit
-  capacity, monthly migration along the region graph, assimilation, abandonment and
-  culture splits by graph distance with lineage spacing
-
-COMPLETED
-✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD (headless)
-✓ 03.01 Eras and the historical record (CI 26) ; 03.02 Cultures and population (5 tests: Population)
-
-NEXT
-→ 03.03 Languages and naming (Language entities per culture, deterministic names)
-→ 03.04 Religions ; 03.05 Disasters and omens
-→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
-
-FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/Population.h, Private/Population.cpp
-+ Tests/Sim/Test_Population.cpp
-
-TESTS
-✓ Core 133 (108 without asserts) + Sim 135 (132 without asserts); ctest 43/43 in all six Linux presets
-✓ AELVOR 128, 500 years: 47 587 people of 55 174 capacity, 18 cultures from 4 seeds, 74/99 regions
-  settled; migration conserves people; frozen state f2afaa068c0f717d (clang = gcc)
-✓ Purity: 54 files, 0 violations
-
-BLOCKERS
-∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-PHASE       : 03 — HISTORY
-TASK        : 03.01 — ERAS, THE ERA CALENDAR AND THE HISTORICAL RECORD
-STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
-
-PROGRESS
-███░░░░░░░░░░░░░░░░░░░░░ 12%
-
-CURRENTLY
-→ 03.01 closed: Era entities opened yearly by span or by a caused request, Record entities
-  per chronicled event with era and region, history state in a singleton component,
-  cause-chain and era/subject queries
-
-COMPLETED
-✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD (headless)
-✓ 03.01 Eras and the historical record (3 tests: History)
-
-NEXT
-→ 03.02 Cultures and coarse population (Culture entities, RegionPopulation, growth, migration)
-→ 03.03 Languages and naming
-→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
-
-FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/History.h, Private/History.cpp
-~ Ids.h/.cpp (IdKind::Era = 15)
-+ Tests/Sim/Test_History.cpp
-
-TESTS
-✓ Core 133 (108 without asserts) + Sim 130 (127 without asserts); ctest 42/42 in all six Linux presets
-✓ 260 simulated years: eras contiguous without gaps, 52 requested eras each with a two-link cause chain
-  (collapse <- omen), span eras exactly every 30 years, records = chronicled events
-✓ Purity: 52 files, 0 violations
-
-BLOCKERS
-None
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
