@@ -302,7 +302,9 @@ namespace Vaelen::Population
 						Context.Events->Publish(Context.Tick, PersonLeftEvent,
 												PersonPayload{R.Info.Index, D, AgeYears(R.Info, Context.Tick), Best},
 												W.Entities().GetId(R.Handle));
-						W.DestroyEntity(R.Handle);
+						// The person stays in the world as history, out of every count.
+						W.Components().GetPool(Persons.Person).Get(R.Handle).State =
+							static_cast<uint8>(LifeState::Gone);
 						++State.Emigrants;
 						Changed = true;
 					}

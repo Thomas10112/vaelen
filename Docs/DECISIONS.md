@@ -60,6 +60,7 @@ Rules for this file:
 | [0035](#adr-0035-needs-are-yearly-integers-fed-by-the-regions-ration-and-disasters-reach-persons-through-the-event-log) | Needs are yearly integers fed by the region's ration, and disasters reach persons through the event log | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0036](#adr-0036-traits-are-drawn-from-the-identity-and-the-parents-skills-are-earned-year-by-year-and-persons-are-named-by-their-language) | Traits are drawn from the identity and the parents, skills are earned year by year, and persons are named by their language | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0037](#adr-0037-detail-is-requested-not-decided-by-the-kernel-and-people-cross-the-grain-border-as-events) | Detail is requested, not decided by the kernel, and people cross the grain border as events | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0038](#adr-0038-persons-enter-the-chronicle-through-a-capped-listener-that-decides-what-matters-at-dispatch) | Persons enter the chronicle through a capped listener that decides what matters at dispatch | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -2293,6 +2294,62 @@ systems leave it alone).
 Accepted 2026-09-06. Files: `Source/VaelenPopulation/Public/Vaelen/Population/Lod.h`,
 `Source/VaelenPopulation/Private/Lod.cpp`, `Tests/Population/Test_Lod.cpp` (5 tests).
 Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0038: Persons enter the chronicle through a capped listener that decides what matters at dispatch
+
+### Context
+
+A detailed region publishes thousands of person events a century (ADR-0033): births,
+deaths, marriages, houses. The chronicle (ADR-0029, Phase 03) records every event of
+its subscribed types as a Record entity; subscribing it to the person events would
+drown the history of peoples and faiths under the lives of one region, yet the prompt
+wants persons in history - a famine's dead, a house that died out, the why of a death.
+
+### Decision
+
+1. A second listener, `PersonChronicle`, subscribes to the person event types and
+   decides at dispatch, against the world, what matters: a house founded or died out,
+   a death with a cause id (famine, plague), the death or marriage of a head of house,
+   the chronicle's focus moving; crossings are off by default. Rules switch each.
+2. What matters becomes the same `RecordInfo` entity the Phase 03 chronicle writes,
+   with the region taken from the payload (a person is not a region entity) and the
+   era at the tick, so every Phase 03 query (timelines, why-chains, the chronicle
+   export) sees person records without change.
+3. A cap per year and region bounds the records: the first N that matter are kept, the
+   rest counted as dropped in a snapshot-safe state component. The events themselves
+   stay in the log; only the chronicle is selective.
+4. Text is a pure function of the log and the state: one sentence per person event with
+   the Phase 03 prefix, names through the naming components, fallbacks that never
+   fail; a person's story is its timeline followed by the "because" lines of its
+   death's cause chain.
+
+### Alternatives and decision rule
+
+- Recording every person event: rejected; the chronicle is meant to be read.
+- Deciding what matters at publish time in each system: rejected; the systems would
+  each need the chronicle's rules, and the listener sees the whole world at dispatch.
+- Decided by simplicity (one owner of what matters) and evolvability (rules and
+  cap are numbers; Phase 07 can add its own kinds of "matters").
+
+### Consequences
+
+- The cap makes a crowded year lossy for the chronicle, never for the log; the
+  dropped count says how lossy.
+- Heads are recognised at dispatch, one tick after the event: the family system
+  replaces a dead head at its next yearly tick, so the head is still on its family.
+- Person lines depend on names (04.05); without the trait system they fall back to
+  "person N" and stay deterministic.
+- A person who leaves a detailed region is kept as `LifeState::Gone` rather than
+  destroyed (a change to 04.06): history can still name the one who left; a demotion
+  of the region drops them with the rest.
+
+### Status
+
+Accepted 2026-09-06. Files: `Source/VaelenPopulation/Public/Vaelen/Population/PersonHistory.h`,
+`Source/VaelenPopulation/Private/PersonHistory.cpp`, `Tests/Population/Test_PersonHistory.cpp`
+(5 tests). Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
 

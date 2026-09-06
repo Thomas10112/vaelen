@@ -39,6 +39,7 @@ namespace Vaelen::Population
 	{
 		Alive = 0,
 		Dead = 1,
+		Gone = 2, ///< left the detailed grain for a coarse region (04.06); kept for history
 	};
 
 	/// Component of a person entity (ids of kind Person).
@@ -140,6 +141,7 @@ namespace Vaelen::Population
 		uint32 Persons = 0; ///< entities with a PersonInfo
 		uint32 Alive = 0;
 		uint32 Dead = 0;
+		uint32 Gone = 0;		  ///< left for a coarse region
 		uint32 Inconsistent = 0;  ///< detailed regions whose persons disagree with the counts
 		Hash64 PersonsDigest = 0; ///< FNV over every PersonInfo in index order
 	};

@@ -8,7 +8,7 @@
 // its neighbours, a chronicle's focus). The yearly LodSystem promotes what is
 // wanted and demotes what is not, and lets people cross the border: a
 // detailed region past its capacity sends young adults to the neighbour with
-// the most room (the persons leave, the counts arrive), and a crowded coarse
+// the most room (the persons stay as history, gone from every count; the counts arrive), and a crowded coarse
 // neighbour sends people into a detailed region with room (the counts leave,
 // persons arrive). Every crossing is an event about the person.
 #pragma once

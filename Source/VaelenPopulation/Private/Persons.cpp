@@ -371,6 +371,7 @@ namespace Vaelen::Population
 			++S.Persons;
 			S.Alive += P.State == static_cast<uint8>(LifeState::Alive) ? 1u : 0u;
 			S.Dead += P.State == static_cast<uint8>(LifeState::Dead) ? 1u : 0u;
+			S.Gone += P.State == static_cast<uint8>(LifeState::Gone) ? 1u : 0u;
 			Digest = HashBytes(reinterpret_cast<const char*>(&P), sizeof(P), Digest);
 		}
 		S.PersonsDigest = Digest;

@@ -71,7 +71,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
-| 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | IN PROGRESS (04.01-04.06 VALIDATED headless; 04.07-04.08 PLANNED) |
+| 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | IN PROGRESS (04.01-04.07 VALIDATED headless; 04.08 PLANNED) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
@@ -1138,7 +1138,7 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   PersonArrived (the other region in `Other`), `LodSystem` (LOD World, after Lives: demote
   the detailed regions nobody wants, promote the wanted ones up to the limit - an empty
   region is refused and counted - then for every detailed region in index order send the
-  crowd over the line to the coarse neighbour with the most room, the persons destroyed
+  crowd over the line to the coarse neighbour with the most room, the persons marked gone
   and the destination's counts and faith raised, and take the crowd of every crowded
   coarse neighbour as new persons of its majority culture and faith while there is room,
   then reconcile), `MeasureLod`.
@@ -1154,6 +1154,38 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   250 snapshot continued to the same year 500; frozen persons digest `d0f481c80e1e49d8` after 200
   years of alternation at 128 (207 emigrants, 0 immigrants).
 - Decision: ADR-0037.
+
+### 04.07 Persons in history - VALIDATED (headless)
+
+- Delivered: `PersonHistory.h/.cpp` - `PersonChronicleRules` (record foundings, extinctions,
+  deaths with a cause, deaths and marriages of heads of house, the focus moving; crossings
+  off; 64 records a year per region), `PersonChronicleState` (records, dropped, the running
+  yearly count), `PersonChronicle` listener (`Attach` subscribes to the eight person event
+  types; `OnEvent` decides what matters against the world at dispatch - a head is still on
+  its family - and writes a Phase 03 `RecordInfo` with the region from the payload and the
+  era at the tick, counting the history state's records), `NamePerson` ("Umamissar" or
+  "person 12"), `NameFamily` ("the house of Ukro"), `DescribePersonEvent` (one sentence for
+  births with the mother, deaths with their cause and age, marriages, houses founded and
+  died out, crossings, the chronicle turning to or leaving a region; every other event
+  through `History::DescribeEvent`), `ExportChronicleWithPersons` (the whole chronicle in
+  tick order), `PersonTimeline` (born, married on either side, left, arrived, died, a
+  house founded), `DeathOf`, `ExportPersonStory` (the timeline, then "because ..." lines
+  from the death's cause to the root), `CheckPersonChronicle`. Emigrants of the bridge
+  (04.06) are no longer destroyed: `LifeState::Gone` keeps the person in the world out of
+  every count so a PersonLeft line keeps its name (`DetailStats.Gone` counts them; the
+  04.06 frozen digest is unchanged because the regions they left were demoted).
+- Tests (5): after 40 years in the busiest region of AELVOR 128 every person event has a
+  specific line with the Phase 03 prefix, a name and its verb, every other event reads
+  exactly as Phase 03 writes it, fallbacks for unknown persons and houses; in a cursed
+  region with a cap of three, records plus dropped equal the events that mattered, every
+  recorded death has a cause, no year of the region holds more than the cap, silent rules
+  record nothing and the Phase 03 chronicle check still holds; the story of a plague death
+  ends with the plague that struck, a famine death reaches the drought, a natural death
+  has no why, an unknown person no story, a bride's timeline holds her marriage; two
+  worlds give the same digest and text, a snapshot between yearly ticks restores the
+  records and continues identically; frozen 1248 records and chronicle text `f097d2b9938ed0bc` after
+  100 years.
+- Decision: ADR-0038.
 
 ## 9. Phases 05-20: notes
 
@@ -1173,42 +1205,43 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 04 — POPULATION
-TASK        : 04.06 — LOD BRIDGE
+TASK        : 04.07 — PERSONS IN HISTORY
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████████░░░░░░░░░░░░░░ 41%
+██████████░░░░░░░░░░░░░░ 42%
 
 CURRENTLY
-→ 04.06 closed: LodState (the regions the world wants detailed, up to 8, and the bridge's tallies),
-  RequestDetail / ReleaseDetail / IsWanted, the yearly LodSystem (demotes what is no longer wanted,
-  promotes what is wanted up to MaxDetailed in request order, refuses empty regions), and the
-  crossings: a crowded detailed region (over 75 percent of its capacity) sends unmarried young
-  adults to the neighbour with the most room (under 65 percent), a crowded coarse neighbour sends
-  people into a detailed region with room as new persons; RegionPromoted / RegionDemoted / PersonLeft / PersonArrived events
+→ 04.07 closed: the PersonChronicle listener turns the person events that matter (houses founded
+  and died out, deaths with a cause, heads of house dying or marrying, the chronicle's focus
+  moving) into the Phase 03 Record entities under a yearly cap per region; one sentence for
+  every person event (births, deaths with their cause, marriages, houses, crossings, focus);
+  the unified chronicle text; a person's timeline and story, the why-chain of a death reaching
+  the disaster that killed
 
 COMPLETED
-✓ Phases 00-03 (headless) ; 04.01-04.04 (CI 34-36) ; 04.05 Traits, skills and names (CI 37)
-✓ 04.06 LOD bridge (5 tests: Lod) (CI 38)
+✓ Phases 00-03 (headless) ; 04.01-04.05 (CI 34-38) ; 04.06 LOD bridge (CI 38)
+✓ 04.07 Persons in history (5 tests: PersonHistory) (CI 39)
 
 NEXT
-→ 04.07 Persons in history (chronicle lines and why-queries for persons)
-→ 04.08 Phase 04 gate (500 years with a detailed region over the 256 pre-history)
+→ 04.08 Phase 04 gate (500 years with a detailed region over the 256 pre-history; Phase 04 closed)
+→ Phase 05 breakdown
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenPopulation/Public/Vaelen/Population/Lod.h, Private/Lod.cpp
-+ Tests/Population/Test_Lod.cpp
-~ Source/VaelenPopulation/CMakeLists.txt
++ Source/VaelenPopulation/Public/Vaelen/Population/PersonHistory.h, Private/PersonHistory.cpp
++ Tests/Population/Test_PersonHistory.cpp
+~ Persons.h/.cpp (LifeState::Gone, DetailStats.Gone), Lod.h/.cpp (emigrants stay as gone persons so
+  their lines keep their names), Test_Lod.cpp, CMakeLists.txt
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 31 (31 without asserts);
-  ctest 57/57 in all six Linux presets; the 04.01-04.05 digests unchanged
-✓ AELVOR 128, the two busiest regions detailed in turn every 50 years for 200 years: 207 emigrants,
-  0 immigrants, grains consistent; frozen persons digest d0f481c80e1e49d8
-✓ 500 years at 64 with two of the three busiest regions detailed in turn every 25 years: invariants
-  every decade, two worlds identical, the year-250 snapshot continued to the same year 500
-✓ Purity: 77 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 36 (36 without asserts);
+  ctest 58/58 in all six Linux presets; the 04.01-04.06 digests unchanged
+✓ Region 26 of AELVOR 128 chronicled for 100 years with every Phase 04 system: 1248 person records,
+  every one with its own line; frozen chronicle text f097d2b9938ed0bc
+✓ Cursed region: the story of a plague death ends "because a plague struck", a famine death reaches
+  the drought, a natural death has no why; the yearly cap holds and dropped events are counted
+✓ Purity: 79 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)

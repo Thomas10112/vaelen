@@ -270,7 +270,7 @@ VAELEN_TEST(Lod, PeopleCrossTheBorderBothWays)
 	VT_CHECK_EQ(S.LeftEvents, S.Emigrants);
 	VT_CHECK(W.Counts(Region)->Total < Start);
 	VT_CHECK(IsConsistent(W.Instance, W.Ages.Types(), W.Persons, Region));
-	// Every leaver was an unmarried adult, its person is gone, and the world's
+	// Every leaver was an unmarried adult, its person is marked gone, and the world's
 	// people are conserved up to the births and deaths of the years.
 	uint32 Left = 0;
 	uint32 Destination = 0;
@@ -287,7 +287,10 @@ VAELEN_TEST(Lod, PeopleCrossTheBorderBothWays)
 		VT_CHECK(P.AgeYears >= 16 && P.AgeYears < 40);
 		VT_CHECK(P.Other != 0 && P.Other != Region);
 		Destination = P.Other;
-		VT_CHECK(FindPerson(W.Instance, W.Persons, P.Person) == nullptr);
+		const PersonInfo* Gone = FindPerson(W.Instance, W.Persons, P.Person);
+		VT_REQUIRE(Gone != nullptr);
+		VT_CHECK_EQ(Gone->State, static_cast<uint8>(LifeState::Gone));
+		VT_CHECK_EQ(Gone->Region, Region);
 	}
 	VT_CHECK_EQ(Left + EmigrantsAtMark, S.Emigrants);
 	VT_REQUIRE(Destination != 0);
