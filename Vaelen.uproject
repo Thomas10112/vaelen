@@ -18,6 +18,15 @@
 			]
 		},
 		{
+			"Name": "VaelenPopulation",
+			"Type": "Runtime",
+			"LoadingPhase": "PreDefault",
+			"AdditionalDependencies": [
+				"VaelenCore",
+				"VaelenSim"
+			]
+		},
+		{
 			"Name": "Vaelen",
 			"Type": "Runtime",
 			"LoadingPhase": "Default",

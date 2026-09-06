@@ -71,7 +71,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
-| 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED (breakdown in section 8) |
+| 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | IN PROGRESS (04.01 VALIDATED headless; 04.02-04.08 PLANNED) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
@@ -976,6 +976,35 @@ Decisions taken up front (each becomes an ADR when its task closes):
 
 Every task ends with the usual report block, the docs refreshed and a commit.
 
+### 04.01 Persons and the two grains of population - VALIDATED (headless)
+
+- Delivered: the `VaelenPopulation` module (UBT Runtime module `PreDefault` depending on
+  `VaelenCore` and `VaelenSim`; CMake static library `Vaelen::Population`; listed in
+  `Tools/kernel_modules.txt`, `Vaelen.uproject` and both targets; `PopulationApi.h`
+  export macro; `VaelenPopulationModule.cpp` the only Unreal-facing file) and
+  `Persons.h/.cpp` - `PersonInfo` (64 bytes: index, region, culture, religion, language,
+  family, mother, father, birth and death ticks, identity, sex, state), `RegionDetail`
+  (on a region while it is detailed), `PersonTypes::Declare`, `MaterialiseRules` (cap
+  per region, female share, oldest age, young share), `PromoteRegion` (one Person
+  entity per counted person, culture by culture, faith handed out in slot order, sex and
+  age from a hash stream of the world seed, the region and the tick; refused without
+  change when unknown, already detailed, unsettled or above the cap), `DemoteRegion`
+  (counts and believers become what the living persons say, every person of the region
+  destroyed), `IsDetailed`, `CountPersons`, `IsConsistent`, `MeasureDetail` (persons,
+  alive, dead, inconsistent regions, a persons digest).
+- Tests (5, `Tests/Population/Test_Persons.cpp`, CTest `Population.*`): promotion of the
+  busiest region of AELVOR 128 after 300 years materialises the counts exactly (persons,
+  cultures, faiths, near-half sexes, a young pyramid, unique indices and identities, ids
+  of kind Person, ages within the rule), refusals (again, region 0, unknown, unsettled,
+  above the cap); demotion after seven deaths and a conversion by hand folds the living
+  back, destroys the persons and leaves the entity count as before, a clean round trip
+  changes nothing; every settled region promoted at once gives exactly the world's
+  people and believers and demotes back to the same world; two worlds materialise the
+  same persons, a snapshot keeps them byte for byte and continues identically, the tick
+  is part of the draw, rules matter; frozen persons digest `a92da70b85f09c0f` (19 781
+  persons).
+- Decision: ADR-0032.
+
 ## 9. Phases 05-20: notes
 
 No task breakdown exists yet for Phases 05-20; each is broken down when the previous
@@ -993,36 +1022,41 @@ class and Enhanced Input mappings arrive in Phase 10.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 03 — HISTORY (closed, headless) → 04 — POPULATION (planned)
-TASK        : 03.08 — PHASE 03 GATE
+PHASE       : 04 — POPULATION
+TASK        : 04.01 — PERSONS AND THE TWO GRAINS OF POPULATION
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████████████████ 100%  (Phase 03)
+███░░░░░░░░░░░░░░░░░░░░░ 12%
 
 CURRENTLY
-→ Phase 03 closed against ROADMAP section 2: 2000 years on AELVOR 256 with every Phase 03
-  invariant checked every decade, digests frozen at 1000 / 1500 / 2000 years, a snapshot at
-  year 1000 continued to the same millennium and re-saved byte for byte
+→ 04.01 closed: the third kernel module VaelenPopulation (UBT + CMake + purity), PersonInfo
+  entities of kind Person, RegionDetail on detailed regions, PromoteRegion materialising the
+  coarse counts exactly (culture, faith, sex, age from a hash stream), DemoteRegion folding
+  the living back and destroying the persons, consistency checks and a persons digest
 
 COMPLETED
-✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD ; Phase 03 — HISTORY (headless)
-✓ 03.08 Gate (2 tests: HistoryGate) ; 03.07 (CI 32)
+✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD ; Phase 03 — HISTORY (headless, CI 33)
+✓ 04.01 Persons and the two grains (5 tests: Persons)
 
 NEXT
-→ Phase 04 POPULATION: task breakdown (persons, families, demographics over the pre-history)
+→ 04.02 Ageing, mortality and fertility tables, births and deaths reconciled with the counts
+→ 04.03 Families and lineage
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Tests/Sim/Test_HistoryGate.cpp
-~ Religion.cpp (wave carry rounded up), Disasters.cpp (the dead were believers too)
-~ Test_Religion.cpp, Test_Disasters.cpp, Test_PreHistory.cpp (refrozen)
++ Source/VaelenPopulation/ (VaelenPopulation.Build.cs, CMakeLists.txt, Public/Vaelen/Population/PopulationApi.h,
+  Persons.h, Private/Persons.cpp, Private/VaelenPopulationModule.cpp)
++ Tests/Population/ (CMakeLists.txt, Test_Persons.cpp)
+~ CMakeLists.txt, Tests/CMakeLists.txt, Tools/kernel_modules.txt, Vaelen.uproject, Vaelen.Target.cs,
+  VaelenEditor.Target.cs
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts); ctest 49/49 in all six Linux presets
-✓ AELVOR 256, 2000 years in 11 s debug: 68 cultures, 33 religions, 1 137 disasters, 32 eras, 1 453 records,
-  0 invariant failures over 200 decades; frozen 3ee019d12e58c774 / a39530dc59e041e0 / 2ce95360ad09dda9, log 1b884d94518bfe79
-✓ Purity: 64 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 5 (5 without asserts);
+  ctest 52/52 in all six Linux presets
+✓ AELVOR 128 after 300 years: every settled region promoted into 19 781 persons, believers and counts
+  equal, every region demoted back to the same world; persons digest a92da70b85f09c0f
+✓ Purity: 67 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)

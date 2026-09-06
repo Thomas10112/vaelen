@@ -10,3 +10,4 @@
 # fails when any listed module violates a rule.
 VaelenCore
 VaelenSim
+VaelenPopulation

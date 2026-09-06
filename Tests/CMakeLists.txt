@@ -2,6 +2,7 @@
 # per suite (= per Test_<Suite>.cpp file) so failures are attributed precisely.
 add_subdirectory(Core)
 add_subdirectory(Sim)
+add_subdirectory(Population)
 
 # Kernel purity: no engine headers, exceptions, RTTI or non-deterministic
 # randomness inside engine-agnostic modules. Python 3 is a hard requirement:

@@ -67,6 +67,7 @@ Source/
   Vaelen.Target.cs, VaelenEditor.Target.cs
   VaelenCore/                    KERNEL: Public/Vaelen/Core/*.h, Private/*.cpp, CMakeLists.txt, VaelenCore.Build.cs
   VaelenSim/                     KERNEL (Phase 01): entities, components, systems; Public/Vaelen/Sim/*.h
+  VaelenPopulation/              KERNEL (Phase 04): persons, families, demographics; Public/Vaelen/Population/*.h
   Vaelen/                        Unreal primary game module (bridge to the kernel, UBT only)
 Tests/
   Harness/                       VaelenTest.h (macros, registry, ScopedAssertCapture), TestMain.cpp (runner)
@@ -136,6 +137,7 @@ available in this repository's environment, so every Unreal-facing file is marke
 | Kernel module registration | `Source/VaelenCore/Private/VaelenCoreModule.cpp` | UNVERIFIED (requires UE5) |
 | Unreal bridge module `Vaelen` | `Source/Vaelen` | UNVERIFIED (requires UE5) |
 | Simulation module (01.01 entities, 01.02 components, 01.03 systems and scheduler, 01.04 clock and calendar, 01.05 events, 01.06 world and snapshot, 01.07 deterministic replay gate, 01.08 long-duration mini-world gate, 02.01 tile grid and world map, 02.02 fixed point and noise, 02.03 elevation and coastline, 02.04 climate and biomes, 02.05 hydrology, 02.06 regions, 02.07 deposits, 02.08 pipeline gate; Phase 02 closed headless; 03.01 eras and chronicle, 03.02 cultures and coarse population, 03.03 languages and naming, 03.04 religions, 03.05 disasters and omens, 03.06 pre-history run, 03.07 queryable history, 03.08 gate; Phase 03 closed headless) | `Source/VaelenSim` | VALIDATED (Phase 01) headless; UNVERIFIED under UBT |
+| Population module (04.01 persons and the two grains of population: promotion of a region into persons, demotion back) | `Source/VaelenPopulation` | VALIDATED (04.01) headless; UNVERIFIED under UBT |
 | Test harness and runner | `Tests/Harness` | VALIDATED (Phase 00) |
 | Core test suites (133 tests, 108 without assertions) | `Tests/Core` | VALIDATED |
 | Kernel purity checker | `Tools/check_kernel_purity.py` | VALIDATED (Phase 00) |

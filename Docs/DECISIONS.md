@@ -54,6 +54,7 @@ Rules for this file:
 | [0029](#adr-0029-the-pre-history-is-one-object-that-owns-the-phase-03-systems-and-one-call-on-a-fresh-world-frozen-per-century-as-the-starting-state) | The pre-history is one object that owns the Phase 03 systems and one call on a fresh world, frozen per century as the starting state | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0030](#adr-0030-history-is-queried-through-the-log-and-the-records-and-read-as-text-built-from-names-with-deterministic-fallbacks) | History is queried through the log and the records, and read as text built from names with deterministic fallbacks | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0031](#adr-0031-believers-never-exceed-the-living-at-any-tick-boundary-carries-round-up-and-deaths-take-believers-first) | Believers never exceed the living at any tick boundary: carries round up and deaths take believers first | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0032](#adr-0032-population-has-two-grains-and-one-truth-persons-exist-only-in-detailed-regions-and-always-sum-to-the-coarse-counts) | Population has two grains and one truth: persons exist only in detailed regions and always sum to the coarse counts | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -1951,6 +1952,60 @@ believers above the living for a year.
 Accepted 2026-09-06. Files: `Source/VaelenSim/Private/Religion.cpp`,
 `Source/VaelenSim/Private/Disasters.cpp`, `Tests/Sim/Test_HistoryGate.cpp` (2 tests).
 Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0032: Population has two grains and one truth: persons exist only in detailed regions and always sum to the coarse counts
+
+### Context
+
+Phase 04 brings persons. The prompt wants simulation LOD 0-4: full detail where the
+player is, statistics far away. Phase 03 already keeps integer counts per culture and
+believers per faith on every region, frozen across compilers, and every later system
+(economy, politics) will read those counts. Instantiating a person for every one of
+the two million people of a 1024 world is neither needed nor affordable.
+
+### Decision
+
+1. The coarse counts of Phase 03 remain the truth everywhere. A region can be promoted
+   to detail: one `PersonInfo` entity per counted person, culture by culture, faith
+   handed out in slot order, sex and age drawn from a hash stream of the world seed, the
+   region and the tick. A detailed region carries a `RegionDetail` component.
+2. Demotion folds the living persons back into the counts (counts per culture and
+   believers per faith become what the persons say) and destroys every person of the
+   region. A promote / demote round trip without life events leaves the counts as they
+   were; with deaths in between, the counts follow the persons.
+3. `IsConsistent` states the invariant between the two grains for a detailed region,
+   and `MeasureDetail` counts the regions where it fails, so the life-cycle systems of
+   04.02 onwards are checked against it every year.
+4. `VaelenPopulation` is a third kernel module with the same rules as `VaelenSim`
+   (pure C++20, dual build, purity checked) and depends on it; persons use
+   `IdKind::Person` and a 64-byte padding-free component.
+
+### Alternatives and decision rule
+
+- Persons everywhere: rejected; a 1024 world holds two million people and the coarse
+  systems already give the far world its history.
+- Persons as a view over the counts (no entities): rejected; persons need identity,
+  lineage and names that survive snapshots, which entities with persistent ids give.
+- Decided by robustness (one truth, an invariant that can be checked) and evolvability
+  (the LOD bridge of 04.06 only has to move regions between the two grains).
+
+### Consequences
+
+- The tick of a promotion is part of the draw: promoting the same region a tick later
+  materialises different persons, on purpose, so replay stays exact.
+- Until 04.02, the coarse systems keep moving the counts of a detailed region while its
+  persons stand still; `IsConsistent` then reports the drift, which is what 04.02 must
+  close.
+- The persons digest of AELVOR 128 after 300 years (19 781 persons) is frozen and
+  reproduced on four compilers through CI.
+
+### Status
+
+Accepted 2026-09-06. Files: `Source/VaelenPopulation/*` (module rules, CMake, API
+header, `Persons.h/.cpp`, `VaelenPopulationModule.cpp`), `Tests/Population/*`. Headless
+VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
 
