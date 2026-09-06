@@ -71,7 +71,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
-| 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | IN PROGRESS (04.01-04.05 VALIDATED headless; 04.06-04.08 PLANNED) |
+| 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | IN PROGRESS (04.01-04.06 VALIDATED headless; 04.07-04.08 PLANNED) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
@@ -1126,6 +1126,35 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   skill sum 358884).
 - Decision: ADR-0036.
 
+### 04.06 LOD bridge - VALIDATED (headless)
+
+- Delivered: `Lod.h/.cpp` - `LodState` (singleton component: up to 8 wanted regions in
+  request order, promotions, demotions, emigrants, immigrants, refusals), `LodTypes::Declare`,
+  `LodStateOf` (created on first use), `RequestDetail` / `ReleaseDetail` / `IsWanted`,
+  `LodRules` (4 detailed at once, the materialise rules, crowded above 750 per mille of the
+  capacity and room below 650, 200 per mille of the crowd over the line leaves a year and
+  200 per mille of a crowded neighbour's crowd arrives, movers are unmarried adults of 16
+  to 40), events RegionPromoted, RegionDemoted, PersonLeft and
+  PersonArrived (the other region in `Other`), `LodSystem` (LOD World, after Lives: demote
+  the detailed regions nobody wants, promote the wanted ones up to the limit - an empty
+  region is refused and counted - then for every detailed region in index order send the
+  crowd over the line to the coarse neighbour with the most room, the persons destroyed
+  and the destination's counts and faith raised, and take the crowd of every crowded
+  coarse neighbour as new persons of its majority culture and faith while there is room,
+  then reconcile), `MeasureLod`.
+- Tests (5): requests kept in order, bounded, released and compacted, one state entity;
+  a promote / demote cycle without a tick conserves the counts and the faith slots
+  exactly, three wanted with a limit of two detail the first two in request order with
+  one event each, a release frees a place the next year, an empty region is refused;
+  a shrunk region sends unmarried young adults to a neighbour (persons gone, counts
+  conserved up to births and deaths) and a full neighbour sends people into a widened
+  region (new persons of age with culture and language, the neighbour's counts down),
+  zero shares close the border; 500 years at 64 with two of the three busiest regions detailed in
+  turn every 25 years keep every invariant each decade, two worlds identical, the year
+  250 snapshot continued to the same year 500; frozen persons digest `d0f481c80e1e49d8` after 200
+  years of alternation at 128 (207 emigrants, 0 immigrants).
+- Decision: ADR-0037.
+
 ## 9. Phases 05-20: notes
 
 No task breakdown exists yet for Phases 05-20; each is broken down when the previous
@@ -1144,40 +1173,42 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 04 — POPULATION
-TASK        : 04.05 — TRAITS, SKILLS AND NAMES
+TASK        : 04.06 — LOD BRIDGE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-█████████░░░░░░░░░░░░░░░ 39%
+██████████░░░░░░░░░░░░░░ 41%
 
 CURRENTLY
-→ 04.05 closed: PersonTraits (six traits from the identity, pulled toward the parents for a child;
-  four skills that grow from 8 to 45 under the trait behind them, faster beside a parent who knows
-  the trade, and fade from 60), a name for every person built in its language by the Phase 03
-  naming rules, the yearly TraitSystem, PersonName and MeasureTraits with a traits digest
+→ 04.06 closed: LodState (the regions the world wants detailed, up to 8, and the bridge's tallies),
+  RequestDetail / ReleaseDetail / IsWanted, the yearly LodSystem (demotes what is no longer wanted,
+  promotes what is wanted up to MaxDetailed in request order, refuses empty regions), and the
+  crossings: a crowded detailed region (over 75 percent of its capacity) sends unmarried young
+  adults to the neighbour with the most room (under 65 percent), a crowded coarse neighbour sends
+  people into a detailed region with room as new persons; RegionPromoted / RegionDemoted / PersonLeft / PersonArrived events
 
 COMPLETED
-✓ Phases 00-03 (headless) ; 04.01 Persons (CI 34) ; 04.02 Life cycles (CI 35) ; 04.03 Families (CI 36) ; 04.04 Needs (CI 37)
-✓ 04.05 Traits, skills and names (5 tests: Traits)
+✓ Phases 00-03 (headless) ; 04.01-04.04 (CI 34-36) ; 04.05 Traits, skills and names (CI 37)
+✓ 04.06 LOD bridge (5 tests: Lod) (CI 38)
 
 NEXT
-→ 04.06 LOD bridge (promotion/demotion cycles, persons who migrate, digests conserved)
 → 04.07 Persons in history (chronicle lines and why-queries for persons)
+→ 04.08 Phase 04 gate (500 years with a detailed region over the 256 pre-history)
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenPopulation/Public/Vaelen/Population/Traits.h, Private/Traits.cpp
-+ Tests/Population/Test_Traits.cpp
++ Source/VaelenPopulation/Public/Vaelen/Population/Lod.h, Private/Lod.cpp
++ Tests/Population/Test_Lod.cpp
 ~ Source/VaelenPopulation/CMakeLists.txt
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 26 (26 without asserts);
-  ctest 56/56 in all six Linux presets; the 04.01-04.04 digests unchanged
-✓ Region 26 of AELVOR 128 with lives and traits for 200 years: 1499 named living persons, skill sum 358884;
-  frozen traits digest 2c2d67a504110d60
-✓ Traits: bell around 128 with tails over 4096 identities, children closer to their parents than to
-  strangers, skills rising by age band and fading past 75, apprentices of skilled parents ahead
-✓ Purity: 75 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 31 (31 without asserts);
+  ctest 57/57 in all six Linux presets; the 04.01-04.05 digests unchanged
+✓ AELVOR 128, the two busiest regions detailed in turn every 50 years for 200 years: 207 emigrants,
+  0 immigrants, grains consistent; frozen persons digest d0f481c80e1e49d8
+✓ 500 years at 64 with two of the three busiest regions detailed in turn every 25 years: invariants
+  every decade, two worlds identical, the year-250 snapshot continued to the same year 500
+✓ Purity: 77 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)

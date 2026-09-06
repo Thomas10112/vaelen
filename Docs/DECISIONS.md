@@ -59,6 +59,7 @@ Rules for this file:
 | [0034](#adr-0034-families-are-entities-founded-by-grooms-lineage-is-read-from-the-parent-links-and-children-are-born-to-couples) | Families are entities founded by grooms, lineage is read from the parent links, and children are born to couples | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0035](#adr-0035-needs-are-yearly-integers-fed-by-the-regions-ration-and-disasters-reach-persons-through-the-event-log) | Needs are yearly integers fed by the region's ration, and disasters reach persons through the event log | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0036](#adr-0036-traits-are-drawn-from-the-identity-and-the-parents-skills-are-earned-year-by-year-and-persons-are-named-by-their-language) | Traits are drawn from the identity and the parents, skills are earned year by year, and persons are named by their language | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0037](#adr-0037-detail-is-requested-not-decided-by-the-kernel-and-people-cross-the-grain-border-as-events) | Detail is requested, not decided by the kernel, and people cross the grain border as events | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -2231,6 +2232,66 @@ function.
 
 Accepted 2026-09-06. Files: `Source/VaelenPopulation/Public/Vaelen/Population/Traits.h`,
 `Source/VaelenPopulation/Private/Traits.cpp`, `Tests/Population/Test_Traits.cpp` (5 tests).
+Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0037: Detail is requested, not decided by the kernel, and people cross the grain border as events
+
+### Context
+
+Persons exist only in detailed regions (ADR-0032). Something has to decide which
+regions are detailed - the player's region and its neighbours in the game, a focus of
+interest in a headless run - and the two grains must exchange people, or a detailed
+region would be an island the coarse migrations flow around (04.02 made the coarse
+systems leave it alone).
+
+### Decision
+
+1. The kernel does not decide: a singleton `LodState` lists the regions the world
+   wants detailed (up to 8, in request order) through `RequestDetail` / `ReleaseDetail`,
+   and the yearly `LodSystem` applies it - demotions first, then promotions up to a
+   rule's limit, an empty region refused and counted. Presentation and gameplay only
+   ever write requests; the promotion itself stays a kernel operation with a tick.
+2. People cross the border in the bridge, not in the coarse migration: a crowded
+   detailed region (above three quarters of its capacity) sends a share of its crowd -
+   unmarried adults of 16 to 40, in index order - to the coarse neighbour with the most
+   room (below two thirds); their persons are destroyed and the destination's counts and
+   faith are raised. A crowded coarse neighbour sends a share of its crowd into a
+   detailed region with room as new persons of its majority culture and faith, with an age and sex drawn from the tick's
+   stream and an identity from the world seed. Each crossing is a PersonLeft or
+   PersonArrived event about the person, with the other region in the payload.
+3. After the crossings the region is reconciled, so the counts stay the aggregate of
+   the persons, and a promote / demote cycle without a tick conserves the counts and
+   the faith slots exactly (the persons carry culture and faith one by one).
+
+### Alternatives and decision rule
+
+- Letting the coarse migration waves touch detailed regions and materialising the
+  movers: rejected; the wave logic is tuned for counts and would have to know about
+  persons, families and ages.
+- Keeping emigrants as persons in a coarse region: rejected; a person without a
+  detailed region has no life system, and half-alive persons would break the
+  invariant that persons and counts agree.
+- Decided by robustness (one owner of the border) and by the layering rule (the
+  kernel never guesses what the presentation wants).
+
+### Consequences
+
+- Emigrants lose their detail; if their region is detailed again later they are new
+  persons. Their departure is in the log, so history can still tell it.
+- The lines sit where the coarse world lives (regions settle near three quarters of
+  their capacity), so emigration flows in ordinary centuries while immigration needs a
+  detailed region emptied by famine, plague or a widened capacity.
+- The state is a component: a snapshot restores the wanted list and the tallies, and
+  the 500-year alternation test replays identically from its year 250 snapshot.
+- Phase 10 will request the player's region and neighbours; Phase 07 can request a
+  region for a chronicle's focus.
+
+### Status
+
+Accepted 2026-09-06. Files: `Source/VaelenPopulation/Public/Vaelen/Population/Lod.h`,
+`Source/VaelenPopulation/Private/Lod.cpp`, `Tests/Population/Test_Lod.cpp` (5 tests).
 Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
