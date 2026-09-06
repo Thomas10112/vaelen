@@ -68,6 +68,7 @@ Rules for this file:
 | [0043](#adr-0043-bondage-is-a-state-on-the-person-with-a-living-holder-among-the-elite-and-a-count-per-region) | Bondage is a state on the person with a living holder among the elite, and a count per region | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0044](#adr-0044-organisations-act-through-one-yearly-system-whose-effects-reach-the-lower-modules-as-state-they-observe-or-as-events-they-ignore) | Organisations act through one yearly system whose effects reach the lower modules as state they observe or as events they ignore | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0045](#adr-0045-the-social-shape-of-a-region-is-a-count-that-outlives-its-persons-and-binds-the-next-ones) | The social shape of a region is a count that outlives its persons and binds the next ones | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0046](#adr-0046-each-module-chronicles-its-own-events-through-its-own-capped-listener-into-the-one-record-store) | Each module chronicles its own events through its own capped listener into the one record store | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -2714,6 +2715,50 @@ day the player looks away and back.
 
 Accepted 2026-09-06. Files: `Source/VaelenSociety/Public/Vaelen/Society/Bondage.h`,
 `Source/VaelenSociety/Private/Bondage.cpp`, `Tests/Society/Test_Strata.cpp` (3 tests).
+Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0046: Each module chronicles its own events through its own capped listener into the one record store
+
+### Context
+
+The Phase 03 chronicle (ADR-0029) records the world's events, the Phase 04 person
+chronicle (ADR-0038) the persons' that matter. The society module adds foundings,
+decisions, customs and bonds, and the chronicle must stay one readable story with one
+record store, one export and one why.
+
+### Decision
+
+1. The society module has its own listener with its own rules and cap, writing the same
+   `RecordInfo` entities into the same pool; the history state's record count grows
+   with all three. A custom changed is a record without a region (a culture is not a
+   place); a raid is recorded through its RaidPlanned event, not its decision; a bond
+   entered by a promotion is not recorded (the count was, at the demotion).
+2. Text composes downward: the society text names organisations, cultures and faiths
+   and hands every other event to the person text, which hands the rest to the history
+   text, so one call describes any event and the prefix is the same at every level.
+3. The why of an event is the Phase 03 cause chain rendered with the richest text
+   available, so a council's grain explains itself by the drought that struck.
+
+### Alternatives and decision rule
+
+- One listener per world that knows every module's events: rejected; it would live in
+  the highest module and every lower module would have to be re-described there.
+- Records in a per-module pool: rejected; one export in tick order needs one pool, and
+  the Phase 03 queries (timelines, checks) would miss the rest.
+- Decided by the layering rule and by simplicity (one pattern, three uses).
+
+### Consequences
+
+- The chronicle text digest depends on every module's text; a wording change anywhere
+  refreezes it.
+- Phase 06 and later add their listener and their text layer the same way.
+
+### Status
+
+Accepted 2026-09-06. Files: `Source/VaelenSociety/Public/Vaelen/Society/SocietyHistory.h`,
+`Source/VaelenSociety/Private/SocietyHistory.cpp`, `Tests/Society/Test_SocietyHistory.cpp` (3 tests).
 Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---

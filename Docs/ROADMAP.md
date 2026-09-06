@@ -72,7 +72,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
-| 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | IN PROGRESS (05.01-05.06 VALIDATED headless; 05.07-05.08 PLANNED) |
+| 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | IN PROGRESS (05.01-05.07 VALIDATED headless; 05.08 PLANNED) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
@@ -1466,6 +1466,33 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   `7d6be89760aa4807` (21 promotions, 1168 bound again by the strata).
 - Decision: ADR-0045.
 
+### 05.07 Society in history - VALIDATED (headless)
+
+- Delivered: `SocietyHistory.h/.cpp` - `SocietyChronicleRules` (foundings and disbandings,
+  heads seated, grain laid in, raids planned, customs changed, enslavements other than by
+  a promotion, manumissions; sermons off; 32 records a year per region),
+  `SocietyChronicleState`, `SocietyContext` (the person, family and organisation types
+  the text needs), `SocietyChronicle` listener (`Attach` subscribes to the eight society
+  event types; `OnEvent` decides what matters and writes a Phase 03 `RecordInfo` with the
+  seat as region - a custom has none - and the era at the tick, under the cap),
+  `NameOrganization` ("the council of Edavaken", "the temple of Oldiss in Edavaken"),
+  `NameCulture`, `DescribeSocietyEvent` (one sentence for foundings, disbandings, joins,
+  leaves, heads, decisions with their value, raids with target and strength, customs
+  with before and after, bonds entered with their reason, freed with theirs; every other
+  event through the person and history text), `ExportChronicleWithSociety` (the whole
+  chronicle in tick order), `ExportWhyWithSociety` (the event, then "because ..." lines
+  to the root), `CheckSocietyChronicle`.
+- Tests (3): thirty cursed years in the busiest region of AELVOR 128 with every institution
+  and a schism give every society event type its own named line with the Phase 03 prefix
+  and every other event the person text, fallbacks for unknown organisations and
+  cultures; with a cap of four, records plus dropped equal the events that mattered, no
+  year of a region holds more than the cap, every record is described and era-consistent,
+  the why of a grain decision reaches the drought, silent rules record nothing and the
+  Phase 03 and 04 chronicles still check; two worlds give the same text, a snapshot
+  between yearly ticks restores the records and continues identically; frozen 622
+  records and chronicle text `2e503b54e8c9604d` after 100 years.
+- Decision: ADR-0046.
+
 ## 10. Phases 06-20: notes
 
 No task breakdown exists yet for Phases 06-20; each is broken down when the previous
@@ -1485,39 +1512,39 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 05 — SOCIETY
-TASK        : 05.06 — SOCIAL SHAPE ACROSS THE GRAINS
+TASK        : 05.07 — SOCIETY IN HISTORY
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████░░░░░░░░░░░░ 49%
+████████████░░░░░░░░░░░░ 50%
 
 CURRENTLY
-→ 05.06 closed: a region's strata (free, bonded, enslaved), kept as counts through a demotion, bind
-  the new persons again in the tick of a promotion (BondEntry::Promotion, common adults in index
-  order, held by the elite); the departed leave their bonds behind (BondExit::Departure); the
-  bondage system runs after the bridge; 500 years of alternation at 64 with every Phase 04 and
-  05 system keep every invariant each decade, two worlds identical, the year-250 snapshot
-  continued to the same year 500
+→ 05.07 closed: the SocietyChronicle listener turns the society events that matter (organisations
+  founded and disbanded, heads seated, grain laid in, raids planned, customs changed, persons
+  enslaved or freed by manumission) into the Phase 03 Record entities under a yearly cap per region;
+  one sentence for every society event with the names of organisations, cultures, faiths and
+  persons; the unified chronicle text; the why of a decision reaching the drought that caused it
 
 COMPLETED
-✓ Phases 00-04 (headless) ; 05.01-05.05 (CI 46)
-✓ 05.06 Social shape across the grains (3 tests: Strata)
+✓ Phases 00-04 (headless) ; 05.01-05.06 (CI 47)
+✓ 05.07 Society in history (3 tests: SocietyHistory)
 
 NEXT
-→ 05.07 Society in history (foundings, disbandings, decisions, enslavements and manumissions in the chronicle)
-→ 05.08 Phase 05 gate
+→ 05.08 Phase 05 gate (500 years at 256 with every Phase 04 and 05 system; Phase 05 closed)
+→ Phase 06 breakdown
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Tests/Society/Test_Strata.cpp
-~ Source/VaelenSociety/Public/Vaelen/Society/Bondage.h, Private/Bondage.cpp (Promotion entry, Departure exit,
-  RunAfter, the strata honoured at a promotion)
++ Source/VaelenSociety/Public/Vaelen/Society/SocietyHistory.h, Private/SocietyHistory.cpp
++ Tests/Society/Test_SocietyHistory.cpp
+~ Source/VaelenSociety/CMakeLists.txt
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 37 (37 without asserts)
-  + Society 24 (24 without asserts); ctest 67/67 in all six Linux presets; every earlier frozen digest unchanged
-✓ 500 years at 64 alternating: 21 promotions, 1168 persons bound again by the strata; frozen bondage digest 7d6be89760aa4807
-✓ Purity: 91 files, 0 violations
+  + Society 27 (27 without asserts); ctest 68/68 in all six Linux presets; every earlier frozen digest unchanged
+✓ Region 26 of AELVOR 128 chronicled for 100 years with every Phase 04 and 05 system: 622 society records,
+  every one with its own line; frozen chronicle text 2e503b54e8c9604d
+✓ Purity: 93 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)

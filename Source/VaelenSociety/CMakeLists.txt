@@ -9,6 +9,7 @@ set(VAELEN_SOCIETY_PUBLIC_HEADERS
   Public/Vaelen/Society/BondState.h
   Public/Vaelen/Society/Bondage.h
   Public/Vaelen/Society/Decisions.h
+  Public/Vaelen/Society/SocietyHistory.h
 )
 
 set(VAELEN_SOCIETY_SOURCES
@@ -17,6 +18,7 @@ set(VAELEN_SOCIETY_SOURCES
   Private/Norms.cpp
   Private/Bondage.cpp
   Private/Decisions.cpp
+  Private/SocietyHistory.cpp
 )
 
 add_library(VaelenSociety STATIC ${VAELEN_SOCIETY_SOURCES} ${VAELEN_SOCIETY_PUBLIC_HEADERS})
