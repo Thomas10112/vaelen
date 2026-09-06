@@ -20,6 +20,7 @@
 #include "Vaelen/Population/Traits.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/System.h"
+#include "Vaelen/Society/BondState.h"
 #include "Vaelen/Society/Organizations.h"
 #include "Vaelen/Society/SocietyApi.h"
 
@@ -98,6 +99,12 @@ namespace Vaelen::Society
 		{
 		}
 		const char* GetName() const noexcept override { return "Standing"; }
+		/// Optional: the bound (05.04) are not ranked; bondage removes one from standing.
+		void ObserveBonds(ComponentType<BondState> InBonds) noexcept
+		{
+			Bonds = InBonds;
+			HasBonds = true;
+		}
 		SimLod GetLod() const noexcept override { return SimLod::World; }
 		std::vector<std::string_view> GetDependencies() const override { return {"Organizations"}; }
 		void Tick(TickContext& Context) override;
@@ -111,6 +118,8 @@ namespace Vaelen::Society
 		OrganizationTypes Organizations;
 		StandingTypes Standing;
 		StandingRules Rules;
+		ComponentType<BondState> Bonds;
+		bool HasBonds = false;
 	};
 
 	/// The elite of a region: living adults by rank descending (then index), at most MaxCount (0 = all of the elite

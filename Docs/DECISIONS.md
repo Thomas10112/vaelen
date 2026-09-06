@@ -65,6 +65,7 @@ Rules for this file:
 | [0040](#adr-0040-organisations-are-entities-seated-in-a-region-filled-from-its-persons-and-kept-as-counts-when-the-region-is-coarse) | Organisations are entities seated in a region, filled from its persons, and kept as counts when the region is coarse | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0041](#adr-0041-standing-is-recomputed-every-year-from-what-the-world-already-knows-and-tiers-are-shares-of-a-regions-adults) | Standing is recomputed every year from what the world already knows, and tiers are shares of a region's adults | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0042](#adr-0042-norms-live-on-the-culture-and-reach-the-lower-modules-through-a-small-mirror-they-choose-to-observe) | Norms live on the culture and reach the lower modules through a small mirror they choose to observe | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0043](#adr-0043-bondage-is-a-state-on-the-person-with-a-living-holder-among-the-elite-and-a-count-per-region) | Bondage is a state on the person with a living holder among the elite, and a count per region | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -2562,6 +2563,57 @@ sits above it and may not be included by it.
 Accepted 2026-09-06. Files: `Source/VaelenSociety/Public/Vaelen/Society/Norms.h`,
 `Source/VaelenSociety/Private/Norms.cpp`, `Source/VaelenPopulation/Public/Vaelen/Population/Families.h`,
 `Source/VaelenPopulation/Private/Families.cpp`, `Tests/Society/Test_Norms.cpp` (4 tests).
+Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0043: Bondage is a state on the person with a living holder among the elite, and a count per region
+
+### Context
+
+The prompt names bondage and slavery as institutions of the world, to be simulated
+without euphemism and without glorification: who falls into them, who holds whom, how
+people leave them, and how a region's shape survives the grain. The customs (ADR-0042)
+say which institutions a culture allows; standing (ADR-0041) says who the elite are.
+
+### Decision
+
+1. A bond is a component on the person: its kind (bonded, enslaved), how it was entered
+   (debt, birth; capture waits for the wars of Phase 08), who holds it and since when.
+   Free persons carry nothing. The holder is a living member of the region's elite
+   who is not bound, chosen as the one with the fewest held; a holder's death frees
+   the bonded (the debt dies with the creditor) and passes the enslaved on.
+2. Entries and exits are events about the person with the reason in the payload and
+   the birth event or the death event as the cause where one exists, so the chronicle
+   (05.07) can say why. Hardening from bondage to slavery is a second entry event.
+3. Each region carries its strata as counts, written from the living while the region
+   is detailed and kept while it is coarse; 05.06 conserves them across a promotion.
+4. Every rate is a rule; every gate is a custom of the person's own culture: a culture
+   that forbids debt bondage has no debtors bound, one that forbids birth bondage has
+   nobody born enslaved, and the world without customs has no bondage at all.
+
+### Alternatives and decision rule
+
+- Holders as organisations or regions rather than persons: rejected for now; a held
+  person must be someone's for freedom by the holder's death to exist; the holder field
+  admits 0 for a later institutional holder.
+- Bondage as a tier of standing: rejected; standing is a rank among the free, bondage
+  a state that removes one from it.
+- Decided by robustness (one component, one owner, causes in the log) and by the
+  prompt's insistence that institutions be explicit.
+
+### Consequences
+
+- The bondage digest hashes every bond then every strata; it is sensitive to every
+  draw and every holder.
+- The bound are still persons: they marry, work, are ranked and chronicled like the
+  free; nothing in the lower modules knows about bonds.
+- Phase 08 will add capture as an entry and flight across the border as an exit.
+
+### Status
+
+Accepted 2026-09-06. Files: `Source/VaelenSociety/Public/Vaelen/Society/Bondage.h`,
+`Source/VaelenSociety/Private/Bondage.cpp`, `Tests/Society/Test_Bondage.cpp` (4 tests).
 Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---

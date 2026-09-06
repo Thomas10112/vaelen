@@ -8,6 +8,7 @@
 #include "Vaelen/Core/Hash.h"
 #include "Vaelen/Population/Lives.h"
 #include "Vaelen/Sim/World.h"
+#include "Vaelen/Society/Bondage.h"
 
 #include <algorithm>
 
@@ -86,7 +87,8 @@ namespace Vaelen::Society
 				{
 					const PersonInfo* P = W.Components().GetPool(Persons.Person).TryGet(H);
 					if (P == nullptr || !IsAlive(*P) || Population::AgeYears(*P, Context.Tick) < Rules.AdultFrom ||
-						std::find(Regions.begin(), Regions.end(), P->Region) == Regions.end())
+						std::find(Regions.begin(), Regions.end(), P->Region) == Regions.end() ||
+						(HasBonds && W.Components().GetPool(Bonds).TryGet(H) != nullptr))
 					{
 						Stale.push_back(H);
 					}
@@ -143,7 +145,8 @@ namespace Vaelen::Society
 							}
 							++HouseSize[P.Family];
 						}
-						if (Population::AgeYears(P, Context.Tick) >= Rules.AdultFrom)
+						if (Population::AgeYears(P, Context.Tick) >= Rules.AdultFrom &&
+							!(HasBonds && W.Components().GetPool(Bonds).TryGet(H) != nullptr))
 						{
 							Adults.push_back(Ref{H, P, 0, 0});
 						}

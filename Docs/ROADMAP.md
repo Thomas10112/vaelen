@@ -72,7 +72,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
-| 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | IN PROGRESS (05.01-05.03 VALIDATED headless; 05.04-05.08 PLANNED) |
+| 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | IN PROGRESS (05.01-05.04 VALIDATED headless; 05.05-05.08 PLANNED) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
@@ -1367,6 +1367,45 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   drifts).
 - Decision: ADR-0042.
 
+### 05.04 Bondage and slavery as institutions - VALIDATED (headless)
+
+- Delivered: `Bondage.h/.cpp` - `BondKind` (free, bonded, enslaved), `BondEntry` (debt,
+  birth; capture reserved for Phase 08), `BondExit` (manumission, flight, the holder's
+  death, death), `BondState` (16 bytes on a person: kind, entry, holder, since),
+  `RegionStrata` (16 bytes on a region: free, bonded, enslaved), `BondageTypes::Declare`,
+  `BondageRules` (15 per mille yearly chance of debt bondage for a common adult from 16
+  where the culture allows it, hardening after 15 years, 25 per mille manumission and 8
+  per mille flight a year, birth follows an enslaved mother, at most 12 held per holder),
+  events BondEntered and BondLeft (person, region, kind, reason; the birth event or the
+  death event as cause where one exists), `BondageSystem` (LOD World, after Standing and
+  Norms: for every detailed region in index order the holders are the elite not
+  themselves bound; the dead and the gone leave with their death as cause, the bonded
+  whose holder died leave with that death as cause, then manumission and flight are
+  drawn, the enslaved of a dead holder pass to the holder with the fewest held, bondage
+  past the hardening years becomes slavery with a second BondEntered; newborns of an
+  enslaved mother are born enslaved where birth bondage is allowed, common adults of a
+  culture allowing debt bondage are drawn into it and given to the holder with the
+  fewest held; the region's strata are written from the living), `BondOf`, `StrataOf`,
+  `MeasureBondage` (bonded, enslaved, stale bonds, holders lost, entries and exits by
+  reason from the log, causes carried, a digest of every bond then every strata). The
+  bond state and its enums live in `BondState.h`, shared with the standing system:
+  `StandingSystem::ObserveBonds` drops the bound from the ranks (bondage removes one
+  from standing; the 05.02 digest holds because that world has no bonds).
+- Tests (4): ten years in the busiest region of AELVOR 128 with every institution
+  allowed bind more than ten common adults for debt to living members of the elite,
+  never over the cap, with the strata equal to the living by kind, and forbidding every
+  institution binds nobody; fast hardening without manumission or flight makes the
+  enslaved outnumber the bonded, children of the enslaved are born enslaved with the
+  birth as cause, holders' deaths and deaths free the bonded with the death as cause,
+  every event names a person of the region with its kind and reason, and a culture
+  refusing birth bondage has nobody born enslaved; generous manumission and flight free
+  most within years with manumission ahead of flight, a demotion drops the bonds and
+  keeps the strata as the last count, a promotion binds again, nothing happens without
+  a detailed region; two worlds identical in state and bondage digest, a snapshot
+  between yearly ticks continued identically; frozen bondage digest `99ec62d866000c68` after 200
+  years (2888 entries, 2227 exits).
+- Decision: ADR-0043.
+
 ## 10. Phases 06-20: notes
 
 No task breakdown exists yet for Phases 06-20; each is broken down when the previous
@@ -1386,41 +1425,40 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 05 — SOCIETY
-TASK        : 05.03 — NORMS
+TASK        : 05.04 — BONDAGE AND SLAVERY AS INSTITUTIONS
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███████████░░░░░░░░░░░░░ 46%
+███████████░░░░░░░░░░░░░ 47%
 
 CURRENTLY
-→ 05.03 closed: NormSet on every culture (marrying ages, age gap, faith in marriage, eagerness to
-  marry, descent, tolerance, mobility, the bondage allowed) drawn from the culture's identity, a
-  split culture taking its parent's with one custom of its own; drifts from schisms (faith hardens,
-  tolerance falls) and great disasters (mobility rises) with NormChanged events; the marriage
-  customs mirrored into MarriageNorms that the Phase 04 family system observes, so each culture
-  marries by its own rules
+→ 05.04 closed: BondState on persons (bonded or enslaved; entered by debt or birth; the holder; since),
+  RegionStrata as counts per region (free, bonded, enslaved) written from the persons while detailed
+  and kept while coarse, the yearly BondageSystem (where the culture allows it a common adult may
+  fall into bondage for debt, held by one of the elite; bondage unredeemed for fifteen years hardens
+  into slavery; the child of an enslaved mother is born enslaved where birth bondage is allowed;
+  exits by manumission, flight, the holder's death for the bonded, death), BondEntered and BondLeft
+  events with the birth or the death as cause where one exists
 
 COMPLETED
-✓ Phases 00-04 (headless) ; 05.01 Organisations ; 05.02 Standing (CI 43)
-✓ 05.03 Norms (4 tests: Norms)
+✓ Phases 00-04 (headless) ; 05.01 Organisations ; 05.02 Standing ; 05.03 Norms (CI 44)
+✓ 05.04 Bondage and slavery (4 tests: Bondage)
 
 NEXT
-→ 05.04 Bondage and slavery as institutions (BondState, coarse shares, entries and exits with causes)
-→ 05.05 Organisations acting
+→ 05.05 Organisations acting (councils, temples, guilds, warbands deciding yearly, with events and causes)
+→ 05.06 Social shape across the grains
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenSociety/Public/Vaelen/Society/Norms.h, Private/Norms.cpp
-+ Tests/Society/Test_Norms.cpp
-~ Source/VaelenPopulation/Public/Vaelen/Population/Families.h, Private/Families.cpp (MarriageNorms, ObserveNorms:
-  marriages by the groom's culture where the culture carries norms; the 04.03 digest unchanged),
-  Source/VaelenSociety/CMakeLists.txt
++ Source/VaelenSociety/Public/Vaelen/Society/BondState.h, Bondage.h, Private/Bondage.cpp
++ Tests/Society/Test_Bondage.cpp
+~ Standing.h/.cpp (StandingSystem::ObserveBonds: the bound are not ranked), Source/VaelenSociety/CMakeLists.txt
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 37 (37 without asserts)
-  + Society 13 (13 without asserts); ctest 64/64 in all six Linux presets; every earlier frozen digest unchanged
-✓ AELVOR 128 at year 300 and 100 more with norms observed: 4 cultures with customs, 16 drifts; frozen norms digest f2b7de051eab022b
-✓ Purity: 86 files, 0 violations
+  + Society 17 (17 without asserts); ctest 65/65 in all six Linux presets; every earlier frozen digest unchanged
+✓ Region 26 of AELVOR 128 for 200 years with every institution allowed: 2888 entries, 2227 exits; frozen bondage digest 99ec62d866000c68
+✓ Purity: 89 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)
