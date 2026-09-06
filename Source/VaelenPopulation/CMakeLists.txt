@@ -7,6 +7,7 @@ set(VAELEN_POPULATION_PUBLIC_HEADERS
   Public/Vaelen/Population/Lives.h
   Public/Vaelen/Population/Families.h
   Public/Vaelen/Population/Needs.h
+  Public/Vaelen/Population/Traits.h
 )
 
 set(VAELEN_POPULATION_SOURCES
@@ -14,6 +15,7 @@ set(VAELEN_POPULATION_SOURCES
   Private/Lives.cpp
   Private/Families.cpp
   Private/Needs.cpp
+  Private/Traits.cpp
 )
 
 add_library(VaelenPopulation STATIC ${VAELEN_POPULATION_SOURCES} ${VAELEN_POPULATION_PUBLIC_HEADERS})

@@ -71,7 +71,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
-| 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | IN PROGRESS (04.01-04.04 VALIDATED headless; 04.05-04.08 PLANNED) |
+| 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | IN PROGRESS (04.01-04.05 VALIDATED headless; 04.06-04.08 PLANNED) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
@@ -1101,6 +1101,31 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   42 caused deaths).
 - Decision: ADR-0035.
 
+### 04.05 Traits, skills and names - VALIDATED (headless)
+
+- Delivered: `Traits.h/.cpp` - `PersonTraits` (16 bytes: six traits vigour, wit, will,
+  charm, boldness, piety; four skills farming, craft, fighting, lore; a named flag),
+  `TraitTypes::Declare`, `TraitRules` (heritability 500 per mille, skills from 8 to 45,
+  yearly draw below 6 scaled by the trait behind the skill, apprenticeship until 15 adds
+  a parent's skill over 64, decline from 60, names on), pure `TraitsFromIdentity` (three
+  bytes of a lattice draw averaged: a bell around 128), `TraitsFromParents` (the own draw
+  pulled toward the parents' mean), `TraitBehind`, `TraitSystem` (LOD World, after Lives:
+  traits for every person that lacks them in index order so parents come first, a name
+  built by `GenerateName` in the person's language - or its culture's latest - stored as
+  a NameInfo of scope Person on the person entity, then a year of skill for the living),
+  `PersonName`, `MeasureTraits` (living with traits, named, trait and skill sums, extremes,
+  a digest of every person's traits and skills in index order).
+- Tests (5): identities give deterministic traits with a mean in 118-138 and real tails,
+  heritability 0 leaves the own draw and 1000 copies the parents; after 60 years in the
+  busiest region of AELVOR 128 every person has traits and a pronounceable name in its
+  language, children sit far closer to their parents than to strangers; skills are zero
+  before 8, rise band by band to 45 and fade past 75, never exceed their cap, apprentices
+  of skilled parents know more, no names when refused; two worlds identical in state,
+  traits digest and names, another seed gives other names, a snapshot between yearly
+  ticks continued identically; frozen traits digest `2c2d67a504110d60` after 200 years (1499 named,
+  skill sum 358884).
+- Decision: ADR-0036.
+
 ## 9. Phases 05-20: notes
 
 No task breakdown exists yet for Phases 05-20; each is broken down when the previous
@@ -1119,41 +1144,40 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 04 — POPULATION
-TASK        : 04.04 — NEEDS AND BODY
+TASK        : 04.05 — TRAITS, SKILLS AND NAMES
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-█████████░░░░░░░░░░░░░░░ 38%
+█████████░░░░░░░░░░░░░░░ 39%
 
 CURRENTLY
-→ 04.04 closed: PersonNeeds (food, health, rest slot, hungry years; 8 bytes) on every living person
-  of a detailed region, the yearly NeedSystem (ration = capacity over the living, cut by the
-  droughts that struck this year; hunger wears health, food restores it; a plague strikes a
-  share of the persons; the frail take more), deaths at zero health published with their
-  cause (famine, starvation, plague) and the DisasterStruck event as the cause id
+→ 04.05 closed: PersonTraits (six traits from the identity, pulled toward the parents for a child;
+  four skills that grow from 8 to 45 under the trait behind them, faster beside a parent who knows
+  the trade, and fade from 60), a name for every person built in its language by the Phase 03
+  naming rules, the yearly TraitSystem, PersonName and MeasureTraits with a traits digest
 
 COMPLETED
-✓ Phases 00-03 (headless) ; 04.01 Persons (CI 34) ; 04.02 Life cycles ; 04.03 Families (CI 35, 36)
-✓ 04.04 Needs and body (6 tests: Needs)
+✓ Phases 00-03 (headless) ; 04.01 Persons (CI 34) ; 04.02 Life cycles (CI 35) ; 04.03 Families (CI 36) ; 04.04 Needs (CI 37)
+✓ 04.05 Traits, skills and names (5 tests: Traits)
 
 NEXT
-→ 04.05 Traits and skills, person names
-→ 04.06 LOD bridge (promotion/demotion cycles, persons who migrate)
+→ 04.06 LOD bridge (promotion/demotion cycles, persons who migrate, digests conserved)
+→ 04.07 Persons in history (chronicle lines and why-queries for persons)
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenPopulation/Public/Vaelen/Population/Needs.h, Private/Needs.cpp
-+ Tests/Population/Test_Needs.cpp
++ Source/VaelenPopulation/Public/Vaelen/Population/Traits.h, Private/Traits.cpp
++ Tests/Population/Test_Traits.cpp
 ~ Source/VaelenPopulation/CMakeLists.txt
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 21 (21 without asserts);
-  ctest 55/55 in all six Linux presets; the 04.01-04.03 digests unchanged
-✓ Region 26 of AELVOR 128 with lives and needs for 200 years: 1497 alive, 42 deaths caused by a
-  disaster event, every cause a DisasterStruck of the right kind and region; frozen persons digest 0e64632a2f2ded8c
-✓ Cursed world (a drought and a plague every year): 151 famine and 1085 plague deaths in 30 years,
-  immune rules give none; a region shrunk to a quarter of its capacity starves without a cause
-✓ Purity: 73 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 26 (26 without asserts);
+  ctest 56/56 in all six Linux presets; the 04.01-04.04 digests unchanged
+✓ Region 26 of AELVOR 128 with lives and traits for 200 years: 1499 named living persons, skill sum 358884;
+  frozen traits digest 2c2d67a504110d60
+✓ Traits: bell around 128 with tails over 4096 identities, children closer to their parents than to
+  strangers, skills rising by age band and fading past 75, apprentices of skilled parents ahead
+✓ Purity: 75 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)

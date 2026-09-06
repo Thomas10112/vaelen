@@ -58,6 +58,7 @@ Rules for this file:
 | [0033](#adr-0033-in-a-detailed-region-the-persons-drive-the-counts-and-the-coarse-systems-observe-an-opt-in-lod-marker) | In a detailed region the persons drive the counts and the coarse systems observe an opt-in LOD marker | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0034](#adr-0034-families-are-entities-founded-by-grooms-lineage-is-read-from-the-parent-links-and-children-are-born-to-couples) | Families are entities founded by grooms, lineage is read from the parent links, and children are born to couples | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0035](#adr-0035-needs-are-yearly-integers-fed-by-the-regions-ration-and-disasters-reach-persons-through-the-event-log) | Needs are yearly integers fed by the region's ration, and disasters reach persons through the event log | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0036](#adr-0036-traits-are-drawn-from-the-identity-and-the-parents-skills-are-earned-year-by-year-and-persons-are-named-by-their-language) | Traits are drawn from the identity and the parents, skills are earned year by year, and persons are named by their language | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -2179,6 +2180,57 @@ that later phases (traits, the player, economy) can read and push.
 
 Accepted 2026-09-06. Files: `Source/VaelenPopulation/Public/Vaelen/Population/Needs.h`,
 `Source/VaelenPopulation/Private/Needs.cpp`, `Tests/Population/Test_Needs.cpp` (6 tests).
+Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0036: Traits are drawn from the identity and the parents, skills are earned year by year, and persons are named by their language
+
+### Context
+
+Later phases (traits driving choices, the player meeting persons, dialogue) need
+persons who differ from one another in a stable, explainable way, and who can be
+called by a name in the tongue of their people. Persons already carry an identity
+hash (ADR-0032) and a language (04.01); Phase 03 has the phonologies and the naming
+function.
+
+### Decision
+
+1. Six traits, 0..255 with 128 ordinary, drawn once from the identity: three bytes of
+   a lattice draw averaged give a bell with real tails, without floating point. A child's
+   draw is pulled toward the mean of its parents by a heritability rule (half by default),
+   so lineages have a temper without a genetics model.
+2. Four skills, 0..255, that start at zero and move once a year in detailed regions: a
+   draw scaled by the trait behind the skill from 8 to 45, an apprenticeship bonus from a
+   parent who knows the trade until 15, a cap from the trait, and a slow fading from 60.
+   Skills are earned in the simulation, never drawn.
+3. Names are NameInfo components of scope Person on the person entity, built by
+   `GenerateName` from the phonology of the person's language (or its culture's latest),
+   keyed by the identity; namesakes are allowed, no salt loop and no Named event, so
+   naming thousands of persons costs one draw each and does not swell the log.
+4. Traits and names live in their own components: the persons digest of a world without
+   the trait system is unchanged, and a demotion drops them with the person.
+
+### Alternatives and decision rule
+
+- A random draw per trait from the tick's stream: rejected; traits would then depend on
+  the tick order of creation rather than on the person, and a replay from a snapshot
+  could not re-derive them.
+- Unique person names per language: rejected; real populations share names, and the
+  uniqueness scan is quadratic in the persons of a region.
+- Decided by determinism (identity-derived) and simplicity.
+
+### Consequences
+
+- Traits are queryable and explainable: "she has her mother's will" is a computation.
+- The trait behind each skill (vigour, wit, boldness, piety) is a table; Phase 05 and
+  later can add skills without touching the growth loop.
+- Names are not unique; the family (04.03) and the index tell namesakes apart.
+
+### Status
+
+Accepted 2026-09-06. Files: `Source/VaelenPopulation/Public/Vaelen/Population/Traits.h`,
+`Source/VaelenPopulation/Private/Traits.cpp`, `Tests/Population/Test_Traits.cpp` (5 tests).
 Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
