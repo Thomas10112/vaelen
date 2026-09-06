@@ -293,6 +293,29 @@ namespace Vaelen::History
 			if (HasReligion)
 			{
 				RegionFaith* F = W.Components().GetPool(Religion.Faith).TryGet(Regions[O.Region]);
+				if (F != nullptr && F->Total() > 0)
+				{
+					// The dead were believers too: every faith loses its share of the
+					// deaths, so believers never exceed the living.
+					const uint32 Living = PeopleBefore > Deaths ? PeopleBefore - Deaths : 0u;
+					const uint32 Believers = F->Total();
+					if (Believers > Living)
+					{
+						const uint32 Excess = Believers - Living;
+						for (uint32 K = 0; K < RegionFaith::MaxFaiths; ++K)
+						{
+							if (F->Religion[K] != 0)
+							{
+								F->Remove(F->Religion[K],
+										  static_cast<uint32>(uint64{Excess} * F->Adherents[K] / Believers));
+							}
+						}
+						while (F->Total() > Living && F->Majority != 0)
+						{
+							F->Remove(F->Majority, F->Total() - Living);
+						}
+					}
+				}
 				if (F != nullptr && F->Majority != 0)
 				{
 					const uint32 Slot = F->SlotOf(F->Majority);

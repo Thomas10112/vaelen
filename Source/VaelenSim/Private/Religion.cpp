@@ -601,8 +601,12 @@ namespace Vaelen::History
 				{
 					continue;
 				}
-				const uint32 Carried = static_cast<uint32>(uint64{Snapshot.Adherents[K]} * Wave.People /
-														   (PeopleBefore > 0 ? PeopleBefore : 1u));
+				// Rounded up: the source keeps at most its proportional share, so its
+				// believers never exceed its people. What the destination cannot hold
+				// (no free slot, or no room) is simply not counted there.
+				const uint64 Before = PeopleBefore > 0 ? PeopleBefore : 1u;
+				const uint32 Carried =
+					static_cast<uint32>((uint64{Snapshot.Adherents[K]} * Wave.People + Before - 1u) / Before);
 				if (Carried == 0)
 				{
 					continue;
@@ -615,16 +619,13 @@ namespace Vaelen::History
 				{
 					return;
 				}
+				const uint32 Removed = Source->Remove(Snapshot.Religion[K], Carried);
 				const uint32 Room = PopulationOf(W, Population, Regions[To]);
 				const uint32 Free = Room > Target.Total() ? Room - Target.Total() : 0u;
-				if (Free == 0)
+				const uint32 Arriving = Removed < Free ? Removed : Free;
+				if (Arriving > 0)
 				{
-					continue; // believers never exceed the people of a region
-				}
-				const uint32 Removed = Source->Remove(Snapshot.Religion[K], Carried < Free ? Carried : Free);
-				if (!Target.Add(Snapshot.Religion[K], Removed))
-				{
-					Source->Add(Snapshot.Religion[K], Removed); // no slot at the destination: they stay
+					Target.Add(Snapshot.Religion[K], Arriving);
 				}
 			}
 			return;

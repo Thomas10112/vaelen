@@ -53,6 +53,7 @@ Rules for this file:
 | [0028](#adr-0028-disasters-are-drawn-from-world-hazards-announced-by-an-omen-a-year-ahead-and-caused-by-it-with-consequences-through-the-existing-request-doors) | Disasters are drawn from world hazards, announced by an omen a year ahead and caused by it, with consequences through the existing request doors | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0029](#adr-0029-the-pre-history-is-one-object-that-owns-the-phase-03-systems-and-one-call-on-a-fresh-world-frozen-per-century-as-the-starting-state) | The pre-history is one object that owns the Phase 03 systems and one call on a fresh world, frozen per century as the starting state | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0030](#adr-0030-history-is-queried-through-the-log-and-the-records-and-read-as-text-built-from-names-with-deterministic-fallbacks) | History is queried through the log and the records, and read as text built from names with deterministic fallbacks | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0031](#adr-0031-believers-never-exceed-the-living-at-any-tick-boundary-carries-round-up-and-deaths-take-believers-first) | Believers never exceed the living at any tick boundary: carries round up and deaths take believers first | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -1905,6 +1906,51 @@ platform and after a snapshot, and must never depend on the presentation layer.
 Accepted 2026-09-06. Files: `Source/VaelenSim/Public/Vaelen/Sim/HistoryText.h`,
 `Source/VaelenSim/Private/HistoryText.cpp`, `Tests/Sim/Test_HistoryText.cpp` (5
 tests). Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0031: Believers never exceed the living at any tick boundary: carries round up and deaths take believers first
+
+### Context
+
+ADR-0027 promised that believers never exceed a region's people "once the waves of the
+last tick are delivered". The Phase 03 gate checked that bound every decade over 2000
+years and found two leaks: the migration carry rounded the believers down, so a source
+region kept a few more than its share after every wave until the yearly clamp; and a
+disaster killed people in a system that may run after the yearly clamp, leaving the
+believers above the living for a year.
+
+### Decision
+
+1. The carry is rounded up and never put back: the source loses at least its
+   proportional share of believers, and what the destination cannot hold (no slot, no
+   room) is not counted anywhere. With believers <= people before a wave, the bound
+   holds after it.
+2. A disaster takes the dead from the believers of the struck region, faith by faith in
+   proportion, before shaking the majority faith.
+3. The bound is therefore exact at every tick boundary except for a source region whose
+   wave of the last tick is still travelling; the gate test exempts exactly those.
+
+### Alternatives and decision rule
+
+- Ordering the systems so the clamp runs last: rejected; system order is by name hash
+  and a rule that depends on it would be fragile.
+- Conserving believers across a refused carry: rejected; conservation was never
+  promised, the bound was.
+- Decided by robustness: an invariant checked over 200 decades beats one argued for.
+
+### Consequences
+
+- The religion, disaster and pre-history digests from year 300 on are refrozen; the
+  chronicle text digest is unchanged.
+- The reference continent after 2000 years: 68 cultures, 33 religions (31 schisms),
+  1 137 disasters, 32 eras, 1 453 records, people at 91 percent of capacity.
+
+### Status
+
+Accepted 2026-09-06. Files: `Source/VaelenSim/Private/Religion.cpp`,
+`Source/VaelenSim/Private/Disasters.cpp`, `Tests/Sim/Test_HistoryGate.cpp` (2 tests).
+Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
 

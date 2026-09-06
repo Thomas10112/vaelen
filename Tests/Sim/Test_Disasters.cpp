@@ -26,7 +26,7 @@ using namespace Vaelen::History;
 using namespace Vaelen::WorldGen;
 
 // Recorded on clang 18 / Linux x86_64 on 2026-09-05 (03.05).
-#define VAELEN_DISASTER_FROZEN_128 0x2ac331b0540c3224ull
+#define VAELEN_DISASTER_FROZEN_128 0x073bf8b246734ad8ull
 #define VAELEN_DISASTER_COUNT_128 250u
 #define VAELEN_DISASTER_DEATHS_128 4691ull
 

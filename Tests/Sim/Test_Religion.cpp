@@ -24,9 +24,9 @@ using namespace Vaelen::History;
 using namespace Vaelen::WorldGen;
 
 // Recorded on clang 18 / Linux x86_64 on 2026-09-05 (03.04).
-#define VAELEN_RELIGION_FROZEN_128 0x3d9bf5c1c7732241ull
-#define VAELEN_RELIGION_COUNT_128 10u
-#define VAELEN_RELIGION_ADHERENTS_128 45480ull
+#define VAELEN_RELIGION_FROZEN_128 0x169e51de300cea9full
+#define VAELEN_RELIGION_COUNT_128 11u
+#define VAELEN_RELIGION_ADHERENTS_128 45682ull
 
 namespace
 {

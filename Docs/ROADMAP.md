@@ -70,8 +70,8 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
-| 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | IN PROGRESS (03.01-03.07 VALIDATED headless; 03.08 PLANNED) |
-| 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
+| 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
+| 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED (breakdown in section 8) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
@@ -95,7 +95,7 @@ Planned module names per phase are listed in `Docs/ARCHITECTURE.md` section 3.2.
 ## 4. Phase 00 - FOUNDATION: task breakdown and real status
 
 Status below was established by reading the code and the tests in `Tests/Core` and by
-running them (section 10). Test counts are from `VaelenCoreTests --list`. This numbering
+running them (section 11). Test counts are from `VaelenCoreTests --list`. This numbering
 is canonical: `Docs/STATUS.md` and commit subjects (`<phase>.<task>: ...`) use it.
 
 Master prompt scope item "interfaces de base": Phase 00 delivers only the two interfaces
@@ -128,7 +128,7 @@ Deliverables present:
   `.editorconfig`, `.gitattributes` (LF), `.gitignore`.
 - Layering and module plan: `Docs/ARCHITECTURE.md` sections 1-4.
 
-Verified: headless configure, build and `ctest` for all six Linux presets (section 10),
+Verified: headless configure, build and `ctest` for all six Linux presets (section 11),
 and the full GitHub CI matrix including Windows MSVC and macOS AppleClang (run 5, all
 9 jobs green). Not verified: any UBT build; every engine-facing file is labelled
 UNVERIFIED and has never been compiled in this repository.
@@ -802,7 +802,7 @@ Decisions taken up front (each becomes an ADR when its task closes):
   refused at the yearly tick, no faith state), double initialisation refused; two worlds
   identical, a pending request surviving a snapshot and the restored world continuing
   identically, silent rules leaving the world faithless, zeal converting more; frozen 500
-  years at 128: state `3d9bf5c1c7732241`, 10 religions, 45 480 believers.
+  years at 128: state `169e51de300cea9f`, 10 religions, 45 682 believers.
 - Fixed after CI run 29 (Windows MSVC): `FaithListener` re-resolves the source region's
   faith after `FaithOf` may have moved the pool (a dangling pointer made the migration
   carry depend on the STL's vector growth factor: 2x on libstdc++, 1.5x on MSVC, so
@@ -841,7 +841,7 @@ Decisions taken up front (each becomes an ADR when its task closes):
   that never strike, a cursed world with more disasters, deaths and dropped omens, zero
   deaths per mille, double initialisation refused); two worlds identical, pending omens
   surviving a snapshot and the restored world continuing identically, another seed
-  striking differently; frozen 500 years at 128: state `2ac331b0540c3224`, 250
+  striking differently; frozen 500 years at 128: state `073bf8b246734ad8`, 250
   disasters, 4 691 deaths.
 - Decision: ADR-0028.
 
@@ -863,8 +863,8 @@ Decisions taken up front (each becomes an ADR when its task closes):
 - Tests (5): one call on AELVOR 128 (every measure populated, the six systems scheduled,
   the text deterministic and complete, a second generation refused without change, an
   invalid config and a drowned world refused without history); the AELVOR 256 reference
-  run frozen per century - state `8142f69ae490df39` (100), `3ed2555f9853634f` (200), `275151ee080d8617`
-  (300), `380dfdd33b692cee` (400), `779f0e33912acd7b` (500), log `53a2b57f3ceaad11` - equal whether run in one
+  run frozen per century - state `8142f69ae490df39` (100), `3ed2555f9853634f` (200), `7c3534c0220f2be8`
+  (300), `48cbf2c16ab18460` (400), `445cf9df1b63ba34` (500), log `e494dd9db829f5ef` - equal whether run in one
   call or century by century, centuries distinct; a snapshot seven ticks into year 250
   restored into a fresh object (history detected, generation refused) and continued 250
   years identically in state, log and report text, agreeing with an uninterrupted run;
@@ -906,14 +906,79 @@ Decisions taken up front (each becomes an ADR when its task closes):
   `c0a39beace60c36b` (179 lines) for AELVOR 128 after 300 years, another seed telling another story.
 - Decision: ADR-0030.
 
-### 03.08 Phase 03 gate
+### 03.08 Phase 03 gate; Phase 03 close - VALIDATED (headless)
 
-- Long-duration run (2000 years at 256), invariants every decade, frozen digests on
-  four compilers; Phase 03 closed against section 2.
+- Delivered: `Tests/Sim/Test_HistoryGate.cpp` - 2000 years on AELVOR 256 through
+  `PreHistory`, every Phase 03 invariant checked every decade (population bookkeeping
+  exact and within capacity, believers never above the living except where a wave of the
+  last tick is still travelling, names unique per scope, one language per culture, every
+  religion and every disaster traced to an event in the log, eras contiguous from tick 0
+  with exactly one open), the world alive and layered after two millennia (people near
+  capacity, cultures, faiths, disasters, eras, records), the chronicle still resolving
+  completely; digests frozen at 1000, 1500 and 2000 years and the log at 2000; a
+  snapshot at year 1000 (32 MB) restored into a fresh object, continued 1000 years to the
+  same digests and re-saved byte for byte.
+- Two rules tightened by the gate (both refreeze earlier digests): `FaithListener`
+  rounds the carried believers up and never puts them back, so a source region's
+  believers never exceed its people between yearly clamps; `DisasterSystem` takes the
+  dead from the believers before shaking the faith. Religion 128: `169e51de300cea9f` (11
+  religions, 45 682 believers); disasters 128: `073bf8b246734ad8`; pre-history 256 from
+  year 300: `7c3534c0220f2be8`, `48cbf2c16ab18460`, `445cf9df1b63ba34`, log `e494dd9db829f5ef`. The chronicle text digest is
+  unchanged.
+- Decision: ADR-0031.
 
-## 8. Phases 04-20: notes
+Phase 03 against the exit criteria of section 2: (1) CI matrix green for every task
+(runs 26 to 31; run 29 red on MSVC and fixed in 03.05), 03.08 by its own run; (2)
+determinism tests for every system (two worlds, snapshot mid-run, frozen digests per
+task and per century of the reference run, on four compilers through CI); (3) no
+INCOMPLETE file, engine files UNVERIFIED; (4) unit, integration, deterministic,
+edge-case and long-duration categories present (2000 years at 256, 500 years at 1024);
+(5) ADR-0024 to ADR-0031, docs updated. Verdict: **Phase 03 VALIDATED on the headless
+side, UNVERIFIED on the engine side until the first UE 5.6 build.**
 
-No task breakdown exists yet for Phases 04-20; each is broken down when the previous
+## 8. Phase 04 - POPULATION: task breakdown and real status
+
+Goal: persons and families over the pre-history - birth, ageing, death, lineage, needs
+and demographics - simulated by the Phase 01 kernel at LOD 0-2 where the player is and
+kept as the coarse counts of Phase 03 everywhere else, so that a region can be
+promoted to persons and demoted back to counts without changing what the world knows.
+
+Decisions taken up front (each becomes an ADR when its task closes):
+
+- Two grains of population, one truth: the region's `RegionPopulation` counts (Phase
+  03) stay the aggregate; persons exist only in regions at detailed LOD and their
+  numbers by culture and faith always sum to the counts. Promotion materialises persons
+  from the counts deterministically (seed, region, tick); demotion folds them back.
+- Persons are plain-data components on entities of kind `Person`: birth tick, sex,
+  culture, language, religion, region, family, parents, state (alive, dead at tick),
+  needs and traits as small integers. Names come from `NameScope::Person` (03.03).
+- Life cycles are yearly at LOD 2 and monthly at LOD 0-1: ageing by band, mortality and
+  fertility as per-mille tables per age band and culture, marriages inside the region
+  by rules of culture and faith, inheritance of culture, language and faith from the
+  parents. Every birth, death and marriage is an event with a cause where one exists
+  (a disaster, a famine).
+- Needs (food, health, rest) are integers that decay and refill from the region's
+  capacity and events; starvation and disease deaths are caused by the Phase 03
+  disasters, so persons and history stay one story.
+- The chronicle records persons only when they matter (founders, victims of a
+  catastrophe, heads of families); `DescribeEvent` (03.07) gains the person cases.
+
+| Task | Content | Tests |
+|---|---|---|
+| 04.01 | `VaelenPopulation` module (UBT + CMake), `PersonInfo`, `PersonTypes`, deterministic materialisation of a region from its counts, demotion back, conservation | unit, deterministic, edge (empty region, six cultures), snapshot |
+| 04.02 | Ageing, mortality and fertility tables, births to couples, deaths with causes, reconciliation with the region counts every year | integration over 200 years in one detailed region, bands, frozen |
+| 04.03 | Families and lineage: `FamilyInfo`, parents and children, marriages by culture and faith, genealogy queries (ancestors, descendants, siblings) | unit, deterministic, edge (orphans, extinct families) |
+| 04.04 | Needs and body: food, health and rest, decay and refill, famine from a drought, disease from a plague, deaths caused by the disaster's event | integration with 03.05, frozen |
+| 04.05 | Traits and skills from identity and upbringing, person names, inheritance of language and faith at birth | unit, distributions in bands, frozen |
+| 04.06 | LOD bridge: promotion and demotion of regions, the coarse counts as the aggregate, digests conserved across a promote / demote cycle | deterministic, long-duration (500 years alternating) |
+| 04.07 | Persons in history: births, deaths and marriages that matter in the chronicle, why-queries and text lines for persons | integration with 03.07, text deterministic |
+| 04.08 | Phase 04 gate: 500 years with one detailed region over the 256 pre-history, invariants every decade, frozen digests on four compilers; Phase 04 closed against section 2 | long-duration |
+
+Every task ends with the usual report block, the docs refreshed and a commit.
+
+## 9. Phases 05-20: notes
+
+No task breakdown exists yet for Phases 05-20; each is broken down when the previous
 phase closes. Fixed points already in the code: `IdKind` values for Region, Tile, River,
 ResourceDeposit (Phase 02), Culture, Language, Religion, Person, Family, Organization
 (Phases 03-05), Item, Building, Settlement, Market, Route (Phases 06, 09), Polity, Law,
@@ -921,43 +986,42 @@ Army, War (Phases 07-08), Document, Map (Phase 12); `VAELEN_SAVE_FORMAT_VERSION`
 (Phase 16); `Config/DefaultEngine.ini` and `DefaultInput.ini` note that the game engine
 class and Enhanced Input mappings arrive in Phase 10.
 
-## 9. Current BUILD STATUS
+## 10. Current BUILD STATUS
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 03 — HISTORY
-TASK        : 03.07 — QUERYABLE HISTORY
+PHASE       : 03 — HISTORY (closed, headless) → 04 — POPULATION (planned)
+TASK        : 03.08 — PHASE 03 GATE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-█████████████████████░░░ 87%
+████████████████████████ 100%  (Phase 03)
 
 CURRENTLY
-→ 03.07 closed: "why" from any event or entity to its cause chain with eras and regions,
-  per-region timelines of records, and the chronicle as deterministic text lines built from
-  records, names and the entities the events are about
+→ Phase 03 closed against ROADMAP section 2: 2000 years on AELVOR 256 with every Phase 03
+  invariant checked every decade, digests frozen at 1000 / 1500 / 2000 years, a snapshot at
+  year 1000 continued to the same millennium and re-saved byte for byte
 
 COMPLETED
-✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD (headless)
-✓ 03.01 Eras (CI 26) ; 03.02 Cultures (CI 27) ; 03.03 Languages (CI 28) ; 03.04 Religions ; 03.05 Disasters (CI 30)
-✓ 03.06 Pre-history run (CI 31) ; 03.07 Queryable history (5 tests: HistoryText)
+✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD ; Phase 03 — HISTORY (headless)
+✓ 03.08 Gate (2 tests: HistoryGate) ; 03.07 (CI 32)
 
 NEXT
-→ 03.08 Phase 03 gate (2000 years at 256, invariants every decade, four compilers) and the phase close
-→ Phase 04 POPULATION breakdown (persons, families, demographics)
+→ Phase 04 POPULATION: task breakdown (persons, families, demographics over the pre-history)
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenSim/Public/Vaelen/Sim/HistoryText.h, Private/HistoryText.cpp
-+ Tests/Sim/Test_HistoryText.cpp
++ Tests/Sim/Test_HistoryGate.cpp
+~ Religion.cpp (wave carry rounded up), Disasters.cpp (the dead were believers too)
+~ Test_Religion.cpp, Test_Disasters.cpp, Test_PreHistory.cpp (refrozen)
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 160 (157 without asserts); ctest 48/48 in all six Linux presets
-✓ AELVOR 128 after 300 years: 179 chronicle lines, every record resolved, era-consistent and described;
-  every disaster explained by its omen, every religion by its founding; frozen text c0a39beace60c36b
+✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts); ctest 49/49 in all six Linux presets
+✓ AELVOR 256, 2000 years in 11 s debug: 68 cultures, 33 religions, 1 137 disasters, 32 eras, 1 453 records,
+  0 invariant failures over 200 decades; frozen 3ee019d12e58c774 / a39530dc59e041e0 / 2ce95360ad09dda9, log 1b884d94518bfe79
 ✓ Purity: 64 files, 0 violations
 
 BLOCKERS
@@ -965,7 +1029,7 @@ BLOCKERS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-## 10. Verification record
+## 11. Verification record
 
 Commands run on 2026-09-05 (clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.15, clang-format 18.1.3, Linux x86_64) with the checked-in presets, each into
 `out/build/<preset>`:
