@@ -150,6 +150,8 @@ namespace Vaelen::History
 		WorldGen::WorldSetup Setup;
 		PopulationTypes Types;
 		PopulationRules Rules;
+		Hash64 GraphDigest = 0;		 ///< derived cache, not state
+		WorldGen::RegionGraph Graph; ///< derived cache, not state
 	};
 
 	/// Monthly (LOD Statistic): migration from crowded regions to their least

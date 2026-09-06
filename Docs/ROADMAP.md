@@ -70,7 +70,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 00 | FOUNDATION | Engine-agnostic kernel skeleton with dual build, core primitives (types, ids, hashing, random streams, logging, assertions, versions), base interfaces limited to `ILogSink` and `AssertHandler` (system/archive interfaces deferred to Phase 01, section 4), test harness, purity check, CI and documentation. | VALIDATED headless (00.01-00.05); engine build UNVERIFIED |
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
-| 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | IN PROGRESS (03.01-03.05 VALIDATED headless; 03.06-03.08 PLANNED) |
+| 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | IN PROGRESS (03.01-03.06 VALIDATED headless; 03.07-03.08 PLANNED) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | PLANNED |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
@@ -845,12 +845,40 @@ Decisions taken up front (each becomes an ADR when its task closes):
   disasters, 4 691 deaths.
 - Decision: ADR-0028.
 
-### 03.06 Pre-history run and the starting state
+### 03.06 Pre-history run and the starting state - VALIDATED (headless)
 
-- A `GeneratePreHistory` call runs N years (default 500) at LOD 4 over a generated
-  world and returns the world ready for Phase 04; ASCII export of cultures by region.
-- Tests: reference run frozen per century at 256; snapshot mid-history continues
-  identically; 1024 baseline.
+- Delivered: `PreHistory.h/.cpp` - `PreHistoryRules` (population, era, language,
+  religion and disaster rules plus the default length, 500 years), `PreHistoryTypes`
+  (every Phase 02 and 03 type set), the `PreHistory` object (constructed before
+  `World::Build`: declares the types, owns and adds the six systems - Population,
+  Migration, Eras, Languages, Religions, Disasters - wires the faith listener, era and
+  religion naming, faith shaking and era requests, and a chronicle of era, culture,
+  settlement, language, religion and disaster events), `Generate(config, years)` (fresh
+  world only: generation, first cultures, history / faith / disaster state, then the
+  run; refused without change when the world has history or its clock moved, when
+  generation fails or when nobody can be seeded), `Run(years)`, `HasHistory`,
+  `ReportPreHistory` (population, names, faiths, disasters, eras, records, events,
+  entities, state and log digests), `ExportPreHistoryText` (deterministic lines),
+  `TicksPerYear`.
+- Tests (5): one call on AELVOR 128 (every measure populated, the six systems scheduled,
+  the text deterministic and complete, a second generation refused without change, an
+  invalid config and a drowned world refused without history); the AELVOR 256 reference
+  run frozen per century - state `8142f69ae490df39` (100), `3ed2555f9853634f` (200), `275151ee080d8617`
+  (300), `380dfdd33b692cee` (400), `779f0e33912acd7b` (500), log `53a2b57f3ceaad11` - equal whether run in one
+  call or century by century, centuries distinct; a snapshot seven ticks into year 250
+  restored into a fresh object (history detected, generation refused) and continued 250
+  years identically in state, log and report text, agreeing with an uninterrupted run;
+  rules flowing to every system (a quiet rule set gives no disaster and no faith),
+  seeds and a non-square world; the 1024 baseline (500 years, timed and logged, sanity
+  bounds).
+- Performance, found by the 1024 baseline (123 s in debug at first): `PopulationSystem`
+  rebuilt the region graph (a full-map pass) every year, and `MigrationSystem`,
+  `ReligionSystem` and `DisasterSystem` hashed the whole region layer every tick to key
+  their derived caches. The graph is now cached in `PopulationSystem` and the three caches
+  are keyed by a hash of the generation config, which the region layer is a pure function
+  of. Every frozen digest is unchanged; 256 x 500 years dropped from 9.3 s to 2.6 s and
+  1024 x 500 years from 123 s to 29 s (clang debug).
+- Decision: ADR-0029.
 
 ### 03.07 Queryable history
 
@@ -878,6 +906,44 @@ class and Enhanced Input mappings arrive in Phase 10.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VAELEN BUILD STATUS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PHASE       : 03 — HISTORY
+TASK        : 03.06 — PRE-HISTORY RUN AND THE STARTING STATE
+STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
+
+PROGRESS
+██████████████████░░░░░░ 75%
+
+CURRENTLY
+→ 03.06 closed: one PreHistory object wires every Phase 03 system, one Generate call builds
+  the world, seeds the cultures and runs 500 years; the AELVOR 256 reference run is frozen
+  per century, a mid-history snapshot continues identically, the 1024 baseline is logged
+
+COMPLETED
+✓ Phase 00 — FOUNDATION ; Phase 01 — CORE SIMULATION ; Phase 02 — WORLD (headless)
+✓ 03.01 Eras (CI 26) ; 03.02 Cultures (CI 27) ; 03.03 Languages (CI 28) ; 03.04 Religions ; 03.05 Disasters (CI 30)
+✓ 03.06 Pre-history run (5 tests: PreHistory)
+
+NEXT
+→ 03.07 Queryable history (why-queries, per-region timeline, chronicle text from records and names)
+→ 03.08 Phase 03 gate (2000 years at 256, invariants every decade, four compilers)
+→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
+
+FILES
++ Source/VaelenSim/Public/Vaelen/Sim/PreHistory.h, Private/PreHistory.cpp
++ Tests/Sim/Test_PreHistory.cpp
+~ Population.h/.cpp (region graph cached per year instead of rebuilt), Religion.cpp, Disasters.cpp
+  (derived caches keyed by the generation config, not by hashing the region layer every tick)
+
+TESTS
+✓ Core 133 (108 without asserts) + Sim 155 (152 without asserts); ctest 47/47 in all six Linux presets
+✓ AELVOR 256, 500 years: 187 398 people, 9 cultures, 6 religions, 182 disasters,
+  303 records; state 779f0e33912acd7b at year 500 (frozen per century), 2.6 s debug; 1024 in 29.3 s
+✓ Purity: 62 files, 0 violations
+
+BLOCKERS
+∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 03 — HISTORY

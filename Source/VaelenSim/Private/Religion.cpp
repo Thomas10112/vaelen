@@ -312,7 +312,10 @@ namespace Vaelen::History
 		{
 			return;
 		}
-		const Hash64 Digest = RegionLayer->Hash();
+		// The region layer is a pure function of the world seed and the generation
+		// config, so the config is the cache key: hashing the layer itself costs a
+		// pass over every tile per tick (2 MB at 1024).
+		const Hash64 Digest = HashBytes(reinterpret_cast<const char*>(&W.Map().Config()), sizeof(WorldGenConfig));
 		if (Digest != GraphDigest)
 		{
 			Graph = WorldGen::BuildRegionGraph(W.Map(), Setup.Regions);

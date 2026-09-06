@@ -51,6 +51,7 @@ Rules for this file:
 | [0026](#adr-0026-names-are-built-from-a-per-language-phonology-pronounceable-by-construction-unique-per-scope-and-stored-as-fixed-size-components) | Names are built from a per-language phonology, pronounceable by construction, unique per scope, and stored as fixed-size components | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0027](#adr-0027-religions-are-entities-born-from-a-founding-event-with-believers-per-region-bounded-by-its-people-spreading-along-the-graph-and-with-migration) | Religions are entities born from a founding event, with believers per region bounded by its people, spreading along the graph and with migration | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0028](#adr-0028-disasters-are-drawn-from-world-hazards-announced-by-an-omen-a-year-ahead-and-caused-by-it-with-consequences-through-the-existing-request-doors) | Disasters are drawn from world hazards, announced by an omen a year ahead and caused by it, with consequences through the existing request doors | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0029](#adr-0029-the-pre-history-is-one-object-that-owns-the-phase-03-systems-and-one-call-on-a-fresh-world-frozen-per-century-as-the-starting-state) | The pre-history is one object that owns the Phase 03 systems and one call on a fresh world, frozen per century as the starting state | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -1799,6 +1800,58 @@ and `ReligionSystem::RequestFounding(region, cause, kind)`.
 
 Accepted 2026-09-05. Files: `Source/VaelenSim/Public/Vaelen/Sim/Disasters.h`,
 `Source/VaelenSim/Private/Disasters.cpp`, `Tests/Sim/Test_Disasters.cpp` (5 tests).
+Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0029: The pre-history is one object that owns the Phase 03 systems and one call on a fresh world, frozen per century as the starting state
+
+### Context
+
+Phase 04 needs a starting state: regions with peoples, faiths and names, a chronicle
+with causes, named eras. Six systems and two listeners from 03.01 to 03.05 produce it,
+each with its own types, rules and wiring; every test so far assembled them by hand.
+The prompt wants "a `GeneratePreHistory` call" and a reference run frozen per century.
+
+### Decision
+
+1. `PreHistory` is the one place that assembles Phase 03: it declares every type,
+   owns the systems and listeners, wires the optional couplings (era and religion
+   naming, faith shaken by disasters, eras opened by catastrophes, the chronicle's
+   event types) and adds the systems before `World::Build`. The systems stay separate
+   classes with separate rules; the object only composes them.
+2. `Generate` works on a fresh world only (no history state, clock at its start) and
+   refuses otherwise without touching anything; a restored snapshot is continued with
+   `Run`. So a world has exactly one origin: generated once, or loaded.
+3. The reference is the AELVOR 256 run with one state digest per century and the log
+   digest at 500 years, and it must be reached identically in one call or century by
+   century; the test also proves a mid-history snapshot continues to the same digests.
+4. The report is a struct of the existing measures plus digests; its text form is
+   deterministic so later tooling can diff runs.
+
+### Alternatives and decision rule
+
+- A free function that creates systems on the heap and leaks them into the world:
+  rejected; ownership must be explicit for snapshots, tests and the engine wrapper.
+- Freezing only the final digest: rejected; per-century digests localise a divergence
+  to a century when a compiler or a rule changes.
+- Running at a coarser LOD than the systems declare: not needed; the world LOD
+  already runs the yearly systems once a year and migration monthly.
+- Decided by robustness (one origin, refusals without side effects) and simplicity.
+
+### Consequences
+
+- The chronicle records era, culture, settlement, language, religion and disaster
+  events, not omens, waves or conversions: a 500-year run keeps a few hundred records.
+- The frozen century digests change whenever any Phase 03 rule or system changes; the
+  test names the century that moved.
+- Phase 04 receives the world through the same object, so its systems are added the
+  same way after Phase 03's.
+
+### Status
+
+Accepted 2026-09-06. Files: `Source/VaelenSim/Public/Vaelen/Sim/PreHistory.h`,
+`Source/VaelenSim/Private/PreHistory.cpp`, `Tests/Sim/Test_PreHistory.cpp` (5 tests).
 Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
