@@ -27,6 +27,8 @@
 #include "Vaelen/Society/SocietyApi.h"
 #include "Vaelen/Society/Standing.h"
 
+#include <string>
+#include <string_view>
 #include <vector>
 
 namespace Vaelen
@@ -91,10 +93,22 @@ namespace Vaelen::Society
 		}
 		const char* GetName() const noexcept override { return "Bondage"; }
 		SimLod GetLod() const noexcept override { return SimLod::World; }
-		std::vector<std::string_view> GetDependencies() const override { return {"Standing", "Norms"}; }
+		std::vector<std::string_view> GetDependencies() const override
+		{
+			std::vector<std::string_view> Out{"Standing", "Norms"};
+			for (const std::string& Name : After)
+			{
+				Out.push_back(Name);
+			}
+			return Out;
+		}
+		/// Runs after another yearly system too (Lod), so that a promotion's
+		/// persons are bound in the same tick. The system must exist.
+		void RunAfter(std::string_view Name) { After.emplace_back(Name); }
 		void Tick(TickContext& Context) override;
 
 	private:
+		std::vector<std::string> After;
 		World* Owner;
 		History::PreHistoryTypes Types;
 		Population::PersonTypes Persons;
@@ -117,8 +131,8 @@ namespace Vaelen::Society
 		uint32 Enslaved = 0;
 		uint32 Stale = 0;		///< bonds on the dead or the gone
 		uint32 HolderLost = 0;	///< bonds whose holder is dead, gone or not of the region
-		uint32 Entered[4] = {}; ///< by BondEntry, from the log
-		uint32 Left[5] = {};	///< by BondExit, from the log
+		uint32 Entered[5] = {}; ///< by BondEntry, from the log
+		uint32 Left[6] = {};	///< by BondExit, from the log
 		uint32 Caused = 0;		///< entries and exits with a cause id
 		Hash64 Digest = 0;		///< every bond in person index order, then every strata in region order
 	};

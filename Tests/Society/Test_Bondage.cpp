@@ -406,7 +406,7 @@ VAELEN_TEST(Bondage, DeterministicSnapshotSafeAndFrozen)
 	W.Ages.Run(200);
 	const BondageStats S = W.Stats();
 	const uint32 Entered = S.Entered[1] + S.Entered[2] + S.Entered[3];
-	const uint32 Left = S.Left[1] + S.Left[2] + S.Left[3] + S.Left[4];
+	const uint32 Left = S.Left[1] + S.Left[2] + S.Left[3] + S.Left[4] + S.Left[5];
 	VAELEN_LOG_INFO(LogBondage, "frozen: bondage128=%016llx entered=%u left=%u (%u bonded, %u enslaved now)",
 					static_cast<unsigned long long>(S.Digest), Entered, Left, S.Bonded, S.Enslaved);
 	VT_CHECK_EQ(S.Digest, Hash64{VAELEN_BONDAGE_FROZEN_128});

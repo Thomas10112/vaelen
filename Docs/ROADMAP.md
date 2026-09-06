@@ -72,7 +72,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
-| 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | IN PROGRESS (05.01-05.05 VALIDATED headless; 05.06-05.08 PLANNED) |
+| 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | IN PROGRESS (05.01-05.06 VALIDATED headless; 05.07-05.08 PLANNED) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
@@ -1441,6 +1441,31 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   frozen stores digest `d99d3be56bcbfe4f` after 100 years (155 decisions by 4 organisations).
 - Decision: ADR-0044.
 
+### 05.06 Social shape across the grains - VALIDATED (headless)
+
+- Delivered: in `Bondage.h/.cpp` - `BondEntry::Promotion` and `BondExit::Departure`,
+  `BondageSystem::RunAfter` (Lod, so a promotion's persons are bound in the same tick),
+  and a first step of the yearly tick: a detailed region whose living carry no bond
+  while its kept strata count the bonded and the enslaved binds as many of its common
+  adults again, in index order, the enslaved first, each held by the holder with the
+  fewest held, with a BondEntered event of reason Promotion; the departed (gone over the
+  border) leave their bonds with a BondLeft of reason Departure instead of a death.
+  The strata written from the living while detailed and kept while coarse (05.04) are
+  thereby honoured at a promotion; the organisations' member counts (05.01) and the
+  standings (05.02) already follow the persons.
+- Tests (3): twenty years of bondage without manumission in the busiest region of AELVOR
+  128, then a demotion keeps the strata and the bondage digest unchanged, and a promotion
+  binds the strata's count again the same tick (within the year's deaths and the holders'
+  room), the enslaved first, with one Promotion entry each, the strata equal to the
+  persons again; a shrunk region sends people over the border and their bonds leave by
+  departure, none sits on a gone person; 500 years at 64 with two of the three busiest
+  regions detailed in turn every 25 years keep every invariant each decade - strata of
+  detailed regions equal to the living by kind, coarse strata bounded, no stale bond or
+  standing, no lost holder, no astray membership, no mirror mismatch - two worlds
+  identical, the year-250 snapshot continued to the same year 500; frozen bondage digest
+  `7d6be89760aa4807` (21 promotions, 1168 bound again by the strata).
+- Decision: ADR-0045.
+
 ## 10. Phases 06-20: notes
 
 No task breakdown exists yet for Phases 06-20; each is broken down when the previous
@@ -1460,41 +1485,38 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 05 — SOCIETY
-TASK        : 05.05 — ORGANISATIONS ACTING
+TASK        : 05.06 — SOCIAL SHAPE ACROSS THE GRAINS
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███████████░░░░░░░░░░░░░ 48%
+████████████░░░░░░░░░░░░ 49%
 
 CURRENTLY
-→ 05.05 closed: guilds and warbands founded and seated by the organisation system from the skilled;
-  the yearly DecisionSystem - a council lays in grain after a drought (RegionStores that the need
-  system observes, softening the next drought's cut), a temple preaches and converts a share of the
-  region's people of other faiths (persons first, counts reconciled), a guild trains its members'
-  craft, a warband plans a raid on the most peopled neighbour every five years (RaidPlanned for
-  Phase 08); DecisionMade events with the drought or the raid as cause
+→ 05.06 closed: a region's strata (free, bonded, enslaved), kept as counts through a demotion, bind
+  the new persons again in the tick of a promotion (BondEntry::Promotion, common adults in index
+  order, held by the elite); the departed leave their bonds behind (BondExit::Departure); the
+  bondage system runs after the bridge; 500 years of alternation at 64 with every Phase 04 and
+  05 system keep every invariant each decade, two worlds identical, the year-250 snapshot
+  continued to the same year 500
 
 COMPLETED
-✓ Phases 00-04 (headless) ; 05.01-05.04 (CI 45)
-✓ 05.05 Organisations acting (4 tests: Decisions)
+✓ Phases 00-04 (headless) ; 05.01-05.05 (CI 46)
+✓ 05.06 Social shape across the grains (3 tests: Strata)
 
 NEXT
-→ 05.06 Social shape across the grains (strata shares kept through demotion, honoured at promotion)
-→ 05.07 Society in history
+→ 05.07 Society in history (foundings, disbandings, decisions, enslavements and manumissions in the chronicle)
+→ 05.08 Phase 05 gate
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenSociety/Public/Vaelen/Society/Decisions.h, Private/Decisions.cpp
-+ Tests/Society/Test_Decisions.cpp
-~ Needs.h/.cpp (RegionStores, NeedSystem::ObserveStores), Organizations.h/.cpp (guilds and warbands: founding
-  thresholds, seats by craft and fighting, heads by skill), Test_Organizations.cpp and Test_Standing.cpp
-  and Test_Bondage.cpp (refrozen: guilds and warbands now exist), Source/VaelenSociety/CMakeLists.txt
++ Tests/Society/Test_Strata.cpp
+~ Source/VaelenSociety/Public/Vaelen/Society/Bondage.h, Private/Bondage.cpp (Promotion entry, Departure exit,
+  RunAfter, the strata honoured at a promotion)
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 37 (37 without asserts)
-  + Society 21 (21 without asserts); ctest 66/66 in all six Linux presets; Phase 03 and 04 digests unchanged
-✓ Region 26 of AELVOR 128 for 100 years: 155 decisions by 4 organisations; frozen stores digest d99d3be56bcbfe4f;
-  organisations refrozen 8ce703a8fa934de0, standing refrozen ddad5d79565a46f8, bondage refrozen a1a92018c62bc034
+  + Society 24 (24 without asserts); ctest 67/67 in all six Linux presets; every earlier frozen digest unchanged
+✓ 500 years at 64 alternating: 21 promotions, 1168 persons bound again by the strata; frozen bondage digest 7d6be89760aa4807
 ✓ Purity: 91 files, 0 violations
 
 BLOCKERS

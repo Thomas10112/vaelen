@@ -20,7 +20,8 @@ namespace Vaelen::Society
 		None = 0,
 		Debt = 1,
 		Birth = 2,
-		Capture = 3, ///< Phase 08
+		Capture = 3,   ///< Phase 08
+		Promotion = 4, ///< bound again from the region's strata when it is detailed (05.06)
 	};
 	enum class BondExit : uint8
 	{
@@ -29,6 +30,7 @@ namespace Vaelen::Society
 		Flight = 2,
 		HolderDied = 3,
 		Death = 4,
+		Departure = 5, ///< left the region for the coarse grain (05.06)
 	};
 	/// Component on a person while it is not free.
 	struct BondState

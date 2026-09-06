@@ -67,6 +67,7 @@ Rules for this file:
 | [0042](#adr-0042-norms-live-on-the-culture-and-reach-the-lower-modules-through-a-small-mirror-they-choose-to-observe) | Norms live on the culture and reach the lower modules through a small mirror they choose to observe | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0043](#adr-0043-bondage-is-a-state-on-the-person-with-a-living-holder-among-the-elite-and-a-count-per-region) | Bondage is a state on the person with a living holder among the elite, and a count per region | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0044](#adr-0044-organisations-act-through-one-yearly-system-whose-effects-reach-the-lower-modules-as-state-they-observe-or-as-events-they-ignore) | Organisations act through one yearly system whose effects reach the lower modules as state they observe or as events they ignore | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0045](#adr-0045-the-social-shape-of-a-region-is-a-count-that-outlives-its-persons-and-binds-the-next-ones) | The social shape of a region is a count that outlives its persons and binds the next ones | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -2666,6 +2667,53 @@ Accepted 2026-09-06. Files: `Source/VaelenSociety/Public/Vaelen/Society/Decision
 `Source/VaelenSociety/Private/Decisions.cpp`, `Source/VaelenSociety/Public/Vaelen/Society/Organizations.h`,
 `Source/VaelenSociety/Private/Organizations.cpp`, `Source/VaelenPopulation/Public/Vaelen/Population/Needs.h`,
 `Source/VaelenPopulation/Private/Needs.cpp`, `Tests/Society/Test_Decisions.cpp` (4 tests).
+Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0045: The social shape of a region is a count that outlives its persons and binds the next ones
+
+### Context
+
+Persons exist only while a region is detailed (ADR-0032); the bonds on them (ADR-0043)
+vanish with a demotion. A region that held a hundred enslaved should not be free the
+day the player looks away and back.
+
+### Decision
+
+1. The strata (free, bonded, enslaved) are counts on the region, written from the
+   living while the region is detailed and kept while it is coarse; a promote /
+   demote cycle without a tick leaves them and the bondage digest untouched.
+2. At a promotion the bondage system, running after the bridge, sees a region whose
+   living carry no bond while its strata count some, and binds as many of its common
+   adults again in index order - the enslaved first, each to the holder with the
+   fewest held - with an entry of reason Promotion, so history knows these bonds were
+   inherited from the count, not entered by a person's debt or birth.
+3. A person who leaves over the border (ADR-0037) leaves the bond with a Departure
+   exit, never a death; the destination's coarse strata are not changed (the count
+   there is a memory of its last detail).
+
+### Alternatives and decision rule
+
+- Persisting the bound as persons through a demotion: rejected; the region's persons
+  are folded into counts as a whole, and bonds without persons are meaningless.
+- Binding at random rather than by index order: rejected; the promotion must be
+  reproducible and the bound must be common adults, which the order already gives.
+- Decided by determinism and by the two-grain rule (counts are the truth of the
+  coarse grain).
+
+### Consequences
+
+- The set of persons bound after a promotion differs from the set before the demotion
+  (the persons are new); the count is conserved up to the year's deaths and the
+  holders' room, and the test bounds the difference.
+- Organisations' member counts and standings already follow the persons; the strata
+  were the last social count without a road back.
+
+### Status
+
+Accepted 2026-09-06. Files: `Source/VaelenSociety/Public/Vaelen/Society/Bondage.h`,
+`Source/VaelenSociety/Private/Bondage.cpp`, `Tests/Society/Test_Strata.cpp` (3 tests).
 Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---

@@ -57,6 +57,8 @@ namespace Vaelen::Society
 			return "birth";
 		case BondEntry::Capture:
 			return "capture";
+		case BondEntry::Promotion:
+			return "the region's strata";
 		default:
 			return "?";
 		}
@@ -76,6 +78,8 @@ namespace Vaelen::Society
 			return "the holder's death";
 		case BondExit::Death:
 			return "death";
+		case BondExit::Departure:
+			return "departure";
 		default:
 			return "?";
 		}
@@ -248,7 +252,57 @@ namespace Vaelen::Society
 				}
 				return Best;
 			};
-			// 1. Exits: the dead, the gone, the freed, the fled, the bonded whose holder died.
+			// 0. A region detailed again: its strata bind the new persons before
+			//    anything else happens to them (the social shape survives the grain).
+			bool AnyBond = false;
+			for (const Ref& R : People)
+			{
+				AnyBond =
+					AnyBond || (IsAlive(R.Info) && W.Components().GetPool(Bonds.Bond).TryGet(R.Handle) != nullptr);
+			}
+			const RegionStrata* Kept = W.Components().GetPool(Bonds.Strata).TryGet(RegionHandles[Region]);
+			if (!AnyBond && Kept != nullptr && Kept->Bonded + Kept->Enslaved > 0 && !Holders.empty())
+			{
+				uint32 ToEnslave = Kept->Enslaved;
+				uint32 ToBind = Kept->Bonded;
+				for (const Ref& R : People)
+				{
+					if (ToEnslave + ToBind == 0)
+					{
+						break;
+					}
+					const PersonStanding* S = W.Components().GetPool(Standing.Standing).TryGet(R.Handle);
+					if (!IsAlive(R.Info) || S == nullptr || S->Tier_ != static_cast<uint8>(Tier::Common) ||
+						Population::AgeYears(R.Info, Context.Tick) < Rules.DebtFromAge)
+					{
+						continue;
+					}
+					const uint32 Holder = NextHolder();
+					if (Holder == 0)
+					{
+						break;
+					}
+					const bool Enslave = ToEnslave > 0;
+					BondState B;
+					B.Kind = static_cast<uint8>(Enslave ? BondKind::Enslaved : BondKind::Bonded);
+					B.Entry = static_cast<uint8>(BondEntry::Promotion);
+					B.Holder = Holder;
+					B.Since = Context.Tick;
+					if (Enslave)
+					{
+						--ToEnslave;
+					}
+					else
+					{
+						--ToBind;
+					}
+					W.Components().GetPool(Bonds.Bond).Add(R.Handle, B);
+					Context.Events->Publish(Context.Tick, BondEnteredEvent,
+											BondPayload{R.Info.Index, Region, B.Kind, B.Entry},
+											W.Entities().GetId(R.Handle));
+				}
+			}
+			// 1. Exits: the dead, the departed, the freed, the fled, the bonded whose holder died.
 			for (const Ref& R : People)
 			{
 				const BondState* B = W.Components().GetPool(Bonds.Bond).TryGet(R.Handle);
@@ -258,7 +312,9 @@ namespace Vaelen::Society
 				}
 				if (!IsAlive(R.Info))
 				{
-					Leave(R, BondExit::Death, EventOf(Died, R.Info.Index));
+					const bool Gone = R.Info.State == static_cast<uint8>(LifeState::Gone);
+					Leave(R, Gone ? BondExit::Departure : BondExit::Death,
+						  Gone ? PersistentId{} : EventOf(Died, R.Info.Index));
 					continue;
 				}
 				const Ref* Holder = B->Holder != 0 ? FindRef(B->Holder) : nullptr;
@@ -475,7 +531,7 @@ namespace Vaelen::Society
 				const BondPayload P = E.Get<BondPayload>();
 				if (Region == 0 || P.Region == Region)
 				{
-					++S.Entered[P.Reason < 4 ? P.Reason : 0];
+					++S.Entered[P.Reason < 5 ? P.Reason : 0];
 					S.Caused += E.Cause.IsValid() ? 1u : 0u;
 				}
 			}
@@ -484,7 +540,7 @@ namespace Vaelen::Society
 				const BondPayload P = E.Get<BondPayload>();
 				if (Region == 0 || P.Region == Region)
 				{
-					++S.Left[P.Reason < 5 ? P.Reason : 0];
+					++S.Left[P.Reason < 6 ? P.Reason : 0];
 					S.Caused += E.Cause.IsValid() ? 1u : 0u;
 				}
 			}
