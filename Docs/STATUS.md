@@ -12,43 +12,44 @@ refresh").
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 04 — POPULATION
-TASK        : 04.07 — PERSONS IN HISTORY
+PHASE       : 04 — POPULATION (CLOSED) → 05 — SOCIETY (BREAKDOWN)
+TASK        : 04.08 — PHASE 04 GATE AND CLOSE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████████░░░░░░░░░░░░░░ 42%
+██████████░░░░░░░░░░░░░░ 43%
 
 CURRENTLY
-→ 04.07 closed: the PersonChronicle listener turns the person events that matter (houses founded
-  and died out, deaths with a cause, heads of house dying or marrying, the chronicle's focus
-  moving) into the Phase 03 Record entities under a yearly cap per region; one sentence for
-  every person event (births, deaths with their cause, marriages, houses, crossings, focus);
-  the unified chronicle text; a person's timeline and story, the why-chain of a death reaching
-  the disaster that killed
+→ 04.08 closed: 500 years on AELVOR 256 with the busiest region detailed and every Phase 04 system
+  on (lives, families, needs, traits, the bridge, the person chronicle), every Phase 04 invariant
+  checked each decade, state frozen at 250 and 500 years with the persons and the log, the year
+  250 snapshot continued to the same year 500; Phase 04 closed against ROADMAP section 2;
+  Phase 05 (SOCIETY) broken down into 05.01-05.08 (ROADMAP section 9)
 
 COMPLETED
-✓ Phases 00-03 (headless) ; 04.01-04.05 (CI 34-38) ; 04.06 LOD bridge (CI 38)
-✓ 04.07 Persons in history (5 tests: PersonHistory) (CI 39)
+✓ Phases 00-03 (headless) ; 04.01-04.06 (CI 34-39) ; 04.07 Persons in history (CI 39)
+✓ 04.08 Phase 04 gate (1 test: PopulationGate) (CI 40) ; Phase 04 VALIDATED (headless)
 
 NEXT
-→ 04.08 Phase 04 gate (500 years with a detailed region over the 256 pre-history; Phase 04 closed)
-→ Phase 05 breakdown
+→ 05.01 VaelenSociety module, organisations as entities, membership, founding from a region's persons
+→ 05.02 Status and rank
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenPopulation/Public/Vaelen/Population/PersonHistory.h, Private/PersonHistory.cpp
-+ Tests/Population/Test_PersonHistory.cpp
-~ Persons.h/.cpp (LifeState::Gone, DetailStats.Gone), Lod.h/.cpp (emigrants stay as gone persons so
-  their lines keep their names), Test_Lod.cpp, CMakeLists.txt
++ Tests/Population/Test_PopulationGate.cpp
+~ Families.h/.cpp (the heads step reads a fresh index: a head who married out this year is replaced this
+  year; FamilySystem::RunAfter so heads and spouses follow the deaths of Needs and the departures of
+  Lod in the same tick), Test_PersonHistory.cpp (refrozen: 1222 records), Traits.cpp (a person without a language yet is named the next year, not
+  never), PersonHistory.h/.cpp (a PersonIndex built once per export or check instead of a pool scan
+  per name), Tests/Population/CMakeLists.txt (gate 1800 s, Shuffled 5400 s), Docs (Phase 04 verdict,
+  Phase 05 breakdown, ADR-0039)
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 36 (36 without asserts);
-  ctest 58/58 in all six Linux presets; the 04.01-04.06 digests unchanged
-✓ Region 26 of AELVOR 128 chronicled for 100 years with every Phase 04 system: 1248 person records,
-  every one with its own line; frozen chronicle text f097d2b9938ed0bc
-✓ Cursed region: the story of a plague death ends "because a plague struck", a famine death reaches
-  the drought, a natural death has no why; the yearly cap holds and dropped events are counted
+✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 37 (37 without asserts);
+  ctest 59/59 in all six Linux presets; every Phase 03 and Phase 04 frozen digest unchanged
+✓ Gate: 500 years at 256 with region 42 detailed in 222.8 s (clang debug); frozen 250=04f8a05bee8c3313
+  500=de9467e086c9560e persons=f5f4643d97ce5068 log=ba7af3a8312954d8; 7617 alive at the end, 2602 families,
+  4667 person records
 ✓ Purity: 79 files, 0 violations
 
 BLOCKERS
@@ -151,7 +152,22 @@ the first UE 5.6 build.**
 | 04.05 | PersonTraits and TraitSystem (traits from identity and parents, skills through life, names in the person's language) | VALIDATED: Traits 5 tests |
 | 04.06 | LodState, LodSystem (requests, promotions, demotions, crossings both ways) | VALIDATED: Lod 5 tests |
 | 04.07 | PersonChronicle listener, person lines, unified chronicle, stories and the why of a death | VALIDATED: PersonHistory 5 tests |
-| 04.08 | Phase 04 gate | PLANNED |
+| 04.08 | Phase 04 gate: 500 years at 256 with a detailed region and every Phase 04 system, invariants every decade, frozen at 250 / 500, snapshot at year 250 | VALIDATED: PopulationGate 1 test |
+
+Phase 04 against the exit criteria (`Docs/ROADMAP.md` section 2): (1) CI matrix green
+for 04.01 to 04.07 (runs 34 to 39), 04.08 by its own run; (2) determinism tests for every
+system, frozen digests per task and for the gate at 250 and 500 years, reproduced by
+clang, gcc, MSVC and AppleClang; (3) no INCOMPLETE file, engine files UNVERIFIED; (4)
+unit, integration, deterministic, edge-case and long-duration categories present (500
+years at 256 with a detailed region, 500 years of LOD alternation at 64); (5) ADR-0032 to
+ADR-0039, docs updated. Verdict: **Phase 04 VALIDATED on the headless side, UNVERIFIED on
+the engine side until the first UE 5.6 build.**
+
+## Phase 05 task breakdown (canonical numbering: `Docs/ROADMAP.md` section 9)
+
+| Task | Content | Status |
+|---|---|---|
+| 05.01-05.08 | Organisations, status and rank, norms, bondage and slavery, organisations acting, social shape across the grains, society in history, gate | PLANNED |
 
 ## File status
 
@@ -254,8 +270,9 @@ the purity checker, applied to headers and sources).
 | `Population/Test_Traits.cpp` (Phase 04) | VALIDATED | 5 |
 | `Population/Test_Lod.cpp` (Phase 04) | VALIDATED | 5 |
 | `Population/Test_PersonHistory.cpp` (Phase 04) | VALIDATED | 5 |
+| `Population/Test_PopulationGate.cpp` (Phase 04) | VALIDATED | 1 |
 
-Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 5, Deposits 5, WorldPipeline 4, History 3, Population 5, Naming 5, Religion 5, Disasters 5, PreHistory 5, HistoryText 5, HistoryGate 2 (162 tests; 159 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.History`, `Sim.Population`, `Sim.Naming`, `Sim.Religion`, `Sim.Disasters`, `Sim.PreHistory`, `Sim.HistoryText`, `Sim.HistoryGate`, `Sim.Registry`, `Sim.Shuffled` (42 entries in total). Population suites: Persons 5, Lives 5, Families 5, Needs 6, Traits 5, Lod 5, PersonHistory 5 (36 tests; 36 without assertions); CTest entries `Population.Persons`, `Population.Lives`, `Population.Families`, `Population.Needs`, `Population.Traits`, `Population.Lod`, `Population.PersonHistory`, `Population.Registry`, `Population.Shuffled` (9 entries).
+Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 5, Deposits 5, WorldPipeline 4, History 3, Population 5, Naming 5, Religion 5, Disasters 5, PreHistory 5, HistoryText 5, HistoryGate 2 (162 tests; 159 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.History`, `Sim.Population`, `Sim.Naming`, `Sim.Religion`, `Sim.Disasters`, `Sim.PreHistory`, `Sim.HistoryText`, `Sim.HistoryGate`, `Sim.Registry`, `Sim.Shuffled` (42 entries in total). Population suites: Persons 5, Lives 5, Families 5, Needs 6, Traits 5, Lod 5, PersonHistory 5, PopulationGate 1 (37 tests; 37 without assertions); CTest entries `Population.Persons`, `Population.Lives`, `Population.Families`, `Population.Needs`, `Population.Traits`, `Population.Lod`, `Population.PersonHistory`, `Population.PopulationGate`, `Population.Registry`, `Population.Shuffled` (10 entries).
 
 ### Tools/ and CI
 
@@ -272,16 +289,16 @@ Toolchain: clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.1
 
 | Preset | Build | `ctest` | `VaelenCoreTests` | `VaelenSimTests` | `VaelenPopulationTests` |
 |---|---|---|---|---|---|
-| linux-clang-debug | 0 warnings | 58/58 passed | 133 run, 133 passed, 22097 checks | 162 run, 162 passed | 36 run, 36 passed |
-| linux-gcc-debug | 0 warnings | 58/58 passed | 133 run, 133 passed, 22097 checks | 162 run, 162 passed | 36 run, 36 passed |
-| linux-clang-release | 0 warnings | 58/58 passed | 133 run, 133 passed, 22097 checks | 162 run, 162 passed | 36 run, 36 passed |
-| linux-gcc-release | 0 warnings | 58/58 passed | 133 run, 133 passed, 22097 checks | 162 run, 162 passed | 36 run, 36 passed |
-| linux-clang-noasserts | 0 warnings | 58/58 passed | 108 run, 108 passed, 21884 checks | 159 run, 159 passed | 36 run, 36 passed |
-| linux-gcc-noasserts | 0 warnings | 58/58 passed | 108 run, 108 passed, 21884 checks | 159 run, 159 passed | 36 run, 36 passed |
+| linux-clang-debug | 0 warnings | 59/59 passed | 133 run, 133 passed, 22097 checks | 162 run, 162 passed | 37 run, 37 passed |
+| linux-gcc-debug | 0 warnings | 59/59 passed | 133 run, 133 passed, 22097 checks | 162 run, 162 passed | 37 run, 37 passed |
+| linux-clang-release | 0 warnings | 59/59 passed | 133 run, 133 passed, 22097 checks | 162 run, 162 passed | 37 run, 37 passed |
+| linux-gcc-release | 0 warnings | 59/59 passed | 133 run, 133 passed, 22097 checks | 162 run, 162 passed | 37 run, 37 passed |
+| linux-clang-noasserts | 0 warnings | 59/59 passed | 108 run, 108 passed, 21884 checks | 159 run, 159 passed | 37 run, 37 passed |
+| linux-gcc-noasserts | 0 warnings | 59/59 passed | 108 run, 108 passed, 21884 checks | 159 run, 159 passed | 37 run, 37 passed |
 
 Mini-world baseline (100 000 ticks, 41 entities, 305 027 events, 34 168 227-byte snapshot), logged by `Sim.MiniWorld`, not asserted: clang debug 0.39 s (255 k ticks/s), gcc debug 0.40 s, clang release 0.135 s (739 k ticks/s), gcc release without assertions 0.127 s (790 k ticks/s); snapshot 0.09-0.14 s.
 
-GitHub Actions runs 13 to 28 (01.06 through 03.03): all 9 jobs green each; run 29 (03.04) red on Windows MSVC only (a dangling pool pointer in the faith listener changed the religion digest, and `Sim.Shuffled` exceeded its 300 s CTest timeout), both fixed in the 03.05 commit and green again in runs 30 to 39 (03.05 to 04.06), so the frozen replay, mini-world and snapshot values hold on Windows MSVC and macOS AppleClang as well. Phase 00 record - run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14).
+GitHub Actions runs 13 to 28 (01.06 through 03.03): all 9 jobs green each; run 29 (03.04) red on Windows MSVC only (a dangling pool pointer in the faith listener changed the religion digest, and `Sim.Shuffled` exceeded its 300 s CTest timeout), both fixed in the 03.05 commit and green again in runs 30 to 40 (03.05 to 04.07), so the frozen replay, mini-world and snapshot values hold on Windows MSVC and macOS AppleClang as well. Phase 00 record - run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14).
 
 Also run locally: `python3 Tools/check_kernel_purity.py --self-test` (36 checks, 0 failed),
 `python3 Tools/check_kernel_purity.py --root . --verbose` (12 files, 0 violations),

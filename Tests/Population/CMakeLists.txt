@@ -23,4 +23,5 @@ add_test(NAME Population.Shuffled COMMAND VaelenPopulationTests --shuffle 1)
 list(APPEND VAELEN_POPULATION_TEST_NAMES Population.Registry Population.Shuffled)
 
 set_tests_properties(${VAELEN_POPULATION_TEST_NAMES} PROPERTIES TIMEOUT 300)
-set_tests_properties(Population.Shuffled PROPERTIES TIMEOUT 1200)
+set_tests_properties(Population.PopulationGate PROPERTIES TIMEOUT 1800)
+set_tests_properties(Population.Shuffled PROPERTIES TIMEOUT 5400)

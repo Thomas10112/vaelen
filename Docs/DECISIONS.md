@@ -61,6 +61,7 @@ Rules for this file:
 | [0036](#adr-0036-traits-are-drawn-from-the-identity-and-the-parents-skills-are-earned-year-by-year-and-persons-are-named-by-their-language) | Traits are drawn from the identity and the parents, skills are earned year by year, and persons are named by their language | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0037](#adr-0037-detail-is-requested-not-decided-by-the-kernel-and-people-cross-the-grain-border-as-events) | Detail is requested, not decided by the kernel, and people cross the grain border as events | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0038](#adr-0038-persons-enter-the-chronicle-through-a-capped-listener-that-decides-what-matters-at-dispatch) | Persons enter the chronicle through a capped listener that decides what matters at dispatch | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0039](#adr-0039-the-phase-04-gate-runs-every-population-system-over-the-256-pre-history-and-freezes-the-state-at-250-and-500-years) | The Phase 04 gate runs every population system over the 256 pre-history and freezes the state at 250 and 500 years | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -2350,6 +2351,62 @@ wants persons in history - a famine's dead, a house that died out, the why of a 
 Accepted 2026-09-06. Files: `Source/VaelenPopulation/Public/Vaelen/Population/PersonHistory.h`,
 `Source/VaelenPopulation/Private/PersonHistory.cpp`, `Tests/Population/Test_PersonHistory.cpp`
 (5 tests). Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0039: The Phase 04 gate runs every population system over the 256 pre-history and freezes the state at 250 and 500 years
+
+### Context
+
+Phase 04 added six systems and a listener on top of the Phase 03 world. Each task
+froze its own reference in a world that holds only the systems it needed; nothing had
+yet run all of them together for centuries over the reference world, and the exit
+criteria (ROADMAP section 2) ask for a long-duration test and frozen values that guard
+the save format.
+
+### Decision
+
+1. The gate is one reference run: AELVOR 256 after 300 years of pre-history, the busiest
+   region requested through the bridge, 500 years with lives (births to couples),
+   families, needs, traits and names, the bridge and the person chronicle, every yearly
+   system in its scheduler order.
+2. Every Phase 04 invariant is checked every decade on the live state, each with its own
+   message: one detailed region and the two grains in agreement, needs, traits and a
+   name on every living person, ages bounded, spouse links whole, heads alive and in
+   their house, caused deaths pointing at a disaster of their region, coarse
+   bookkeeping exact and believers bounded, the chronicle resolving with every person
+   record described.
+3. The state digest at 250 and 500 years, the persons digest and the log digest are
+   frozen and reproduced by clang, gcc, MSVC and AppleClang through CI; a snapshot at
+   year 250 restored into a fresh object continues to the same year 500.
+4. The gate is the last task of the phase; a deliberate rule change in any Phase 04
+   system refreezes the gate's digests, and the refreeze is recorded in the task's
+   docs. A world that runs needs and the bridge orders the family system after them
+   (`FamilySystem::RunAfter`), so every head and spouse link is whole at the end of
+   every yearly tick; the dependency is declared by the world, never assumed by the
+   system, because a system may only depend on what exists. Emigration flows in ordinary centuries; immigration into a detailed region
+   needs a shock (famine, plague, a widened capacity), which the run records.
+
+### Alternatives and decision rule
+
+- Freezing only per-task digests: rejected; the interplay (families under famine,
+  names of arrivals, records of houses dying out) is what the phase promises.
+- Two thousand years like the Phase 03 gate: rejected for now; persons cost more per
+  year and the 500-year run already covers twenty generations; Phase 16 (performance)
+  will revisit the length.
+- Decided by robustness (every invariant, every decade) and determinism.
+
+### Consequences
+
+- The gate takes the longest of the Population suites; its CTest entry keeps the
+  default timeout on Linux and the Shuffled entry keeps its 1200 s allowance.
+- A red gate on one compiler with green per-task suites points at the interplay; the
+  per-decade messages say which invariant and when.
+
+### Status
+
+Accepted 2026-09-06. Files: `Tests/Population/Test_PopulationGate.cpp` (1 test).
+Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
 

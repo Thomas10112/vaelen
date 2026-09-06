@@ -229,12 +229,17 @@ namespace Vaelen::Population
 				{
 					continue;
 				}
-				T.Named = 1;
-				const LanguageSounds* L = Find(R.Info.Language, R.Info.Culture);
-				if (L == nullptr || W.Components().GetPool(Types.Languages.Name).TryGet(R.Handle) != nullptr)
+				if (W.Components().GetPool(Types.Languages.Name).TryGet(R.Handle) != nullptr)
 				{
+					T.Named = 1;
 					continue;
 				}
+				const LanguageSounds* L = Find(R.Info.Language, R.Info.Culture);
+				if (L == nullptr)
+				{
+					continue; // no language yet (a culture just split): tried again next year
+				}
+				T.Named = 1;
 				History::NameInfo N;
 				N.Language = L->Index;
 				N.Scope = static_cast<uint32>(History::NameScope::Person);

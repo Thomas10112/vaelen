@@ -35,8 +35,8 @@ using namespace Vaelen::WorldGen;
 // Recorded on clang 18 / Linux x86_64 on 2026-09-06 (04.07): the busiest
 // region of AELVOR 128 detailed at year 300 and chronicled for 100 years with
 // lives, families, needs, traits and the bridge.
-#define VAELEN_PERSONHISTORY_RECORDS_128 1248u
-#define VAELEN_PERSONHISTORY_TEXT_128 0xf097d2b9938ed0bcull
+#define VAELEN_PERSONHISTORY_RECORDS_128 1222u
+#define VAELEN_PERSONHISTORY_TEXT_128 0xf77936ba24c24e68ull
 
 namespace
 {

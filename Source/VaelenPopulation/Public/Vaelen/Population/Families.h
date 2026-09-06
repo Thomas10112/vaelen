@@ -20,6 +20,8 @@
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/System.h"
 
+#include <string>
+#include <string_view>
 #include <vector>
 
 namespace Vaelen
@@ -92,10 +94,23 @@ namespace Vaelen::Population
 		}
 		const char* GetName() const noexcept override { return "Families"; }
 		SimLod GetLod() const noexcept override { return SimLod::World; }
-		std::vector<std::string_view> GetDependencies() const override { return {"Lives"}; }
+		std::vector<std::string_view> GetDependencies() const override
+		{
+			std::vector<std::string_view> Out{"Lives"};
+			for (const std::string& Name : After)
+			{
+				Out.push_back(Name);
+			}
+			return Out;
+		}
+		/// Runs after another yearly system too (Needs, Lod), so that the heads
+		/// it replaces and the spouses it releases include that system's deaths
+		/// and departures of the same tick. The system must exist in the world.
+		void RunAfter(std::string_view Name) { After.emplace_back(Name); }
 		void Tick(TickContext& Context) override;
 
 	private:
+		std::vector<std::string> After;
 		World* Owner;
 		History::PreHistoryTypes Types;
 		PersonTypes Persons;

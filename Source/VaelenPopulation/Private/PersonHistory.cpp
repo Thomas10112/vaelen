@@ -28,12 +28,16 @@ namespace Vaelen::Population
 			Out += Buffer;
 		}
 
-		EntityHandle HandleOfPerson(const World& W, const PersonTypes& Persons, uint32 Person)
+		EntityHandle HandleOfPerson(const World& W, const PersonTypes& Persons, uint32 Person, const PersonIndex* Index)
 		{
 			EntityHandle Found;
 			if (Person == 0)
 			{
 				return Found;
+			}
+			if (Index != nullptr)
+			{
+				return Person < Index->Handles.size() ? Index->Handles[Person] : Found;
 			}
 			W.Components()
 				.GetPool(Persons.Person)
@@ -236,10 +240,27 @@ namespace Vaelen::Population
 		}
 	}
 
-	void NamePerson(const World& W, const History::PreHistoryTypes& Types, const PersonTypes& Persons, uint32 Person,
-					std::string& Out)
+	PersonIndex BuildPersonIndex(const World& W, const PersonTypes& Persons)
 	{
-		const EntityHandle H = HandleOfPerson(W, Persons, Person);
+		PersonIndex Index;
+		W.Components()
+			.GetPool(Persons.Person)
+			.ForEach(
+				[&](EntityHandle H, const PersonInfo& P)
+				{
+					if (P.Index >= Index.Handles.size())
+					{
+						Index.Handles.resize(usize{P.Index} + 1u);
+					}
+					Index.Handles[P.Index] = H;
+				});
+		return Index;
+	}
+
+	void NamePerson(const World& W, const History::PreHistoryTypes& Types, const PersonTypes& Persons, uint32 Person,
+					std::string& Out, const PersonIndex* Index)
+	{
+		const EntityHandle H = HandleOfPerson(W, Persons, Person, Index);
 		if (!H.IsNull())
 		{
 			const History::NameInfo* N = History::NameOf(W, Types.Languages, H);
@@ -254,7 +275,7 @@ namespace Vaelen::Population
 	}
 
 	void NameFamily(const World& W, const History::PreHistoryTypes& Types, const PersonTypes& Persons,
-					const FamilyTypes& Families, uint32 Family, std::string& Out)
+					const FamilyTypes& Families, uint32 Family, std::string& Out, const PersonIndex* Index)
 	{
 		const FamilyInfo* F = FamilyByIndex(W, Families, Family);
 		if (F == nullptr)
@@ -264,11 +285,11 @@ namespace Vaelen::Population
 			return;
 		}
 		Append(Out, "the house of ");
-		NamePerson(W, Types, Persons, F->Founder, Out);
+		NamePerson(W, Types, Persons, F->Founder, Out, Index);
 	}
 
 	void DescribePersonEvent(const World& W, const History::PreHistoryTypes& Types, const PersonTypes& Persons,
-							 const FamilyTypes& Families, const Event& E, std::string& Out)
+							 const FamilyTypes& Families, const Event& E, std::string& Out, const PersonIndex* Index)
 	{
 		if (!(E.Is(PersonBornEvent) || E.Is(PersonDiedEvent) || E.Is(PersonMarriedEvent) || E.Is(FamilyFoundedEvent) ||
 			  E.Is(FamilyExtinctEvent) || E.Is(PersonLeftEvent) || E.Is(PersonArrivedEvent) ||
@@ -287,12 +308,12 @@ namespace Vaelen::Population
 		if (E.Is(PersonBornEvent))
 		{
 			const PersonPayload P = E.Get<PersonPayload>();
-			NamePerson(W, Types, Persons, P.Person, Out);
+			NamePerson(W, Types, Persons, P.Person, Out, Index);
 			Append(Out, " was born");
 			if (P.Other != 0)
 			{
 				Append(Out, " to ");
-				NamePerson(W, Types, Persons, P.Other, Out);
+				NamePerson(W, Types, Persons, P.Other, Out, Index);
 			}
 			Append(Out, " in ");
 			History::NameRegion(W, Types, P.Region, Region);
@@ -302,7 +323,7 @@ namespace Vaelen::Population
 		else if (E.Is(PersonDiedEvent))
 		{
 			const PersonPayload P = E.Get<PersonPayload>();
-			NamePerson(W, Types, Persons, P.Person, Out);
+			NamePerson(W, Types, Persons, P.Person, Out, Index);
 			Append(Out, " died");
 			AppendCause(P.Other, Out);
 			Append(Out, " in ");
@@ -315,9 +336,9 @@ namespace Vaelen::Population
 		else if (E.Is(PersonMarriedEvent))
 		{
 			const MarriagePayload P = E.Get<MarriagePayload>();
-			NamePerson(W, Types, Persons, P.Person, Out);
+			NamePerson(W, Types, Persons, P.Person, Out, Index);
 			Append(Out, " married ");
-			NamePerson(W, Types, Persons, P.Spouse, Out);
+			NamePerson(W, Types, Persons, P.Spouse, Out, Index);
 			Append(Out, " in ");
 			History::NameRegion(W, Types, P.Region, Region);
 			Out += Region;
@@ -326,7 +347,7 @@ namespace Vaelen::Population
 		else if (E.Is(FamilyFoundedEvent))
 		{
 			const FamilyPayload P = E.Get<FamilyPayload>();
-			NamePerson(W, Types, Persons, P.Head, Out);
+			NamePerson(W, Types, Persons, P.Head, Out, Index);
 			Append(Out, " founded a house in ");
 			History::NameRegion(W, Types, P.Region, Region);
 			Out += Region;
@@ -336,7 +357,7 @@ namespace Vaelen::Population
 		{
 			const FamilyPayload P = E.Get<FamilyPayload>();
 			std::string House;
-			NameFamily(W, Types, Persons, Families, P.Family, House);
+			NameFamily(W, Types, Persons, Families, P.Family, House, Index);
 			House[0] = static_cast<char>(House[0] >= 'a' && House[0] <= 'z' ? House[0] - ('a' - 'A') : House[0]);
 			Out += House;
 			Append(Out, " died out in ");
@@ -347,7 +368,7 @@ namespace Vaelen::Population
 		else if (E.Is(PersonLeftEvent) || E.Is(PersonArrivedEvent))
 		{
 			const PersonPayload P = E.Get<PersonPayload>();
-			NamePerson(W, Types, Persons, P.Person, Out);
+			NamePerson(W, Types, Persons, P.Person, Out, Index);
 			Append(Out, E.Is(PersonLeftEvent) ? " left " : " came to ");
 			History::NameRegion(W, Types, P.Region, Region);
 			Out += Region;
@@ -384,6 +405,7 @@ namespace Vaelen::Population
 				  { return A.Tick != B.Tick ? A.Tick < B.Tick : A.Event < B.Event; });
 		uint32 Lines = 0;
 		std::string Line;
+		const PersonIndex Index = BuildPersonIndex(W, Persons);
 		for (const History::RecordInfo& R : Records)
 		{
 			if (MaxLines != 0 && Lines >= MaxLines)
@@ -394,7 +416,7 @@ namespace Vaelen::Population
 			Line.clear();
 			if (E != nullptr)
 			{
-				DescribePersonEvent(W, Types, Persons, Families, *E, Line);
+				DescribePersonEvent(W, Types, Persons, Families, *E, Line, &Index);
 			}
 			else
 			{
@@ -414,7 +436,7 @@ namespace Vaelen::Population
 		{
 			return;
 		}
-		const EntityHandle H = HandleOfPerson(W, Persons, Person);
+		const EntityHandle H = HandleOfPerson(W, Persons, Person, nullptr);
 		const PersistentId Id = H.IsNull() ? PersistentId{} : W.Entities().GetId(H);
 		for (const Event& E : W.Log().All())
 		{
@@ -459,10 +481,11 @@ namespace Vaelen::Population
 		PersonTimeline(W, Persons, Person, Timeline);
 		uint32 Lines = 0;
 		std::string Line;
+		const PersonIndex Index = BuildPersonIndex(W, Persons);
 		for (const Event* E : Timeline)
 		{
 			Line.clear();
-			DescribePersonEvent(W, Types, Persons, Families, *E, Line);
+			DescribePersonEvent(W, Types, Persons, Families, *E, Line, &Index);
 			Out += Line;
 			Out += '\n';
 			++Lines;
@@ -500,6 +523,7 @@ namespace Vaelen::Population
 		W.Components()
 			.GetPool(State.State)
 			.ForEach([&](EntityHandle, const PersonChronicleState& St) { S.Dropped = St.Dropped; });
+		const PersonIndex Index = BuildPersonIndex(W, Persons);
 		std::string Line;
 		W.Components()
 			.GetPool(Types.History.Record)
@@ -527,7 +551,7 @@ namespace Vaelen::Population
 					if (E != nullptr)
 					{
 						Line.clear();
-						DescribePersonEvent(W, Types, Persons, Families, *E, Line);
+						DescribePersonEvent(W, Types, Persons, Families, *E, Line, &Index);
 						S.Described += Line.find("something happened") == std::string::npos ? 1u : 0u;
 					}
 				});

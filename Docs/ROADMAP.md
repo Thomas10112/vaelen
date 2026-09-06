@@ -71,8 +71,8 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
-| 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | IN PROGRESS (04.01-04.07 VALIDATED headless; 04.08 PLANNED) |
-| 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
+| 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
+| 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED (05.01-05.08 broken down, section 9) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
@@ -95,7 +95,7 @@ Planned module names per phase are listed in `Docs/ARCHITECTURE.md` section 3.2.
 ## 4. Phase 00 - FOUNDATION: task breakdown and real status
 
 Status below was established by reading the code and the tests in `Tests/Core` and by
-running them (section 11). Test counts are from `VaelenCoreTests --list`. This numbering
+running them (section 12). Test counts are from `VaelenCoreTests --list`. This numbering
 is canonical: `Docs/STATUS.md` and commit subjects (`<phase>.<task>: ...`) use it.
 
 Master prompt scope item "interfaces de base": Phase 00 delivers only the two interfaces
@@ -128,7 +128,7 @@ Deliverables present:
   `.editorconfig`, `.gitattributes` (LF), `.gitignore`.
 - Layering and module plan: `Docs/ARCHITECTURE.md` sections 1-4.
 
-Verified: headless configure, build and `ctest` for all six Linux presets (section 11),
+Verified: headless configure, build and `ctest` for all six Linux presets (section 12),
 and the full GitHub CI matrix including Windows MSVC and macOS AppleClang (run 5, all
 9 jobs green). Not verified: any UBT build; every engine-facing file is labelled
 UNVERIFIED and has never been compiled in this repository.
@@ -1187,60 +1187,143 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   100 years.
 - Decision: ADR-0038.
 
-## 9. Phases 05-20: notes
+### 04.08 Phase 04 gate; Phase 04 close - VALIDATED (headless)
 
-No task breakdown exists yet for Phases 05-20; each is broken down when the previous
-phase closes. Fixed points already in the code: `IdKind` values for Region, Tile, River,
+- Delivered: `Tests/Population/Test_PopulationGate.cpp` - AELVOR 256 after 300 years of
+  pre-history, the busiest region requested and lived through 500 years with every Phase
+  04 system (lives with births to couples, families, needs, traits and names, the bridge,
+  the person chronicle); every Phase 04 invariant checked every decade: exactly the
+  requested region detailed and its two grains in agreement, every living person with
+  needs, traits and a name, nobody past the last band, no broken spouse link, every head
+  of house alive and in its house, every caused death pointing at a disaster of its
+  region, the coarse bookkeeping exact and believers never above the people of the
+  detailed region, the chronicle resolving completely with every person record
+  described; the region alive after five centuries (more born there than living,
+  houses risen and fallen, hundreds of person records, the world's people near
+  capacity); the state frozen at 250 and 500 years with the persons digest and the log;
+  a snapshot at year 250 restored into a fresh object and continued to the same year
+  500.
+- The gate found one bug: the family system judged its heads against the person index
+  built at the start of its tick, so a head who married into another house that very
+  year kept the old house for a year; the index is rebuilt before the heads step. The
+  04.03 frozen values hold (heads do not move persons); the 04.07 chronicle refreezes
+  (1222 records, text `f77936ba24c24e68`) because a head's marriage is a record.
+- Three things the gate tightened: `FamilySystem::RunAfter` lets a world with needs and
+  the bridge order the family system after them, so a head killed by a plague or gone
+  over the border is replaced in the same yearly tick (the gate's harness uses it; the
+  earlier suites keep their order and their frozen values); the trait system names a
+  person whose culture has no language yet at a later year instead of never; the
+  person-history text builds one `PersonIndex` per export or check instead of scanning
+  the person pool for every name (the 100-year chronicle of 04.07 was cheap, the
+  500-year one with eighty thousand persons in the pool was not). The gate's CTest
+  entry gets 1800 s and `Population.Shuffled` 5400 s, for the MSVC debug runner.
+- Decision: ADR-0039.
+
+Phase 04 against the exit criteria of section 2: (1) CI matrix green for every task
+(runs 34 to 39), 04.08 by its own run; (2) determinism tests for every system (two
+worlds, snapshot mid-run, frozen digests per task and for the gate at 250 and 500
+years, on four compilers through CI); (3) no INCOMPLETE file, engine files UNVERIFIED;
+(4) unit, integration, deterministic, edge-case and long-duration categories present
+(500 years at 256 with a detailed region, 500 years of LOD alternation at 64); (5)
+ADR-0032 to ADR-0039, docs updated. Verdict: **Phase 04 VALIDATED on the headless
+side, UNVERIFIED on the engine side until the first UE 5.6 build.**
+
+## 9. Phase 05 - SOCIETY: task breakdown and real status
+
+Goal: the society of AELVOR above the persons and below the polities - organisations
+that persons found, join and leave, the standing of persons and houses, the norms of a
+culture that parametrise how persons marry, inherit and hold others, and bondage and
+slavery as institutions with entries, exits and counts - simulated at the person grain
+in detailed regions and as shares of the coarse counts everywhere else, so that a
+region can be promoted and demoted without losing its social shape.
+
+Decisions taken up front (each becomes an ADR when its task closes):
+
+- Organisations are entities of kind `Organization` (councils, temples, guilds, warbands,
+  clans) with a seat region, a kind, a head, members by person index in detailed regions
+  and a member count in coarse ones; founded from a region's persons by rules of the
+  culture's norms and of the traits and skills of the founders (04.05).
+- Standing is computed, not stored as truth: a person's rank derives yearly from its
+  house (04.03), age, traits, skills and offices; the elite of a region is the top of
+  that order. What is stored is what the world decided (offices held, honours given).
+- Norms are a per-culture table (`NormSet`) read by the Phase 04 systems through their
+  rules: marrying ages and kin depth, descent (patrilineal, matrilineal), faith
+  tolerance, mobility, the bondage institutions allowed; they drift with events.
+- Bondage and slavery are states on persons (`BondState`: free, bonded, enslaved) and
+  shares of the coarse counts; entries by debt, capture (Phase 08 wars later) and birth,
+  exits by manumission, flight and death; every entry and exit is an event with a cause.
+- The social shape survives the grain: strata shares per region (elite, free, bonded,
+  enslaved) are coarse counts kept through demotion and honoured at promotion.
+
+| Task | Content | Tests |
+|---|---|---|
+| 05.01 | `VaelenSociety` module (UBT + CMake), `OrganizationInfo`, `OrganizationTypes`, membership in detailed regions and member counts in coarse ones, founding of councils and temples from a region's persons, events | unit, deterministic, edge (empty region, one person), snapshot |
+| 05.02 | Status and rank: yearly standing from house, age, traits, skills and offices; the elite of a region; heads of house and organisation heads as offices | unit, distributions in bands, frozen |
+| 05.03 | Norms: `NormSet` per culture read by the Phase 04 rules (marriage, descent, faith, mobility, bondage allowed), drift on events (a schism, a disaster, a split) | unit, deterministic, integration with 04.03 |
+| 05.04 | Bondage and slavery as institutions: `BondState` on persons, coarse shares per region, entries by debt and birth, exits by manumission, flight and death, events with causes | integration over 200 years, edge (institution forbidden), frozen |
+| 05.05 | Organisations acting: yearly decisions of councils (stores against famine), temples (faith and piety), guilds (skills), warbands (raids as omens for Phase 08); events with causes | integration with 04.04 and 03.04, deterministic |
+| 05.06 | Social shape across the grains: strata shares per region as coarse counts, kept through demotion, honoured at promotion; digests conserved across a cycle | deterministic, long-duration (500 years alternating) |
+| 05.07 | Society in history: foundings, disbandings, decisions, enslavements and manumissions that matter in the chronicle; text lines; why-queries | integration with 04.07, text deterministic |
+| 05.08 | Phase 05 gate: 500 years with one detailed region over the 256 pre-history with every Phase 04 and 05 system, invariants every decade, frozen digests on four compilers; Phase 05 closed against section 2 | long-duration |
+
+Every task ends with the usual report block, the docs refreshed and a commit.
+
+## 10. Phases 06-20: notes
+
+No task breakdown exists yet for Phases 06-20; each is broken down when the previous
+phase closes.
+ Fixed points already in the code: `IdKind` values for Region, Tile, River,
 ResourceDeposit (Phase 02), Culture, Language, Religion, Person, Family, Organization
 (Phases 03-05), Item, Building, Settlement, Market, Route (Phases 06, 09), Polity, Law,
 Army, War (Phases 07-08), Document, Map (Phase 12); `VAELEN_SAVE_FORMAT_VERSION`
 (Phase 16); `Config/DefaultEngine.ini` and `DefaultInput.ini` note that the game engine
 class and Enhanced Input mappings arrive in Phase 10.
 
-## 10. Current BUILD STATUS
+## 11. Current BUILD STATUS
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 04 — POPULATION
-TASK        : 04.07 — PERSONS IN HISTORY
+PHASE       : 04 — POPULATION (CLOSED) → 05 — SOCIETY (BREAKDOWN)
+TASK        : 04.08 — PHASE 04 GATE AND CLOSE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████████░░░░░░░░░░░░░░ 42%
+██████████░░░░░░░░░░░░░░ 43%
 
 CURRENTLY
-→ 04.07 closed: the PersonChronicle listener turns the person events that matter (houses founded
-  and died out, deaths with a cause, heads of house dying or marrying, the chronicle's focus
-  moving) into the Phase 03 Record entities under a yearly cap per region; one sentence for
-  every person event (births, deaths with their cause, marriages, houses, crossings, focus);
-  the unified chronicle text; a person's timeline and story, the why-chain of a death reaching
-  the disaster that killed
+→ 04.08 closed: 500 years on AELVOR 256 with the busiest region detailed and every Phase 04 system
+  on (lives, families, needs, traits, the bridge, the person chronicle), every Phase 04 invariant
+  checked each decade, state frozen at 250 and 500 years with the persons and the log, the year
+  250 snapshot continued to the same year 500; Phase 04 closed against ROADMAP section 2;
+  Phase 05 (SOCIETY) broken down into 05.01-05.08 (ROADMAP section 9)
 
 COMPLETED
-✓ Phases 00-03 (headless) ; 04.01-04.05 (CI 34-38) ; 04.06 LOD bridge (CI 38)
-✓ 04.07 Persons in history (5 tests: PersonHistory) (CI 39)
+✓ Phases 00-03 (headless) ; 04.01-04.06 (CI 34-39) ; 04.07 Persons in history (CI 39)
+✓ 04.08 Phase 04 gate (1 test: PopulationGate) (CI 40) ; Phase 04 VALIDATED (headless)
 
 NEXT
-→ 04.08 Phase 04 gate (500 years with a detailed region over the 256 pre-history; Phase 04 closed)
-→ Phase 05 breakdown
+→ 05.01 VaelenSociety module, organisations as entities, membership, founding from a region's persons
+→ 05.02 Status and rank
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenPopulation/Public/Vaelen/Population/PersonHistory.h, Private/PersonHistory.cpp
-+ Tests/Population/Test_PersonHistory.cpp
-~ Persons.h/.cpp (LifeState::Gone, DetailStats.Gone), Lod.h/.cpp (emigrants stay as gone persons so
-  their lines keep their names), Test_Lod.cpp, CMakeLists.txt
++ Tests/Population/Test_PopulationGate.cpp
+~ Families.h/.cpp (the heads step reads a fresh index: a head who married out this year is replaced this
+  year; FamilySystem::RunAfter so heads and spouses follow the deaths of Needs and the departures of
+  Lod in the same tick), Test_PersonHistory.cpp (refrozen: 1222 records), Traits.cpp (a person without a language yet is named the next year, not
+  never), PersonHistory.h/.cpp (a PersonIndex built once per export or check instead of a pool scan
+  per name), Tests/Population/CMakeLists.txt (gate 1800 s, Shuffled 5400 s), Docs (Phase 04 verdict,
+  Phase 05 breakdown, ADR-0039)
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 36 (36 without asserts);
-  ctest 58/58 in all six Linux presets; the 04.01-04.06 digests unchanged
-✓ Region 26 of AELVOR 128 chronicled for 100 years with every Phase 04 system: 1248 person records,
-  every one with its own line; frozen chronicle text f097d2b9938ed0bc
-✓ Cursed region: the story of a plague death ends "because a plague struck", a famine death reaches
-  the drought, a natural death has no why; the yearly cap holds and dropped events are counted
+✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 37 (37 without asserts);
+  ctest 59/59 in all six Linux presets; every Phase 03 and Phase 04 frozen digest unchanged
+✓ Gate: 500 years at 256 with region 42 detailed in 222.8 s (clang debug); frozen 250=04f8a05bee8c3313
+  500=de9467e086c9560e persons=f5f4643d97ce5068 log=ba7af3a8312954d8; 7617 alive at the end, 2602 families,
+  4667 person records
 ✓ Purity: 79 files, 0 violations
 
 BLOCKERS
@@ -1248,7 +1331,7 @@ BLOCKERS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-## 11. Verification record
+## 12. Verification record
 
 Commands run on 2026-09-05 (clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.15, clang-format 18.1.3, Linux x86_64) with the checked-in presets, each into
 `out/build/<preset>`:

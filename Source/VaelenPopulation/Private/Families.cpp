@@ -152,7 +152,7 @@ namespace Vaelen::Population
 			.GetPool(Families.Family)
 			.ForEach([&](EntityHandle, const FamilyInfo& F)
 					 { FamilyCounter = F.Index > FamilyCounter ? F.Index : FamilyCounter; });
-		const Index Ix(W, Persons);
+		Index Ix(W, Persons);
 
 		// 1. The dead release their spouses (any region, the dead may lie anywhere).
 		W.Components()
@@ -263,7 +263,9 @@ namespace Vaelen::Population
 			}
 		}
 
-		// 4. Heads and extinction, every family in index order.
+		// 4. Heads and extinction, every family in index order. The index is
+		// rebuilt: the marriages above moved brides between families this tick.
+		Ix = Index(W, Persons);
 		std::vector<std::pair<EntityHandle, FamilyInfo>> All;
 		W.Components()
 			.GetPool(Families.Family)
@@ -352,7 +354,7 @@ namespace Vaelen::Population
 
 	void Ancestors(const World& W, const PersonTypes& Persons, uint32 Person, uint32 Depth, std::vector<uint32>& Out)
 	{
-		const Index Ix(W, Persons);
+		Index Ix(W, Persons);
 		AncestorsIn(Ix, Person, Depth, Out);
 	}
 
@@ -411,7 +413,7 @@ namespace Vaelen::Population
 
 	bool AreKin(const World& W, const PersonTypes& Persons, uint32 A, uint32 B, uint32 Depth)
 	{
-		const Index Ix(W, Persons);
+		Index Ix(W, Persons);
 		return KinIn(Ix, A, B, Depth);
 	}
 

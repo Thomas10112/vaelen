@@ -91,19 +91,29 @@ namespace Vaelen::Population
 		PersonChronicleRules Rules;
 	};
 
+	/// Person index -> entity handle, built once so that text over thousands of
+	/// records does not scan the person pool for every name. Empty = look up.
+	struct PersonIndex
+	{
+		std::vector<EntityHandle> Handles; ///< by person index (0 unused)
+	};
+	VAELEN_POPULATION_API PersonIndex BuildPersonIndex(const World& W, const PersonTypes& Persons);
+
 	/// The name of a person for text ("Umamissar", or "person 12" when unnamed or unknown).
 	VAELEN_POPULATION_API void NamePerson(const World& W, const History::PreHistoryTypes& Types,
-										  const PersonTypes& Persons, uint32 Person, std::string& Out);
+										  const PersonTypes& Persons, uint32 Person, std::string& Out,
+										  const PersonIndex* Index = nullptr);
 	/// The name of a house ("the house of Ukro", by its founder).
 	VAELEN_POPULATION_API void NameFamily(const World& W, const History::PreHistoryTypes& Types,
 										  const PersonTypes& Persons, const FamilyTypes& Families, uint32 Family,
-										  std::string& Out);
+										  std::string& Out, const PersonIndex* Index = nullptr);
 
 	/// One line for any event: the person events get their own sentence, every
 	/// other event goes through History::DescribeEvent.
 	VAELEN_POPULATION_API void DescribePersonEvent(const World& W, const History::PreHistoryTypes& Types,
 												   const PersonTypes& Persons, const FamilyTypes& Families,
-												   const Event& E, std::string& Out);
+												   const Event& E, std::string& Out,
+												   const PersonIndex* Index = nullptr);
 	/// The whole chronicle (Phase 03 records and person records) as text, in
 	/// tick order, one line each, at most MaxLines (0 = all).
 	VAELEN_POPULATION_API uint32 ExportChronicleWithPersons(const World& W, const History::PreHistoryTypes& Types,
