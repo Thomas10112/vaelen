@@ -23,4 +23,5 @@ add_test(NAME Society.Shuffled COMMAND VaelenSocietyTests --shuffle 1)
 list(APPEND VAELEN_SOCIETY_TEST_NAMES Society.Registry Society.Shuffled)
 
 set_tests_properties(${VAELEN_SOCIETY_TEST_NAMES} PROPERTIES TIMEOUT 300)
-set_tests_properties(Society.Shuffled PROPERTIES TIMEOUT 1200)
+set_tests_properties(Society.SocietyGate PROPERTIES TIMEOUT 1800)
+set_tests_properties(Society.Shuffled PROPERTIES TIMEOUT 5400)

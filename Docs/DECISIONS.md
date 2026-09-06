@@ -69,6 +69,7 @@ Rules for this file:
 | [0044](#adr-0044-organisations-act-through-one-yearly-system-whose-effects-reach-the-lower-modules-as-state-they-observe-or-as-events-they-ignore) | Organisations act through one yearly system whose effects reach the lower modules as state they observe or as events they ignore | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0045](#adr-0045-the-social-shape-of-a-region-is-a-count-that-outlives-its-persons-and-binds-the-next-ones) | The social shape of a region is a count that outlives its persons and binds the next ones | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0046](#adr-0046-each-module-chronicles-its-own-events-through-its-own-capped-listener-into-the-one-record-store) | Each module chronicles its own events through its own capped listener into the one record store | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0047](#adr-0047-the-phase-05-gate-runs-every-population-and-society-system-over-the-256-pre-history-and-freezes-the-state-the-log-and-the-text) | The Phase 05 gate runs every population and society system over the 256 pre-history and freezes the state, the log and the text | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -2759,6 +2760,51 @@ record store, one export and one why.
 
 Accepted 2026-09-06. Files: `Source/VaelenSociety/Public/Vaelen/Society/SocietyHistory.h`,
 `Source/VaelenSociety/Private/SocietyHistory.cpp`, `Tests/Society/Test_SocietyHistory.cpp` (3 tests).
+Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0047: The Phase 05 gate runs every population and society system over the 256 pre-history and freezes the state, the log and the text
+
+### Context
+
+Phase 05 added five systems and a listener on top of Phase 04, several of them
+reaching into the lower modules through observed state (customs, stores). Each task
+froze its own reference; nothing had run every system together for centuries over the
+reference world, and the exit criteria ask for it.
+
+### Decision
+
+1. The gate is one reference run: AELVOR 256 after 300 years of pre-history, the
+   busiest region requested through the bridge, 500 years with every Phase 04 and 05
+   system wired as the game will wire them - the family system observing the customs
+   and running after needs, the bridge and norms; the need system observing the
+   stores; the organisation and bondage systems running after the bridge - and both
+   person and society chronicles attached.
+2. Every invariant of both phases is checked every decade with its own message; the
+   three chronicles are checked every fifty years; the state, the log and the chronicle
+   text are frozen at 250 and 500 years and reproduced by four compilers; a snapshot at
+   year 250 continues to the same year 500 with the same text.
+3. As in ADR-0039, a deliberate rule change in any Phase 04 or 05 system refreezes the
+   gate and is recorded in the task's docs; the gate keeps 1800 s of CTest time and the
+   Society.Shuffled entry 5400 s for the MSVC debug runner.
+
+### Alternatives and decision rule
+
+- Reusing the Phase 04 gate with the society systems added: rejected; the Phase 04 gate
+  stays the reference of Phase 04 alone, so a Phase 05 rule change cannot hide behind a
+  Phase 04 refreeze.
+- Decided by robustness and determinism.
+
+### Consequences
+
+- The chronicle text of the reference run is frozen; a wording change in any module's
+  text refreezes it, which is the point: the story the player reads is a tested output.
+- The two gates together take about ten minutes of clang debug time per preset.
+
+### Status
+
+Accepted 2026-09-06. Files: `Tests/Society/Test_SocietyGate.cpp` (1 test).
 Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---

@@ -72,8 +72,8 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
-| 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | IN PROGRESS (05.01-05.07 VALIDATED headless; 05.08 PLANNED) |
-| 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
+| 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
+| 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED (06.01-06.08 broken down, section 10) |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
@@ -95,7 +95,7 @@ Planned module names per phase are listed in `Docs/ARCHITECTURE.md` section 3.2.
 ## 4. Phase 00 - FOUNDATION: task breakdown and real status
 
 Status below was established by reading the code and the tests in `Tests/Core` and by
-running them (section 12). Test counts are from `VaelenCoreTests --list`. This numbering
+running them (section 13). Test counts are from `VaelenCoreTests --list`. This numbering
 is canonical: `Docs/STATUS.md` and commit subjects (`<phase>.<task>: ...`) use it.
 
 Master prompt scope item "interfaces de base": Phase 00 delivers only the two interfaces
@@ -128,7 +128,7 @@ Deliverables present:
   `.editorconfig`, `.gitattributes` (LF), `.gitignore`.
 - Layering and module plan: `Docs/ARCHITECTURE.md` sections 1-4.
 
-Verified: headless configure, build and `ctest` for all six Linux presets (section 12),
+Verified: headless configure, build and `ctest` for all six Linux presets (section 13),
 and the full GitHub CI matrix including Windows MSVC and macOS AppleClang (run 5, all
 9 jobs green). Not verified: any UBT build; every engine-facing file is labelled
 UNVERIFIED and has never been compiled in this repository.
@@ -1493,10 +1493,79 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   records and chronicle text `2e503b54e8c9604d` after 100 years.
 - Decision: ADR-0046.
 
-## 10. Phases 06-20: notes
+### 05.08 Phase 05 gate; Phase 05 close - VALIDATED (headless)
 
-No task breakdown exists yet for Phases 06-20; each is broken down when the previous
+- Delivered: `Tests/Society/Test_SocietyGate.cpp` - AELVOR 256 after 300 years of
+  pre-history, the busiest region requested and lived through 500 years with every Phase
+  04 and 05 system (lives with births to couples, families under the customs of their
+  cultures, needs softened by the councils' grain, traits and names, the bridge, the
+  person chronicle, organisations of every kind, standing, norms, bondage, decisions,
+  the society chronicle); every invariant checked every decade: one detailed region with
+  its two grains in agreement, ages bounded, no astray membership, count mismatch or
+  headless organisation, no stale standing and the tiers whole, every culture with
+  customs and its mirror equal, no stale bond or lost holder and the strata equal to the
+  living by kind, every society cause in the log, the three chronicles resolving with
+  every record described; the society lived (organisations of every kind, hundreds of
+  decisions, raids planned, customs drifted); the state frozen at 250 and 500 years with
+  the log and the chronicle text; a snapshot at year 250 restored into a fresh object and
+  continued to the same year 500 with the same text.
+- Decision: ADR-0047.
+
+Phase 05 against the exit criteria of section 2: (1) CI matrix green for every task
+(runs 42 to 48), 05.08 by its own run; (2) determinism tests for every system (two
+worlds, snapshot mid-run, frozen digests per task and for the gate at 250 and 500
+years, on four compilers through CI); (3) no INCOMPLETE file, engine files UNVERIFIED;
+(4) unit, integration, deterministic, edge-case and long-duration categories present
+(500 years at 256 with a detailed region, 500 years of alternation at 64 with every
+system); (5) ADR-0040 to ADR-0047, docs updated. Verdict: **Phase 05 VALIDATED on the
+headless side, UNVERIFIED on the engine side until the first UE 5.6 build.**
+
+## 10. Phase 06 - ECONOMY: task breakdown and real status
+
+Goal: the economy of AELVOR at both grains - goods produced from the land, the skills
+and the organisations, kept as stocks by regions and by houses, exchanged on markets at
+prices that move with scarcity, carried along routes between regions, held as wealth
+that passes with inheritance - so that famine, standing and the decisions of Phase 05
+have a material side, and so that a region can be promoted and demoted without losing
+what it owns.
+
+Decisions taken up front (each becomes an ADR when its task closes):
+
+- Goods are kinds in a table (grain, cloth, tools, ore, timber, salt, luxuries), never
+  entities; stocks are integer counts per good on a region (coarse) and on a house
+  (detailed), conserved through promotion and demotion like the strata.
+- Production is yearly from the region's land (the Phase 02 biomes and deposits), its
+  people and their skills (04.05), scaled by the customs and the organisations (a guild
+  raises craft output); consumption follows the needs (04.04) so that grain feeds and
+  the stores of 05.05 become real stock.
+- Markets are per region; prices are integers moved by the ratio of stock to yearly
+  need, with a floor and a ceiling; trade moves goods along the region graph by routes
+  (entities of kind Route) opened where two markets differ enough, and a settlement
+  (entity of kind Settlement) marks a region whose market is busy enough.
+- Wealth is a house's stocks at prices; it enters standing (05.02) as a weight and
+  passes to the heir by the descent custom (05.03) when a head dies; bondage (05.04)
+  gains debt as its entry with a number.
+- Items of Phase 09 (crafted, named, carried) are not in this phase: Phase 06 counts
+  goods, Phase 09 makes things.
+
+| Task | Content | Tests |
+|---|---|---|
+| 06.01 | `VaelenEconomy` module (UBT + CMake), `Good` kinds, `RegionStock` and `HouseStock` components, conservation through promotion and demotion, events | unit, deterministic, edge (empty region, no houses), snapshot |
+| 06.02 | Production and consumption: yearly output from land, people, skills, guilds; needs fed from stock, the stores of 05.05 as real grain | integration with 04.04 and 05.05, frozen |
+| 06.03 | Markets and prices: per-region markets, integer prices from stock over need, floors and ceilings, price events | unit, distributions, deterministic |
+| 06.04 | Trade and routes: routes opened along the graph where prices differ, goods carried yearly, settlements marked | deterministic, long-duration (500 years at 64) |
+| 06.05 | Wealth and inheritance: a house's wealth at prices, its weight in standing, inheritance by descent at a head's death, debt as a number in bondage | integration with 05.02, 05.03, 05.04, frozen |
+| 06.06 | Economy across the grains: stocks kept through demotion and honoured at promotion, houses' stocks folded into the region's | deterministic, long-duration (500 years alternating) |
+| 06.07 | Economy in history: routes opened and closed, prices that mattered, fortunes made and lost, in the chronicle; text; why | integration with 05.07, text deterministic |
+| 06.08 | Phase 06 gate: 500 years with one detailed region over the 256 pre-history with every Phase 04, 05 and 06 system, invariants every decade, frozen digests on four compilers; Phase 06 closed against section 2 | long-duration |
+
+Every task ends with the usual report block, the docs refreshed and a commit.
+
+## 11. Phases 07-20: notes
+
+No task breakdown exists yet for Phases 07-20; each is broken down when the previous
 phase closes.
+
  Fixed points already in the code: `IdKind` values for Region, Tile, River,
 ResourceDeposit (Phase 02), Culture, Language, Religion, Person, Family, Organization
 (Phases 03-05), Item, Building, Settlement, Market, Route (Phases 06, 09), Polity, Law,
@@ -1504,46 +1573,46 @@ Army, War (Phases 07-08), Document, Map (Phase 12); `VAELEN_SAVE_FORMAT_VERSION`
 (Phase 16); `Config/DefaultEngine.ini` and `DefaultInput.ini` note that the game engine
 class and Enhanced Input mappings arrive in Phase 10.
 
-## 11. Current BUILD STATUS
+## 12. Current BUILD STATUS
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 05 — SOCIETY
-TASK        : 05.07 — SOCIETY IN HISTORY
+PHASE       : 05 — SOCIETY (CLOSED) → 06 — ECONOMY (BREAKDOWN)
+TASK        : 05.08 — PHASE 05 GATE AND CLOSE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████░░░░░░░░░░░░ 50%
+████████████░░░░░░░░░░░░ 51%
 
 CURRENTLY
-→ 05.07 closed: the SocietyChronicle listener turns the society events that matter (organisations
-  founded and disbanded, heads seated, grain laid in, raids planned, customs changed, persons
-  enslaved or freed by manumission) into the Phase 03 Record entities under a yearly cap per region;
-  one sentence for every society event with the names of organisations, cultures, faiths and
-  persons; the unified chronicle text; the why of a decision reaching the drought that caused it
+→ 05.08 closed: 500 years on AELVOR 256 with the busiest region detailed and every Phase 04 and 05
+  system on (lives, families under the customs, needs with the stores, traits, the bridge, the
+  person chronicle, organisations, standing, norms, bondage, decisions, the society chronicle),
+  every invariant checked each decade, the state frozen at 250 and 500 years with the log and the
+  chronicle text, the year-250 snapshot continued to the same year 500; Phase 05 closed against
+  ROADMAP section 2; Phase 06 (ECONOMY) broken down into 06.01-06.08 (ROADMAP section 10)
 
 COMPLETED
-✓ Phases 00-04 (headless) ; 05.01-05.06 (CI 47)
-✓ 05.07 Society in history (3 tests: SocietyHistory)
+✓ Phases 00-04 (headless) ; 05.01-05.07 (CI 48)
+✓ 05.08 Phase 05 gate (1 test: SocietyGate) ; Phase 05 VALIDATED (headless)
 
 NEXT
-→ 05.08 Phase 05 gate (500 years at 256 with every Phase 04 and 05 system; Phase 05 closed)
-→ Phase 06 breakdown
+→ 06.01 VaelenEconomy module, items and goods as kinds, stocks per region and per house
+→ 06.02 Production from land, skills and organisations
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenSociety/Public/Vaelen/Society/SocietyHistory.h, Private/SocietyHistory.cpp
-+ Tests/Society/Test_SocietyHistory.cpp
-~ Source/VaelenSociety/CMakeLists.txt
++ Tests/Society/Test_SocietyGate.cpp
+~ Tests/Society/CMakeLists.txt (gate 1800 s, Shuffled 5400 s), Docs (Phase 05 verdict, Phase 06 breakdown, ADR-0047)
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 37 (37 without asserts)
-  + Society 27 (27 without asserts); ctest 68/68 in all six Linux presets; every earlier frozen digest unchanged
-✓ Region 26 of AELVOR 128 chronicled for 100 years with every Phase 04 and 05 system: 622 society records,
-  every one with its own line; frozen chronicle text 2e503b54e8c9604d
+  + Society 28 (28 without asserts); ctest 69/69 in all six Linux presets; every Phase 03, 04 and 05 digest unchanged
+✓ Gate: 500 years at 256 with region 42 detailed in 240 s (clang debug); frozen 250=889fc7e83a94df1b
+  500=ca261287c80ff699 log=d7b7173341039dc8 text=e719182682fdfd8e
 ✓ Purity: 93 files, 0 violations
 
 BLOCKERS
@@ -1551,7 +1620,7 @@ BLOCKERS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-## 12. Verification record
+## 13. Verification record
 
 Commands run on 2026-09-05 (clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.15, clang-format 18.1.3, Linux x86_64) with the checked-in presets, each into
 `out/build/<preset>`:
