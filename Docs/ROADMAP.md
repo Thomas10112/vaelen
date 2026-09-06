@@ -71,7 +71,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
-| 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | IN PROGRESS (04.01-04.02 VALIDATED headless; 04.03-04.08 PLANNED) |
+| 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | IN PROGRESS (04.01-04.03 VALIDATED headless; 04.04-04.08 PLANNED) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
@@ -1040,6 +1040,38 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   `9f2615d35856a752` after 200 years (1 499 alive, 1 499 born there).
 - Decision: ADR-0033.
 
+### 04.03 Families and lineage - VALIDATED (headless)
+
+- Delivered: `Families.h/.cpp` - `FamilyInfo` (48 bytes: culture, home region, head,
+  founder, generation, founding and extinction ticks, identity; ids of kind Family),
+  `FamilyTypes::Declare`, `FamilyRules` (marrying ages 18-50, 350 per mille yearly chance
+  for a groom to seek a bride, age gap 15, faith matters, a groom without a family founds
+  one), events PersonMarried, FamilyFounded, FamilyExtinct, `FamilySystem` (LOD World,
+  after Lives: the dead release their spouses; in every detailed region grooms pick the
+  n-th eligible bride in index order - unmarried, of age, same culture and faith, within
+  the gap, not kin within two generations - the groom founds a family when he has none
+  and the bride joins it; heads replaced by the eldest living member, families without a
+  living member declared extinct, the generation depth from the founder kept), lineage
+  queries `FindPerson`, `Ancestors`, `Descendants`, `Siblings`, `AreKin`,
+  `FamilyMembers` (pure functions over the mother and father links, one person index
+  built per query), `MeasureFamilies` (families, extinct, married, adults, in a family,
+  largest, broken spouse links). `PersonInfo` gains `Spouse` in its reserved tail (still
+  64 bytes); `LifeRules.SpouseRequired` (off by default, so the 04.02 digest holds) and a
+  married mother's child has her husband as father and her family.
+- Tests (5): after 50 years in the busiest region of AELVOR 128, most adults are married
+  and every spouse link is symmetric, alive, opposite sex, same culture and faith, in the
+  same family and not close kin, every family has a living head that belongs to it or is
+  extinct with no member, one FamilyFounded per family and a PersonMarried per couple;
+  children of married mothers carry their husband as father and their family, a
+  grandchild's ancestors and the grandparent's descendants agree, siblings share a
+  parent, kinship is symmetric and depth-bounded, unknown persons have no lineage,
+  families reach two generations and some go extinct with one event each; widows and
+  widowers are released, remarriage happens, no marriages when the chance is zero,
+  mixed-faith couples when faith does not matter, nothing without the system; two
+  worlds identical, a snapshot between yearly ticks restored and continued identically;
+  frozen persons digest `25e9435bfb921b5b` after 200 years (542 families, 816 married).
+- Decision: ADR-0034.
+
 ## 9. Phases 05-20: notes
 
 No task breakdown exists yet for Phases 05-20; each is broken down when the previous
@@ -1058,39 +1090,39 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 04 — POPULATION
-TASK        : 04.02 — AGEING, MORTALITY, FERTILITY AND THE RECONCILIATION OF THE GRAINS
+TASK        : 04.03 — FAMILIES AND LINEAGE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████░░░░░░░░░░░░░░░░░░ 25%
+█████████░░░░░░░░░░░░░░░ 37%
 
 CURRENTLY
-→ 04.02 closed: the yearly LifeSystem in detailed regions (deaths by nine age bands, births to
-  couples scaled by the room left, every birth and death an event about the person, the coarse
-  counts rewritten from the living), and the RegionLod marker the coarse systems observe so
-  that growth, splits, migration and disaster deaths leave detailed regions alone
+→ 04.03 closed: FamilyInfo entities of kind Family, the yearly FamilySystem (widows released,
+  marriages inside region, culture and faith outside close kin, families founded by grooms and
+  joined by brides, heads replaced, extinction), children born to couples into the mother's
+  family with her husband as father, lineage queries (ancestors, descendants, siblings, kinship)
 
 COMPLETED
-✓ Phases 00-03 (headless) ; 04.01 Persons and the two grains (CI 34)
-✓ 04.02 Life cycles (5 tests: Lives)
+✓ Phases 00-03 (headless) ; 04.01 Persons (CI 34) ; 04.02 Life cycles (CI 35)
+✓ 04.03 Families and lineage (5 tests: Families)
 
 NEXT
-→ 04.03 Families and lineage (FamilyInfo, marriages by culture and faith, genealogy queries)
-→ 04.04 Needs and body (famine from drought, disease from plague, deaths caused by the disaster's event)
+→ 04.04 Needs and body (food, health, rest; famine from drought, disease from plague, deaths with causes)
+→ 04.05 Traits and skills, person names
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenPopulation/Public/Vaelen/Population/Lives.h, Private/Lives.cpp
-+ Tests/Population/Test_Lives.cpp
-~ Population.h/.cpp, Disasters.h/.cpp (RegionLod, ObserveLod, detailed regions skipped), PreHistory.h
-  (Peoples / Migrations accessors), Persons.h/.cpp (Lod type, Declare(World&, PreHistory&), Attach)
++ Source/VaelenPopulation/Public/Vaelen/Population/Families.h, Private/Families.cpp
++ Tests/Population/Test_Families.cpp
+~ Persons.h (PersonInfo.Spouse in the reserved tail, still 64 bytes), Lives.h/.cpp (SpouseRequired rule,
+  a married mother's child has her husband as father)
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 10 (10 without asserts);
-  ctest 53/53 in all six Linux presets; every Phase 03 frozen digest unchanged
-✓ Region 26 of AELVOR 128 detailed at year 300 and lived through 200 years: 1 460 -> 1 499 people
-  (never below 1 445, never above 1 576, capacity 1 878), grains consistent every year; frozen 9f2615d35856a752
-✓ Purity: 69 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 15 (15 without asserts);
+  ctest 54/54 in all six Linux presets; the 04.01 and 04.02 digests unchanged
+✓ Region 26 of AELVOR 128 with families for 200 years: 542 families (452 extinct, largest 71),
+  816 married of 1030 adults, 0 broken links; frozen persons digest 25e9435bfb921b5b
+✓ Purity: 71 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)

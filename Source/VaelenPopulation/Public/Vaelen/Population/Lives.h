@@ -41,7 +41,9 @@ namespace Vaelen::Population
 		uint32 FatherTo = 55;			   ///< and below this one
 		uint32 BirthsPerMille = 480;	   ///< yearly chance per fertile woman at full room
 		uint32 MinimumBirthsPerMille = 50; ///< chance kept when the region is at capacity
-		uint32 FemalePerMille = 500;	   ///< sex of a newborn
+		uint32 FemalePerMille = 500;
+		uint32 SpouseRequired =
+			0; ///< 1: only married women bear children (worlds with families)	   ///< sex of a newborn
 	};
 
 	struct PersonPayload

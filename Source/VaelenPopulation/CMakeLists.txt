@@ -5,11 +5,13 @@ set(VAELEN_POPULATION_PUBLIC_HEADERS
   Public/Vaelen/Population/PopulationApi.h
   Public/Vaelen/Population/Persons.h
   Public/Vaelen/Population/Lives.h
+  Public/Vaelen/Population/Families.h
 )
 
 set(VAELEN_POPULATION_SOURCES
   Private/Persons.cpp
   Private/Lives.cpp
+  Private/Families.cpp
 )
 
 add_library(VaelenPopulation STATIC ${VAELEN_POPULATION_SOURCES} ${VAELEN_POPULATION_PUBLIC_HEADERS})

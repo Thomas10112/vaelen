@@ -57,7 +57,8 @@ namespace Vaelen::Population
 		Hash64 Identity = 0; ///< seed of traits and names, from the world seed
 		uint8 Sex = 0;		 ///< Sex
 		uint8 State = 0;	 ///< LifeState
-		uint8 Reserved[6] = {};
+		uint8 Reserved[2] = {};
+		uint32 Spouse = 0; ///< person index of the living spouse, 0 = unmarried or widowed
 	};
 	static_assert(sizeof(PersonInfo) == 64, "PersonInfo must stay padding free");
 

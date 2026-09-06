@@ -56,6 +56,7 @@ Rules for this file:
 | [0031](#adr-0031-believers-never-exceed-the-living-at-any-tick-boundary-carries-round-up-and-deaths-take-believers-first) | Believers never exceed the living at any tick boundary: carries round up and deaths take believers first | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0032](#adr-0032-population-has-two-grains-and-one-truth-persons-exist-only-in-detailed-regions-and-always-sum-to-the-coarse-counts) | Population has two grains and one truth: persons exist only in detailed regions and always sum to the coarse counts | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0033](#adr-0033-in-a-detailed-region-the-persons-drive-the-counts-and-the-coarse-systems-observe-an-opt-in-lod-marker) | In a detailed region the persons drive the counts and the coarse systems observe an opt-in LOD marker | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0034](#adr-0034-families-are-entities-founded-by-grooms-lineage-is-read-from-the-parent-links-and-children-are-born-to-couples) | Families are entities founded by grooms, lineage is read from the parent links, and children are born to couples | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -2067,6 +2068,61 @@ Accepted 2026-09-06. Files: `Source/VaelenPopulation/Public/Vaelen/Population/Li
 `Source/VaelenSim/Public/Vaelen/Sim/Population.h`, `Private/Population.cpp`,
 `Disasters.h/.cpp`, `PreHistory.h`, `Tests/Population/Test_Lives.cpp` (5 tests). Headless
 VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0034: Families are entities founded by grooms, lineage is read from the parent links, and children are born to couples
+
+### Context
+
+The prompt wants lineage: who descends from whom, which family a person belongs to,
+who inherits. Persons (ADR-0032) carry mother and father indices; the life system
+(ADR-0033) picked any eligible man as father. Families need an identity that outlives
+their members, and kinship must be answerable without storing a tree.
+
+### Decision
+
+1. A family is an entity: culture, home region, founder, head, generation, founding
+   and extinction ticks. A groom without a family founds one on his marriage; the bride
+   joins it; children are born into their mother's family, which is her husband's.
+   Descent is therefore patrilineal by default, and the rule table can change who
+   founds and who joins without touching the queries.
+2. Marriages are drawn yearly by the grooms in index order: the n-th eligible bride of
+   the same region, culture and faith, of age and within the age gap, not kin within
+   two generations. The dead release their spouses at the next yearly tick. Every
+   marriage, founding and extinction is an event.
+3. Lineage is a set of pure queries over the parent links (ancestors, descendants,
+   siblings, kinship within a depth, living members of a family), each building one
+   index of the persons; the family system builds that index once per tick, so the
+   kinship test inside the marriage loop is a lookup, not a pool scan.
+4. `PersonInfo` gains `Spouse` inside its reserved tail (the layout stays 64 bytes and
+   padding-free), and `LifeRules.SpouseRequired` makes births couples-only in worlds
+   with families while staying off by default, so the 04.02 digest is unchanged.
+
+### Alternatives and decision rule
+
+- Storing children lists on persons or families: rejected; the parent links already
+  define the tree and lists would have to be kept consistent through every death and
+  demotion.
+- Matrilineal or bilateral families: not chosen as default but not excluded; the
+  founder and joiner are decided in one place.
+- Decided by robustness (no derived structure to keep in sync) and simplicity.
+
+### Consequences
+
+- Widows and widowers remarry; a person can appear in several marriage events, and
+  the family a child is born into is the one at the time of birth.
+- Families go extinct and stay in the world as history; the head of a living family is
+  always a living member, replaced by the eldest when the head dies.
+- Kinship within two generations forbids marrying a sibling, a parent or a
+  grandparent's line; cousins are allowed. A stricter rule is one number away.
+
+### Status
+
+Accepted 2026-09-06. Files: `Source/VaelenPopulation/Public/Vaelen/Population/Families.h`,
+`Source/VaelenPopulation/Private/Families.cpp`, `Persons.h`, `Lives.h/.cpp`,
+`Tests/Population/Test_Families.cpp` (5 tests). Headless VALIDATED on the six Linux
+presets; engine side UNVERIFIED.
 
 ---
 

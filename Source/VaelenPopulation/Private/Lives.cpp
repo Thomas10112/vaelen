@@ -191,11 +191,32 @@ namespace Vaelen::Population
 					continue;
 				}
 				const uint32 Age = AgeYears(Mother, Context.Tick);
-				if (Age < Rules.FertileFrom || Age >= Rules.FertileTo || Random.Below(1000) >= Chance)
+				if (Age < Rules.FertileFrom || Age >= Rules.FertileTo ||
+					(Rules.SpouseRequired != 0 && Mother.Spouse == 0) || Random.Below(1000) >= Chance)
 				{
 					continue;
 				}
-				// A father of her culture: the n-th eligible man in index order.
+				// Her husband when she has one; otherwise a father of her culture, the
+				// n-th eligible man in index order.
+				if (Mother.Spouse != 0)
+				{
+					PersonInfo Child;
+					Child.Index = ++NextIndex;
+					Child.Region = Region;
+					Child.Culture = Mother.Culture;
+					Child.Religion = Mother.Religion;
+					Child.Language = Mother.Language;
+					Child.Family = Mother.Family;
+					Child.Mother = Mother.Index;
+					Child.Father = Mother.Spouse;
+					Child.Born = Context.Tick;
+					Child.Sex = static_cast<uint8>(Random.Below(1000) < Rules.FemalePerMille ? Sex::Female : Sex::Male);
+					Child.State = static_cast<uint8>(LifeState::Alive);
+					Child.Identity = Noise::LatticeHash(W.Config().Seed ^ 0x424f524eull,
+														static_cast<int32>(Child.Index), static_cast<int32>(Region));
+					Newborn.push_back(Child);
+					continue;
+				}
 				uint32 Eligible = 0;
 				for (usize j = 0; j < People.size(); ++j)
 				{
