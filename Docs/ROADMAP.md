@@ -71,7 +71,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 01 | CORE SIMULATION | Entities, components, systems and a deterministic tick scheduler; simulation clock and calendar; event bus and event log; snapshot interfaces; deterministic replay; simulation LOD 0-4 hooks. | VALIDATED (headless, 01.01-01.08); UNVERIFIED (engine) |
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
-| 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | IN PROGRESS (04.01-04.03 VALIDATED headless; 04.04-04.08 PLANNED) |
+| 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | IN PROGRESS (04.01-04.04 VALIDATED headless; 04.05-04.08 PLANNED) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | PLANNED |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
@@ -1072,6 +1072,35 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   frozen persons digest `25e9435bfb921b5b` after 200 years (542 families, 816 married).
 - Decision: ADR-0034.
 
+### 04.04 Needs and body - VALIDATED (headless)
+
+- Delivered: `Needs.h/.cpp` - `PersonNeeds` (8 bytes: food, health, a rest slot for
+  Phase 10, hungry years), `NeedTypes::Declare`, `NeedRules` (a year burns 200 food and a full ration brings
+  300, so good years rebuild the stores; hunger when the stores fall under a year's 200;
+  a hungry year costs 40 health plus a draw below the deficit, a fed year restores 40;
+  drought cuts 300/600/900 per mille of the ration by severity; plague strikes
+  150/300/500 per mille of the persons for a draw below 300/360/420; infants and elders
+  from 60 take 30 percent more; a drought names the famine for three years), `DeathCause`
+  (natural, famine, starvation, plague) carried in `PersonPayload::Other`, `NeedSystem`
+  (LOD World, after Lives: the DisasterStruck events of the last year in detailed regions
+  are read from the log - the coarse system killed nobody there since 04.02 - the ration
+  is the capacity over the living cut by the droughts, every living person eats, hungers
+  or recovers, a plague strikes a random share, whoever reaches zero health dies with the
+  disaster's event as the cause id, then the counts are reconciled), `MeasureNeeds`
+  (living with needs, hungry, weak, food and health sums, deaths by cause from the log,
+  deaths with a cause id).
+- Tests (6): defaults and rule sanity; the busiest region of AELVOR 128 fed for 200 years
+  stays whole and peopled, everyone alive carries needs, every caused death points at an
+  earlier DisasterStruck of the matching kind and region whose coarse record killed
+  nobody, and caused deaths appear exactly when a drought or plague struck; a cursed
+  world (drought and plague every year, full strike) gives famine and plague deaths,
+  hungry years and a shrinking region with every cause checked, while immune rules give
+  none; a region shrunk to a quarter of its capacity starves without a cause; nothing
+  happens without a detailed region; two worlds identical, a snapshot between yearly ticks
+  continued identically; frozen persons digest `0e64632a2f2ded8c` after 200 years (1497 alive,
+  42 caused deaths).
+- Decision: ADR-0035.
+
 ## 9. Phases 05-20: notes
 
 No task breakdown exists yet for Phases 05-20; each is broken down when the previous
@@ -1090,39 +1119,41 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 04 — POPULATION
-TASK        : 04.03 — FAMILIES AND LINEAGE
+TASK        : 04.04 — NEEDS AND BODY
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-█████████░░░░░░░░░░░░░░░ 37%
+█████████░░░░░░░░░░░░░░░ 38%
 
 CURRENTLY
-→ 04.03 closed: FamilyInfo entities of kind Family, the yearly FamilySystem (widows released,
-  marriages inside region, culture and faith outside close kin, families founded by grooms and
-  joined by brides, heads replaced, extinction), children born to couples into the mother's
-  family with her husband as father, lineage queries (ancestors, descendants, siblings, kinship)
+→ 04.04 closed: PersonNeeds (food, health, rest slot, hungry years; 8 bytes) on every living person
+  of a detailed region, the yearly NeedSystem (ration = capacity over the living, cut by the
+  droughts that struck this year; hunger wears health, food restores it; a plague strikes a
+  share of the persons; the frail take more), deaths at zero health published with their
+  cause (famine, starvation, plague) and the DisasterStruck event as the cause id
 
 COMPLETED
-✓ Phases 00-03 (headless) ; 04.01 Persons (CI 34) ; 04.02 Life cycles (CI 35)
-✓ 04.03 Families and lineage (5 tests: Families)
+✓ Phases 00-03 (headless) ; 04.01 Persons (CI 34) ; 04.02 Life cycles ; 04.03 Families (CI 35, 36)
+✓ 04.04 Needs and body (6 tests: Needs)
 
 NEXT
-→ 04.04 Needs and body (food, health, rest; famine from drought, disease from plague, deaths with causes)
 → 04.05 Traits and skills, person names
+→ 04.06 LOD bridge (promotion/demotion cycles, persons who migrate)
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenPopulation/Public/Vaelen/Population/Families.h, Private/Families.cpp
-+ Tests/Population/Test_Families.cpp
-~ Persons.h (PersonInfo.Spouse in the reserved tail, still 64 bytes), Lives.h/.cpp (SpouseRequired rule,
-  a married mother's child has her husband as father)
++ Source/VaelenPopulation/Public/Vaelen/Population/Needs.h, Private/Needs.cpp
++ Tests/Population/Test_Needs.cpp
+~ Source/VaelenPopulation/CMakeLists.txt
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 15 (15 without asserts);
-  ctest 54/54 in all six Linux presets; the 04.01 and 04.02 digests unchanged
-✓ Region 26 of AELVOR 128 with families for 200 years: 542 families (452 extinct, largest 71),
-  816 married of 1030 adults, 0 broken links; frozen persons digest 25e9435bfb921b5b
-✓ Purity: 71 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 21 (21 without asserts);
+  ctest 55/55 in all six Linux presets; the 04.01-04.03 digests unchanged
+✓ Region 26 of AELVOR 128 with lives and needs for 200 years: 1497 alive, 42 deaths caused by a
+  disaster event, every cause a DisasterStruck of the right kind and region; frozen persons digest 0e64632a2f2ded8c
+✓ Cursed world (a drought and a plague every year): 151 famine and 1085 plague deaths in 30 years,
+  immune rules give none; a region shrunk to a quarter of its capacity starves without a cause
+✓ Purity: 73 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)

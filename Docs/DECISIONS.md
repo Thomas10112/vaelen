@@ -57,6 +57,7 @@ Rules for this file:
 | [0032](#adr-0032-population-has-two-grains-and-one-truth-persons-exist-only-in-detailed-regions-and-always-sum-to-the-coarse-counts) | Population has two grains and one truth: persons exist only in detailed regions and always sum to the coarse counts | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0033](#adr-0033-in-a-detailed-region-the-persons-drive-the-counts-and-the-coarse-systems-observe-an-opt-in-lod-marker) | In a detailed region the persons drive the counts and the coarse systems observe an opt-in LOD marker | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0034](#adr-0034-families-are-entities-founded-by-grooms-lineage-is-read-from-the-parent-links-and-children-are-born-to-couples) | Families are entities founded by grooms, lineage is read from the parent links, and children are born to couples | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0035](#adr-0035-needs-are-yearly-integers-fed-by-the-regions-ration-and-disasters-reach-persons-through-the-event-log) | Needs are yearly integers fed by the region's ration, and disasters reach persons through the event log | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -2123,6 +2124,62 @@ Accepted 2026-09-06. Files: `Source/VaelenPopulation/Public/Vaelen/Population/Fa
 `Source/VaelenPopulation/Private/Families.cpp`, `Persons.h`, `Lives.h/.cpp`,
 `Tests/Population/Test_Families.cpp` (5 tests). Headless VALIDATED on the six Linux
 presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0035: Needs are yearly integers fed by the region's ration, and disasters reach persons through the event log
+
+### Context
+
+Since 04.02 the coarse disaster system kills nobody in a detailed region: the persons
+must feel the droughts and plagues themselves, with the death traceable to the
+disaster's event (the prompt's causality). Persons also need a body - food and health -
+that later phases (traits, the player, economy) can read and push.
+
+### Decision
+
+1. `PersonNeeds` is a small padding-free component (food, health, a rest slot, hungry
+   years) added lazily to every living person of a detailed region by the need system;
+   a demotion drops it with the person. Values are 0..255 integers moved once a year.
+2. The ration of a region is its capacity over its living, cut by the droughts that
+   struck it during the year; food refills by the ration and burns by a constant, hunger
+   under a year's worth wears health down by a base plus a draw that grows with the
+   deficit, and a fed year restores it; a plague strikes a random share of the persons
+   for a draw bounded by the severity; infants and elders take more. Zero health is
+   death, so a single bad year weakens and a second one kills.
+3. The need system reads the DisasterStruck events of the last year from the event log
+   rather than subscribing: the log is the source of truth, replay-safe, and the
+   coarse record (deaths 0 in a detailed region) stays as written. Each death carries
+   its cause code in the payload and the DisasterStruck id as the event cause, so
+   why-chains reach from a person's death to the disaster and its omen.
+4. Hunger without a drought is starvation (a region past its capacity), with no cause
+   id: the world, not an event, is to blame.
+
+### Alternatives and decision rule
+
+- A FaithListener-style listener on DisasterStruck: rejected; the coarse system runs
+  in the same yearly tick and dispatch is next-tick, the log read is simpler and
+  replayable.
+- Continuous (per-tick) needs: rejected for Phase 04; the yearly grain matches the
+  life system and the disaster system. Phase 10 (the player) will refine rest and
+  daily needs where the player is.
+- Decided by robustness and determinism (one ordered pass over persons by index, one
+  random draw per person per plague).
+
+### Consequences
+
+- Famine and disease now reduce the counts of detailed regions through the persons,
+  by the same reconciliation as every other death; a detailed region is no longer
+  spared by its detail.
+- The 04.01-04.03 frozen digests hold because their worlds carry no need system; a
+  world with needs has its own frozen digest.
+- Rest is a reserved slot until Phase 10.
+
+### Status
+
+Accepted 2026-09-06. Files: `Source/VaelenPopulation/Public/Vaelen/Population/Needs.h`,
+`Source/VaelenPopulation/Private/Needs.cpp`, `Tests/Population/Test_Needs.cpp` (6 tests).
+Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
 
