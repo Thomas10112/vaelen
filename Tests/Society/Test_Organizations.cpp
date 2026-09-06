@@ -30,9 +30,9 @@ using namespace Vaelen::WorldGen;
 // Recorded on clang 18 / Linux x86_64 on 2026-09-06 (05.01): the busiest
 // region of AELVOR 128 detailed at year 300 and lived through 100 years with
 // lives, families, traits, the bridge and organisations.
-#define VAELEN_ORGANIZATIONS_FROZEN_128 0xe4725ff3ae419103ull
-#define VAELEN_ORGANIZATIONS_TOTAL_128 2u
-#define VAELEN_ORGANIZATIONS_MEMBERS_128 71u
+#define VAELEN_ORGANIZATIONS_FROZEN_128 0x8ce703a8fa934de0ull
+#define VAELEN_ORGANIZATIONS_TOTAL_128 4u
+#define VAELEN_ORGANIZATIONS_MEMBERS_128 100u
 
 namespace
 {
@@ -288,7 +288,8 @@ VAELEN_TEST(Organizations, SeatsFollowTheLivesForSixtyYears)
 	{
 		W.Ages.Run(1);
 		const OrganizationStats S = W.Stats();
-		if (S.Astray != 0 || S.CountMismatch != 0 || S.HeadsAlive != S.Alive || (Year > 2 && S.Alive != 2))
+		if (S.Astray != 0 || S.CountMismatch != 0 || S.HeadsAlive != S.Alive ||
+			(Year > 2 && (S.Alive < 2 || S.Alive > 4)))
 		{
 			++Failures;
 			VT_CHECK_MSG(false, "year %u: %u alive, %u astray, %u mismatched, %u heads", Year, S.Alive, S.Astray,
@@ -321,7 +322,7 @@ VAELEN_TEST(Organizations, SeatsFollowTheLivesForSixtyYears)
 			{
 				const PersonInfo* P = W.Instance.Components().GetPool(W.Persons.Person).TryGet(H);
 				Bad += P == nullptr || P->State != static_cast<uint8>(LifeState::Alive) || P->Region != Region ||
-							   (M.Organization != 1 && M.Organization != 2) || M.Role > 1
+							   M.Organization == 0 || M.Organization > 4 || M.Role > 1
 						   ? 1u
 						   : 0u;
 			});
@@ -337,14 +338,14 @@ VAELEN_TEST(Organizations, CoarseSeatsKeepTheirCountAndAPromotionFillsThemAgain)
 	W.Ages.Run(20);
 	std::vector<OrganizationInfo> Before;
 	OrganizationsOf(W.Instance, W.Organizations, Region, Before);
-	VT_REQUIRE(Before.size() == 2 && Before[0].Members > 0 && Before[1].Members > 0);
+	VT_REQUIRE(Before.size() >= 2 && Before[0].Members > 0 && Before[1].Members > 0);
 	VT_CHECK(ReleaseDetail(W.Instance, W.Lod, Region));
 	W.Ages.Run(10);
 	VT_CHECK(!IsDetailed(W.Instance, W.Ages.Types(), W.Persons, Region));
 	std::vector<OrganizationInfo> Coarse;
 	OrganizationsOf(W.Instance, W.Organizations, Region, Coarse);
-	VT_REQUIRE(Coarse.size() == 2);
-	for (usize i = 0; i < 2; ++i)
+	VT_REQUIRE(Coarse.size() == Before.size());
+	for (usize i = 0; i < Before.size(); ++i)
 	{
 		VT_CHECK_EQ(Coarse[i].Index, Before[i].Index);
 		VT_CHECK_EQ(Coarse[i].Members, Before[i].Members); // the last count is kept
@@ -363,11 +364,12 @@ VAELEN_TEST(Organizations, CoarseSeatsKeepTheirCountAndAPromotionFillsThemAgain)
 	W.Ages.Run(3);
 	std::vector<OrganizationInfo> After;
 	OrganizationsOf(W.Instance, W.Organizations, Region, After);
-	VT_REQUIRE(After.size() == 2);
+	VT_CHECK_EQ(After.size(), Before.size());
+	VT_REQUIRE(After.size() >= 2);
 	VT_CHECK_EQ(After[0].Index, Before[0].Index);
-	VT_CHECK(After[0].Members > 0 && After[1].Members > 0);
+	VT_CHECK(After[0].Members > 0 && After[1].Members > 0); // the council and the temple fill again
 	VT_CHECK(After[0].Head != 0 && After[1].Head != 0);
-	VT_CHECK_EQ(Count(W.Instance, OrganizationFoundedEvent), 2u); // never founded twice
+	VT_CHECK_EQ(Count(W.Instance, OrganizationFoundedEvent), static_cast<uint32>(Before.size())); // never founded twice
 	VT_CHECK_EQ(W.Stats().CountMismatch, 0u);
 }
 

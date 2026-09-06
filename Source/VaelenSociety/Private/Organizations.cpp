@@ -27,7 +27,22 @@ namespace Vaelen::Society
 			EntityHandle Handle;
 			PersonInfo Info;
 			uint8 Piety = 0;
+			uint8 Craft = 0;
+			uint8 Fighting = 0;
 		};
+
+		Ref MakeRef(const World& W, const Population::TraitTypes& Traits, EntityHandle H, const PersonInfo& P)
+		{
+			const Population::PersonTraits* T = W.Components().GetPool(Traits.Traits).TryGet(H);
+			Ref R{H, P, 128, 0, 0};
+			if (T != nullptr)
+			{
+				R.Piety = T->Traits[static_cast<uint32>(Population::Trait::Piety)];
+				R.Craft = T->Skills[static_cast<uint32>(Population::Skill::Craft)];
+				R.Fighting = T->Skills[static_cast<uint32>(Population::Skill::Fighting)];
+			}
+			return R;
+		}
 
 		struct OrgRef
 		{
@@ -122,10 +137,7 @@ namespace Vaelen::Society
 					{
 						if (P.Region == Region && IsAlive(P))
 						{
-							const Population::PersonTraits* T = W.Components().GetPool(Traits.Traits).TryGet(H);
-							People.push_back(Ref{H, P,
-												 T != nullptr ? T->Traits[static_cast<uint32>(Population::Trait::Piety)]
-															  : uint8{128}});
+							People.push_back(MakeRef(W, Traits, H, P));
 						}
 					});
 			std::sort(People.begin(), People.end(),
@@ -191,6 +203,23 @@ namespace Vaelen::Society
 			{
 				Found(OrganizationKind::Council, 0, Rules.CouncilSeats);
 			}
+			uint32 Crafters = 0;
+			uint32 Fighters = 0;
+			for (const Ref& R : People)
+			{
+				Crafters += R.Craft >= Rules.SkilledFrom ? 1u : 0u;
+				Fighters += R.Fighting >= Rules.SkilledFrom ? 1u : 0u;
+			}
+			if (Crafters >= Rules.GuildFromCrafters && Rules.GuildFromCrafters != 0 &&
+				!HasKind(OrganizationKind::Guild, 0))
+			{
+				Found(OrganizationKind::Guild, 0, std::min(Rules.GuildMaxSeats, std::max(1u, Crafters / 2u)));
+			}
+			if (Fighters >= Rules.WarbandFromFighters && Rules.WarbandFromFighters != 0 &&
+				!HasKind(OrganizationKind::Warband, 0))
+			{
+				Found(OrganizationKind::Warband, 0, std::min(Rules.WarbandMaxSeats, std::max(1u, Fighters / 2u)));
+			}
 			if (Faith != nullptr && Faith->Majority != 0)
 			{
 				const uint32 Believers = Faith->Adherents[Faith->SlotOf(Faith->Majority)];
@@ -223,10 +252,7 @@ namespace Vaelen::Society
 								Released.push_back(H);
 								return;
 							}
-							const Population::PersonTraits* T = W.Components().GetPool(Traits.Traits).TryGet(H);
-							Members.push_back(Ref{
-								H, *P,
-								T != nullptr ? T->Traits[static_cast<uint32>(Population::Trait::Piety)] : uint8{128}});
+							Members.push_back(MakeRef(W, Traits, H, *P));
 						});
 				std::sort(Released.begin(), Released.end(),
 						  [](EntityHandle A, EntityHandle B) { return A.Index() < B.Index(); });
@@ -278,6 +304,15 @@ namespace Vaelen::Society
 						{
 							continue;
 						}
+						else if (O.Kind == static_cast<uint32>(OrganizationKind::Guild) && R.Craft < Rules.SkilledFrom)
+						{
+							continue;
+						}
+						else if (O.Kind == static_cast<uint32>(OrganizationKind::Warband) &&
+								 R.Fighting < Rules.SkilledFrom)
+						{
+							continue;
+						}
 						Candidates.push_back(R);
 					}
 					if (O.Kind == static_cast<uint32>(OrganizationKind::Council))
@@ -290,6 +325,19 @@ namespace Vaelen::Society
 									  const uint32 SB =
 										  B.Info.Family < HouseSize.size() ? HouseSize[B.Info.Family] : 0u;
 									  return SA != SB ? SA > SB : A.Info.Index < B.Info.Index;
+								  });
+					}
+					else if (O.Kind == static_cast<uint32>(OrganizationKind::Guild))
+					{
+						std::sort(Candidates.begin(), Candidates.end(), [](const Ref& A, const Ref& B)
+								  { return A.Craft != B.Craft ? A.Craft > B.Craft : A.Info.Index < B.Info.Index; });
+					}
+					else if (O.Kind == static_cast<uint32>(OrganizationKind::Warband))
+					{
+						std::sort(Candidates.begin(), Candidates.end(),
+								  [](const Ref& A, const Ref& B) {
+									  return A.Fighting != B.Fighting ? A.Fighting > B.Fighting
+																	  : A.Info.Index < B.Info.Index;
 								  });
 					}
 					else
@@ -320,11 +368,25 @@ namespace Vaelen::Society
 					const Ref* Best = &Members.front();
 					for (const Ref& M : Members)
 					{
+						auto Key = [&](const Ref& X) -> uint32
+						{
+							switch (static_cast<OrganizationKind>(O.Kind))
+							{
+							case OrganizationKind::Temple:
+								return X.Piety;
+							case OrganizationKind::Guild:
+								return X.Craft;
+							case OrganizationKind::Warband:
+								return X.Fighting;
+							default:
+								return 0;
+							}
+						};
+						const bool ByKey = O.Kind != static_cast<uint32>(OrganizationKind::Council);
 						const bool Better =
-							O.Kind == static_cast<uint32>(OrganizationKind::Temple)
-								? (M.Piety > Best->Piety || (M.Piety == Best->Piety && M.Info.Index < Best->Info.Index))
-								: (M.Info.Born < Best->Info.Born ||
-								   (M.Info.Born == Best->Info.Born && M.Info.Index < Best->Info.Index));
+							ByKey ? (Key(M) > Key(*Best) || (Key(M) == Key(*Best) && M.Info.Index < Best->Info.Index))
+								  : (M.Info.Born < Best->Info.Born ||
+									 (M.Info.Born == Best->Info.Born && M.Info.Index < Best->Info.Index));
 						if (Better)
 						{
 							Best = &M;

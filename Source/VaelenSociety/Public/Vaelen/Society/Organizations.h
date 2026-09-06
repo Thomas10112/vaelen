@@ -38,9 +38,9 @@ namespace Vaelen::Society
 	{
 		Council = 0,
 		Temple,
-		Guild,	 ///< Phase 05.05
-		Warband, ///< Phase 05.05
-		Clan,	 ///< Phase 05.05
+		Guild,	 ///< the skilled of a craft (05.05)
+		Warband, ///< the fighters (05.05)
+		Clan,	 ///< reserved
 		Count
 	};
 	VAELEN_SOCIETY_API const char* OrganizationKindName(OrganizationKind Kind) noexcept;
@@ -87,7 +87,12 @@ namespace Vaelen::Society
 		uint32 TempleSeatsPerMille = 50;  ///< members among the believers, the most pious first
 		uint32 TempleMaxSeats = 64;
 		uint32 MemberFromAge = 20;
-		uint32 DisbandAfterYears = 3; ///< empty this long in a detailed region: disbanded
+		uint32 DisbandAfterYears = 3;  ///< empty this long in a detailed region: disbanded
+		uint32 SkilledFrom = 80;	   ///< a skill this high counts (guilds, warbands)
+		uint32 GuildFromCrafters = 20; ///< a guild once the region holds this many skilled in craft
+		uint32 GuildMaxSeats = 32;
+		uint32 WarbandFromFighters = 20; ///< a warband once the region holds this many skilled in fighting
+		uint32 WarbandMaxSeats = 24;
 	};
 
 	struct OrganizationPayload

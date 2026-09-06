@@ -72,7 +72,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
-| 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | IN PROGRESS (05.01-05.04 VALIDATED headless; 05.05-05.08 PLANNED) |
+| 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | IN PROGRESS (05.01-05.05 VALIDATED headless; 05.06-05.08 PLANNED) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
@@ -1406,6 +1406,41 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   years (2888 entries, 2227 exits).
 - Decision: ADR-0043.
 
+### 05.05 Organisations acting - VALIDATED (headless)
+
+- Delivered: `Decisions.h/.cpp` - `DecisionKind` (grain laid in, preached, trained, a raid
+  planned), `DecisionTypes` (the `RegionStores` the need system observes), `DecisionRules`
+  (grain kept three years after a drought and absorbing 400 per mille of a drought's cut,
+  20 per mille of the region's people of other faiths converted a year up to 64, 6 craft
+  points a year for a guild's members, a raid every 5 years at 10 strength a member),
+  events DecisionMade (organisation, kind, seat, value; the drought as cause for grain,
+  the raid for a raid) and RaidPlanned (organisation, from, target, strength; for Phase
+  08), `DecisionSystem` (LOD World, after Organizations: for every living, peopled
+  organisation of a detailed region in index order - a council with a drought in memory
+  writes the region's grain, a temple turns the least pious of the other faiths and
+  reconciles the counts, a guild trains its members, a warband plans a raid on the most
+  peopled neighbour on its years; grain not renewed is spent), `StoresOf`,
+  `MeasureDecisions`. The organisation system founds a guild once 20 of the region's
+  living are skilled in craft (80 or more) and a warband once 20 are skilled in fighting,
+  seats them by craft and by fighting and gives them the most skilled as head. The need
+  system gains `RegionStores` and `ObserveStores`: a region's grain cuts what a drought
+  takes.
+- Refreeze: guilds and warbands now exist in the 05.01, 05.02 and 05.04 reference runs, so
+  the organisations digest becomes `8ce703a8fa934de0`, the standing digest `ddad5d79565a46f8` (seats are offices)
+  and the bondage digest `a1a92018c62bc034` (the elite changes); the Phase 03 and 04 digests are
+  unchanged.
+- Tests (4): after thirty years in the busiest region of AELVOR 128 a guild and a warband
+  exist, seated by the skilled with the most skilled as head, training and raids in the
+  log; ten cursed years in two worlds - one whose need system observes the stores, one
+  not - leave fewer famine deaths and more food with the grain, one grain decision a
+  year each naming its drought, the stores spent once the droughts are years away;
+  preaching converts persons of other faiths year by year with the counts reconciled,
+  training raises a member's craft on top of the year's growth, zero rules preach,
+  train and raid nothing, nothing happens without a detailed region; two worlds
+  identical in state and log, a snapshot between yearly ticks continued identically;
+  frozen stores digest `d99d3be56bcbfe4f` after 100 years (155 decisions by 4 organisations).
+- Decision: ADR-0044.
+
 ## 10. Phases 06-20: notes
 
 No task breakdown exists yet for Phases 06-20; each is broken down when the previous
@@ -1425,40 +1460,42 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 05 — SOCIETY
-TASK        : 05.04 — BONDAGE AND SLAVERY AS INSTITUTIONS
+TASK        : 05.05 — ORGANISATIONS ACTING
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███████████░░░░░░░░░░░░░ 47%
+███████████░░░░░░░░░░░░░ 48%
 
 CURRENTLY
-→ 05.04 closed: BondState on persons (bonded or enslaved; entered by debt or birth; the holder; since),
-  RegionStrata as counts per region (free, bonded, enslaved) written from the persons while detailed
-  and kept while coarse, the yearly BondageSystem (where the culture allows it a common adult may
-  fall into bondage for debt, held by one of the elite; bondage unredeemed for fifteen years hardens
-  into slavery; the child of an enslaved mother is born enslaved where birth bondage is allowed;
-  exits by manumission, flight, the holder's death for the bonded, death), BondEntered and BondLeft
-  events with the birth or the death as cause where one exists
+→ 05.05 closed: guilds and warbands founded and seated by the organisation system from the skilled;
+  the yearly DecisionSystem - a council lays in grain after a drought (RegionStores that the need
+  system observes, softening the next drought's cut), a temple preaches and converts a share of the
+  region's people of other faiths (persons first, counts reconciled), a guild trains its members'
+  craft, a warband plans a raid on the most peopled neighbour every five years (RaidPlanned for
+  Phase 08); DecisionMade events with the drought or the raid as cause
 
 COMPLETED
-✓ Phases 00-04 (headless) ; 05.01 Organisations ; 05.02 Standing ; 05.03 Norms (CI 44)
-✓ 05.04 Bondage and slavery (4 tests: Bondage)
+✓ Phases 00-04 (headless) ; 05.01-05.04 (CI 45)
+✓ 05.05 Organisations acting (4 tests: Decisions)
 
 NEXT
-→ 05.05 Organisations acting (councils, temples, guilds, warbands deciding yearly, with events and causes)
-→ 05.06 Social shape across the grains
+→ 05.06 Social shape across the grains (strata shares kept through demotion, honoured at promotion)
+→ 05.07 Society in history
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenSociety/Public/Vaelen/Society/BondState.h, Bondage.h, Private/Bondage.cpp
-+ Tests/Society/Test_Bondage.cpp
-~ Standing.h/.cpp (StandingSystem::ObserveBonds: the bound are not ranked), Source/VaelenSociety/CMakeLists.txt
++ Source/VaelenSociety/Public/Vaelen/Society/Decisions.h, Private/Decisions.cpp
++ Tests/Society/Test_Decisions.cpp
+~ Needs.h/.cpp (RegionStores, NeedSystem::ObserveStores), Organizations.h/.cpp (guilds and warbands: founding
+  thresholds, seats by craft and fighting, heads by skill), Test_Organizations.cpp and Test_Standing.cpp
+  and Test_Bondage.cpp (refrozen: guilds and warbands now exist), Source/VaelenSociety/CMakeLists.txt
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 37 (37 without asserts)
-  + Society 17 (17 without asserts); ctest 65/65 in all six Linux presets; every earlier frozen digest unchanged
-✓ Region 26 of AELVOR 128 for 200 years with every institution allowed: 2888 entries, 2227 exits; frozen bondage digest 99ec62d866000c68
-✓ Purity: 89 files, 0 violations
+  + Society 21 (21 without asserts); ctest 66/66 in all six Linux presets; Phase 03 and 04 digests unchanged
+✓ Region 26 of AELVOR 128 for 100 years: 155 decisions by 4 organisations; frozen stores digest d99d3be56bcbfe4f;
+  organisations refrozen 8ce703a8fa934de0, standing refrozen ddad5d79565a46f8, bondage refrozen a1a92018c62bc034
+✓ Purity: 91 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)

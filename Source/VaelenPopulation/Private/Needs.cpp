@@ -147,7 +147,14 @@ namespace Vaelen::Population
 				{
 					if (ThisYear)
 					{
-						RationPerMille = RationPerMille * (1000u - Rules.DroughtCutPerMille[S]) / 1000u;
+						// The stores soften the cut (a council's grain, Phase 05).
+						uint32 Cut = Rules.DroughtCutPerMille[S];
+						const RegionStores* Grain = HasStores ? W.Components().GetPool(Stores).TryGet(RH) : nullptr;
+						if (Grain != nullptr && Grain->GrainPerMille > 0)
+						{
+							Cut = Cut * (1000u - std::min(1000u, Grain->GrainPerMille)) / 1000u;
+						}
+						RationPerMille = RationPerMille * (1000u - Cut) / 1000u;
 					}
 					Drought = B.Event; // the latest drought names the famine
 				}

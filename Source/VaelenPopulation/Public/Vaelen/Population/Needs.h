@@ -63,6 +63,16 @@ namespace Vaelen::Population
 		uint32 FamineMemoryYears = 3; ///< hunger this long after a drought is still that drought's famine
 	};
 
+	/// Stores of a region, on the region entity: written by a later module (Phase
+	/// 05 decisions), read by the need system when told to observe the type. The
+	/// grain share cuts what a drought takes from the ration.
+	struct RegionStores
+	{
+		uint32 GrainPerMille = 0;
+		uint32 Reserved = 0;
+	};
+	static_assert(sizeof(RegionStores) == 8, "RegionStores must stay padding free");
+
 	/// Cause codes carried in PersonPayload::Other of a PersonDied event.
 	enum class DeathCause : uint32
 	{
@@ -83,6 +93,12 @@ namespace Vaelen::Population
 		{
 		}
 		const char* GetName() const noexcept override { return "Needs"; }
+		/// Optional: a region's stores soften its droughts (Phase 05 decisions).
+		void ObserveStores(ComponentType<RegionStores> InStores) noexcept
+		{
+			Stores = InStores;
+			HasStores = true;
+		}
 		SimLod GetLod() const noexcept override { return SimLod::World; }
 		std::vector<std::string_view> GetDependencies() const override { return {"Lives"}; }
 		void Tick(TickContext& Context) override;
@@ -93,6 +109,8 @@ namespace Vaelen::Population
 		PersonTypes Persons;
 		NeedTypes Needs;
 		NeedRules Rules;
+		ComponentType<RegionStores> Stores;
+		bool HasStores = false;
 	};
 
 	struct NeedStats

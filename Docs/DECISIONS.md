@@ -66,6 +66,7 @@ Rules for this file:
 | [0041](#adr-0041-standing-is-recomputed-every-year-from-what-the-world-already-knows-and-tiers-are-shares-of-a-regions-adults) | Standing is recomputed every year from what the world already knows, and tiers are shares of a region's adults | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0042](#adr-0042-norms-live-on-the-culture-and-reach-the-lower-modules-through-a-small-mirror-they-choose-to-observe) | Norms live on the culture and reach the lower modules through a small mirror they choose to observe | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0043](#adr-0043-bondage-is-a-state-on-the-person-with-a-living-holder-among-the-elite-and-a-count-per-region) | Bondage is a state on the person with a living holder among the elite, and a count per region | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0044](#adr-0044-organisations-act-through-one-yearly-system-whose-effects-reach-the-lower-modules-as-state-they-observe-or-as-events-they-ignore) | Organisations act through one yearly system whose effects reach the lower modules as state they observe or as events they ignore | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -2614,6 +2615,57 @@ say which institutions a culture allows; standing (ADR-0041) says who the elite 
 
 Accepted 2026-09-06. Files: `Source/VaelenSociety/Public/Vaelen/Society/Bondage.h`,
 `Source/VaelenSociety/Private/Bondage.cpp`, `Tests/Society/Test_Bondage.cpp` (4 tests).
+Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0044: Organisations act through one yearly system whose effects reach the lower modules as state they observe or as events they ignore
+
+### Context
+
+Organisations (ADR-0040) existed but did nothing. The prompt wants them to matter to
+the simulation - to famine, to faith, to skills, to the wars to come - without the
+lower modules (needs, faith, traits) knowing about them.
+
+### Decision
+
+1. One system, `Decisions`, runs after Organizations and makes every kind's decision
+   in organisation index order, each a DecisionMade event with a value and a cause where
+   one exists. The kinds are a table; each decision is a few lines against state the
+   world already has.
+2. Effects reach downward in two ways only. Through state the lower module chooses to
+   observe: a council's grain is a `RegionStores` component on the region, defined in
+   the population module, that the need system reads when told to observe the type
+   (the mirror pattern of ADR-0042); a temple's converts are persons whose faith the
+   temple sets and counts the population module reconciles. Or through events the lower
+   modules ignore: a warband's raid is a RaidPlanned event for Phase 08, and a guild's
+   training writes the skill it trains.
+3. Guilds and warbands are founded and seated by the organisation system like councils
+   and temples, from the skilled (craft, fighting) with the most skilled as head; the
+   05.01 and 05.02 references are refrozen because those organisations now exist.
+
+### Alternatives and decision rule
+
+- A system per organisation kind: rejected; the order of decisions across kinds must
+  be one deterministic order, and the kinds share the seat and cause machinery.
+- Decisions as component flags read by the lower systems: rejected for effects with a
+  natural home (grain on the region, faith on the person); the flag would duplicate it.
+- Decided by the layering rule and by determinism (one order, index by index).
+
+### Consequences
+
+- The stores digest hashes every region's grain; famine deaths in a cursed run are
+  fewer with a council than without.
+- Preaching moves persons between faiths and the counts follow through the same
+  reconciliation as births and deaths.
+- Phase 08 consumes RaidPlanned; until then raids are history without consequence.
+
+### Status
+
+Accepted 2026-09-06. Files: `Source/VaelenSociety/Public/Vaelen/Society/Decisions.h`,
+`Source/VaelenSociety/Private/Decisions.cpp`, `Source/VaelenSociety/Public/Vaelen/Society/Organizations.h`,
+`Source/VaelenSociety/Private/Organizations.cpp`, `Source/VaelenPopulation/Public/Vaelen/Population/Needs.h`,
+`Source/VaelenPopulation/Private/Needs.cpp`, `Tests/Society/Test_Decisions.cpp` (4 tests).
 Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
