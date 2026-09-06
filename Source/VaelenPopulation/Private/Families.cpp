@@ -153,6 +153,42 @@ namespace Vaelen::Population
 			.ForEach([&](EntityHandle, const FamilyInfo& F)
 					 { FamilyCounter = F.Index > FamilyCounter ? F.Index : FamilyCounter; });
 		Index Ix(W, Persons);
+		// Marriage norms by culture (the rules where a culture carries none).
+		std::vector<MarriageNorms> ByCulture;
+		if (HasNorms)
+		{
+			W.Components()
+				.GetPool(Types.Population.Culture)
+				.ForEach(
+					[&](EntityHandle H, const History::CultureInfo& C)
+					{
+						const MarriageNorms* N = W.Components().GetPool(Norms).TryGet(H);
+						if (N == nullptr)
+						{
+							return;
+						}
+						if (C.Index >= ByCulture.size())
+						{
+							ByCulture.resize(usize{C.Index} + 1u, MarriageNorms{});
+						}
+						ByCulture[C.Index] = *N;
+						ByCulture[C.Index].Reserved = 1; // present
+					});
+		}
+		auto NormsOf = [&](uint32 Culture) -> MarriageNorms
+		{
+			if (Culture < ByCulture.size() && ByCulture[Culture].Reserved != 0)
+			{
+				return ByCulture[Culture];
+			}
+			MarriageNorms N;
+			N.MarryFrom = Rules.MarryFrom;
+			N.MarryTo = Rules.MarryTo;
+			N.MaxAgeGap = Rules.MaxAgeGap;
+			N.FaithMatters = Rules.FaithMatters;
+			N.MarriagesPerMille = Rules.MarriagesPerMille;
+			return N;
+		};
 
 		// 1. The dead release their spouses (any region, the dead may lie anywhere).
 		W.Components()
@@ -183,12 +219,13 @@ namespace Vaelen::Population
 			{
 				const PersonInfo& A = People[i].Info;
 				const uint32 AgeA = AgeYears(A, Context.Tick);
-				if (Taken[i] != 0 || A.Spouse != 0 || AgeA < Rules.MarryFrom || AgeA >= Rules.MarryTo ||
+				const MarriageNorms N = NormsOf(A.Culture);
+				if (Taken[i] != 0 || A.Spouse != 0 || AgeA < N.MarryFrom || AgeA >= N.MarryTo ||
 					A.Sex != static_cast<uint8>(Sex::Male))
 				{
 					continue; // grooms seek; brides are chosen, so each pair is drawn once
 				}
-				if (Random.Below(1000) >= Rules.MarriagesPerMille)
+				if (Random.Below(1000) >= N.MarriagesPerMille)
 				{
 					continue;
 				}
@@ -199,9 +236,8 @@ namespace Vaelen::Population
 					const uint32 AgeB = AgeYears(B, Context.Tick);
 					const uint32 Gap = AgeA > AgeB ? AgeA - AgeB : AgeB - AgeA;
 					if (Taken[j] == 0 && B.Spouse == 0 && B.Sex == static_cast<uint8>(Sex::Female) &&
-						B.Culture == A.Culture && AgeB >= Rules.MarryFrom && AgeB < Rules.MarryTo &&
-						Gap <= Rules.MaxAgeGap && (Rules.FaithMatters == 0 || B.Religion == A.Religion) &&
-						!KinIn(Ix, A.Index, B.Index, 2))
+						B.Culture == A.Culture && AgeB >= N.MarryFrom && AgeB < N.MarryTo && Gap <= N.MaxAgeGap &&
+						(N.FaithMatters == 0 || B.Religion == A.Religion) && !KinIn(Ix, A.Index, B.Index, 2))
 					{
 						++Eligible;
 					}
@@ -217,9 +253,8 @@ namespace Vaelen::Population
 					const uint32 AgeB = AgeYears(B, Context.Tick);
 					const uint32 Gap = AgeA > AgeB ? AgeA - AgeB : AgeB - AgeA;
 					if (Taken[j] == 0 && B.Spouse == 0 && B.Sex == static_cast<uint8>(Sex::Female) &&
-						B.Culture == A.Culture && AgeB >= Rules.MarryFrom && AgeB < Rules.MarryTo &&
-						Gap <= Rules.MaxAgeGap && (Rules.FaithMatters == 0 || B.Religion == A.Religion) &&
-						!KinIn(Ix, A.Index, B.Index, 2))
+						B.Culture == A.Culture && AgeB >= N.MarryFrom && AgeB < N.MarryTo && Gap <= N.MaxAgeGap &&
+						(N.FaithMatters == 0 || B.Religion == A.Religion) && !KinIn(Ix, A.Index, B.Index, 2))
 					{
 						if (Pick > 0)
 						{

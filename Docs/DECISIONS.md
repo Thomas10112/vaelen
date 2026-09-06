@@ -64,6 +64,7 @@ Rules for this file:
 | [0039](#adr-0039-the-phase-04-gate-runs-every-population-system-over-the-256-pre-history-and-freezes-the-state-at-250-and-500-years) | The Phase 04 gate runs every population system over the 256 pre-history and freezes the state at 250 and 500 years | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0040](#adr-0040-organisations-are-entities-seated-in-a-region-filled-from-its-persons-and-kept-as-counts-when-the-region-is-coarse) | Organisations are entities seated in a region, filled from its persons, and kept as counts when the region is coarse | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0041](#adr-0041-standing-is-recomputed-every-year-from-what-the-world-already-knows-and-tiers-are-shares-of-a-regions-adults) | Standing is recomputed every year from what the world already knows, and tiers are shares of a region's adults | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0042](#adr-0042-norms-live-on-the-culture-and-reach-the-lower-modules-through-a-small-mirror-they-choose-to-observe) | Norms live on the culture and reach the lower modules through a small mirror they choose to observe | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -2511,6 +2512,56 @@ would create a second source that drifts from the first.
 
 Accepted 2026-09-06. Files: `Source/VaelenSociety/Public/Vaelen/Society/Standing.h`,
 `Source/VaelenSociety/Private/Standing.cpp`, `Tests/Society/Test_Standing.cpp` (4 tests).
+Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0042: Norms live on the culture and reach the lower modules through a small mirror they choose to observe
+
+### Context
+
+The prompt wants cultures that differ in how their people marry, descend, tolerate
+and hold others, and that change with their history. The rules that govern marriage
+sit in the population module (ADR-0034) as one table per world; the society module
+sits above it and may not be included by it.
+
+### Decision
+
+1. A culture's customs are one component (`NormSet`) on the culture entity, drawn once
+   from the culture's identity so that a seed gives the same customs on every machine,
+   and inherited by a split culture from its parent with one custom of its own. Drifts
+   come from events read from the log - a schism hardens the faith, a great disaster
+   loosens the people - and each drift is an event with before and after.
+2. The lower module defines the small struct it understands (`MarriageNorms`: marrying
+   ages, gap, faith, eagerness) and an opt-in (`FamilySystem::ObserveNorms`); the society
+   module mirrors its marriage customs into that struct on the same culture entity and
+   keeps the mirror equal. Dependencies stay one-way: the population module knows a
+   struct and a type, never the society.
+3. A world that does not observe the norms is unchanged (the 04.03 digest holds); a
+   world that does marries every culture by its own customs, with the family rules as
+   the customs of any culture that carries none.
+
+### Alternatives and decision rule
+
+- Passing per-culture rules into the family system's constructor: rejected; customs
+  change over time and are born with cultures the constructor never sees.
+- The society module rewriting the family rules: rejected; one owner per truth, and the
+  rules are a world constant.
+- Decided by the layering rule and by evolvability (the mirror pattern extends to
+  descent in 05.04 and to any later reader).
+
+### Consequences
+
+- Norms drift by rules of the society module; the lower module sees only the mirror.
+- The norms digest hashes every NormSet in culture order; it is sensitive to every
+  draw and every drift.
+- Descent, tolerance, mobility and the bondage allowed are ready for 05.04 to 05.06.
+
+### Status
+
+Accepted 2026-09-06. Files: `Source/VaelenSociety/Public/Vaelen/Society/Norms.h`,
+`Source/VaelenSociety/Private/Norms.cpp`, `Source/VaelenPopulation/Public/Vaelen/Population/Families.h`,
+`Source/VaelenPopulation/Private/Families.cpp`, `Tests/Society/Test_Norms.cpp` (4 tests).
 Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---

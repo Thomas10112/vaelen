@@ -72,7 +72,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
-| 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | IN PROGRESS (05.01-05.02 VALIDATED headless; 05.03-05.08 PLANNED) |
+| 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | IN PROGRESS (05.01-05.03 VALIDATED headless; 05.04-05.08 PLANNED) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
@@ -1334,6 +1334,39 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   years (1045 ranked, 52 elite).
 - Decision: ADR-0041.
 
+### 05.03 Norms - VALIDATED (headless)
+
+- Delivered: `Norms.h/.cpp` - `Descent` (patrilineal, matrilineal), `Bondage` bits (debt,
+  capture, birth; read by 05.04), `NormSet` (56 bytes on the culture entity: the
+  `MarriageNorms`, descent, tolerance, mobility, the bondage allowed, drifts, the tick of
+  the last change), `NormTypes::Declare` (the NormSet and the `MarriageNorms` mirror),
+  `NormRules` (ranges for every custom, seven in ten cultures care for faith in marriage,
+  one in five matrilineal, each bondage institution allowed with an even chance; a schism
+  hardens the faith and costs 100 per mille of tolerance, a disaster of severity two or
+  more adds 50 per mille of mobility), `NormField` and `NormFieldName`, events NormChanged
+  (culture, field, before, after), pure `NormsFromIdentity` (lattice draws per custom),
+  `NormsOfChild` (the parent's customs with one of the child's own), `NormValue`,
+  `NormSystem` (LOD World, after Population: customs for every culture that lacks them,
+  parents before children, then the drifts from last year's schisms and disasters read
+  from the log, the mirror kept equal), `NormsOf`, `SetNorms`, `MeasureNorms`. In the
+  population module `MarriageNorms` and `FamilySystem::ObserveNorms`: when told to
+  observe the type, the family system marries by the groom's culture's customs
+  (marrying ages, gap, faith, eagerness) where the culture entity carries them, and by
+  its FamilyRules elsewhere; without the call nothing changes (the 04.03 digest holds).
+- Tests (4): customs from an identity are deterministic, in range and varied over 256
+  identities with about a fifth matrilineal and seven in ten caring for faith, a child
+  differs from its parent in at most one custom; in AELVOR 128 every culture has customs
+  with the mirror equal and split cultures within one custom of their parents, and with
+  the busiest region's majority culture set to marry from 30 without regard to faith its
+  marriages are all of age while the same world under the family rules alone marries
+  young and never across faiths; twelve cursed years raise mobility once per great
+  disaster with one event each, a schism hardens the faith and lowers the tolerance,
+  a quiet world never drifts; two worlds identical in state and norms digest, a
+  snapshot between yearly ticks continued identically, the family rules alone give
+  another world; frozen norms digest `f2b7de051eab022b` after 100 years (4 cultures, 16
+  drifts).
+- Decision: ADR-0042.
+
 ## 10. Phases 06-20: notes
 
 No task breakdown exists yet for Phases 06-20; each is broken down when the previous
@@ -1353,38 +1386,41 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 05 — SOCIETY
-TASK        : 05.02 — STATUS AND RANK
+TASK        : 05.03 — NORMS
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████████░░░░░░░░░░░░░░ 45%
+███████████░░░░░░░░░░░░░ 46%
 
 CURRENTLY
-→ 05.02 closed: PersonStanding (score, rank 0..255, tier, offices; 8 bytes) on every living adult of
-  a detailed region, the yearly StandingSystem (a score from the house's size and headship, the age
-  band, charm and will, the best skill and the offices held - a seat, a head's seat; the region's
-  adults ranked by score, the top 5 percent the elite, the next 15 the notables), EliteOf,
-  StandingOf, MeasureStanding with a digest
+→ 05.03 closed: NormSet on every culture (marrying ages, age gap, faith in marriage, eagerness to
+  marry, descent, tolerance, mobility, the bondage allowed) drawn from the culture's identity, a
+  split culture taking its parent's with one custom of its own; drifts from schisms (faith hardens,
+  tolerance falls) and great disasters (mobility rises) with NormChanged events; the marriage
+  customs mirrored into MarriageNorms that the Phase 04 family system observes, so each culture
+  marries by its own rules
 
 COMPLETED
-✓ Phases 00-04 (headless) ; 05.01 Organisations (CI 42)
-✓ 05.02 Status and rank (4 tests: Standing)
+✓ Phases 00-04 (headless) ; 05.01 Organisations ; 05.02 Standing (CI 43)
+✓ 05.03 Norms (4 tests: Norms)
 
 NEXT
-→ 05.03 Norms per culture (marriage, descent, faith, mobility, bondage allowed) read by the Phase 04 rules
-→ 05.04 Bondage and slavery as institutions
+→ 05.04 Bondage and slavery as institutions (BondState, coarse shares, entries and exits with causes)
+→ 05.05 Organisations acting
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenSociety/Public/Vaelen/Society/Standing.h, Private/Standing.cpp
-+ Tests/Society/Test_Standing.cpp
-~ Source/VaelenSociety/CMakeLists.txt
++ Source/VaelenSociety/Public/Vaelen/Society/Norms.h, Private/Norms.cpp
++ Tests/Society/Test_Norms.cpp
+~ Source/VaelenPopulation/Public/Vaelen/Population/Families.h, Private/Families.cpp (MarriageNorms, ObserveNorms:
+  marriages by the groom's culture where the culture carries norms; the 04.03 digest unchanged),
+  Source/VaelenSociety/CMakeLists.txt
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 37 (37 without asserts)
-  + Society 9 (9 without asserts); ctest 63/63 in all six Linux presets; every earlier frozen digest unchanged
-✓ Region 26 of AELVOR 128 for 100 years: 1045 ranked adults, 52 elite; frozen standing digest c62c5f7a89880cb9
-✓ Purity: 84 files, 0 violations
+  + Society 13 (13 without asserts); ctest 64/64 in all six Linux presets; every earlier frozen digest unchanged
+✓ AELVOR 128 at year 300 and 100 more with norms observed: 4 cultures with customs, 16 drifts; frozen norms digest f2b7de051eab022b
+✓ Purity: 86 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)

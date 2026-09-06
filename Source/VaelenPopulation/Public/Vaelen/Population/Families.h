@@ -62,6 +62,20 @@ namespace Vaelen::Population
 		uint32 FoundOnMarriage = 1;		///< a married man without a family founds one
 	};
 
+	/// Marriage norms of a culture, on the culture entity: written by a later
+	/// module (Phase 05 norms), read by the family system when told to observe
+	/// the type. Cultures without the component follow the FamilyRules.
+	struct MarriageNorms
+	{
+		uint32 MarryFrom = 18;
+		uint32 MarryTo = 50;
+		uint32 MaxAgeGap = 15;
+		uint32 FaithMatters = 1;
+		uint32 MarriagesPerMille = 350;
+		uint32 Reserved = 0;
+	};
+	static_assert(sizeof(MarriageNorms) == 24, "MarriageNorms must stay padding free");
+
 	struct MarriagePayload
 	{
 		uint32 Person = 0; ///< the groom
@@ -107,6 +121,13 @@ namespace Vaelen::Population
 		/// it replaces and the spouses it releases include that system's deaths
 		/// and departures of the same tick. The system must exist in the world.
 		void RunAfter(std::string_view Name) { After.emplace_back(Name); }
+		/// Optional: marriages follow the MarriageNorms of the groom's culture
+		/// where the culture entity carries one (Phase 05 norms).
+		void ObserveNorms(ComponentType<MarriageNorms> InNorms) noexcept
+		{
+			Norms = InNorms;
+			HasNorms = true;
+		}
 		void Tick(TickContext& Context) override;
 
 	private:
@@ -116,6 +137,8 @@ namespace Vaelen::Population
 		PersonTypes Persons;
 		FamilyTypes Families;
 		FamilyRules Rules;
+		ComponentType<MarriageNorms> Norms;
+		bool HasNorms = false;
 	};
 
 	// ── Lineage queries (pure) ────────────────────────────────────────────────

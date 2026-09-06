@@ -5,11 +5,13 @@ set(VAELEN_SOCIETY_PUBLIC_HEADERS
   Public/Vaelen/Society/SocietyApi.h
   Public/Vaelen/Society/Organizations.h
   Public/Vaelen/Society/Standing.h
+  Public/Vaelen/Society/Norms.h
 )
 
 set(VAELEN_SOCIETY_SOURCES
   Private/Organizations.cpp
   Private/Standing.cpp
+  Private/Norms.cpp
 )
 
 add_library(VaelenSociety STATIC ${VAELEN_SOCIETY_SOURCES} ${VAELEN_SOCIETY_PUBLIC_HEADERS})
