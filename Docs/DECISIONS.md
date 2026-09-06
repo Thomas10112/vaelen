@@ -63,6 +63,7 @@ Rules for this file:
 | [0038](#adr-0038-persons-enter-the-chronicle-through-a-capped-listener-that-decides-what-matters-at-dispatch) | Persons enter the chronicle through a capped listener that decides what matters at dispatch | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0039](#adr-0039-the-phase-04-gate-runs-every-population-system-over-the-256-pre-history-and-freezes-the-state-at-250-and-500-years) | The Phase 04 gate runs every population system over the 256 pre-history and freezes the state at 250 and 500 years | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0040](#adr-0040-organisations-are-entities-seated-in-a-region-filled-from-its-persons-and-kept-as-counts-when-the-region-is-coarse) | Organisations are entities seated in a region, filled from its persons, and kept as counts when the region is coarse | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0041](#adr-0041-standing-is-recomputed-every-year-from-what-the-world-already-knows-and-tiers-are-shares-of-a-regions-adults) | Standing is recomputed every year from what the world already knows, and tiers are shares of a region's adults | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -2461,6 +2462,56 @@ regions (ADR-0032); an organisation must outlive a demotion.
 
 Accepted 2026-09-06. Files: `Source/VaelenSociety/*`, `Tests/Society/Test_Organizations.cpp`
 (5 tests). Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0041: Standing is recomputed every year from what the world already knows, and tiers are shares of a region's adults
+
+### Context
+
+Social structure needs a notion of who stands above whom: for offices, for the
+chronicle, for the player's dealings (Phase 10) and for bondage (05.04). The world
+already carries what standing comes from - houses and their heads (04.03), traits and
+skills (04.05), seats and their heads (05.01). Storing standing as an independent truth
+would create a second source that drifts from the first.
+
+### Decision
+
+1. Standing is a yearly computation, not a stored truth: a score from the size of the
+   house and its headship, the age band, charm and will, the best skill and the offices
+   held, with every weight in a rule table and the score function pure and tested point
+   by point. The component that holds score, rank, tier and offices is a cache of that
+   computation, dropped for the dead, the gone, the young and the coarse.
+2. Rank is the position in the region's order of living adults, scaled to 0..255, ties
+   broken by person index; tiers are shares of the region (5 percent elite, 15 percent
+   notable), so every region has an elite however poor or rich, and a region's elite is
+   a query (`EliteOf`) rather than a list to maintain.
+3. The system runs after Organizations, so the year's seats and heads count; nothing
+   downstream writes standing back.
+
+### Alternatives and decision rule
+
+- Absolute thresholds for the tiers: rejected; scores grow with the rules and with
+  house sizes, and the game needs "the elite of this region" whatever its scale.
+- Wealth as a component of standing: deferred to Phase 06 (economy), where wealth
+  will exist; the score function takes what exists and the rule table will gain a
+  weight.
+- Decided by robustness (one source of truth, a pure function) and evolvability
+  (weights and shares are numbers).
+
+### Consequences
+
+- Standing changes when houses, seats, ages or skills change, never on its own.
+- The standing digest hashes every standing in person index order; it is sensitive to
+  every weight and to every upstream rule.
+- 05.04 will read the tier for who may hold whom; 05.07 will chronicle rises and
+  falls between tiers.
+
+### Status
+
+Accepted 2026-09-06. Files: `Source/VaelenSociety/Public/Vaelen/Society/Standing.h`,
+`Source/VaelenSociety/Private/Standing.cpp`, `Tests/Society/Test_Standing.cpp` (4 tests).
+Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
 

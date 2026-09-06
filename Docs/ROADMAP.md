@@ -72,7 +72,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 02 | WORLD | Procedural world of AELVOR derived from the seed: regions, tiles, terrain, climate, hydrology, resource deposits. | VALIDATED (headless, 02.01-02.08); UNVERIFIED (engine) |
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
-| 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | IN PROGRESS (05.01 VALIDATED headless; 05.02-05.08 PLANNED) |
+| 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | IN PROGRESS (05.01-05.02 VALIDATED headless; 05.03-05.08 PLANNED) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
@@ -1307,6 +1307,33 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   71 members).
 - Decision: ADR-0040.
 
+### 05.02 Status and rank - VALIDATED (headless)
+
+- Delivered: `Standing.h/.cpp` - `Tier` (common, notable, elite), `Office` bits (head of
+  house, a seat, the head of a seat), `PersonStanding` (8 bytes: score, rank 0..255,
+  tier, offices), `StandingTypes::Declare`, `StandingRules` (adults from 16; 4 points a
+  house member up to 40, 60 for a headship, 80 for a seat, 120 for the head of one; age
+  bands 0/20/40/30; a quarter of the mean of charm and will; three tenths of the best
+  skill; the top 50 per mille elite, the next 150 notable), pure `StandingScore`,
+  `StandingSystem` (LOD World, after Organizations: the standings of the dead, the gone,
+  the young and the coarse dropped; in every detailed region the living adults scored
+  in index order from one pass over houses and organisation heads, ranked by score then
+  index, the rank scaled to 0..255 and the tiers cut by share), `EliteOf` (rank
+  descending, then index; the elite tier or the top N), `StandingOf`, `MeasureStanding`
+  (ranked, per tier, score sums, offices, stale standings, a digest in index order).
+- Tests (4): the score follows the rules point by point (house, headship, seats, age
+  bands, charm and will only, the best skill, the house cap); after five years in the
+  busiest region of AELVOR 128 every ranked person is a living adult of the region,
+  scores never rise as rank falls, the tiers cut at 5 and 15 percent with the elite above
+  the notables above the common, nine in ten of the elite hold an office and the
+  council's head is among them, the top three are the top ranks; forty years keep every
+  adult ranked and nothing stale, a demotion drops every standing and a promotion ranks
+  again the same year, zero shares leave everyone common, nothing happens without a
+  detailed region; two worlds identical in state and standing digest, a snapshot
+  between yearly ticks continued identically; frozen standing digest `c62c5f7a89880cb9` after 100
+  years (1045 ranked, 52 elite).
+- Decision: ADR-0041.
+
 ## 10. Phases 06-20: notes
 
 No task breakdown exists yet for Phases 06-20; each is broken down when the previous
@@ -1326,41 +1353,38 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 05 — SOCIETY
-TASK        : 05.01 — VAELENSOCIETY MODULE AND ORGANISATIONS
+TASK        : 05.02 — STATUS AND RANK
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████████░░░░░░░░░░░░░░ 44%
+██████████░░░░░░░░░░░░░░ 45%
 
 CURRENTLY
-→ 05.01 closed: the fourth kernel module VaelenSociety (UBT + CMake, purity-checked), organisations as
-  entities of kind Organization (kind, seat, culture, faith, head, members, seats, founding and
-  disbanding ticks, identity), Membership on persons, the yearly OrganizationSystem (a council once
-  a detailed region holds 300 people, seated by the heads of its largest houses; a temple once the
-  majority faith holds 200 believers, seated by the most pious; seats refilled as members die or
-  leave, a head seated, the empty disbanded after three years; coarse seats keep their last count)
+→ 05.02 closed: PersonStanding (score, rank 0..255, tier, offices; 8 bytes) on every living adult of
+  a detailed region, the yearly StandingSystem (a score from the house's size and headship, the age
+  band, charm and will, the best skill and the offices held - a seat, a head's seat; the region's
+  adults ranked by score, the top 5 percent the elite, the next 15 the notables), EliteOf,
+  StandingOf, MeasureStanding with a digest
 
 COMPLETED
-✓ Phases 00-04 (headless) (CI 41)
-✓ 05.01 VaelenSociety module and organisations (5 tests: Organizations)
+✓ Phases 00-04 (headless) ; 05.01 Organisations (CI 42)
+✓ 05.02 Status and rank (4 tests: Standing)
 
 NEXT
-→ 05.02 Status and rank (standing from house, age, traits, skills and offices; the elite of a region)
-→ 05.03 Norms per culture
+→ 05.03 Norms per culture (marriage, descent, faith, mobility, bondage allowed) read by the Phase 04 rules
+→ 05.04 Bondage and slavery as institutions
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenSociety/ (VaelenSociety.Build.cs, CMakeLists.txt, Public/Vaelen/Society/SocietyApi.h,
-  Organizations.h, Private/Organizations.cpp, Private/VaelenSocietyModule.cpp)
-+ Tests/Society/ (CMakeLists.txt, Test_Organizations.cpp)
-~ CMakeLists.txt, Tests/CMakeLists.txt, Tools/kernel_modules.txt, Vaelen.uproject, Vaelen.Target.cs,
-  VaelenEditor.Target.cs
++ Source/VaelenSociety/Public/Vaelen/Society/Standing.h, Private/Standing.cpp
++ Tests/Society/Test_Standing.cpp
+~ Source/VaelenSociety/CMakeLists.txt
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 37 (37 without asserts)
-  + Society 5 (5 without asserts); ctest 62/62 in all six Linux presets; every earlier frozen digest unchanged
-✓ Region 26 of AELVOR 128 for 100 years: 2 organisations, 71 living members; frozen organisations digest e4725ff3ae419103
-✓ Purity: 82 files, 0 violations
+  + Society 9 (9 without asserts); ctest 63/63 in all six Linux presets; every earlier frozen digest unchanged
+✓ Region 26 of AELVOR 128 for 100 years: 1045 ranked adults, 52 elite; frozen standing digest c62c5f7a89880cb9
+✓ Purity: 84 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)
