@@ -37,6 +37,17 @@
 			]
 		},
 		{
+			"Name": "VaelenEconomy",
+			"Type": "Runtime",
+			"LoadingPhase": "PreDefault",
+			"AdditionalDependencies": [
+				"VaelenCore",
+				"VaelenSim",
+				"VaelenPopulation",
+				"VaelenSociety"
+			]
+		},
+		{
 			"Name": "Vaelen",
 			"Type": "Runtime",
 			"LoadingPhase": "Default",

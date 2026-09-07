@@ -70,6 +70,7 @@ Rules for this file:
 | [0045](#adr-0045-the-social-shape-of-a-region-is-a-count-that-outlives-its-persons-and-binds-the-next-ones) | The social shape of a region is a count that outlives its persons and binds the next ones | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0046](#adr-0046-each-module-chronicles-its-own-events-through-its-own-capped-listener-into-the-one-record-store) | Each module chronicles its own events through its own capped listener into the one record store | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0047](#adr-0047-the-phase-05-gate-runs-every-population-and-society-system-over-the-256-pre-history-and-freezes-the-state-the-log-and-the-text) | The Phase 05 gate runs every population and society system over the 256 pre-history and freezes the state, the log and the text | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0048](#adr-0048-goods-are-counted-kinds-held-in-common-by-regions-and-by-the-houses-of-a-detailed-region-and-conserved-across-the-grains) | Goods are counted kinds, held in common by regions and by the houses of a detailed region, and conserved across the grains | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -2806,6 +2807,67 @@ reference world, and the exit criteria ask for it.
 
 Accepted 2026-09-06. Files: `Tests/Society/Test_SocietyGate.cpp` (1 test).
 Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0048: Goods are counted kinds, held in common by regions and by the houses of a detailed region, and conserved across the grains
+
+### Context
+
+Phase 06 gives the world a material side: famine, standing, the decisions of Phase 05
+and the wars of Phase 08 need goods that exist somewhere, that persons and houses can
+own, and that survive a region being promoted and demoted (ADR-0032). Phase 09 will make
+named things; Phase 06 must count.
+
+### Decision
+
+1. A good is a kind in a table (grain, cloth, tools, ore, timber, salt, luxuries), never
+   an entity. A stock is a small array of counts by kind, 32 bytes, padding free.
+2. Two owners of stock, one per grain: `RegionStock` on the region entity is what the
+   region holds in common, and its whole stock while it is coarse; `HouseStock` on the
+   family entity is what a house holds while its home region is detailed. Persons hold
+   nothing in Phase 06 (items are Phase 09).
+3. The land endows every region exactly once - grain from its capacity, timber, ore, salt
+   and luxuries from the richness of its deposits - so that every later system starts
+   from a stock that follows the map (Phase 02) and the demography (Phase 03). Production
+   (06.02) then moves the counts; the endowment is never repeated.
+4. A promotion splits a share of the common stock among the region's living houses by
+   their living members, the rest staying in common; a demotion folds the houses' goods
+   back; an extinct house returns its goods to the common stock; a house founded later
+   starts with nothing. So the whole of a region - common and houses - is the same before
+   and after every grain change: nothing is made or lost by the level of detail, which is
+   the invariant the tests hold for a century.
+5. Every change is an event about the region or the house; goods moved by hand
+   (`AddStock`) are clamped at zero and at the top, return the units actually moved and
+   carry a cause, so that the chronicle (06.07) and the why can follow them.
+
+### Alternatives and decision rule
+
+- Stocks on persons from the start: rejected; a person's share would have to be folded
+  at every death and departure, and Phase 09 items are the right owner of what a person
+  carries.
+- A single world-wide ledger entity: rejected; the region is the coarse owner everywhere
+  else (population, faith, strata) and a snapshot must carry stocks with their regions.
+- Splitting all of the common stock at a promotion: rejected; the commons keep the
+  region's reserve (the stores of 05.05 become real grain in 06.02) and the split is a
+  rule, not a constant.
+- Decided by robustness (one owner per grain, a conservation invariant checked yearly)
+  and evolvability (kinds and endowment are tables; production, markets and trade add
+  movements without changing the owners).
+
+### Consequences
+
+- The stocks digest hashes every common stock in region order, then every house stock in
+  family order; any change in the split, the fold or the endowment changes it.
+- The economy module depends on the society module (guilds and stores in 06.02, wealth in
+  standing in 06.05); nothing below knows about goods.
+- Saturation at the top is a rule of the counts, not a story: 06.03 prices and 06.04 trade
+  will keep stocks far from it.
+
+### Status
+
+Accepted 2026-09-07. Files: `Source/VaelenEconomy/*`, `Tests/Economy/Test_Stocks.cpp`
+(4 tests). Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
 

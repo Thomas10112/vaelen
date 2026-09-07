@@ -166,6 +166,9 @@
       "configurePreset": "linux-clang-debug",
       "output": {
         "outputOnFailure": true
+      },
+      "execution": {
+        "jobs": 4
       }
     },
     {
@@ -173,6 +176,9 @@
       "configurePreset": "linux-clang-release",
       "output": {
         "outputOnFailure": true
+      },
+      "execution": {
+        "jobs": 4
       }
     },
     {
@@ -180,6 +186,9 @@
       "configurePreset": "linux-gcc-debug",
       "output": {
         "outputOnFailure": true
+      },
+      "execution": {
+        "jobs": 4
       }
     },
     {
@@ -187,6 +196,9 @@
       "configurePreset": "linux-gcc-release",
       "output": {
         "outputOnFailure": true
+      },
+      "execution": {
+        "jobs": 4
       }
     },
     {
@@ -194,6 +206,9 @@
       "configurePreset": "macos-debug",
       "output": {
         "outputOnFailure": true
+      },
+      "execution": {
+        "jobs": 4
       }
     },
     {
@@ -202,6 +217,9 @@
       "configuration": "Debug",
       "output": {
         "outputOnFailure": true
+      },
+      "execution": {
+        "jobs": 4
       }
     },
     {
@@ -210,6 +228,9 @@
       "configuration": "RelWithDebInfo",
       "output": {
         "outputOnFailure": true
+      },
+      "execution": {
+        "jobs": 4
       }
     },
     {
@@ -217,6 +238,9 @@
       "configurePreset": "linux-clang-noasserts",
       "output": {
         "outputOnFailure": true
+      },
+      "execution": {
+        "jobs": 4
       }
     },
     {
@@ -224,6 +248,9 @@
       "configurePreset": "linux-gcc-noasserts",
       "output": {
         "outputOnFailure": true
+      },
+      "execution": {
+        "jobs": 4
       }
     }
   ]

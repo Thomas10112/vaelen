@@ -73,7 +73,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
-| 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | PLANNED (06.01-06.08 broken down, section 10) |
+| 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | IN PROGRESS (06.01 VALIDATED headless; 06.02-06.08 PLANNED) |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
@@ -1561,6 +1561,49 @@ Decisions taken up front (each becomes an ADR when its task closes):
 
 Every task ends with the usual report block, the docs refreshed and a commit.
 
+### 06.01 VaelenEconomy module, goods and stocks - VALIDATED (headless)
+
+- Delivered: `Source/VaelenEconomy` (fifth kernel module: `VaelenEconomy.Build.cs` depending
+  on Core, VaelenCore, VaelenSim, VaelenPopulation and VaelenSociety; `CMakeLists.txt` with
+  the explicit source list; `EconomyApi.h`; the Unreal-facing `VaelenEconomyModule.cpp`
+  excluded from the headless build; listed in `Tools/kernel_modules.txt`, `Vaelen.uproject`
+  and both targets), `Stocks.h/.cpp` - `Good` (grain, cloth, tools, ore, timber, salt,
+  luxuries; a table, never entities), `RegionStock` (32 bytes, the goods a region holds in
+  common: its whole stock while coarse) on region entities, `HouseStock` (32 bytes) on the
+  family entities of a detailed region, `EconomyTypes::Declare`, `EconomyRules` (the
+  endowment: 500 per mille of the capacity in grain, timber, ore and salt per point of
+  richness of the region's deposits, luxuries at 100 per mille of its gold; 800 per mille
+  of the common stock split among the houses at a promotion), events StockEndowed,
+  StockSplit, StockFolded, StockReturned, StockAdded, StockTaken (`StockPayload`: region,
+  house or count of houses, good or every good, units), `StockSystem` (LOD World, after
+  Families, `RunAfter` for Lod: the land endows every region once from its capacity and
+  its deposits; the houses of a region coarse again fold their goods into the common stock
+  and an extinct house returns its own; in every detailed region every living house holds
+  a stock, and a region whose houses hold none yet - just promoted - splits the rule's
+  share of its common stock among them by their living members, the rest staying in
+  common; a house founded later starts with nothing), queries `StockOf`, `HouseStockOf`,
+  `TotalStock` (common and houses by good), `AddStock` (units added to or taken from the
+  common stock or a house's, clamped at zero and at the top, the units moved returned, an
+  event with the cause), `MeasureStocks` (regions and houses holding, stale house stocks,
+  totals and commons by good, events by kind, a digest of every common stock in region
+  order then every house stock in family order). `Tests/Economy` mirrors `Tests/Society`
+  (runner `VaelenEconomyTests`, entries `Economy.<Suite>`, Registry and Shuffled).
+- Tests (4): every region of AELVOR 128 is endowed exactly once, grain following its
+  capacity and timber its timber deposits (regions with and without both exist), nothing
+  made yet, ten more years changing nothing, the names distinct with "goods" for every
+  good, the lookups null for the unknown, the same world giving the same digest; a
+  promotion of the busiest region gives every living house a stock, most of them grain,
+  the split event counting the houses and the units, the whole of the region unchanged,
+  and unchanged through thirty years in which extinct houses return their goods, a
+  demotion folds everything into the common stock and a second promotion splits again;
+  moving stock by hand adds, takes, is clamped at zero and saturates at the top, refuses
+  the unknown region, house or good and a house while its region is coarse, counts its
+  events with the cause on them; two worlds identical every decade for a century with
+  the whole world's stock conserved and no stale house stock, a snapshot at year 50
+  continued to the same year 100; frozen stocks digest `b96d3bc0a8ee4141` after 100 years (27581 grain,
+  179 houses holding).
+- Decision: ADR-0048.
+
 ## 11. Phases 07-20: notes
 
 No task breakdown exists yet for Phases 07-20; each is broken down when the previous
@@ -1580,40 +1623,47 @@ class and Enhanced Input mappings arrive in Phase 10.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 05 — SOCIETY (CLOSED) → 06 — ECONOMY (BREAKDOWN)
-TASK        : 05.08 — PHASE 05 GATE AND CLOSE
+PHASE       : 06 — ECONOMY
+TASK        : 06.01 — VAELENECONOMY MODULE, GOODS AND STOCKS
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████░░░░░░░░░░░░ 51%
+████████████░░░░░░░░░░░░ 52%
 
 CURRENTLY
-→ 05.08 closed: 500 years on AELVOR 256 with the busiest region detailed and every Phase 04 and 05
-  system on (lives, families under the customs, needs with the stores, traits, the bridge, the
-  person chronicle, organisations, standing, norms, bondage, decisions, the society chronicle),
-  every invariant checked each decade, the state frozen at 250 and 500 years with the log and the
-  chronicle text, the year-250 snapshot continued to the same year 500; Phase 05 closed against
-  ROADMAP section 2; Phase 06 (ECONOMY) broken down into 06.01-06.08 (ROADMAP section 10)
+→ 06.01 closed: the fifth kernel module VaelenEconomy (UBT + CMake, purity-checked); goods as kinds
+  (grain, cloth, tools, ore, timber, salt, luxuries), RegionStock in common on every region and
+  HouseStock on the houses of a detailed region; the yearly StockSystem endows every region once
+  from its capacity and its deposits, splits a share of the common stock among a promoted region's
+  houses by their members, folds the houses' goods back at a demotion and returns an extinct house's
+  goods to the common stock, so the whole of a region is conserved across every grain change;
+  AddStock moves goods by hand with a cause; every change is an event
 
 COMPLETED
-✓ Phases 00-04 (headless) ; 05.01-05.07 (CI 48)
-✓ 05.08 Phase 05 gate (1 test: SocietyGate) ; Phase 05 VALIDATED (headless)
+✓ Phases 00-05 (headless) (CI 49 cancelled by the job timeouts, fixed here)
+✓ 06.01 VaelenEconomy module, goods and stocks (4 tests: Stocks)
 
 NEXT
-→ 06.01 VaelenEconomy module, items and goods as kinds, stocks per region and per house
-→ 06.02 Production from land, skills and organisations
+→ 06.02 Production and consumption (yearly output from land, people, skills and guilds; needs fed from stock)
+→ 06.03 Markets and prices
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Tests/Society/Test_SocietyGate.cpp
-~ Tests/Society/CMakeLists.txt (gate 1800 s, Shuffled 5400 s), Docs (Phase 05 verdict, Phase 06 breakdown, ADR-0047)
++ Source/VaelenEconomy/ (VaelenEconomy.Build.cs, CMakeLists.txt, Public/Vaelen/Economy/EconomyApi.h,
+  Stocks.h, Private/Stocks.cpp, Private/VaelenEconomyModule.cpp)
++ Tests/Economy/ (CMakeLists.txt, Test_Stocks.cpp)
+~ CMakeLists.txt, Tests/CMakeLists.txt, Tools/kernel_modules.txt, Vaelen.uproject, Vaelen.Target.cs,
+  VaelenEditor.Target.cs
+~ CMakePresets.json (CTest runs 4 jobs in every preset: CI run 49 timed out on the Phase 05 gate),
+  Tests/Core/CMakeLists.txt (the stdio capture entries never run at the same time)
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 37 (37 without asserts)
-  + Society 28 (28 without asserts); ctest 69/69 in all six Linux presets; every Phase 03, 04 and 05 digest unchanged
-✓ Gate: 500 years at 256 with region 42 detailed in 240 s (clang debug); frozen 250=889fc7e83a94df1b
-  500=ca261287c80ff699 log=d7b7173341039dc8 text=e719182682fdfd8e
-✓ Purity: 93 files, 0 violations
+  + Society 28 (28 without asserts) + Economy 4 (4 without asserts); ctest 72/72 in all six
+  Linux presets; every earlier frozen digest unchanged
+✓ AELVOR 128 for 100 years with the busiest region detailed: the world's whole stock unchanged every decade,
+  no stale house stock; frozen stocks digest b96d3bc0a8ee4141 (27581 grain, 179 houses holding)
+✓ Purity: 96 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)

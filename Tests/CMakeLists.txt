@@ -4,6 +4,7 @@ add_subdirectory(Core)
 add_subdirectory(Sim)
 add_subdirectory(Population)
 add_subdirectory(Society)
+add_subdirectory(Economy)
 
 # Kernel purity: no engine headers, exceptions, RTTI or non-deterministic
 # randomness inside engine-agnostic modules. Python 3 is a hard requirement:

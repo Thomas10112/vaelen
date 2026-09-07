@@ -29,3 +29,7 @@ list(APPEND VAELEN_CORE_TEST_NAMES Core.Registry Core.Shuffled Core.Reversed)
 
 # A hang (deadlock) must fail, not stall CI for hours.
 set_tests_properties(${VAELEN_CORE_TEST_NAMES} PROPERTIES TIMEOUT 300)
+
+# The stdio capture test falls back to fixed scratch file names where tmpfile()
+# is refused (Windows); the entries that run it never share a moment.
+set_tests_properties(Core.Log Core.Shuffled Core.Reversed PROPERTIES RESOURCE_LOCK vaelen_stdio_scratch)

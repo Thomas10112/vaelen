@@ -75,6 +75,7 @@ add_subdirectory(Source/VaelenCore)
 add_subdirectory(Source/VaelenSim)
 add_subdirectory(Source/VaelenPopulation)
 add_subdirectory(Source/VaelenSociety)
+add_subdirectory(Source/VaelenEconomy)
 
 # ── Tests ────────────────────────────────────────────────────────────────────
 if(VAELEN_BUILD_TESTS)
