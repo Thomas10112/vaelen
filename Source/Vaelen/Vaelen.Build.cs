@@ -17,7 +17,12 @@ public class Vaelen : ModuleRules
 			"CoreUObject",
 			"Engine",
 			"InputCore",
-			"VaelenCore"
+			"VaelenCore",
+			"VaelenSim",
+			"VaelenPopulation",
+			"VaelenSociety",
+			"VaelenEconomy",
+			"VaelenPolitics"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
