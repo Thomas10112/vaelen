@@ -74,7 +74,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | VALIDATED (headless, 06.01-06.08); UNVERIFIED (engine) |
-| 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | IN PROGRESS (07.01-07.03 VALIDATED headless; 07.04-07.08 PLANNED) |
+| 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | IN PROGRESS (07.01-07.04 VALIDATED headless; 07.05-07.08 PLANNED) |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
 | 10 | PLAYER | The player as one simulated person: enslaved start, body, needs, skills, relationships; player intent as commands into the simulation. | PLANNED |
@@ -1942,6 +1942,31 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   take the same ground in the same year; determinism, snapshot continuity, frozen reach digest
   `b0849188fdca0aae` after 100 years (41 regions held, 152520 grain spent).
 - Decision: ADR-0058.
+
+### 07.04 Succession - VALIDATED (headless)
+
+- Delivered: `Succession.h/.cpp` - `PolityLine` (48 bytes: the person the system last saw on the
+  seat, rulers seated, interregna, disputed successions, unrest per mille, the claimant the custom
+  names next, the ticks of the seating and of the vacancy) on the polity; `SuccessionTypes::Declare`,
+  `SuccessionRules` (a claimant is of age at 20; 250 per mille of unrest when the custom is passed
+  over, 150 when the seat falls empty, 50 forgotten a year, never more than 600 at once), events
+  SeatFellVacant, SuccessionSettled, SuccessionDisputed, `SuccessionSystem` (LOD World, after
+  Polities: one walk of the persons finds the eldest living child of age of every sitting ruler on
+  both lines of descent, the seat is compared against what the system last saw in it, the passing is
+  judged against the claimant the culture's `Descent` custom named, and the unrest fades),
+  `ReachSystem::ObserveLine` so that the unrest comes off the hold of every region the polity rules,
+  `LineOf`, `MeasureSuccession` (lines, empty seats, troubled polities, the worst unrest, rulers,
+  interregna, disputes, events by kind, and the bad - a line disagreeing with the polity's ruler,
+  unrest past its ceiling, a claimant who is not alive - with a digest of every line in polity order).
+- Tests (4): the line says what the polity says, every passing of a seat is in the log once, and a
+  claimant the custom names is alive, of age, and a child of whoever sits on the culture's line;
+  striking the ruler out of the world leaves a shock that is felt in every region at once - each held
+  under what the distance alone would give - while the seat is never let go, and the world forgets it
+  year by year; no unrest ever stands above its ceiling however sharp the rules, a claimant nobody is
+  old enough to be means no succession is ever contested, a world with no polity has no line, and two
+  worlds of one seed keep the same line; determinism, snapshot continuity, frozen line digest
+  `77726480cad71e27` after 100 years (9 rulers seated, 3 settled by the custom).
+- Decision: ADR-0059.
 ## 12. Phases 08-20: notes
 
 No task breakdown exists yet for Phases 07-20; each is broken down when the previous
@@ -1962,42 +1987,42 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 07 — POLITICS
-TASK        : 07.03 — AUTHORITY AND REACH
+TASK        : 07.04 — SUCCESSION
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████████░░░░░░░░ 65%
+████████████████░░░░░░░░ 67%
 
 CURRENTLY
-→ 07.03 closed: authority is not a number a polity owns but one written on each of its regions, falling
-  with every hop of the region graph away from the seat, and nothing at all where the polity can no
-  longer walk to its own ground; carrying a word costs grain out of the treasury 07.02 fills, growing
-  with the distance; a polity that cannot pay loses its grip on the far edge first and a region under
-  the floor slips free - it is not let go, it goes; reach is what the treasury buys, and a polity takes
-  ground in region order, writing the region's authority in the same tick it takes it, so a ruled
-  region always names whoever rules it with no year in between; AuthorityOf, ReachOf, MeasureReach
+→ 07.04 closed: a polity does not choose its ruler - 07.01 seats the council's head and this system
+  does not overrule it; what it does is remember and judge. Every year it names the claimant the
+  culture's descent custom points at (the eldest living child of age of whoever sits, on the line the
+  culture keeps), and when the seat changes hands it compares who took it against who was named. A
+  seat that falls empty and a seat taken by anyone else both leave unrest on the polity, fading year
+  by year, and the reach system takes that unrest off the hold of every region it rules: a disputed
+  succession is a year in which the far edge is likelier to slip. LineOf, MeasureSuccession
 
 COMPLETED
-✓ Phases 00-06 (headless) (CI 62)
-✓ 07.01 polities (4 tests) · 07.02 law and dues (4 tests)
-✓ 07.03 authority and reach (4 tests: Reach)
+✓ Phases 00-06 (headless) (CI 63)
+✓ 07.01 polities · 07.02 law and dues · 07.03 authority and reach
+✓ 07.04 succession (4 tests: Succession)
 
 NEXT
-→ 07.04 Succession: what happens to a polity when its ruler dies and the council must seat another
-→ 07.05 Factions
+→ 07.05 Factions: who inside a polity wants the seat, and what they are willing to do
+→ 07.06 Diplomacy
 
 FILES
-+ Source/VaelenPolitics/Public/Vaelen/Politics/Reach.h, Private/Reach.cpp
-+ Tests/Politics/Test_Reach.cpp
-~ Source/VaelenPolitics/CMakeLists.txt
++ Source/VaelenPolitics/Public/Vaelen/Politics/Succession.h, Private/Succession.cpp
++ Tests/Politics/Test_Succession.cpp
+~ Source/VaelenPolitics/Public/Vaelen/Politics/Reach.h, Private/Reach.cpp (ObserveLine),
+  Source/VaelenPolitics/CMakeLists.txt
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 160 + Population 36 + Society 27 + Economy 26
-  + Politics 12 (12 without asserts); ctest 74/74 in all six Linux presets; every earlier
+  + Politics 16 (16 without asserts); ctest 75/75 in all six Linux presets; every earlier
   frozen digest unchanged
-✓ AELVOR 128 for 100 years: frozen reach digest b0849188fdca0aae (41 regions held, 152520 grain spent
-  carrying the word)
-✓ Purity: 113 files, 0 violations
+✓ AELVOR 128 for 100 years: frozen line digest 77726480cad71e27 (9 rulers seated, 3 settled by the custom)
+✓ Purity: 115 files, 0 violations
 
 BLOCKERS
 ∅ (the engine-side files stay UNVERIFIED until the next UE 5.6 build)

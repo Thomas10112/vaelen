@@ -23,6 +23,7 @@
 #include "Vaelen/Politics/Law.h"
 #include "Vaelen/Politics/Polities.h"
 #include "Vaelen/Politics/PoliticsApi.h"
+#include "Vaelen/Politics/Succession.h"
 #include "Vaelen/Sim/Event.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/Regions.h"
@@ -112,6 +113,14 @@ namespace Vaelen::Politics
 			return Out;
 		}
 		void RunAfter(std::string_view Name) { After.emplace_back(Name); }
+		/// Optional: the unrest a polity carries after a vacancy or a succession
+		/// the custom did not name (07.04) comes off the hold of every region it
+		/// rules, for as long as it lasts.
+		void ObserveLine(ComponentType<PolityLine> InLine) noexcept
+		{
+			Line = InLine;
+			HasLine = true;
+		}
 		void Tick(TickContext& Context) override;
 
 	private:
@@ -123,6 +132,8 @@ namespace Vaelen::Politics
 		LawTypes Laws;
 		ReachTypes Reaches;
 		ReachRules Rules;
+		ComponentType<PolityLine> Line;
+		bool HasLine = false;
 		WorldGen::RegionGraph Graph; ///< cache, rebuilt when the world's regions change
 		uint32 GraphRegions = 0;
 	};

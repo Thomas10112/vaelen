@@ -166,7 +166,10 @@ namespace Vaelen::Politics
 			// 3. Write the hold of every region it rules, and let go what is
 			//    under the floor. The seat is never let go: a polity without a
 			//    seat is 07.01's business, not this system's.
-			const uint32 Loss = Short != 0 ? Rules.UnpaidHoldLoss : 0u;
+			// What the polity cannot pay for, and what it has not settled at home,
+			// both come off the hold of every region alike.
+			const PolityLine* Trouble = HasLine ? W.Components().GetPool(Line).TryGet(S.Handle) : nullptr;
+			const uint32 Loss = (Short != 0 ? Rules.UnpaidHoldLoss : 0u) + (Trouble != nullptr ? Trouble->Unrest : 0u);
 			for (uint32 R = 1; R < N; ++R)
 			{
 				if (RuledBy[R] != S.Index || RegionHandles[R].IsNull())

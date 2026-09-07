@@ -81,6 +81,7 @@ Rules for this file:
 | [0056](#adr-0056-a-polity-is-an-entity-seated-in-a-council-and-a-region-remembers-whose-it-is) | A polity is an entity seated in a council, and a region remembers whose it is | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0057](#adr-0057-a-law-is-one-number-on-the-polity-and-a-plain-struct-on-the-region) | A law is one number on the polity and a plain struct on the region | Accepted; headless VALIDATED |
 | [0058](#adr-0058-authority-is-written-on-the-region-and-falls-with-the-walk-from-the-seat) | Authority is written on the region and falls with the walk from the seat | Accepted; headless VALIDATED |
+| [0059](#adr-0059-succession-is-judged-not-decided) | Succession is judged, not decided | Accepted; headless VALIDATED |
 
 ---
 
@@ -3456,6 +3457,61 @@ apart even when their centroids are near.
 Accepted 2026-09-07. Files: `Source/VaelenPolitics/Public/Vaelen/Politics/Reach.h`,
 `Private/Reach.cpp`, `Tests/Politics/Test_Reach.cpp` (4 tests). Headless VALIDATED on
 the six Linux presets.
+
+---
+
+## ADR-0059: Succession is judged, not decided
+
+### Context
+
+07.01 made a polity's ruler the head of its council: authority runs through the
+organisations of Phase 05 rather than beside them. 07.04 has to add succession
+without taking that back. The obvious design - a succession system that picks the
+next ruler - would give the polity a second way to seat someone, and two systems
+seating rulers is two truths.
+
+### Decision
+
+1. This system never seats anyone. The council seats its head, 07.01 makes that
+   head the ruler, and succession only **watches the seat and compares**.
+2. Every year it names the claimant the culture's `Descent` custom points at: the
+   eldest living child of age of whoever sits, on the patrilineal or matrilineal
+   line the culture keeps. It is a prediction, not an instruction.
+3. When the seat changes hands, the passing is settled if the person who took it
+   is the one that was named (or nobody was named), and disputed otherwise.
+4. A vacancy and a disputed succession both add **unrest** to the polity: a number
+   that fades year by year, which the reach system takes off the hold of every
+   region. That is the whole consequence - no rebellion, no civil war, no faction.
+   Those are 07.05.
+5. The claimant is found in **one walk of the persons per year** for all polities
+   at once, not one walk per polity, and ties between children born the same tick
+   go to the lower person index so pool order can never decide a succession.
+
+### Alternatives and decision rule
+
+- A succession system that seats the heir: rejected; it would fight the
+  organisation system for the council's head, and the loser would be whichever ran
+  second in the schedule.
+- Unrest as a component on each region: rejected; the cause is one event at the
+  centre, and 07.03 already owns the per-region number. A polity-level number that
+  reach subtracts keeps one writer per field.
+- Succession failing silently when the custom names nobody: kept, deliberately. A
+  ruler with no living child of age has no claimant, so no passing can be disputed
+  - a young dynasty is fragile in reach but not in legitimacy.
+
+### Consequences
+
+- A polity's stability is now legible in one number, and it moves for reasons the
+  chronicle of 07.07 can state: "the seat fell empty", "the custom named another".
+- Because unrest costs hold everywhere at once, a bad succession contracts a large
+  polity more than a small one - overreach is punished by its own geometry.
+- 07.05 will give the passed-over claimant somewhere to put their claim.
+
+### Status
+
+Accepted 2026-09-07. Files: `Source/VaelenPolitics/Public/Vaelen/Politics/Succession.h`,
+`Private/Succession.cpp`, `Reach.h`/`Private/Reach.cpp` (`ObserveLine`),
+`Tests/Politics/Test_Succession.cpp` (4 tests). Headless VALIDATED on the six Linux presets.
 
 ---
 
