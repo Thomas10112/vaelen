@@ -23,4 +23,5 @@ add_test(NAME Economy.Shuffled COMMAND VaelenEconomyTests --shuffle 1)
 list(APPEND VAELEN_ECONOMY_TEST_NAMES Economy.Registry Economy.Shuffled)
 
 set_tests_properties(${VAELEN_ECONOMY_TEST_NAMES} PROPERTIES TIMEOUT 300)
-set_tests_properties(Economy.Shuffled PROPERTIES TIMEOUT 1200)
+set_tests_properties(Economy.EconomyGate PROPERTIES TIMEOUT 1800)
+set_tests_properties(Economy.Shuffled PROPERTIES TIMEOUT 5400)

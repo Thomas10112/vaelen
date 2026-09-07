@@ -271,7 +271,14 @@ namespace Vaelen::Economy
 	{
 		if (!IsEconomyEvent(E))
 		{
-			Population::DescribePersonEvent(W, Types, Context.Persons, Context.Families, E, Out, Index);
+			if (Context.Society != nullptr)
+			{
+				Society::DescribeSocietyEvent(W, Types, *Context.Society, E, Out, Index);
+			}
+			else
+			{
+				Population::DescribePersonEvent(W, Types, Context.Persons, Context.Families, E, Out, Index);
+			}
 			return;
 		}
 		std::string Prefix;

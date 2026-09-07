@@ -77,6 +77,7 @@ Rules for this file:
 | [0052](#adr-0052-wealth-reaches-standing-as-a-rank-not-an-amount-and-an-extinct-houses-goods-follow-the-cultures-descent-custom) | Wealth reaches standing as a rank, not an amount, and an extinct house's goods follow the culture's descent custom | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0053](#adr-0053-nothing-of-the-fine-grain-outlives-it-a-coarse-region-keeps-counts-and-stocks-and-nothing-else) | Nothing of the fine grain outlives it: a coarse region keeps counts and stocks, and nothing else | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0054](#adr-0054-the-chronicle-records-what-lasts-a-road-built-a-town-risen-a-price-at-its-bound-a-fortune-moved-not-the-churn-beneath-them) | The chronicle records what lasts: a road built, a town risen, a price at its bound, a fortune moved, not the churn beneath them | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0055](#adr-0055-when-two-validated-orderings-cannot-both-hold-the-chain-that-carries-the-grain-wins-and-the-describer-of-the-topmost-layer-speaks-for-all-of-them) | When two validated orderings cannot both hold, the chain that carries the grain wins, and the describer of the topmost layer speaks for all of them | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -3217,6 +3218,63 @@ which 2935 were roads opening and closing.
 Accepted 2026-09-07. Files: `Source/VaelenEconomy/Public/Vaelen/Economy/EconomyHistory.h`,
 `Private/EconomyHistory.cpp`, `Private/Markets.cpp`, `Public/Vaelen/Economy/Trade.h`,
 `Private/Trade.cpp`, `Tests/Economy/Test_EconomyHistory.cpp` (3 tests). Headless VALIDATED
+on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0055: When two validated orderings cannot both hold, the chain that carries the grain wins, and the describer of the topmost layer speaks for all of them
+
+### Context
+
+The Phase 06 gate is the first test to run every Phase 04, 05 and 06 system in one world.
+It refused to start: `Scheduler::Build` found a cycle. Phase 05 had validated
+`Houses->RunAfter("Needs")` - a family forms after this year's hunger - and Phase 06 had
+validated `Body->RunAfter("Production")` - the needs read this year's ration - while the
+stock system runs after Families. Together: Families -> Needs -> Production -> Stocks ->
+Families. Both edges were reasonable when added; neither task could see the other.
+
+### Decision
+
+1. The chain that carries the grain wins. The economy's order (stocks, then the harvest,
+   then the meals) is the one that must hold within a tick, because a ration computed
+   from last year's harvest would make hunger lie. `Houses->RunAfter("Needs")` is dropped
+   where the economy runs: the family system forms its marriages on the living of the tick
+   before this year's hunger, a one-tick difference in who is available to marry, and no
+   invariant depends on it.
+2. The describer of the topmost layer speaks for every layer under it. The economy's
+   chronicle was describing society events through the person text, so a founding or a
+   raid lost its sentence in the world's own chronicle. `EconomyContext` now carries an
+   optional `SocietyContext`, and with it `DescribeEconomyEvent` delegates to
+   `DescribeSocietyEvent`, which itself delegates to the person text. Without it the
+   behaviour is unchanged, so 06.07's own tests and digests hold.
+3. Both were found only by running everything at once. A gate that assembles the whole
+   world is worth more than the sum of the task tests, and it is the reason the roadmap
+   ends every phase with one.
+
+### Alternatives and decision rule
+
+- Keeping both edges by making Stocks run before Families: rejected; the stock system
+  splits a promoted region's commons among its houses and must see the houses that exist.
+- Letting the economy chronicle omit society lines: rejected; a chronicle that speaks of
+  a world must speak of all of it, and the omission was invisible until a gate exported
+  the whole text.
+- Decided by robustness (no lying ration, no mute layer) over keeping an earlier decision
+  untouched.
+
+### Consequences
+
+- The Phase 05 gate keeps its own ordering and its own frozen digests: it runs no economy,
+  so no cycle exists there. The two gates order differently on purpose, and each says so.
+- Any later phase adding a yearly system must check its `RunAfter` edges against the whole
+  set, not only against its own phase.
+- The Phase 06 gate's four digests freeze the whole world - state, log and text - at 256
+  over 500 years.
+
+### Status
+
+Accepted 2026-09-07. Files: `Tests/Economy/Test_EconomyGate.cpp`,
+`Source/VaelenEconomy/Public/Vaelen/Economy/EconomyHistory.h`,
+`Private/EconomyHistory.cpp`, `Tests/Economy/CMakeLists.txt` (1 test). Headless VALIDATED
 on the six Linux presets; engine side UNVERIFIED.
 
 ---

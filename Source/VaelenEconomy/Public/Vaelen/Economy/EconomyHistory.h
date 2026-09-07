@@ -27,6 +27,7 @@
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Sim/Event.h"
 #include "Vaelen/Sim/PreHistory.h"
+#include "Vaelen/Society/SocietyHistory.h"
 
 #include <string>
 #include <vector>
@@ -78,6 +79,11 @@ namespace Vaelen::Economy
 		TradeTypes Trade;
 		MarketTypes Markets;
 		MarketRules Prices;
+		/// Optional: with it, an event of the society layer gets its society line
+		/// rather than the plainer person one. The describer of the topmost layer
+		/// speaks for every layer under it, or the chronicle of a whole world
+		/// would lose the words of its middle.
+		const Society::SocietyContext* Society = nullptr;
 	};
 
 	/// Listener: the economy events that matter become chronicle records.

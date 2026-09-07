@@ -552,9 +552,17 @@ quiet.
 ### 10.4 Runner
 
 ```
-VaelenCoreTests [--suite Name] [--filter Substring] [--list] [--verbose] [--quiet-log]
-                [--reverse] [--shuffle Seed] [--check-registry]
+VaelenCoreTests [--suite Name] [--skip-suite Name] [--filter Substring] [--list]
+                [--verbose] [--quiet-log] [--reverse] [--shuffle Seed]
+                [--check-registry]
 ```
+
+`--skip-suite` may be given several times and leaves those suites out of the
+run. It exists for the local loop: the phase gates (`HistoryGate`,
+`PopulationGate`, `SocietyGate`, `EconomyGate`) take minutes each and test the
+assembly rather than the task at hand, so a working chain skips them - together
+with the shuffled CTest entries - and the GitHub matrix runs the whole set on
+every push. A commit that closes a phase runs everything locally too.
 
 Exit codes: 0 all passed, 1 failures, 2 usage or registry error, 3 no test
 matched. A test that records no check is reported with `[ WARN ]`. CTest runs

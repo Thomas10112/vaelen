@@ -33,8 +33,9 @@ namespace
 
 	void PrintUsage()
 	{
-		std::printf("Usage: VaelenCoreTests [--suite Name] [--filter Substring] [--list] [--verbose] [--quiet-log]\n"
-					"                       [--reverse] [--shuffle Seed] [--check-registry]\n");
+		std::printf("Usage: VaelenCoreTests [--suite Name] [--skip-suite Name] [--filter Substring] [--list]\n"
+					"                       [--verbose] [--quiet-log] [--reverse] [--shuffle Seed]\n"
+					"                       [--check-registry]\n");
 	}
 
 	/// File stem of a test source: "/x/Tests/Core/Test_Random.cpp" -> "Random".
@@ -112,12 +113,19 @@ int main(int Argc, char** Argv)
 	bool DoShuffle = false;
 	bool CheckRegistryOnly = false;
 	unsigned long long ShuffleSeed = 0;
+	// Suites left out of this run. The long phase gates are the reason: a local
+	// loop skips them and the CI matrix runs the whole set on every push.
+	std::vector<const char*> SkippedSuites;
 
 	for (int i = 1; i < Argc; ++i)
 	{
 		if (std::strcmp(Argv[i], "--suite") == 0 && i + 1 < Argc)
 		{
 			SuiteFilter = Argv[++i];
+		}
+		else if (std::strcmp(Argv[i], "--skip-suite") == 0 && i + 1 < Argc)
+		{
+			SkippedSuites.push_back(Argv[++i]);
 		}
 		else if (std::strcmp(Argv[i], "--filter") == 0 && i + 1 < Argc)
 		{
@@ -180,6 +188,15 @@ int main(int Argc, char** Argv)
 	for (VaelenTest::TestCase* Case = VaelenTest::Registry(); Case != nullptr; Case = Case->Next)
 	{
 		if (SuiteFilter != nullptr && std::strcmp(Case->Suite, SuiteFilter) != 0)
+		{
+			continue;
+		}
+		bool Skipped = false;
+		for (const char* Name : SkippedSuites)
+		{
+			Skipped = Skipped || std::strcmp(Case->Suite, Name) == 0;
+		}
+		if (Skipped)
 		{
 			continue;
 		}

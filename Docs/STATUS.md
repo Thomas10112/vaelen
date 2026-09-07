@@ -13,41 +13,43 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 06 — ECONOMY
-TASK        : 06.07 — THE ECONOMY IN THE CHRONICLE
+TASK        : 06.08 — PHASE 06 GATE AND CLOSE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████████████░░░░░░░░░░ 58%
+███████████████░░░░░░░░░ 60%
 
 CURRENTLY
-→ 06.07 closed: EconomyChronicle, a listener over the trade, market, production and wealth events,
-  turns what matters into chronicle records - a road built, a road that carried something being
-  abandoned, a town risen or abandoned, a price that reached its floor or its ceiling, a region gone
-  short of grain, a fortune that really moved, an inheritance - bounded per region and year, and
-  DescribeEconomyEvent gives every economic event its own line in the words of the world; NameRoute,
-  NameSettlement, ExportChronicleWithEconomy, ExportWhyWithEconomy: the why of a dear loaf runs from
-  the price to the harvest to the drought
+→ 06.08 closed: 500 years on AELVOR 256 with the busiest region detailed and every Phase 04, 05 and 06
+  system - thirteen systems and three chroniclers - holding every invariant of all three phases every
+  decade, with a snapshot of year 250 continuing to the same year 500; the gate found two things: the
+  orderings of Phases 05 and 06 could not both hold once the needs read the economy's ration
+  (Families -> Needs -> Production -> Stocks -> Families), and the chronicle of the topmost layer was
+  describing the layer below it in poorer words
+→ Phase 06 ECONOMY: VALIDATED (headless), UNVERIFIED (engine side of the module glue is VALIDATED
+  under UBT since 2026-09-07); Phase 07 POLITICS broken down into 07.01-07.08 (ROADMAP section 11)
 
 COMPLETED
-✓ Phases 00-05 (headless) ; 06.01-06.06
-✓ 06.07 The economy in the chronicle (3 tests: EconomyHistory)
+✓ Phases 00-05 (headless) ; 06.01-06.07 (CI 58)
+✓ 06.08 Phase 06 gate (1 test: EconomyGate) ; Phase 06 VALIDATED (headless)
 
 NEXT
-→ 06.08 Phase 06 gate, then the Phase 06 verdict and the Phase 07 breakdown
+→ 07.01 VaelenPolitics module, polities as entities, territory and authority
+→ 07.02 Laws and their enforcement
 → The engine build is done (UE 5.6, 2026-09-07): the module glue is VALIDATED under UBT
 
 FILES
-+ Source/VaelenEconomy/Public/Vaelen/Economy/EconomyHistory.h, Private/EconomyHistory.cpp
-+ Tests/Economy/Test_EconomyHistory.cpp
-~ Source/VaelenEconomy/Private/Markets.cpp (a market appearing is not a price changing),
-  Public/Vaelen/Economy/Trade.h, Private/Trade.cpp (a road counts its openings)
++ Tests/Economy/Test_EconomyGate.cpp
+~ Source/VaelenEconomy/Public/Vaelen/Economy/EconomyHistory.h, Private/EconomyHistory.cpp (the economy
+  describer speaks for the society layer too), Tests/Economy/CMakeLists.txt (gate 1800 s, Shuffled
+  5400 s), Docs (Phase 06 verdict, Phase 07 breakdown, ADR-0055)
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 37 (37 without asserts)
-  + Society 28 (28 without asserts) + Economy 26 (26 without asserts); ctest 78/78 in all six
+  + Society 28 (28 without asserts) + Economy 27 (27 without asserts); ctest 79/79 in all six
   Linux presets
-✓ AELVOR 128 for 100 years with the busiest region detailed: 1147 records, chronicle text frozen 31b14de751d3d588
-✓ Refrozen by the two corrections: markets changes 584 (was 1277), trade digest 54cba9c0fc9ee231
+✓ Gate: 500 years at 256 with region 42 detailed in 203 s plus 124 s for the snapshot half (clang debug);
+  frozen 250=6e106563938bb288 500=55c39d36a2171b64 log=ac48bb403c40fd73 text=e5f20b503614f6cc
 ✓ Purity: 106 files, 0 violations
 
 BLOCKERS
@@ -194,7 +196,7 @@ side, UNVERIFIED on the engine side until the first UE 5.6 build.**
 | 06.05 | WealthSystem: houses valued and ranked at their market, the rank weighing in standing, heirs by descent custom, goods passing to the heir | VALIDATED: Wealth 5 tests |
 | 06.06 | The economy across the grains: wealth and heirs cleared with the grain, conservation to the unit over 500 years, every invariant in a living world | VALIDATED: Grains 2 tests |
 | 06.07 | EconomyChronicle: roads, towns, prices at their bounds, shortfalls, fortunes and inheritances recorded; a line for every economic event; the why of a dear loaf | VALIDATED: EconomyHistory 3 tests |
-| 06.08 | Phase 06 gate | PLANNED |
+| 06.08 | Phase 06 gate: 500 years at 256 with every Phase 04, 05 and 06 system, invariants every decade, frozen at 250 and 500 with the log and the text | VALIDATED: EconomyGate 1 test |
 
 ## File status
 
@@ -342,8 +344,9 @@ the purity checker, applied to headers and sources).
 | `Economy/Test_Wealth.cpp` (Phase 06) | VALIDATED | 5 |
 | `Economy/Test_Grains.cpp` (Phase 06) | VALIDATED | 2 |
 | `Economy/Test_EconomyHistory.cpp` (Phase 06) | VALIDATED | 3 |
+| `Economy/Test_EconomyGate.cpp` (Phase 06) | VALIDATED | 1 |
 
-Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 5, Deposits 5, WorldPipeline 4, History 3, Population 5, Naming 5, Religion 5, Disasters 5, PreHistory 5, HistoryText 5, HistoryGate 2 (162 tests; 159 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.History`, `Sim.Population`, `Sim.Naming`, `Sim.Religion`, `Sim.Disasters`, `Sim.PreHistory`, `Sim.HistoryText`, `Sim.HistoryGate`, `Sim.Registry`, `Sim.Shuffled` (42 entries in total). Population suites: Persons 5, Lives 5, Families 5, Needs 6, Traits 5, Lod 5, PersonHistory 5, PopulationGate 1 (37 tests; 37 without assertions); CTest entries `Population.Persons`, `Population.Lives`, `Population.Families`, `Population.Needs`, `Population.Traits`, `Population.Lod`, `Population.PersonHistory`, `Population.PopulationGate`, `Population.Registry`, `Population.Shuffled` (10 entries). Society suites: Organizations 5, Standing 4, Norms 4, Bondage 4, Decisions 4, Strata 3, SocietyHistory 3, SocietyGate 1 (28 tests; 28 without assertions); CTest entries `Society.Organizations`, `Society.Standing`, `Society.Norms`, `Society.Bondage`, `Society.Decisions`, `Society.Strata`, `Society.SocietyHistory`, `Society.SocietyGate`, `Society.Registry`, `Society.Shuffled` (10 entries). Economy suites: Stocks 4, Production 4, Markets 4, Trade 4, Wealth 5, Grains 2, EconomyHistory 3 (26 tests; 26 without assertions); CTest entries `Economy.Stocks`, `Economy.Production`, `Economy.Markets`, `Economy.Trade`, `Economy.Wealth`, `Economy.Grains`, `Economy.EconomyHistory`, `Economy.Registry`, `Economy.Shuffled` (9 entries).
+Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 5, Deposits 5, WorldPipeline 4, History 3, Population 5, Naming 5, Religion 5, Disasters 5, PreHistory 5, HistoryText 5, HistoryGate 2 (162 tests; 159 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.History`, `Sim.Population`, `Sim.Naming`, `Sim.Religion`, `Sim.Disasters`, `Sim.PreHistory`, `Sim.HistoryText`, `Sim.HistoryGate`, `Sim.Registry`, `Sim.Shuffled` (42 entries in total). Population suites: Persons 5, Lives 5, Families 5, Needs 6, Traits 5, Lod 5, PersonHistory 5, PopulationGate 1 (37 tests; 37 without assertions); CTest entries `Population.Persons`, `Population.Lives`, `Population.Families`, `Population.Needs`, `Population.Traits`, `Population.Lod`, `Population.PersonHistory`, `Population.PopulationGate`, `Population.Registry`, `Population.Shuffled` (10 entries). Society suites: Organizations 5, Standing 4, Norms 4, Bondage 4, Decisions 4, Strata 3, SocietyHistory 3, SocietyGate 1 (28 tests; 28 without assertions); CTest entries `Society.Organizations`, `Society.Standing`, `Society.Norms`, `Society.Bondage`, `Society.Decisions`, `Society.Strata`, `Society.SocietyHistory`, `Society.SocietyGate`, `Society.Registry`, `Society.Shuffled` (10 entries). Economy suites: Stocks 4, Production 4, Markets 4, Trade 4, Wealth 5, Grains 2, EconomyHistory 3, EconomyGate 1 (27 tests; 27 without assertions); CTest entries `Economy.Stocks`, `Economy.Production`, `Economy.Markets`, `Economy.Trade`, `Economy.Wealth`, `Economy.Grains`, `Economy.EconomyHistory`, `Economy.EconomyGate`, `Economy.Registry`, `Economy.Shuffled` (10 entries).
 
 ### Tools/ and CI
 
@@ -360,16 +363,16 @@ Toolchain: clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.1
 
 | Preset | Build | `ctest` | `VaelenCoreTests` | `VaelenSimTests` | `VaelenPopulationTests` | `VaelenSocietyTests` | `VaelenEconomyTests` |
 |---|---|---|---|---|---|---|---|
-| linux-clang-debug | 0 warnings | 78/78 passed | 133 run, 133 passed, 22097 checks | 162 run, 162 passed | 37 run, 37 passed | 28 run, 28 passed | 26 run, 26 passed |
-| linux-gcc-debug | 0 warnings | 78/78 passed | 133 run, 133 passed, 22097 checks | 162 run, 162 passed | 37 run, 37 passed | 28 run, 28 passed | 26 run, 26 passed |
-| linux-clang-release | 0 warnings | 78/78 passed | 133 run, 133 passed, 22097 checks | 162 run, 162 passed | 37 run, 37 passed | 28 run, 28 passed | 26 run, 26 passed |
-| linux-gcc-release | 0 warnings | 78/78 passed | 133 run, 133 passed, 22097 checks | 162 run, 162 passed | 37 run, 37 passed | 28 run, 28 passed | 26 run, 26 passed |
-| linux-clang-noasserts | 0 warnings | 78/78 passed | 108 run, 108 passed, 21884 checks | 159 run, 159 passed | 37 run, 37 passed | 28 run, 28 passed | 26 run, 26 passed |
-| linux-gcc-noasserts | 0 warnings | 78/78 passed | 108 run, 108 passed, 21884 checks | 159 run, 159 passed | 37 run, 37 passed | 28 run, 28 passed | 26 run, 26 passed |
+| linux-clang-debug | 0 warnings | 79/79 passed | 133 run, 133 passed, 22097 checks | 162 run, 162 passed | 37 run, 37 passed | 28 run, 28 passed | 27 run, 27 passed |
+| linux-gcc-debug | 0 warnings | 79/79 passed | 133 run, 133 passed, 22097 checks | 162 run, 162 passed | 37 run, 37 passed | 28 run, 28 passed | 27 run, 27 passed |
+| linux-clang-release | 0 warnings | 79/79 passed | 133 run, 133 passed, 22097 checks | 162 run, 162 passed | 37 run, 37 passed | 28 run, 28 passed | 27 run, 27 passed |
+| linux-gcc-release | 0 warnings | 79/79 passed | 133 run, 133 passed, 22097 checks | 162 run, 162 passed | 37 run, 37 passed | 28 run, 28 passed | 27 run, 27 passed |
+| linux-clang-noasserts | 0 warnings | 79/79 passed | 108 run, 108 passed, 21884 checks | 159 run, 159 passed | 37 run, 37 passed | 28 run, 28 passed | 27 run, 27 passed |
+| linux-gcc-noasserts | 0 warnings | 79/79 passed | 108 run, 108 passed, 21884 checks | 159 run, 159 passed | 37 run, 37 passed | 28 run, 28 passed | 27 run, 27 passed |
 
 Mini-world baseline (100 000 ticks, 41 entities, 305 027 events, 34 168 227-byte snapshot), logged by `Sim.MiniWorld`, not asserted: clang debug 0.39 s (255 k ticks/s), gcc debug 0.40 s, clang release 0.135 s (739 k ticks/s), gcc release without assertions 0.127 s (790 k ticks/s); snapshot 0.09-0.14 s.
 
-GitHub Actions runs 13 to 28 (01.06 through 03.03): all 9 jobs green each; run 29 (03.04) red on Windows MSVC only (a dangling pool pointer in the faith listener changed the religion digest, and `Sim.Shuffled` exceeded its 300 s CTest timeout), both fixed in the 03.05 commit and green again in runs 30 to 48 (03.05 to 05.07); run 49 (05.08) was cancelled by the job timeouts - the Phase 05 gate took the serial debug test runs past 30 minutes on Linux and 45 on Windows (every Linux release and no-assert job green) - so from 06.01 CTest runs 4 jobs in every preset (`execution.jobs` in `CMakePresets.json`, the stdio capture entries serialised by a resource lock), which brings a debug run under ten minutes - green again in runs 50 to 57 (06.01 to 06.06, the first Unreal build at run 54 included; run 56 was superseded by run 57 on the same tree); so the frozen replay, mini-world and snapshot values hold on Windows MSVC and macOS AppleClang as well. Phase 00 record - run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14).
+GitHub Actions runs 13 to 28 (01.06 through 03.03): all 9 jobs green each; run 29 (03.04) red on Windows MSVC only (a dangling pool pointer in the faith listener changed the religion digest, and `Sim.Shuffled` exceeded its 300 s CTest timeout), both fixed in the 03.05 commit and green again in runs 30 to 48 (03.05 to 05.07); run 49 (05.08) was cancelled by the job timeouts - the Phase 05 gate took the serial debug test runs past 30 minutes on Linux and 45 on Windows (every Linux release and no-assert job green) - so from 06.01 CTest runs 4 jobs in every preset (`execution.jobs` in `CMakePresets.json`, the stdio capture entries serialised by a resource lock), which brings a debug run under ten minutes - green again in runs 50 to 58 (06.01 to 06.07, the first Unreal build at run 54 included; run 56 was superseded by run 57 on the same tree); so the frozen replay, mini-world and snapshot values hold on Windows MSVC and macOS AppleClang as well. Phase 00 record - run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14).
 
 Also run locally: `python3 Tools/check_kernel_purity.py --self-test` (36 checks, 0 failed),
 `python3 Tools/check_kernel_purity.py --root . --verbose` (12 files, 0 violations),

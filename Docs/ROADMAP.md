@@ -73,8 +73,8 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
-| 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | IN PROGRESS (06.01-06.07 VALIDATED headless; 06.08 PLANNED) |
-| 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
+| 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | VALIDATED (headless, 06.01-06.08); UNVERIFIED (engine) |
+| 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED (07.01-07.08 broken down, section 11) |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
 | 10 | PLAYER | The player as one simulated person: enslaved start, body, needs, skills, relationships; player intent as commands into the simulation. | PLANNED |
@@ -1792,7 +1792,72 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   restored world identical to the original; frozen text digest `31b14de751d3d588`.
 - Decision: ADR-0054.
 
-## 11. Phases 07-20: notes
+### 06.08 Phase 06 gate - VALIDATED (headless)
+
+- Delivered: `Tests/Economy/Test_EconomyGate.cpp`. AELVOR 256 after 300 years of
+  pre-history, its busiest region detailed, and every Phase 04, 05 and 06 system running
+  for 500 years: lives, families with the marriage norms, needs fed by the economy's
+  ration, traits, lod, organisations, standing weighed by wealth, norms, bondage with the
+  strata, decisions, stocks with heirs, production, markets, trade, wealth, and the
+  person, society and economy chroniclers. Every decade the invariants of all three
+  phases hold: persons consistent with the counts, no astray membership, standing over
+  the living and free only, bonds and strata sound, customs within their bounds, every
+  cause resolving in the log, and - new here - nothing stale or orphaned in the economy,
+  a market wherever a stock is, every price within its floor and ceiling, every ration at
+  most a full one, no bad road, and every record of all three chronicles described and
+  era-consistent. A snapshot at year 250 restored and run to year 500 gives the same
+  world, the same log and the same chronicle text. Frozen: world `6e106563938bb288` at year 250,
+  `55c39d36a2171b64` at year 500, log `ac48bb403c40fd73`, chronicle text `e5f20b503614f6cc`. The gate takes 203 s plus
+  124 s for the snapshot half on the clang debug build; CTest gives it 1800 s and the
+  shuffled Economy run 5400 s.
+- What the gate found, and it found both only by running everything at once:
+  the orderings of Phases 05 and 06 cannot both hold. `Houses->RunAfter("Needs")` (a
+  family forms after this year's hunger) and `Body->RunAfter("Production")` (the needs
+  read this year's ration) close a cycle through Stocks, which runs after Families. The
+  chain that carries the grain wins and the family system forms its marriages on the
+  living of the tick before. And the economy's describer was giving the society's events
+  the plainer words of the person layer, so a founding or a raid lost its sentence in the
+  world's own chronicle; the describer of the topmost layer now speaks for every layer
+  under it.
+- Phase 06 ECONOMY: VALIDATED (headless). Phase 07 POLITICS broken down into 07.01-07.08
+  in section 11.
+- Decision: ADR-0055.
+
+## 11. Phase 07 - POLITICS: task breakdown and real status
+
+Goal: authority over the regions of AELVOR - who rules where, by what right, under what
+law, with what following - so that the organisations of Phase 05 and the wealth of Phase
+06 have a power above them, and so that Phase 08 has something to make war over.
+
+Decisions taken up front (each becomes an ADR when its task closes):
+
+- A polity is an entity of kind Polity holding regions; a region belongs to at most one
+  polity, and belonging is a component on the region so that a demotion never loses it.
+- Authority is exercised through the organisations of Phase 05: a polity's seat is a
+  council, its ruler the head of that council, and its reach the regions whose councils
+  answer to it. No new kind of person: rulers are persons with standing and offices.
+- Law is a small table of rules a polity sets (taxes in goods, bondage allowed or not,
+  tribute owed), written as components the lower systems observe exactly as the need
+  system observes the ration - the political layer never reaches into them.
+- Succession follows the descent custom of the ruler's culture (05.03) as inheritance
+  does (06.05); a disputed succession is a faction, not a special case.
+- Diplomacy is a standing relation between two polities, moved by tribute, raids (05.05)
+  and trade (06.04), and read by Phase 08.
+
+| Task | Content | Tests |
+|---|---|---|
+| 07.01 | `VaelenPolitics` module (UBT + CMake), `PolityInfo`, region belonging, founding and dissolution, the seat and the ruler from a council | unit, deterministic, edge (no council, a region twice claimed), snapshot |
+| 07.02 | Law: a polity's rules as components the population, society and economy systems observe; taxes taken in goods | integration with 04.04, 05.04 and 06.02, frozen |
+| 07.03 | Authority and reach: regions won and lost, the cost of distance, a polity that cannot hold what it claims | deterministic, long-duration |
+| 07.04 | Succession: the ruler's death, the heir by descent, a regency, a disputed succession | integration with 05.03 and 06.05, frozen |
+| 07.05 | Factions: persons and houses gathered behind a claim, their standing and wealth weighing, defection | unit, distributions, deterministic |
+| 07.06 | Diplomacy: relations between polities moved by tribute, raids and trade; treaties as records | integration with 05.05 and 06.04 |
+| 07.07 | Politics in history: foundings, laws, successions, treaties in the chronicle; text; why | integration with 06.07, text deterministic |
+| 07.08 | Phase 07 gate: 500 years at 256 with every Phase 04 to 07 system, invariants every decade, frozen digests; Phase 07 closed against section 2 | long-duration |
+
+Every task ends with the usual report block, the docs refreshed and a commit.
+
+## 12. Phases 08-20: notes
 
 No task breakdown exists yet for Phases 07-20; each is broken down when the previous
 phase closes.
@@ -1804,7 +1869,7 @@ Army, War (Phases 07-08), Document, Map (Phase 12); `VAELEN_SAVE_FORMAT_VERSION`
 (Phase 16); `Config/DefaultEngine.ini` and `DefaultInput.ini` note that the game engine
 class and Enhanced Input mappings arrive in Phase 10.
 
-## 12. Current BUILD STATUS
+## 13. Current BUILD STATUS
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1812,41 +1877,43 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 06 — ECONOMY
-TASK        : 06.07 — THE ECONOMY IN THE CHRONICLE
+TASK        : 06.08 — PHASE 06 GATE AND CLOSE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████████████░░░░░░░░░░ 58%
+███████████████░░░░░░░░░ 60%
 
 CURRENTLY
-→ 06.07 closed: EconomyChronicle, a listener over the trade, market, production and wealth events,
-  turns what matters into chronicle records - a road built, a road that carried something being
-  abandoned, a town risen or abandoned, a price that reached its floor or its ceiling, a region gone
-  short of grain, a fortune that really moved, an inheritance - bounded per region and year, and
-  DescribeEconomyEvent gives every economic event its own line in the words of the world; NameRoute,
-  NameSettlement, ExportChronicleWithEconomy, ExportWhyWithEconomy: the why of a dear loaf runs from
-  the price to the harvest to the drought
+→ 06.08 closed: 500 years on AELVOR 256 with the busiest region detailed and every Phase 04, 05 and 06
+  system - thirteen systems and three chroniclers - holding every invariant of all three phases every
+  decade, with a snapshot of year 250 continuing to the same year 500; the gate found two things: the
+  orderings of Phases 05 and 06 could not both hold once the needs read the economy's ration
+  (Families -> Needs -> Production -> Stocks -> Families), and the chronicle of the topmost layer was
+  describing the layer below it in poorer words
+→ Phase 06 ECONOMY: VALIDATED (headless), UNVERIFIED (engine side of the module glue is VALIDATED
+  under UBT since 2026-09-07); Phase 07 POLITICS broken down into 07.01-07.08 (ROADMAP section 11)
 
 COMPLETED
-✓ Phases 00-05 (headless) ; 06.01-06.06
-✓ 06.07 The economy in the chronicle (3 tests: EconomyHistory)
+✓ Phases 00-05 (headless) ; 06.01-06.07 (CI 58)
+✓ 06.08 Phase 06 gate (1 test: EconomyGate) ; Phase 06 VALIDATED (headless)
 
 NEXT
-→ 06.08 Phase 06 gate, then the Phase 06 verdict and the Phase 07 breakdown
+→ 07.01 VaelenPolitics module, polities as entities, territory and authority
+→ 07.02 Laws and their enforcement
 → The engine build is done (UE 5.6, 2026-09-07): the module glue is VALIDATED under UBT
 
 FILES
-+ Source/VaelenEconomy/Public/Vaelen/Economy/EconomyHistory.h, Private/EconomyHistory.cpp
-+ Tests/Economy/Test_EconomyHistory.cpp
-~ Source/VaelenEconomy/Private/Markets.cpp (a market appearing is not a price changing),
-  Public/Vaelen/Economy/Trade.h, Private/Trade.cpp (a road counts its openings)
++ Tests/Economy/Test_EconomyGate.cpp
+~ Source/VaelenEconomy/Public/Vaelen/Economy/EconomyHistory.h, Private/EconomyHistory.cpp (the economy
+  describer speaks for the society layer too), Tests/Economy/CMakeLists.txt (gate 1800 s, Shuffled
+  5400 s), Docs (Phase 06 verdict, Phase 07 breakdown, ADR-0055)
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 37 (37 without asserts)
-  + Society 28 (28 without asserts) + Economy 26 (26 without asserts); ctest 78/78 in all six
+  + Society 28 (28 without asserts) + Economy 27 (27 without asserts); ctest 79/79 in all six
   Linux presets
-✓ AELVOR 128 for 100 years with the busiest region detailed: 1147 records, chronicle text frozen 31b14de751d3d588
-✓ Refrozen by the two corrections: markets changes 584 (was 1277), trade digest 54cba9c0fc9ee231
+✓ Gate: 500 years at 256 with region 42 detailed in 203 s plus 124 s for the snapshot half (clang debug);
+  frozen 250=6e106563938bb288 500=55c39d36a2171b64 log=ac48bb403c40fd73 text=e5f20b503614f6cc
 ✓ Purity: 106 files, 0 violations
 
 BLOCKERS
@@ -1854,7 +1921,7 @@ BLOCKERS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-## 13. Verification record
+## 14. Verification record
 
 Commands run on 2026-09-05 (clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.15, clang-format 18.1.3, Linux x86_64) with the checked-in presets, each into
 `out/build/<preset>`:
