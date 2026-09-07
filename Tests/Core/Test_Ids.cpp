@@ -49,6 +49,7 @@ namespace
 		IdKind::Law,
 		IdKind::Army,
 		IdKind::War,
+		IdKind::Faction,
 		IdKind::Document,
 		IdKind::Map,
 		IdKind::MaxValue,
@@ -62,7 +63,8 @@ namespace
 		IdKind::Religion, IdKind::Person,		   IdKind::Family,	   IdKind::Organization,
 		IdKind::Item,	  IdKind::Building,		   IdKind::Settlement, IdKind::Market,
 		IdKind::Route,	  IdKind::Polity,		   IdKind::Law,		   IdKind::Army,
-		IdKind::War,	  IdKind::Document,		   IdKind::Map,		   IdKind::MaxValue,
+		IdKind::War,	  IdKind::Faction,		   IdKind::Document,   IdKind::Map,
+		IdKind::MaxValue,
 	};
 	constexpr usize AllocatableKindCount = ArrayCount(AllocatableKinds);
 

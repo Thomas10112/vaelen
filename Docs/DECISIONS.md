@@ -82,6 +82,7 @@ Rules for this file:
 | [0057](#adr-0057-a-law-is-one-number-on-the-polity-and-a-plain-struct-on-the-region) | A law is one number on the polity and a plain struct on the region | Accepted; headless VALIDATED |
 | [0058](#adr-0058-authority-is-written-on-the-region-and-falls-with-the-walk-from-the-seat) | Authority is written on the region and falls with the walk from the seat | Accepted; headless VALIDATED |
 | [0059](#adr-0059-succession-is-judged-not-decided) | Succession is judged, not decided | Accepted; headless VALIDATED |
+| [0060](#adr-0060-a-faction-takes-ground-never-the-throne) | A faction takes ground, never the throne | Accepted; headless VALIDATED |
 
 ---
 
@@ -3512,6 +3513,69 @@ seating rulers is two truths.
 Accepted 2026-09-07. Files: `Source/VaelenPolitics/Public/Vaelen/Politics/Succession.h`,
 `Private/Succession.cpp`, `Reach.h`/`Private/Reach.cpp` (`ObserveLine`),
 `Tests/Politics/Test_Succession.cpp` (4 tests). Headless VALIDATED on the six Linux presets.
+
+---
+
+## ADR-0060: A faction takes ground, never the throne
+
+### Context
+
+07.01 made the ruler the council's head and 07.04 refused to seat anyone. 07.05
+has to give the passed-over claimant and the neglected province somewhere to put
+their grievance, without giving the world a third way to fill a seat.
+
+### Decision
+
+1. A faction is an entity of its own kind (`IdKind::Faction`, new in this task)
+   with a polity, a **region**, a strength, and sometimes a person. It never
+   changes who sits. What it does is take its region out of the polity.
+2. Two grievances form one: a claimant the custom named and the council passed
+   over, in the region they live in; and a region held under a threshold for
+   several years running, which wants nobody in particular.
+3. A seat is not a province. No faction rises in the region a polity rules from -
+   neither by neglect (it cannot be neglected by itself) nor by a claimant who
+   lives there (they have nothing to take; their grievance is already in the
+   polity's unrest from 07.04). This keeps the seat inviolable in all three
+   systems that could otherwise take it.
+4. A faction gathers strength while its grievance stands and loses it when the
+   grievance is answered. At its threshold the region leaves and the faction
+   **ends**: it wanted that, and it has it. There is no permanent rebel state.
+5. While it stands it adds to the polity's unrest, which 07.03 takes off every
+   hold - so a faction in one province weakens the whole. It runs last of the
+   politics systems, so that unrest is felt the year after: a faction is not news
+   the day it forms.
+6. A polity bears one faction at a time. A second grievance waits rather than
+   piling on, so the strength of a rebellion is never the sum of unrelated
+   complaints.
+
+### Alternatives and decision rule
+
+- A faction that seats its claimant: rejected; it is a third writer of the seat
+  after the organisation system and 07.01, and the schedule would decide who wins.
+- A faction as a component on the polity: rejected; a grievance has a place, and
+  07.07 must be able to name the region a revolt happened in.
+- A faction that persists after taking its region: rejected for 07.05; a standing
+  rebel polity is what 07.01 already makes when a council governs free ground, so
+  the region simply becomes ungoverned and may be founded upon again.
+- Strength as a count of people rather than a per mille: deferred; the population
+  of a coarse region is a count, and a per mille keeps the rule readable at both
+  grains.
+
+### Consequences
+
+- Overreach now has a second cost. 07.03 makes a far province cheap to lose; 07.05
+  makes it *want* to be lost, and the wanting spreads unrest to the whole.
+- A polity that pays its way and settles its successions is never troubled: every
+  grievance in the model has a cause the polity could have removed.
+- 07.06 gives two polities something to be to each other; a region freed by a
+  revolt is exactly the kind of ground a neighbour will want.
+
+### Status
+
+Accepted 2026-09-07. Files: `Source/VaelenPolitics/Public/Vaelen/Politics/Factions.h`,
+`Private/Factions.cpp`, `Source/VaelenCore/.../Ids.h` and `Private/Ids.cpp`
+(`IdKind::Faction`), `Tests/Politics/Test_Factions.cpp` (4 tests). Headless VALIDATED
+on the six Linux presets.
 
 ---
 

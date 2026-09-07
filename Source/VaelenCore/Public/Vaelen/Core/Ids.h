@@ -70,6 +70,7 @@ namespace Vaelen
 		Law = 41,
 		Army = 42,
 		War = 43,
+		Faction = 44,
 
 		// -- Knowledge (Phase 12) --
 		Document = 50,

@@ -74,7 +74,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | VALIDATED (headless, 06.01-06.08); UNVERIFIED (engine) |
-| 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | IN PROGRESS (07.01-07.04 VALIDATED headless; 07.05-07.08 PLANNED) |
+| 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | IN PROGRESS (07.01-07.05 VALIDATED headless; 07.06-07.08 PLANNED) |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
 | 10 | PLAYER | The player as one simulated person: enslaved start, body, needs, skills, relationships; player intent as commands into the simulation. | PLANNED |
@@ -1967,6 +1967,32 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   worlds of one seed keep the same line; determinism, snapshot continuity, frozen line digest
   `77726480cad71e27` after 100 years (9 rulers seated, 3 settled by the custom).
 - Decision: ADR-0059.
+
+### 07.05 Factions - VALIDATED (headless)
+
+- Delivered: `Factions.h/.cpp` - `Grievance` (PassedOver, Neglect) and `GrievanceName`, `FactionInfo`
+  (48 bytes: polity, region, claimant, strength per mille, cause, the ticks of forming and ending,
+  identity from the world seed) on entities of the new kind `IdKind::Faction`, `RegionPatience`
+  (8 bytes: whose neglect, years running) on the region, `FactionTypes::Declare`, `FactionRules`
+  (a region held under 500 per mille for 3 years running breeds a faction; it is born at 100 per
+  mille, gains 60 a year while aggrieved and loses 80 when answered, takes its region at 500, adds
+  40 to the polity's unrest while it stands, never past the ceiling succession keeps), events
+  FactionFormed, FactionRevolted, FactionFaded, `FactionSystem` (LOD World, after Reach, last of the
+  politics systems so its unrest is felt the year after - a faction is not news the day it forms),
+  `FactionOf`, `FactionsOf`, `MeasureFactions` (standing and ended, the strongest, regions counting
+  years, events by kind, and the bad - a faction of a polity that is gone, in a region it does not
+  rule, a strength past its ceiling, a claimant who is not alive - with a digest of every faction in
+  index order then every patience in region order).
+- Tests (4): a polity of one region breeds nothing - a seat is not a province - and when it
+  overreaches, its far provinces count the years and raise a faction that names no one; left
+  unanswered it grows and its region simply leaves, while the seat is never taken this way and no
+  faction ever rises in a capital; a grievance with a cause the polity can remove (an upkeep it
+  cannot pay) is answered by paying it, and the faction comes to nothing without taking anything;
+  a polity bears one faction at a time however many provinces are aggrieved, no strength stands
+  above its ceiling, a world with no polity has no faction and nobody's patience, and two worlds of
+  one seed raise the same factions in the same years; determinism, snapshot continuity, frozen
+  factions digest `2906077fcd8b815d` after 100 years (15 formed, 13 took their region).
+- Decision: ADR-0060.
 ## 12. Phases 08-20: notes
 
 No task breakdown exists yet for Phases 07-20; each is broken down when the previous
@@ -1987,42 +2013,42 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 07 — POLITICS
-TASK        : 07.04 — SUCCESSION
+TASK        : 07.05 — FACTIONS
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████████░░░░░░░░ 67%
+█████████████████░░░░░░░ 69%
 
 CURRENTLY
-→ 07.04 closed: a polity does not choose its ruler - 07.01 seats the council's head and this system
-  does not overrule it; what it does is remember and judge. Every year it names the claimant the
-  culture's descent custom points at (the eldest living child of age of whoever sits, on the line the
-  culture keeps), and when the seat changes hands it compares who took it against who was named. A
-  seat that falls empty and a seat taken by anyone else both leave unrest on the polity, fading year
-  by year, and the reach system takes that unrest off the hold of every region it rules: a disputed
-  succession is a year in which the far edge is likelier to slip. LineOf, MeasureSuccession
+→ 07.05 closed: a faction cannot change who sits - the council seats its head and succession only
+  judges the passing - so what it can do is take the ground away. It forms around a grievance with a
+  place and sometimes a person: a claimant the custom named and the council passed over, or a region
+  held so loosely for so long that its people stop counting themselves as ruled. It gathers strength
+  while nobody answers it and loses it when somebody does; at its threshold the region simply leaves
+  the polity, and then the faction is done - it wanted that, and it has it. A seat is not a province:
+  no faction ever rises in the region a polity rules from. FactionOf, FactionsOf, MeasureFactions
 
 COMPLETED
-✓ Phases 00-06 (headless) (CI 63)
-✓ 07.01 polities · 07.02 law and dues · 07.03 authority and reach
-✓ 07.04 succession (4 tests: Succession)
+✓ Phases 00-06 (headless) (CI 64)
+✓ 07.01 polities · 07.02 law · 07.03 authority and reach · 07.04 succession
+✓ 07.05 factions (4 tests: Factions)
 
 NEXT
-→ 07.05 Factions: who inside a polity wants the seat, and what they are willing to do
-→ 07.06 Diplomacy
+→ 07.06 Diplomacy: what two polities are to each other, and what that changes
+→ 07.07 Politics in the chronicle
 
 FILES
-+ Source/VaelenPolitics/Public/Vaelen/Politics/Succession.h, Private/Succession.cpp
-+ Tests/Politics/Test_Succession.cpp
-~ Source/VaelenPolitics/Public/Vaelen/Politics/Reach.h, Private/Reach.cpp (ObserveLine),
++ Source/VaelenPolitics/Public/Vaelen/Politics/Factions.h, Private/Factions.cpp
++ Tests/Politics/Test_Factions.cpp
+~ Source/VaelenCore/Public/Vaelen/Core/Ids.h, Private/Ids.cpp (IdKind::Faction), Tests/Core/Test_Ids.cpp,
   Source/VaelenPolitics/CMakeLists.txt
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 160 + Population 36 + Society 27 + Economy 26
-  + Politics 16 (16 without asserts); ctest 75/75 in all six Linux presets; every earlier
+  + Politics 20 (20 without asserts); ctest 76/76 in all six Linux presets; every earlier
   frozen digest unchanged
-✓ AELVOR 128 for 100 years: frozen line digest 77726480cad71e27 (9 rulers seated, 3 settled by the custom)
-✓ Purity: 115 files, 0 violations
+✓ AELVOR 128 for 100 years: frozen factions digest 2906077fcd8b815d (15 formed, 13 took their region)
+✓ Purity: 117 files, 0 violations
 
 BLOCKERS
 ∅ (the engine-side files stay UNVERIFIED until the next UE 5.6 build)
