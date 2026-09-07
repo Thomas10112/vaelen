@@ -74,7 +74,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | VALIDATED (headless, 06.01-06.08); UNVERIFIED (engine) |
-| 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED (07.01-07.08 broken down, section 11) |
+| 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | IN PROGRESS (07.01 VALIDATED headless; 07.02-07.08 PLANNED) |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
 | 10 | PLAYER | The player as one simulated person: enslaved start, body, needs, skills, relationships; player intent as commands into the simulation. | PLANNED |
@@ -1857,6 +1857,93 @@ Decisions taken up front (each becomes an ADR when its task closes):
 
 Every task ends with the usual report block, the docs refreshed and a commit.
 
+### 07.01 VaelenPolitics module and polities - VALIDATED (headless)
+
+- Delivered: `Source/VaelenPolitics` (sixth kernel module: `VaelenPolitics.Build.cs` depending on
+  Core, VaelenCore, VaelenSim, VaelenPopulation, VaelenSociety and VaelenEconomy; `CMakeLists.txt`
+  with the explicit source list; `PoliticsApi.h`; the Unreal-facing `VaelenPoliticsModule.cpp`
+  excluded from the headless build; listed in `Tools/kernel_modules.txt`, `Vaelen.uproject` and
+  both targets), `Polities.h/.cpp` - `PolityInfo` (48 bytes: index, seat region, culture, ruler,
+  council, regions held, founding and dissolution ticks, identity from the world seed) on entities
+  of kind Polity, `RegionRule` (16 bytes: polity, since) on region entities, `PolityTypes::Declare`,
+  `PolityRules` (a seat holds 400 living and a council of 4; a polity ruling nothing is dissolved
+  after 3 years; a ruler is 20), events PolityFounded, PolityDissolved, RulerSeated, RegionClaimed,
+  RegionLost, `PolitySystem` (LOD World, after Organizations, `RunAfter`: found what the councils
+  warrant, seat the ruler as the council's living head of age, count the regions from the regions
+  themselves, dissolve what has no council or nothing to rule and free its regions), `PolityOf`,
+  `RuleOf`, `RegionsOf`, `MeasurePolities` (standing and dissolved, regions ruled and freed,
+  headless polities, bad ones - a seat outside its own polity, a ruler who is not the council's
+  head, a region held by a polity that is gone - events by kind, and a digest of every polity in
+  index order then every rule in region order).
+- Tests (4): a detailed region of AELVOR 128 founds one polity on its council within two years,
+  seated there, ruled by the council's head, holding one region that says so from its own side,
+  and the ruler follows the head across twenty years of deaths; the rule survives a demotion with
+  its date unchanged and the polity is never founded twice, and a polity whose last region is taken
+  dissolves and stays as history while the same tick founds a new one on the same council - a seat
+  whose council still sits does not stay masterless; a threshold nobody meets founds nothing, a
+  ruler nobody is old enough to be leaves the seat empty while the polity still holds its region,
+  and two worlds of one seed agree on every polity and every rule; determinism and snapshot
+  continuity; frozen polities digest `ab11336dba47da54` after 100 years (1 standing, 9 rulers seated).
+- Decision: ADR-0056.
+
+### 07.01 VaelenPolitics module and polities - VALIDATED (headless)
+
+- Delivered: `Source/VaelenPolitics` (sixth kernel module: `VaelenPolitics.Build.cs` depending on
+  Core, VaelenCore, VaelenSim, VaelenPopulation, VaelenSociety and VaelenEconomy; `CMakeLists.txt`
+  with the explicit source list; `PoliticsApi.h`; the Unreal-facing `VaelenPoliticsModule.cpp`
+  excluded from the headless build; listed in `Tools/kernel_modules.txt`, `Vaelen.uproject` and
+  both targets), `Polities.h/.cpp` - `PolityInfo` (48 bytes: index, seat region, culture, ruler,
+  council, regions held, founding and dissolution ticks, identity from the world seed) on entities
+  of kind Polity, `RegionRule` (16 bytes: polity, since) on region entities, `PolityTypes::Declare`,
+  `PolityRules` (a seat holds 400 living and a council of 4; a polity ruling nothing is dissolved
+  after 3 years; a ruler is 20), events PolityFounded, PolityDissolved, RulerSeated, RegionClaimed,
+  RegionLost, `PolitySystem` (LOD World, after Organizations, `RunAfter`: found what the councils
+  warrant, seat the ruler as the council's living head of age, count the regions from the regions
+  themselves, dissolve what has no council or nothing to rule and free its regions), `PolityOf`,
+  `RuleOf`, `RegionsOf`, `MeasurePolities` (standing and dissolved, regions ruled and freed,
+  headless polities, bad ones - a seat outside its own polity, a ruler who is not the council's
+  head, a region held by a polity that is gone - events by kind, and a digest of every polity in
+  index order then every rule in region order).
+- Tests (4): a detailed region of AELVOR 128 founds one polity on its council within two years,
+  seated there, ruled by the council's head, holding one region that says so from its own side,
+  and the ruler follows the head across twenty years of deaths; the rule survives a demotion with
+  its date unchanged and the polity is never founded twice, and a polity whose last region is taken
+  dissolves and stays as history while the same tick founds a new one on the same council - a seat
+  whose council still sits does not stay masterless; a threshold nobody meets founds nothing, a
+  ruler nobody is old enough to be leaves the seat empty while the polity still holds its region,
+  and two worlds of one seed agree on every polity and every rule; determinism and snapshot
+  continuity; frozen polities digest `ab11336dba47da54` after 100 years (1 standing, 9 rulers seated).
+- Decision: ADR-0056.
+
+### 07.01 VaelenPolitics module and polities - VALIDATED (headless)
+
+- Delivered: `Source/VaelenPolitics` (sixth kernel module: `VaelenPolitics.Build.cs` depending on
+  Core, VaelenCore, VaelenSim, VaelenPopulation, VaelenSociety and VaelenEconomy; `CMakeLists.txt`
+  with the explicit source list; `PoliticsApi.h`; the Unreal-facing `VaelenPoliticsModule.cpp`
+  excluded from the headless build; listed in `Tools/kernel_modules.txt`, `Vaelen.uproject` and
+  both targets), `Polities.h/.cpp` - `PolityInfo` (48 bytes: index, seat region, culture, ruler,
+  council, regions held, founding and dissolution ticks, identity from the world seed) on entities
+  of kind Polity, `RegionRule` (16 bytes: polity, since) on region entities, `PolityTypes::Declare`,
+  `PolityRules` (a seat holds 400 living and a council of 4; a polity ruling nothing is dissolved
+  after 3 years; a ruler is 20), events PolityFounded, PolityDissolved, RulerSeated, RegionClaimed,
+  RegionLost, `PolitySystem` (LOD World, after Organizations, `RunAfter`: found what the councils
+  warrant, seat the ruler as the council's living head of age, count the regions from the regions
+  themselves, dissolve what has no council or nothing to rule and free its regions), `PolityOf`,
+  `RuleOf`, `RegionsOf`, `MeasurePolities` (standing and dissolved, regions ruled and freed,
+  headless polities, bad ones - a seat outside its own polity, a ruler who is not the council's
+  head, a region held by a polity that is gone - events by kind, and a digest of every polity in
+  index order then every rule in region order).
+- Tests (4): a detailed region of AELVOR 128 founds one polity on its council within two years,
+  seated there, ruled by the council's head, holding one region that says so from its own side,
+  and the ruler follows the head across twenty years of deaths; the rule survives a demotion with
+  its date unchanged and the polity is never founded twice, and a polity whose last region is taken
+  dissolves and stays as history while the same tick founds a new one on the same council - a seat
+  whose council still sits does not stay masterless; a threshold nobody meets founds nothing, a
+  ruler nobody is old enough to be leaves the seat empty while the polity still holds its region,
+  and two worlds of one seed agree on every polity and every rule; determinism and snapshot
+  continuity; frozen polities digest `ab11336dba47da54` after 100 years (1 standing, 9 rulers seated).
+- Decision: ADR-0056.
+
 ## 12. Phases 08-20: notes
 
 No task breakdown exists yet for Phases 07-20; each is broken down when the previous
@@ -1876,48 +1963,48 @@ class and Enhanced Input mappings arrive in Phase 10.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 06 — ECONOMY
-TASK        : 06.08 — PHASE 06 GATE AND CLOSE
+PHASE       : 07 — POLITICS
+TASK        : 07.01 — VAELENPOLITICS MODULE AND POLITIES
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███████████████░░░░░░░░░ 60%
+███████████████░░░░░░░░░ 61%
 
 CURRENTLY
-→ 06.08 closed: 500 years on AELVOR 256 with the busiest region detailed and every Phase 04, 05 and 06
-  system - thirteen systems and three chroniclers - holding every invariant of all three phases every
-  decade, with a snapshot of year 250 continuing to the same year 500; the gate found two things: the
-  orderings of Phases 05 and 06 could not both hold once the needs read the economy's ration
-  (Families -> Needs -> Production -> Stocks -> Families), and the chronicle of the topmost layer was
-  describing the layer below it in poorer words
-→ Phase 06 ECONOMY: VALIDATED (headless), UNVERIFIED (engine side of the module glue is VALIDATED
-  under UBT since 2026-09-07); Phase 07 POLITICS broken down into 07.01-07.08 (ROADMAP section 11)
+→ 07.01 closed: the sixth kernel module VaelenPolitics (UBT + CMake, purity-checked); a polity as an
+  entity of kind Polity with a seat region, a culture, a council and a ruler; founded where a detailed
+  region holds a council of enough members and enough people and belongs to nobody; its ruler IS that
+  council's head, of age - authority runs through the organisations of Phase 05, never beside them;
+  belonging written as RegionRule on the region itself, so it survives every change of detail; a
+  polity that rules nothing, or whose seat lost its council, dissolved after its first years and kept
+  in the world as history; PolityOf, RuleOf, RegionsOf, MeasurePolities
 
 COMPLETED
-✓ Phases 00-05 (headless) ; 06.01-06.07 (CI 58)
-✓ 06.08 Phase 06 gate (1 test: EconomyGate) ; Phase 06 VALIDATED (headless)
+✓ Phases 00-06 (headless) (CI 59)
+✓ 07.01 VaelenPolitics module and polities (4 tests: Polities)
 
 NEXT
-→ 07.01 VaelenPolitics module, polities as entities, territory and authority
-→ 07.02 Laws and their enforcement
-→ The engine build is done (UE 5.6, 2026-09-07): the module glue is VALIDATED under UBT
+→ 07.02 Law: a polity's rules as components the lower systems observe; taxes taken in goods
+→ 07.03 Authority and reach
+→ The engine build is done (UE 5.6, 2026-09-07); the new module is younger than it
 
 FILES
-+ Tests/Economy/Test_EconomyGate.cpp
-~ Source/VaelenEconomy/Public/Vaelen/Economy/EconomyHistory.h, Private/EconomyHistory.cpp (the economy
-  describer speaks for the society layer too), Tests/Economy/CMakeLists.txt (gate 1800 s, Shuffled
-  5400 s), Docs (Phase 06 verdict, Phase 07 breakdown, ADR-0055)
++ Source/VaelenPolitics/ (VaelenPolitics.Build.cs, CMakeLists.txt, Public/Vaelen/Politics/PoliticsApi.h,
+  Polities.h, Private/Polities.cpp, Private/VaelenPoliticsModule.cpp)
++ Tests/Politics/ (CMakeLists.txt, Test_Polities.cpp)
+~ CMakeLists.txt, Tests/CMakeLists.txt, Tools/kernel_modules.txt, Vaelen.uproject, Vaelen.Target.cs,
+  VaelenEditor.Target.cs
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 37 (37 without asserts)
-  + Society 28 (28 without asserts) + Economy 27 (27 without asserts); ctest 79/79 in all six
-  Linux presets
-✓ Gate: 500 years at 256 with region 42 detailed in 203 s plus 124 s for the snapshot half (clang debug);
-  frozen 250=6e106563938bb288 500=55c39d36a2171b64 log=ac48bb403c40fd73 text=e5f20b503614f6cc
-✓ Purity: 106 files, 0 violations
+✓ Core 133 (108 without asserts) + Sim 160 (157 without asserts) + Population 36 (36 without asserts)
+  + Society 27 (27 without asserts) + Economy 26 (26 without asserts) + Politics 4 (4 without
+  asserts); ctest 72/72 in all six Linux presets; every earlier frozen digest unchanged
+✓ AELVOR 128 for 100 years with the busiest region detailed: frozen polities digest ab11336dba47da54 (1 standing,
+  9 rulers seated)
+✓ Purity: 109 files, 0 violations
 
 BLOCKERS
-∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)
+∅ (engine-side files of the new module stay UNVERIFIED until the next UE 5.6 build)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 

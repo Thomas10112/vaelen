@@ -48,6 +48,18 @@
 			]
 		},
 		{
+			"Name": "VaelenPolitics",
+			"Type": "Runtime",
+			"LoadingPhase": "PreDefault",
+			"AdditionalDependencies": [
+				"VaelenCore",
+				"VaelenSim",
+				"VaelenPopulation",
+				"VaelenSociety",
+				"VaelenEconomy"
+			]
+		},
+		{
 			"Name": "Vaelen",
 			"Type": "Runtime",
 			"LoadingPhase": "Default",

@@ -78,6 +78,7 @@ Rules for this file:
 | [0053](#adr-0053-nothing-of-the-fine-grain-outlives-it-a-coarse-region-keeps-counts-and-stocks-and-nothing-else) | Nothing of the fine grain outlives it: a coarse region keeps counts and stocks, and nothing else | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0054](#adr-0054-the-chronicle-records-what-lasts-a-road-built-a-town-risen-a-price-at-its-bound-a-fortune-moved-not-the-churn-beneath-them) | The chronicle records what lasts: a road built, a town risen, a price at its bound, a fortune moved, not the churn beneath them | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0055](#adr-0055-when-two-validated-orderings-cannot-both-hold-the-chain-that-carries-the-grain-wins-and-the-describer-of-the-topmost-layer-speaks-for-all-of-them) | When two validated orderings cannot both hold, the chain that carries the grain wins, and the describer of the topmost layer speaks for all of them | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0056](#adr-0056-a-polity-is-an-entity-seated-in-a-council-and-a-region-remembers-whose-it-is) | A polity is an entity seated in a council, and a region remembers whose it is | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -3276,6 +3277,63 @@ Accepted 2026-09-07. Files: `Tests/Economy/Test_EconomyGate.cpp`,
 `Source/VaelenEconomy/Public/Vaelen/Economy/EconomyHistory.h`,
 `Private/EconomyHistory.cpp`, `Tests/Economy/CMakeLists.txt` (1 test). Headless VALIDATED
 on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0056: A polity is an entity seated in a council, and a region remembers whose it is
+
+### Context
+
+Phase 07 opens with authority. The prompt wants polities, laws, succession and diplomacy;
+Phase 05 already has councils with seats and heads, and Phase 04 has persons with standing
+and offices. The question is whether power gets its own hierarchy or borrows the one that
+exists.
+
+### Decision
+
+1. A polity is an entity of kind Polity with a seat region, a culture, a council and a
+   ruler. It is founded where a detailed region holds a council of enough members and
+   enough people and belongs to nobody yet.
+2. Its ruler IS the council's head - the same person the organisation system already
+   seats, alive and of age. No new kind of person, no parallel election, no office that
+   exists only in politics: authority is exercised through the organisations of Phase 05,
+   and when the council seats a new head the polity has a new ruler the same year.
+3. Belonging is a component on the region (`RegionRule`), not a list on the polity. A
+   region knows whose it is whether it is simulated person by person or kept as counts,
+   a demotion never loses it, and the polity's count of regions is recomputed from the
+   regions themselves rather than trusted.
+4. A polity that has no council of its own, or nothing left to rule, is dissolved after
+   its first years and stays in the world as history with its founding intact. Its
+   regions are freed the same tick - and a seat whose council still sits is founded anew
+   immediately, because a council governing a peopled region is exactly the condition for
+   a polity to exist.
+
+### Alternatives and decision rule
+
+- A polity holding a list of its regions: rejected; the list would need rewriting at
+  every demotion and could disagree with the regions, and 07.03 will move regions between
+  polities where one owner of the truth matters most.
+- A ruler chosen by the polity itself (an election, a strongest claimant): rejected for
+  07.01; that is 07.04 succession and 07.05 factions, and both will move the council's
+  head rather than bypass it.
+- Founding on a region rather than a council: rejected; a region with no organisation has
+  nobody to rule through, and the council threshold is what makes a polity a thing persons
+  belong to.
+
+### Consequences
+
+- A coarse region keeps its rule and its polity keeps standing, but its ruler falls to
+  none: the council's head is a memory of counts while nobody is simulated, and the seat
+  fills again at the next promotion.
+- The polities digest hashes every polity in index order then every rule in region order,
+  so a change in founding, dissolution or belonging moves it.
+- 07.02 hangs law on the polity as components the lower systems observe, the way the need
+  system observes a ration.
+
+### Status
+
+Accepted 2026-09-07. Files: `Source/VaelenPolitics/*`, `Tests/Politics/Test_Polities.cpp`
+(4 tests). Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
 
