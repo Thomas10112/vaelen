@@ -68,7 +68,7 @@ namespace Vaelen::Economy
 	struct EconomyChronicleTypes
 	{
 		ComponentType<EconomyChronicleState> State;
-		static EconomyChronicleTypes Declare(World& W);
+		static VAELEN_ECONOMY_API EconomyChronicleTypes Declare(World& W);
 	};
 
 	/// Everything the economy text needs to name things.

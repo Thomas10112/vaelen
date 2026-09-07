@@ -45,7 +45,7 @@ namespace Vaelen::Economy
 	{
 		ComponentType<Society::HouseWealth> Wealth; ///< the standing system observes it
 		ComponentType<HouseHeir> Heir;				///< the stock system observes it
-		static WealthTypes Declare(World& W);
+		static VAELEN_ECONOMY_API WealthTypes Declare(World& W);
 	};
 
 	struct WealthRules

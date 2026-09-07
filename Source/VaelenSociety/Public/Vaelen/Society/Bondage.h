@@ -56,7 +56,7 @@ namespace Vaelen::Society
 	{
 		ComponentType<BondState> Bond;
 		ComponentType<RegionStrata> Strata;
-		static BondageTypes Declare(World& W);
+		static VAELEN_SOCIETY_API BondageTypes Declare(World& W);
 	};
 
 	struct BondageRules

@@ -260,6 +260,17 @@ namespace Vaelen::Economy
 			}
 			Context.Events->Publish(Context.Tick, HarvestEvent, StockPayload{Region, 0, G_GRAIN, Saturate(Harvest)},
 									W.Entities().GetId(RH), Blows[Region].Event);
+			// What is owed away is assessed on the harvest of the year, in the
+			// year it is reaped: a bad year owes less. The grain does not move
+			// here - a collector of a higher layer comes for it (07.02).
+			if (HasDues)
+			{
+				RegionDues* Owed = W.Components().GetPool(Dues).TryGet(RH);
+				if (Owed != nullptr && Owed->PerMille != 0)
+				{
+					Owed->Owed = Saturate(uint64{Owed->Owed} + Harvest * Owed->PerMille / 1000u);
+				}
+			}
 			// 2. Spoilage, then the meals: a house from its own stock, then the common one.
 			Common->Amount[G_GRAIN] -= Saturate(uint64{Common->Amount[G_GRAIN]} * Rules.GrainSpoilPerMille / 1000u);
 			uint64 Need = People * Rules.GrainPerPerson;

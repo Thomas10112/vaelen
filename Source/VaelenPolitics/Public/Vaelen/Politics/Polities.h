@@ -63,7 +63,7 @@ namespace Vaelen::Politics
 	{
 		ComponentType<PolityInfo> Polity;
 		ComponentType<RegionRule> Rule;
-		static PolityTypes Declare(World& W);
+		static VAELEN_POLITICS_API PolityTypes Declare(World& W);
 	};
 
 	struct PolityRules

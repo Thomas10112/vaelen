@@ -55,7 +55,7 @@ namespace Vaelen::WorldGen
 	{
 		ComponentType<DepositInfo> Deposit;
 
-		static DepositTypes Declare(World& W);
+		static VAELEN_SIM_API DepositTypes Declare(World& W);
 	};
 
 	struct DepositLayers

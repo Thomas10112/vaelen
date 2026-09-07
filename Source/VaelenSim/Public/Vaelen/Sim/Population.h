@@ -82,7 +82,7 @@ namespace Vaelen::History
 		ComponentType<CultureInfo> Culture;
 		ComponentType<RegionPopulation> Population;
 
-		static PopulationTypes Declare(World& W);
+		static VAELEN_SIM_API PopulationTypes Declare(World& W);
 	};
 
 	struct PopulationRules

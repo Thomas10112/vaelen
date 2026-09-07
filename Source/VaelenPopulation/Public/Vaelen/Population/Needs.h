@@ -46,7 +46,7 @@ namespace Vaelen::Population
 	struct NeedTypes
 	{
 		ComponentType<PersonNeeds> Needs;
-		static NeedTypes Declare(World& W);
+		static VAELEN_POPULATION_API NeedTypes Declare(World& W);
 	};
 
 	struct NeedRules

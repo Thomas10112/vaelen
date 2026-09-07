@@ -76,7 +76,7 @@ namespace Vaelen::Society
 	{
 		ComponentType<OrganizationInfo> Organization;
 		ComponentType<Membership> Member;
-		static OrganizationTypes Declare(World& W);
+		static VAELEN_SOCIETY_API OrganizationTypes Declare(World& W);
 	};
 
 	struct OrganizationRules

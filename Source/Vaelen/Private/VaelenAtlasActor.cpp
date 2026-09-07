@@ -72,24 +72,42 @@ namespace
 	{
 		switch (P)
 		{
-		case Paint::Ocean: return FColor(26, 50, 90);
-		case Paint::Shore: return FColor(50, 86, 132);
-		case Paint::Lake: return FColor(58, 106, 152);
-		case Paint::River: return FColor(70, 124, 170);
-		case Paint::Ice: return FColor(233, 238, 244);
-		case Paint::Tundra: return FColor(159, 169, 157);
-		case Paint::BorealForest: return FColor(55, 80, 59);
-		case Paint::ColdSteppe: return FColor(147, 149, 109);
-		case Paint::TemperateForest: return FColor(67, 106, 57);
-		case Paint::Grassland: return FColor(135, 157, 85);
-		case Paint::Scrubland: return FColor(157, 143, 93);
-		case Paint::TropicalForest: return FColor(38, 93, 50);
-		case Paint::Savanna: return FColor(175, 159, 85);
-		case Paint::Desert: return FColor(211, 193, 137);
-		case Paint::Alpine: return FColor(167, 165, 169);
-		case Paint::Town: return FColor(196, 62, 40);
-		case Paint::Seat: return FColor(232, 190, 92);
-		default: return FColor::White;
+		case Paint::Ocean:
+			return FColor(26, 50, 90);
+		case Paint::Shore:
+			return FColor(50, 86, 132);
+		case Paint::Lake:
+			return FColor(58, 106, 152);
+		case Paint::River:
+			return FColor(70, 124, 170);
+		case Paint::Ice:
+			return FColor(233, 238, 244);
+		case Paint::Tundra:
+			return FColor(159, 169, 157);
+		case Paint::BorealForest:
+			return FColor(55, 80, 59);
+		case Paint::ColdSteppe:
+			return FColor(147, 149, 109);
+		case Paint::TemperateForest:
+			return FColor(67, 106, 57);
+		case Paint::Grassland:
+			return FColor(135, 157, 85);
+		case Paint::Scrubland:
+			return FColor(157, 143, 93);
+		case Paint::TropicalForest:
+			return FColor(38, 93, 50);
+		case Paint::Savanna:
+			return FColor(175, 159, 85);
+		case Paint::Desert:
+			return FColor(211, 193, 137);
+		case Paint::Alpine:
+			return FColor(167, 165, 169);
+		case Paint::Town:
+			return FColor(196, 62, 40);
+		case Paint::Seat:
+			return FColor(232, 190, 92);
+		default:
+			return FColor::White;
 		}
 	}
 
@@ -98,18 +116,30 @@ namespace
 		using Vaelen::WorldGen::Biome;
 		switch (B)
 		{
-		case Biome::Ice: return Paint::Ice;
-		case Biome::Tundra: return Paint::Tundra;
-		case Biome::BorealForest: return Paint::BorealForest;
-		case Biome::ColdSteppe: return Paint::ColdSteppe;
-		case Biome::TemperateForest: return Paint::TemperateForest;
-		case Biome::Grassland: return Paint::Grassland;
-		case Biome::Scrubland: return Paint::Scrubland;
-		case Biome::TropicalForest: return Paint::TropicalForest;
-		case Biome::Savanna: return Paint::Savanna;
-		case Biome::Desert: return Paint::Desert;
-		case Biome::Alpine: return Paint::Alpine;
-		default: return Paint::Ocean;
+		case Biome::Ice:
+			return Paint::Ice;
+		case Biome::Tundra:
+			return Paint::Tundra;
+		case Biome::BorealForest:
+			return Paint::BorealForest;
+		case Biome::ColdSteppe:
+			return Paint::ColdSteppe;
+		case Biome::TemperateForest:
+			return Paint::TemperateForest;
+		case Biome::Grassland:
+			return Paint::Grassland;
+		case Biome::Scrubland:
+			return Paint::Scrubland;
+		case Biome::TropicalForest:
+			return Paint::TropicalForest;
+		case Biome::Savanna:
+			return Paint::Savanna;
+		case Biome::Desert:
+			return Paint::Desert;
+		case Biome::Alpine:
+			return Paint::Alpine;
+		default:
+			return Paint::Ocean;
 		}
 	}
 
@@ -148,21 +178,21 @@ namespace
 			Minds = std::make_unique<TraitSystem>(Instance, Ages.Types(), Persons, Traits, TraitRules{});
 			Bridge = std::make_unique<LodSystem>(Instance, Ages.Types(), Persons, Lod, LodRules{});
 			Orgs = std::make_unique<OrganizationSystem>(Instance, Ages.Types(), Persons, Families, Traits,
-													   Organizations, OrganizationRules{});
+														Organizations, OrganizationRules{});
 			Customs = std::make_unique<NormSystem>(Instance, Ages.Types(), Norms, NormRules{});
 			Stocks = std::make_unique<StockSystem>(Instance, Ages.Types(), Persons, Families, Economy, EconomyRules{});
 			Harvest = std::make_unique<ProductionSystem>(Instance, Ages.Types(), Persons, Families, Economy, Production,
-														ProductionRules{});
+														 ProductionRules{});
 			Fair = std::make_unique<MarketSystem>(Instance, Ages.Types(), Persons, Families, Economy, Markets,
-												 ProductionRules{}, MarketRules{});
+												  ProductionRules{}, MarketRules{});
 			Roads = std::make_unique<TradeSystem>(Instance, Ages.Types(), Persons, Families, Economy, Markets, Trade,
-												 ProductionRules{}, MarketRules{}, TradeRules{});
+												  ProductionRules{}, MarketRules{}, TradeRules{});
 			Purses = std::make_unique<WealthSystem>(Instance, Ages.Types(), Persons, Families, Economy, Markets, Norms,
-												   Wealth, WealthRules{});
+													Wealth, WealthRules{});
 			Ranks = std::make_unique<StandingSystem>(Instance, Ages.Types(), Persons, Families, Traits, Organizations,
-													Standing, StandingRules{});
-			Rulers = std::make_unique<PolitySystem>(Instance, Ages.Types(), Persons, Organizations, Polities,
-													PolityRules{});
+													 Standing, StandingRules{});
+			Rulers =
+				std::make_unique<PolitySystem>(Instance, Ages.Types(), Persons, Organizations, Polities, PolityRules{});
 
 			Houses->RunAfter("Lod");
 			Houses->RunAfter("Norms");
@@ -264,20 +294,20 @@ AVaelenAtlasActor::AVaelenAtlasActor()
 	RootComponent = Plate;
 }
 
-void AVaelenAtlasActor::EnsureLayers()
+void AVaelenAtlasActor::EnsurePaintLayers()
 {
-	if (Layers.Num() == static_cast<int32>(Paint::Count))
+	if (PaintLayers.Num() == static_cast<int32>(Paint::Count))
 	{
 		return;
 	}
-	for (TObjectPtr<UHierarchicalInstancedStaticMeshComponent>& Old : Layers)
+	for (TObjectPtr<UHierarchicalInstancedStaticMeshComponent>& Old : PaintLayers)
 	{
 		if (Old != nullptr)
 		{
 			Old->DestroyComponent();
 		}
 	}
-	Layers.Reset();
+	PaintLayers.Reset();
 
 	UStaticMesh* Cube = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
 	UMaterialInterface* Plain =
@@ -313,13 +343,13 @@ void AVaelenAtlasActor::EnsureLayers()
 			}
 		}
 		AddInstanceComponent(Layer);
-		Layers.Add(Layer);
+		PaintLayers.Add(Layer);
 	}
 }
 
 void AVaelenAtlasActor::ClearAelvor()
 {
-	for (TObjectPtr<UHierarchicalInstancedStaticMeshComponent>& Layer : Layers)
+	for (TObjectPtr<UHierarchicalInstancedStaticMeshComponent>& Layer : PaintLayers)
 	{
 		if (Layer != nullptr)
 		{
@@ -351,10 +381,11 @@ void AVaelenAtlasActor::BuildAelvor()
 	// int64 too, and only the names actually used are wanted here.
 	using Vaelen::EntityHandle;
 	using Vaelen::TileCoord;
+	using Vaelen::WorldGenConfig;
 	using Vaelen::WorldGrid;
 	using Vaelen::WorldMap;
 
-	EnsureLayers();
+	EnsurePaintLayers();
 	ClearAelvor();
 
 	const double Started = FPlatformTime::Seconds();
@@ -377,9 +408,9 @@ void AVaelenAtlasActor::BuildAelvor()
 	const WorldMap& Map = Run.Instance.Map();
 	const WorldGrid Grid = Map.Grid();
 	const Vaelen::History::PreHistoryTypes& T = Run.Ages.Types();
-	const auto& Biomes = Map.GetLayer(T.World.Layers.Biome);
-	const auto& Terrain = Map.GetLayer(T.World.Layers.Terrain);
-	const auto& Height = Map.GetLayer(T.World.Layers.Elevation);
+	const auto& Biomes = Map.GetLayer(T.World.PaintLayers.Biome);
+	const auto& Terrain = Map.GetLayer(T.World.PaintLayers.Terrain);
+	const auto& Height = Map.GetLayer(T.World.PaintLayers.Elevation);
 	const auto& Rivers = Map.GetLayer(T.World.Hydro.RiverIndex);
 	const auto& Lakes = Map.GetLayer(T.World.Hydro.LakeIndex);
 
@@ -498,9 +529,9 @@ void AVaelenAtlasActor::BuildAelvor()
 
 	for (int32 Index = 0; Index < Batches.Num(); ++Index)
 	{
-		if (Layers.IsValidIndex(Index) && Layers[Index] != nullptr && Batches[Index].Num() > 0)
+		if (PaintLayers.IsValidIndex(Index) && PaintLayers[Index] != nullptr && Batches[Index].Num() > 0)
 		{
-			Layers[Index]->AddInstances(Batches[Index], false, false);
+			PaintLayers[Index]->AddInstances(Batches[Index], false, false);
 		}
 	}
 
@@ -541,7 +572,7 @@ void AVaelenAtlasActor::BuildAelvor()
 
 	Report = FString::Printf(
 		TEXT("AELVOR %dx%d, seed 0x%llx: year %d, %d land tiles, %d regions peopled, %lld living, %d towns, %d roads, ")
-		TEXT("%u polities standing (region %u simulated person by person). Simulated in %.2f s."),
+			TEXT("%u polities standing (region %u simulated person by person). Simulated in %.2f s."),
 		static_cast<int32>(Grid.Width), static_cast<int32>(Grid.Height), static_cast<unsigned long long>(Seed),
 		PreHistoryYears + Years, LandTiles, Peopled, static_cast<long long>(Living), Towns, RoadCount, Rule.Standing,
 		Detail, Simulated);

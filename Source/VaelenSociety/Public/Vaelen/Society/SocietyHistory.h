@@ -64,7 +64,7 @@ namespace Vaelen::Society
 	struct SocietyChronicleTypes
 	{
 		ComponentType<SocietyChronicleState> State;
-		static SocietyChronicleTypes Declare(World& W);
+		static VAELEN_SOCIETY_API SocietyChronicleTypes Declare(World& W);
 	};
 
 	/// Everything the society text needs to name things.

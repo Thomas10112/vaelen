@@ -48,7 +48,7 @@ namespace Vaelen::Population
 	struct LodTypes
 	{
 		ComponentType<LodState> State;
-		static LodTypes Declare(World& W);
+		static VAELEN_POPULATION_API LodTypes Declare(World& W);
 	};
 
 	struct LodRules

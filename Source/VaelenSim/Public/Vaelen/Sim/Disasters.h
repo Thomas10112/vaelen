@@ -95,7 +95,7 @@ namespace Vaelen::History
 	{
 		ComponentType<DisasterInfo> Disaster;
 		ComponentType<DisasterState> State;
-		static DisasterTypes Declare(World& W);
+		static VAELEN_SIM_API DisasterTypes Declare(World& W);
 	};
 
 	/// Creates the disaster entity once (fresh worlds only). Null when it exists.

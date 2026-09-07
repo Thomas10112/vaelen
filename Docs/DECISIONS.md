@@ -79,6 +79,7 @@ Rules for this file:
 | [0054](#adr-0054-the-chronicle-records-what-lasts-a-road-built-a-town-risen-a-price-at-its-bound-a-fortune-moved-not-the-churn-beneath-them) | The chronicle records what lasts: a road built, a town risen, a price at its bound, a fortune moved, not the churn beneath them | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0055](#adr-0055-when-two-validated-orderings-cannot-both-hold-the-chain-that-carries-the-grain-wins-and-the-describer-of-the-topmost-layer-speaks-for-all-of-them) | When two validated orderings cannot both hold, the chain that carries the grain wins, and the describer of the topmost layer speaks for all of them | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0056](#adr-0056-a-polity-is-an-entity-seated-in-a-council-and-a-region-remembers-whose-it-is) | A polity is an entity seated in a council, and a region remembers whose it is | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0057](#adr-0057-a-law-is-one-number-on-the-polity-and-a-plain-struct-on-the-region) | A law is one number on the polity and a plain struct on the region | Accepted; headless VALIDATED |
 
 ---
 
@@ -3334,6 +3335,66 @@ exists.
 
 Accepted 2026-09-07. Files: `Source/VaelenPolitics/*`, `Tests/Politics/Test_Polities.cpp`
 (4 tests). Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0057: A law is one number on the polity and a plain struct on the region
+
+### Context
+
+07.02 wants a polity's rules to be felt by the layers under it, and taxes taken in
+goods. The economy is a lower module: it must not learn what a polity is. But the
+harvest is where a share of the grain has to be assessed, and the harvest belongs
+to the economy.
+
+### Decision
+
+1. A law lives on the polity (`PolityLaw`), and is *proclaimed* onto every region
+   the polity rules as `RegionDues` - a struct **the economy declares**, in
+   `Stocks.h`, next to the stocks it belongs with. The politics module writes it;
+   the economy's production system observes it, exactly as the population's
+   `RegionRation` is declared by the population and written by the economy (06.02).
+   The economy never includes a politics header and never learns why anything is
+   owed.
+2. The share is assessed on the harvest of the year, in the year it is reaped, and
+   the grain does not move: it stays in the region's common stock until a collector
+   comes. A bad year owes less, and a region that is stripped simply cannot pay.
+3. The collector is the politics module's own system, running after the harvest. It
+   takes what the region can pay into the polity's treasury and leaves the rest as
+   arrears on the region. Nothing is spent yet, so what the log says was paid, what
+   the law says was taken, and what the treasury holds are the same number - an
+   invariant the tests hold to.
+4. A law moves by itself, between a floor and a ceiling, by what the treasury holds
+   against what the polity wants for the people it rules, and relents after years of
+   short collection. **It does not move in the year it is written**: the founding
+   year is the law's own, so what the log first records a polity demanding is exactly
+   what the rules say a new polity demands.
+
+### Alternatives and decision rule
+
+- The politics module reaching into `RegionStock` at the harvest: rejected; it would
+  have to run inside the economy's tick to catch the harvest, and the economy would
+  own an ordering it does not know about.
+- The economy moving the grain into a "tax" pot of its own: rejected; a pot with no
+  owner is state nobody is responsible for, and 07.03 will spend the treasury.
+- A law read by the lower systems through a query into the politics module:
+  rejected outright - it inverts the layering.
+- The law moving in its founding year: rejected; the first year would then report a
+  share no rule ever asked for, and a test of the rules could not name a number.
+
+### Consequences
+
+- The dues of a demoted region survive the demotion, since they sit on the region.
+- A seat whose council still sits is refounded the same tick it is freed (07.01), so
+  a region rarely stays unruled for long; its arrears wait for whoever comes.
+- 07.03 spends the treasury: reach, garrisons and what a polity's word costs to carry.
+
+### Status
+
+Accepted 2026-09-07. Files: `Source/VaelenPolitics/Public/Vaelen/Politics/Law.h`,
+`Private/Law.cpp`, `Source/VaelenEconomy/.../Stocks.h` (`RegionDues`), `Production.h`
+and `Private/Production.cpp` (`ObserveDues`), `Tests/Politics/Test_Law.cpp` (4 tests).
+Headless VALIDATED on the six Linux presets.
 
 ---
 

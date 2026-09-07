@@ -63,7 +63,7 @@ namespace Vaelen::Population
 	struct PersonChronicleTypes
 	{
 		ComponentType<PersonChronicleState> State;
-		static PersonChronicleTypes Declare(World& W);
+		static VAELEN_POPULATION_API PersonChronicleTypes Declare(World& W);
 	};
 
 	/// Listener: the person events that matter become chronicle records.

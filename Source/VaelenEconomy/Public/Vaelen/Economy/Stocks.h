@@ -57,6 +57,18 @@ namespace Vaelen::Economy
 	};
 	static_assert(sizeof(RegionStock) == 32, "RegionStock must stay padding free");
 
+	/// Component on a region entity, written by a higher layer (a polity's law,
+	/// Phase 07) and read by the production system where it is observed: the
+	/// share of every harvest that is owed away, and what has been assessed and
+	/// not yet taken. Nothing in the economy knows who demands it or who takes
+	/// it - the grain stays in the region's stock until a collector comes.
+	struct RegionDues
+	{
+		uint32 PerMille = 0; ///< of every harvest, assessed the year it is reaped
+		uint32 Owed = 0;	 ///< assessed and not yet taken
+	};
+	static_assert(sizeof(RegionDues) == 8, "RegionDues must stay padding free");
+
 	/// Component on a family entity while its home region is detailed.
 	struct HouseStock
 	{
@@ -79,7 +91,7 @@ namespace Vaelen::Economy
 	{
 		ComponentType<RegionStock> Region;
 		ComponentType<HouseStock> House;
-		static EconomyTypes Declare(World& W);
+		static VAELEN_ECONOMY_API EconomyTypes Declare(World& W);
 	};
 
 	struct EconomyRules

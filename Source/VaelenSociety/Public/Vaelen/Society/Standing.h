@@ -75,7 +75,7 @@ namespace Vaelen::Society
 	struct StandingTypes
 	{
 		ComponentType<PersonStanding> Standing;
-		static StandingTypes Declare(World& W);
+		static VAELEN_SOCIETY_API StandingTypes Declare(World& W);
 	};
 
 	struct StandingRules

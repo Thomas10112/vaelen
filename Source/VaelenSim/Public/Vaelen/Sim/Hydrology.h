@@ -60,7 +60,7 @@ namespace Vaelen::WorldGen
 		ComponentType<RiverInfo> River;
 		ComponentType<LakeInfo> Lake;
 
-		static WorldTypes Declare(World& W);
+		static VAELEN_SIM_API WorldTypes Declare(World& W);
 	};
 
 	/// Hydrology layers, declared after WorldLayers by the same setup code.

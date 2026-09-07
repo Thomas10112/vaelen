@@ -107,7 +107,7 @@ namespace Vaelen::History
 	{
 		ComponentType<LanguageInfo> Language;
 		ComponentType<NameInfo> Name;
-		static LanguageTypes Declare(World& W);
+		static VAELEN_SIM_API LanguageTypes Declare(World& W);
 	};
 
 	struct LanguageRules

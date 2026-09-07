@@ -48,7 +48,7 @@ namespace Vaelen::Society
 	struct DecisionTypes
 	{
 		ComponentType<Population::RegionStores> Stores; ///< the need system observes it
-		static DecisionTypes Declare(World& W);
+		static VAELEN_SOCIETY_API DecisionTypes Declare(World& W);
 	};
 
 	struct DecisionRules

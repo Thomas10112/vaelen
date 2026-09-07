@@ -62,7 +62,7 @@ namespace Vaelen::Population
 	struct TraitTypes
 	{
 		ComponentType<PersonTraits> Traits;
-		static TraitTypes Declare(World& W);
+		static VAELEN_POPULATION_API TraitTypes Declare(World& W);
 	};
 
 	struct TraitRules

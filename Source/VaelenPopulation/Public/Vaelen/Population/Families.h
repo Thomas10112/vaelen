@@ -49,7 +49,7 @@ namespace Vaelen::Population
 	struct FamilyTypes
 	{
 		ComponentType<FamilyInfo> Family;
-		static FamilyTypes Declare(World& W);
+		static VAELEN_POPULATION_API FamilyTypes Declare(World& W);
 	};
 
 	struct FamilyRules

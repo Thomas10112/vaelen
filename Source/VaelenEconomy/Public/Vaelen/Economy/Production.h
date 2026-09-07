@@ -44,7 +44,7 @@ namespace Vaelen::Economy
 	struct ProductionTypes
 	{
 		ComponentType<Population::RegionRation> Ration; ///< the need system observes it
-		static ProductionTypes Declare(World& W);
+		static VAELEN_ECONOMY_API ProductionTypes Declare(World& W);
 	};
 
 	struct ProductionRules
@@ -112,6 +112,13 @@ namespace Vaelen::Economy
 			Stores = InStores;
 			HasStores = true;
 		}
+		/// Optional: what a region owes away (07.02). The share is assessed on the
+		/// year's harvest, the grain stays in the stock until a collector takes it.
+		void ObserveDues(ComponentType<RegionDues> InDues) noexcept
+		{
+			Dues = InDues;
+			HasDues = true;
+		}
 		void Tick(TickContext& Context) override;
 
 	private:
@@ -127,6 +134,8 @@ namespace Vaelen::Economy
 		bool HasTraits = false;
 		ComponentType<Population::RegionStores> Stores;
 		bool HasStores = false;
+		ComponentType<RegionDues> Dues;
+		bool HasDues = false;
 	};
 
 	/// The ration of a region (nullptr before the first harvest or for an unknown region).

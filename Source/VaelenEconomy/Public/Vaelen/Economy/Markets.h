@@ -47,7 +47,7 @@ namespace Vaelen::Economy
 	struct MarketTypes
 	{
 		ComponentType<RegionMarket> Market;
-		static MarketTypes Declare(World& W);
+		static VAELEN_ECONOMY_API MarketTypes Declare(World& W);
 	};
 
 	struct MarketRules

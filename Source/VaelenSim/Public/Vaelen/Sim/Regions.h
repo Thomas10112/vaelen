@@ -47,7 +47,7 @@ namespace Vaelen::WorldGen
 	{
 		ComponentType<RegionInfo> Region;
 
-		static RegionTypes Declare(World& W);
+		static VAELEN_SIM_API RegionTypes Declare(World& W);
 	};
 
 	struct RegionLayers

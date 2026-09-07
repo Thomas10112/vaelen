@@ -61,7 +61,7 @@ namespace Vaelen::Society
 	{
 		ComponentType<NormSet> Norms;
 		ComponentType<Population::MarriageNorms> Marriage; ///< the mirror the family system observes
-		static NormTypes Declare(World& W);
+		static VAELEN_SOCIETY_API NormTypes Declare(World& W);
 	};
 
 	struct NormRules

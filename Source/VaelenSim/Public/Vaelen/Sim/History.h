@@ -74,7 +74,7 @@ namespace Vaelen::History
 		ComponentType<RecordInfo> Record;
 		ComponentType<HistoryState> State;
 
-		static HistoryTypes Declare(World& W);
+		static VAELEN_SIM_API HistoryTypes Declare(World& W);
 	};
 
 	struct EraRules

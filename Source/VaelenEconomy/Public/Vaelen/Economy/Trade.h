@@ -72,7 +72,7 @@ namespace Vaelen::Economy
 	{
 		ComponentType<RouteInfo> Route;
 		ComponentType<SettlementInfo> Settlement;
-		static TradeTypes Declare(World& W);
+		static VAELEN_ECONOMY_API TradeTypes Declare(World& W);
 	};
 
 	struct TradeRules

@@ -114,7 +114,7 @@ namespace Vaelen::History
 		ComponentType<ReligionInfo> Religion;
 		ComponentType<RegionFaith> Faith;
 		ComponentType<FaithState> State;
-		static ReligionTypes Declare(World& W);
+		static VAELEN_SIM_API ReligionTypes Declare(World& W);
 	};
 
 	/// Creates the faith entity once (fresh worlds only; a restored world keeps

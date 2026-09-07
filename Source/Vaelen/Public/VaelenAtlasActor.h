@@ -88,9 +88,11 @@ protected:
 	TObjectPtr<USceneComponent> Plate;
 
 	/// One component per colour of the plate; the palette is fixed in the .cpp.
+	/// Not "Layers": AActor already has a member of that name, and UHT refuses
+	/// a property that shadows one.
 	UPROPERTY()
-	TArray<TObjectPtr<UHierarchicalInstancedStaticMeshComponent>> Layers;
+	TArray<TObjectPtr<UHierarchicalInstancedStaticMeshComponent>> PaintLayers;
 
 private:
-	void EnsureLayers();
+	void EnsurePaintLayers();
 };

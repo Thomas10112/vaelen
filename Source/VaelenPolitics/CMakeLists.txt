@@ -4,10 +4,12 @@
 set(VAELEN_POLITICS_PUBLIC_HEADERS
   Public/Vaelen/Politics/PoliticsApi.h
   Public/Vaelen/Politics/Polities.h
+  Public/Vaelen/Politics/Law.h
 )
 
 set(VAELEN_POLITICS_SOURCES
   Private/Polities.cpp
+  Private/Law.cpp
 )
 
 add_library(VaelenPolitics STATIC ${VAELEN_POLITICS_SOURCES} ${VAELEN_POLITICS_PUBLIC_HEADERS})
