@@ -72,6 +72,7 @@ Rules for this file:
 | [0047](#adr-0047-the-phase-05-gate-runs-every-population-and-society-system-over-the-256-pre-history-and-freezes-the-state-the-log-and-the-text) | The Phase 05 gate runs every population and society system over the 256 pre-history and freezes the state, the log and the text | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0048](#adr-0048-goods-are-counted-kinds-held-in-common-by-regions-and-by-the-houses-of-a-detailed-region-and-conserved-across-the-grains) | Goods are counted kinds, held in common by regions and by the houses of a detailed region, and conserved across the grains | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0049](#adr-0049-the-harvest-is-made-in-both-grains-by-the-same-rule-and-hunger-follows-the-grain-through-a-ration-the-need-system-observes) | The harvest is made in both grains by the same rule, and hunger follows the grain through a ration the need system observes | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0050](#adr-0050-a-price-is-an-integer-on-the-region-from-what-it-wants-over-what-it-holds-within-a-floor-and-a-ceiling) | A price is an integer on the region, from what it wants over what it holds, within a floor and a ceiling | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -2931,6 +2932,60 @@ Accepted 2026-09-07. Files: `Source/VaelenEconomy/Public/Vaelen/Economy/Producti
 `Private/Production.cpp`, `Source/VaelenPopulation/.../Needs.h/.cpp`,
 `Tests/Economy/Test_Production.cpp` (4 tests). Headless VALIDATED on the six Linux
 presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0050: A price is an integer on the region, from what it wants over what it holds, within a floor and a ceiling
+
+### Context
+
+Trade (06.04) needs a reason for goods to move, wealth (06.05) needs a value for a stock,
+and the chronicle needs prices that mean something to a reader. The kernel is integer
+and deterministic; a market must be a few numbers on the region that both grains
+compute alike.
+
+### Decision
+
+1. A market is a component on the region entity, one integer price per good, written
+   yearly after production for every region holding a stock. No market entity, no order
+   book, no money supply: a price is a ratio.
+2. The ratio is what the region wants over what it holds. What it wants comes from the
+   same consumption rules the production uses (two years of its people's grain, three of
+   every used good, a little luxury), so the market and the harvest never disagree on
+   need; what it holds is the common stock and the houses' together, so a promotion does
+   not move a price by moving grain between owners.
+3. The price is the base price of the good times that ratio, clamped between a quarter
+   and eight times the base: a floor because a good never becomes free, a ceiling because
+   an empty market is not infinitely dear, and bounds because every later rule (trade
+   thresholds, wealth) can count on a finite range.
+4. A price that moved by a quarter or more is an event about the region, and for grain
+   its cause is the year's harvest, whose cause is the drought that cut it: the why of a
+   dear loaf is three events deep and follows the existing chain.
+5. `ValueOf` prices a stock at a market; it is the one function wealth will use.
+
+### Alternatives and decision rule
+
+- Prices from transactions (a clearing between buyers and sellers): rejected for Phase
+  06; there are no buyers yet, and the ratio gives the same direction with one number.
+- A world price per good: rejected; the region is the owner everywhere else, and trade
+  needs the differences between regions.
+- Decided by simplicity within robustness (bounded integers, one rule, one owner) and
+  evolvability (06.04 opens routes on price gaps; 06.05 values houses; a clearing can
+  replace the ratio later without changing the component).
+
+### Consequences
+
+- Prices in a coarse and a detailed region differ only as their stocks and people do;
+  the tests hold them within a factor of two after five years.
+- Price events are sparse (a quarter's move), so a century of a world adds about a
+  thousand of them; the markets digest hashes every market in region order.
+- Base prices are a table in the rules; balancing them is data, not code.
+
+### Status
+
+Accepted 2026-09-07. Files: `Source/VaelenEconomy/Public/Vaelen/Economy/Markets.h`,
+`Private/Markets.cpp`, `Tests/Economy/Test_Markets.cpp` (4 tests). Headless VALIDATED
+on the six Linux presets; engine side UNVERIFIED.
 
 ---
 

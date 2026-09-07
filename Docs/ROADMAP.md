@@ -73,7 +73,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
-| 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | IN PROGRESS (06.01-06.02 VALIDATED headless; 06.03-06.08 PLANNED) |
+| 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | IN PROGRESS (06.01-06.03 VALIDATED headless; 06.04-06.08 PLANNED) |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
@@ -1640,6 +1640,37 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   `06b87708f4c215ef`, 23070167 grain harvested.
 - Decision: ADR-0049.
 
+### 06.03 Markets and prices - VALIDATED (headless)
+
+- Delivered: `Markets.h/.cpp` - `RegionMarket` (32 bytes, one integer price per good) on
+  every region holding a stock, `MarketTypes::Declare`, `MarketRules` (base prices grain 10,
+  cloth 40, tools 60, ore 20, timber 8, salt 30, luxuries 200; a floor at a quarter and a
+  ceiling at eight times the base; a market wants two years of its people's grain, three of
+  every used good and one luxury per 200 people; a price moved by 250 per mille is an
+  event), `WantedStock` (what a region wants of a good for so many people, by the same
+  consumption rules the production uses), `PriceFor` (the base times wanted over held,
+  clamped; the floor when nothing is wanted, the ceiling when nothing is held), event
+  PriceChanged (region, good, the new price; the year's harvest as cause for grain),
+  `MarketSystem` (LOD World, after Production, `RunAfter`: for every region holding a stock
+  the living or the counted people, the common stock and the houses' together, the seven
+  prices, an event for each that moved enough or on the first pricing), `MarketOf`,
+  `ValueOf` (a stock at a market's prices), `MeasureMarkets` (markets, the lowest and the
+  highest price of every good, markets at the floor and at the ceiling, price events and
+  those with a cause, a digest of every market in region order).
+- Tests (4): the price rule alone (floor when nothing is wanted, ceiling when nothing is
+  held, the base when held equals wanted, never under the floor, an unknown good priced
+  at nothing, the wanted stocks, the value of a stock), then AELVOR 128 at year 300 with
+  a market on every region holding a stock, every price within the bounds, grain held
+  beyond two years never dearer than the base, the busiest region's grain price climbing
+  once its store is taken and at the floor once flooded; a drought on a thin store moves
+  the grain price and the price event's cause is the year's harvest whose cause is the
+  drought, with price events sparse over three centuries; grain dear somewhere and cheap
+  elsewhere, ore at the ceiling where no deposit is, grain mostly between the bounds, two
+  worlds the same digest, and the busiest region's prices within a factor of two of the
+  coarse ones after five years detailed; determinism and snapshot continuity; frozen
+  markets digest `5c3edf001360621e` after 100 years (1277 price events).
+- Decision: ADR-0050.
+
 ## 11. Phases 07-20: notes
 
 No task breakdown exists yet for Phases 07-20; each is broken down when the previous
@@ -1660,45 +1691,42 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 06 — ECONOMY
-TASK        : 06.02 — PRODUCTION AND CONSUMPTION
+TASK        : 06.03 — MARKETS AND PRICES
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-█████████████░░░░░░░░░░░ 53%
+█████████████░░░░░░░░░░░ 54%
 
 CURRENTLY
-→ 06.02 closed: the yearly ProductionSystem - every region's workers (seven tenths of the people on the
-  land within its capacity, or the persons of age of a detailed region by their farming skill) harvest
-  grain, cut by this year's drought (the drought as the harvest's cause); a detailed region's harvest
-  goes to the workers' houses, a share to the common stock where a council keeps grain (05.05), a
-  coarse region's to the common stock; the grain in store spoils a tenth; every person eats, a house
-  from its own stock then the common one; what could not be fed is the region's ration, written as
-  RegionRation and observed by the need system (04.04, ObserveRation) so that hunger and starvation
-  follow the grain; the deposits yield timber, ore and salt, the people burn and use them, their craft
-  makes cloth and tools from ore, cloth and tools wear; luxuries wait for trade
+→ 06.03 closed: every region holding a stock is a market (RegionMarket: one integer price per good);
+  the yearly MarketSystem, after Production, prices every good at its base times what the region
+  wants (two years of its people's grain, three of every used good, a little luxury - the same
+  consumption rules the production uses) over what it holds, common stock and houses together, within
+  a quarter and eight times the base; a price moved by a quarter or more is an event, the year's
+  harvest its cause for grain (so a dear loaf's why reaches the drought); PriceFor, WantedStock,
+  MarketOf, ValueOf (a stock at prices, for 06.05 wealth), MeasureMarkets
 
 COMPLETED
-✓ Phases 00-05 (headless) ; 06.01 (CI 50)
-✓ 06.02 Production and consumption (4 tests: Production)
+✓ Phases 00-05 (headless) ; 06.01-06.02 (CI 51)
+✓ 06.03 Markets and prices (4 tests: Markets)
 
 NEXT
-→ 06.03 Markets and prices (per-region markets, integer prices from stock over need, floors and ceilings)
-→ 06.04 Trade and routes
+→ 06.04 Trade and routes (routes opened along the graph where prices differ, goods carried yearly, settlements)
+→ 06.05 Wealth and inheritance
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenEconomy/Public/Vaelen/Economy/Production.h, Private/Production.cpp
-+ Tests/Economy/Test_Production.cpp
-~ Source/VaelenPopulation/Public/Vaelen/Population/Needs.h, Private/Needs.cpp (RegionRation, ObserveRation,
-  RunAfter; the Phase 04 digests unchanged), Source/VaelenEconomy/CMakeLists.txt
++ Source/VaelenEconomy/Public/Vaelen/Economy/Markets.h, Private/Markets.cpp
++ Tests/Economy/Test_Markets.cpp
+~ Source/VaelenEconomy/CMakeLists.txt
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 37 (37 without asserts)
-  + Society 28 (28 without asserts) + Economy 8 (8 without asserts); ctest 73/73 in all six
+  + Society 28 (28 without asserts) + Economy 12 (12 without asserts); ctest 74/74 in all six
   Linux presets; every earlier frozen digest unchanged
 ✓ AELVOR 128 for 100 years with the busiest region detailed and every Phase 04 body and Phase 06 system:
-  frozen stocks digest 2e21806d2979bc15, rations digest 06b87708f4c215ef, 23070167 grain harvested
-✓ Purity: 98 files, 0 violations
+  frozen markets digest 5c3edf001360621e, 1277 price events
+✓ Purity: 100 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)
