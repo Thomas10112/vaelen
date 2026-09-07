@@ -80,6 +80,7 @@ Rules for this file:
 | [0055](#adr-0055-when-two-validated-orderings-cannot-both-hold-the-chain-that-carries-the-grain-wins-and-the-describer-of-the-topmost-layer-speaks-for-all-of-them) | When two validated orderings cannot both hold, the chain that carries the grain wins, and the describer of the topmost layer speaks for all of them | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0056](#adr-0056-a-polity-is-an-entity-seated-in-a-council-and-a-region-remembers-whose-it-is) | A polity is an entity seated in a council, and a region remembers whose it is | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0057](#adr-0057-a-law-is-one-number-on-the-polity-and-a-plain-struct-on-the-region) | A law is one number on the polity and a plain struct on the region | Accepted; headless VALIDATED |
+| [0058](#adr-0058-authority-is-written-on-the-region-and-falls-with-the-walk-from-the-seat) | Authority is written on the region and falls with the walk from the seat | Accepted; headless VALIDATED |
 
 ---
 
@@ -3395,6 +3396,66 @@ Accepted 2026-09-07. Files: `Source/VaelenPolitics/Public/Vaelen/Politics/Law.h`
 `Private/Law.cpp`, `Source/VaelenEconomy/.../Stocks.h` (`RegionDues`), `Production.h`
 and `Private/Production.cpp` (`ObserveDues`), `Tests/Politics/Test_Law.cpp` (4 tests).
 Headless VALIDATED on the six Linux presets.
+
+---
+
+## ADR-0058: Authority is written on the region and falls with the walk from the seat
+
+### Context
+
+07.03 asks how far a polity's word carries. The easy answer is a radius in tiles
+around the seat. The world already has a better graph than distance in tiles: the
+region adjacency of 02.06, which knows that two regions across a mountain are far
+apart even when their centroids are near.
+
+### Decision
+
+1. Authority is a component on the region (`RegionAuthority`), not a number the
+   polity owns: the region knows whose word runs in it, from how far, and how
+   firmly. The same reasoning as ADR-0056 - the ground remembers, not the ruler.
+2. The distance is hops on the region graph **walked only through the polity's own
+   ground**. A region it cannot walk to from its own seat is held not at all, so an
+   enclave that loses its corridor loses its master; nothing had to be written to
+   make that happen.
+3. Hold falls by a fixed step per hop. A region under the floor **slips free** - the
+   polity does not decide to release it, and no event asks it to. Losing ground is
+   what happens when a polity overreaches, not a choice it makes.
+4. Carrying a word costs grain a year, per region, growing with distance, paid out
+   of the treasury 07.02 fills. What cannot be paid costs hold everywhere, and the
+   far edge crosses the floor first: a polity in trouble contracts from its border.
+5. Reach - how far a *new* region may be taken - is bought by the treasury and
+   capped. A polity takes the unruled edge in region order, and **writes the taken
+   region's authority in the same tick it takes it**.
+
+### Alternatives and decision rule
+
+- A radius in tiles from the seat: rejected; it ignores the terrain the region
+  graph already encodes, and it would let a polity hold across a sea.
+- Authority as one number on the polity, with distance applied at the point of use:
+  rejected; every consumer would have to recompute the walk, and 07.05's factions
+  need to ask a region how firmly it is held.
+- The polity choosing to release a region it cannot afford: rejected; it makes
+  losing ground a decision, and a decision needs a decider - which is 07.05, not
+  this task.
+- Writing the taken region's authority on the next tick: rejected, and this was a
+  real defect found by the tests. A region ruled by a polity but carrying nobody's
+  authority is a lie for a whole year, and the invariant "the regions held equal
+  the regions ruled" could not hold.
+
+### Consequences
+
+- A polity's shape is emergent: it grows along the graph while grain lasts and
+  contracts from the edge when it does not. Nothing draws a border.
+- The seat never slips. A polity with no seat is 07.01's business (it dissolves),
+  not this system's.
+- 07.04 seats a new ruler on the same council; the hold is unaffected by who rules,
+  which is deliberate - 07.05 is where a weak ruler will cost hold.
+
+### Status
+
+Accepted 2026-09-07. Files: `Source/VaelenPolitics/Public/Vaelen/Politics/Reach.h`,
+`Private/Reach.cpp`, `Tests/Politics/Test_Reach.cpp` (4 tests). Headless VALIDATED on
+the six Linux presets.
 
 ---
 

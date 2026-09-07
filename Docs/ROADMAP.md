@@ -74,7 +74,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | VALIDATED (headless, 06.01-06.08); UNVERIFIED (engine) |
-| 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | IN PROGRESS (07.01-07.02 VALIDATED headless; 07.03-07.08 PLANNED) |
+| 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | IN PROGRESS (07.01-07.03 VALIDATED headless; 07.04-07.08 PLANNED) |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
 | 10 | PLAYER | The player as one simulated person: enslaved start, body, needs, skills, relationships; player intent as commands into the simulation. | PLANNED |
@@ -1915,6 +1915,33 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   worlds of one seed agree on every law and every due; determinism, snapshot continuity, frozen law
   digest `6e8b720c1543fb20` after 100 years (3476 grain taken, 50 moves of law).
 - Decision: ADR-0057.
+
+### 07.03 Authority and reach - VALIDATED (headless)
+
+- Delivered: `Reach.h/.cpp` - `RegionAuthority` (16 bytes: whose authority runs here, hops from
+  that polity's seat, hold per mille) on every ruled region and `PolityReach` (32 bytes: hops its
+  word carries, regions taken, regions slipped, grain spent, upkeep unpaid last year) on the
+  polity; `ReachTypes::Declare`, `ReachRules` (a thousand per mille at the seat, 250 lost a hop,
+  a region under 250 slips free, 6 grain a year per region per hop, 120 to take a region, a hop
+  of reach per 400 grain held up to four, 200 per mille lost where the upkeep went unpaid),
+  events RegionTaken, RegionSlipped, UpkeepUnpaid, `ReachSystem` (LOD World, after Law: walk the
+  region graph from the seat through the polity's own ground, pay the upkeep out of the treasury,
+  write the hold of every region it rules, let go what falls under the floor - never the seat -
+  then take the unruled edge in region order while the treasury can pay, writing the taken
+  region's authority in the same tick), `AuthorityOf`, `ReachOf`, `MeasureReach` (regions held,
+  those held firmly, the greatest distance, grain spent and unpaid, events by kind, and the bad -
+  authority of a polity that is gone, a hold above the seat's, a ruled region whose authority
+  names nobody, an authority disagreeing with the rule - with a digest of every reach in polity
+  order then every authority in region order).
+- Tests (4): the seat is held whole at no distance and no cost, a treasury buys ground, and the
+  hold of everything taken is exactly the rule - one step per hop, never under the floor; a heavy
+  upkeep with an emptied treasury makes the far edge slip free while the seat never does, and what
+  slipped carries nobody's authority and belongs to nobody; a word never carries past its ceiling
+  however rich the polity, a world with no polity has nobody's authority anywhere, the regions
+  held equal the regions ruled every year for twelve years running, and two worlds of one seed
+  take the same ground in the same year; determinism, snapshot continuity, frozen reach digest
+  `b0849188fdca0aae` after 100 years (41 regions held, 152520 grain spent).
+- Decision: ADR-0058.
 ## 12. Phases 08-20: notes
 
 No task breakdown exists yet for Phases 07-20; each is broken down when the previous
@@ -1935,47 +1962,42 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 07 — POLITICS
-TASK        : 07.02 — LAW, AND THE DUES TAKEN IN GRAIN
+TASK        : 07.03 — AUTHORITY AND REACH
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███████████████░░░░░░░░░ 63%
+████████████████░░░░░░░░ 65%
 
 CURRENTLY
-→ 07.02 closed: a polity's law as one number on the polity, written down onto every region it rules
-  as RegionDues - a plain struct the ECONOMY declares and its production system observes, so the
-  economy assesses the share on the harvest it just reaped without ever learning what a polity is;
-  the collector comes after and takes what the region can pay into the polity's treasury, and what
-  it cannot becomes arrears the region still owes; a law that moves by itself - thinner store,
-  heavier share, up to a ceiling; a full store or years of failed collection, and it relents; the
-  founding year is the law's own and it does not move in it; LawOf, TreasuryOf, DuesOf, MeasureLaws
-→ Also delivered, ahead of Phase 15 because a living world nobody can look at is a rumour:
-  AVaelenAtlasActor draws the simulated world in the Unreal viewport - relief by elevation, colour
-  by biome and water, towns, seats of polities, roads. Engine-side, UNVERIFIED.
+→ 07.03 closed: authority is not a number a polity owns but one written on each of its regions, falling
+  with every hop of the region graph away from the seat, and nothing at all where the polity can no
+  longer walk to its own ground; carrying a word costs grain out of the treasury 07.02 fills, growing
+  with the distance; a polity that cannot pay loses its grip on the far edge first and a region under
+  the floor slips free - it is not let go, it goes; reach is what the treasury buys, and a polity takes
+  ground in region order, writing the region's authority in the same tick it takes it, so a ruled
+  region always names whoever rules it with no year in between; AuthorityOf, ReachOf, MeasureReach
 
 COMPLETED
-✓ Phases 00-06 (headless) (CI 61)
-✓ 07.01 VaelenPolitics module and polities (4 tests: Polities)
-✓ 07.02 Law and dues (4 tests: Law)
+✓ Phases 00-06 (headless) (CI 62)
+✓ 07.01 polities (4 tests) · 07.02 law and dues (4 tests)
+✓ 07.03 authority and reach (4 tests: Reach)
 
 NEXT
-→ 07.03 Authority and reach: how far a polity's word carries, and what it costs
-→ 07.04 Succession
-→ The engine build is done (UE 5.6, 2026-09-07); everything since is younger than it
+→ 07.04 Succession: what happens to a polity when its ruler dies and the council must seat another
+→ 07.05 Factions
 
 FILES
-+ Source/VaelenPolitics/Public/Vaelen/Politics/Law.h, Private/Law.cpp
-+ Tests/Politics/Test_Law.cpp
-+ Source/Vaelen/Public/VaelenAtlasActor.h, Private/VaelenAtlasActor.cpp (engine-side)
-~ Source/VaelenEconomy/Public/Vaelen/Economy/Stocks.h (RegionDues), Production.h + Private/Production.cpp
-  (ObserveDues), Source/VaelenPolitics/CMakeLists.txt, Source/Vaelen/Vaelen.Build.cs
++ Source/VaelenPolitics/Public/Vaelen/Politics/Reach.h, Private/Reach.cpp
++ Tests/Politics/Test_Reach.cpp
+~ Source/VaelenPolitics/CMakeLists.txt
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 160 + Population 36 + Society 27 + Economy 26
-  + Politics 8 (8 without asserts); ctest 73/73 in all six Linux presets; every earlier
+  + Politics 12 (12 without asserts); ctest 74/74 in all six Linux presets; every earlier
   frozen digest unchanged
-✓ AELVOR 128 for 100 years: frozen law digest 6e8b720c1543fb20 (3476 grain taken, 50 moves of law)
-✓ Purity: 111 files, 0 violations
+✓ AELVOR 128 for 100 years: frozen reach digest b0849188fdca0aae (41 regions held, 152520 grain spent
+  carrying the word)
+✓ Purity: 113 files, 0 violations
 
 BLOCKERS
 ∅ (the engine-side files stay UNVERIFIED until the next UE 5.6 build)
