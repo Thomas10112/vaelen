@@ -21,6 +21,8 @@
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/System.h"
 
+#include <string>
+#include <string_view>
 #include <vector>
 
 namespace Vaelen
@@ -73,6 +75,17 @@ namespace Vaelen::Population
 	};
 	static_assert(sizeof(RegionStores) == 8, "RegionStores must stay padding free");
 
+	/// Ration of a region, on the region entity: written by a later module (Phase
+	/// 06 production) from the grain it could feed its people with, read by the
+	/// need system when told to observe the type. It replaces the land's ration,
+	/// droughts included: whoever writes it did that accounting.
+	struct RegionRation
+	{
+		uint32 PerMille = 1000; ///< of a full ration
+		uint32 Reserved = 0;
+	};
+	static_assert(sizeof(RegionRation) == 8, "RegionRation must stay padding free");
+
 	/// Cause codes carried in PersonPayload::Other of a PersonDied event.
 	enum class DeathCause : uint32
 	{
@@ -99,11 +112,29 @@ namespace Vaelen::Population
 			Stores = InStores;
 			HasStores = true;
 		}
+		/// Optional: a region's ration comes from its grain (Phase 06 production).
+		void ObserveRation(ComponentType<RegionRation> InRation) noexcept
+		{
+			Ration = InRation;
+			HasRation = true;
+		}
 		SimLod GetLod() const noexcept override { return SimLod::World; }
-		std::vector<std::string_view> GetDependencies() const override { return {"Lives"}; }
+		std::vector<std::string_view> GetDependencies() const override
+		{
+			std::vector<std::string_view> Out{"Lives"};
+			for (const std::string& Name : After)
+			{
+				Out.push_back(Name);
+			}
+			return Out;
+		}
+		/// Runs after another yearly system too (Production), so that this year's
+		/// ration is the one observed. The system must exist.
+		void RunAfter(std::string_view Name) { After.emplace_back(Name); }
 		void Tick(TickContext& Context) override;
 
 	private:
+		std::vector<std::string> After;
 		World* Owner;
 		History::PreHistoryTypes Types;
 		PersonTypes Persons;
@@ -111,6 +142,8 @@ namespace Vaelen::Population
 		NeedRules Rules;
 		ComponentType<RegionStores> Stores;
 		bool HasStores = false;
+		ComponentType<RegionRation> Ration;
+		bool HasRation = false;
 	};
 
 	struct NeedStats

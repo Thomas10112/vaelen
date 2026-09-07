@@ -73,7 +73,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
-| 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | IN PROGRESS (06.01 VALIDATED headless; 06.02-06.08 PLANNED) |
+| 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | IN PROGRESS (06.01-06.02 VALIDATED headless; 06.03-06.08 PLANNED) |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
@@ -1604,6 +1604,42 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   179 houses holding).
 - Decision: ADR-0048.
 
+### 06.02 Production and consumption - VALIDATED (headless)
+
+- Delivered: `Production.h/.cpp` - `ProductionTypes` (`RegionRation`, a Population type the
+  need system observes), `ProductionRules` (a person needs 4 grain a year; a worker harvests
+  7 at ordinary farming; seven tenths of the people on the land within the capacity work in
+  a coarse region, the persons of age 12 in a detailed one, each yielding 850 to 1150 per
+  mille by farming skill, the land taking no more workers than the capacity's share; grain
+  in store spoils 100 per mille; droughts cut 300, 600, 900 per mille by severity; deposits
+  yield 50 per mille of their richness a year once 20 people live there; one timber burnt
+  per 10 people, one salt per 50, one cloth made per 20 and worn per 25, one tool made per
+  40 from one ore and worn per 50, the craft output 850 to 1150 per mille by the crafters'
+  mean skill in a detailed region), events Harvest (the region's units, the drought as cause
+  when it cut) and Shortfall (the units short), `ProductionSystem` (LOD World, after Stocks,
+  `RunAfter`; `ObserveTraits` for the skills, `ObserveStores` for a council's granary:
+  that share of a detailed region's harvest goes to the common stock instead of the
+  houses; the harvest, the spoilage, the meals - a house from its own stock then the
+  common one, the unhoused from the common one - the ration written, the other goods),
+  `RationOf`, `MeasureProduction` (harvests, units, cut, shortfalls, units short, regions
+  rationed, the lowest ration, a digest of every ration in region order). `Needs.h/.cpp`
+  (Phase 04) gain `RegionRation`, `NeedSystem::ObserveRation` - the economy's ration
+  replaces the land's, droughts included - and `RunAfter`, the Phase 04 digests unchanged.
+- Tests (4): at year 300 every peopled region of AELVOR 128 harvested last year, is
+  rationed at a full ration, holds no more than a dozen harvests in store, the timbered
+  hold timber, and a drought curse cuts the busiest region's harvest by a quarter or more
+  with the drought as the harvest's cause; detailed, the busiest region keeps a full
+  ration with a tenth at most hungry and most houses holding grain after the meals, a
+  people needing seven grain a head gets a ration under 700, shortfalls every year, a
+  hungry majority and starvation deaths (not famine: no drought) while the well fed have
+  none, and a council's granary leaves more grain in common for the same harvest; over
+  ten years the detailed harvest is within three tenths of the coarse one and, demoted
+  again, so is the next decade's with the houses' grain folded, luxuries neither made nor
+  used in either grain; two worlds identical every decade for a century, a snapshot at
+  year 50 continued to the same year 100; frozen stocks digest `2e21806d2979bc15`, rations digest
+  `06b87708f4c215ef`, 23070167 grain harvested.
+- Decision: ADR-0049.
+
 ## 11. Phases 07-20: notes
 
 No task breakdown exists yet for Phases 07-20; each is broken down when the previous
@@ -1624,46 +1660,45 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 06 — ECONOMY
-TASK        : 06.01 — VAELENECONOMY MODULE, GOODS AND STOCKS
+TASK        : 06.02 — PRODUCTION AND CONSUMPTION
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████░░░░░░░░░░░░ 52%
+█████████████░░░░░░░░░░░ 53%
 
 CURRENTLY
-→ 06.01 closed: the fifth kernel module VaelenEconomy (UBT + CMake, purity-checked); goods as kinds
-  (grain, cloth, tools, ore, timber, salt, luxuries), RegionStock in common on every region and
-  HouseStock on the houses of a detailed region; the yearly StockSystem endows every region once
-  from its capacity and its deposits, splits a share of the common stock among a promoted region's
-  houses by their members, folds the houses' goods back at a demotion and returns an extinct house's
-  goods to the common stock, so the whole of a region is conserved across every grain change;
-  AddStock moves goods by hand with a cause; every change is an event
+→ 06.02 closed: the yearly ProductionSystem - every region's workers (seven tenths of the people on the
+  land within its capacity, or the persons of age of a detailed region by their farming skill) harvest
+  grain, cut by this year's drought (the drought as the harvest's cause); a detailed region's harvest
+  goes to the workers' houses, a share to the common stock where a council keeps grain (05.05), a
+  coarse region's to the common stock; the grain in store spoils a tenth; every person eats, a house
+  from its own stock then the common one; what could not be fed is the region's ration, written as
+  RegionRation and observed by the need system (04.04, ObserveRation) so that hunger and starvation
+  follow the grain; the deposits yield timber, ore and salt, the people burn and use them, their craft
+  makes cloth and tools from ore, cloth and tools wear; luxuries wait for trade
 
 COMPLETED
-✓ Phases 00-05 (headless) (CI 49 cancelled by the job timeouts, fixed here)
-✓ 06.01 VaelenEconomy module, goods and stocks (4 tests: Stocks)
+✓ Phases 00-05 (headless) ; 06.01 (CI 50)
+✓ 06.02 Production and consumption (4 tests: Production)
 
 NEXT
-→ 06.02 Production and consumption (yearly output from land, people, skills and guilds; needs fed from stock)
-→ 06.03 Markets and prices
+→ 06.03 Markets and prices (per-region markets, integer prices from stock over need, floors and ceilings)
+→ 06.04 Trade and routes
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenEconomy/ (VaelenEconomy.Build.cs, CMakeLists.txt, Public/Vaelen/Economy/EconomyApi.h,
-  Stocks.h, Private/Stocks.cpp, Private/VaelenEconomyModule.cpp)
-+ Tests/Economy/ (CMakeLists.txt, Test_Stocks.cpp)
-~ CMakeLists.txt, Tests/CMakeLists.txt, Tools/kernel_modules.txt, Vaelen.uproject, Vaelen.Target.cs,
-  VaelenEditor.Target.cs
-~ CMakePresets.json (CTest runs 4 jobs in every preset: CI run 49 timed out on the Phase 05 gate),
-  Tests/Core/CMakeLists.txt (the stdio capture entries never run at the same time)
++ Source/VaelenEconomy/Public/Vaelen/Economy/Production.h, Private/Production.cpp
++ Tests/Economy/Test_Production.cpp
+~ Source/VaelenPopulation/Public/Vaelen/Population/Needs.h, Private/Needs.cpp (RegionRation, ObserveRation,
+  RunAfter; the Phase 04 digests unchanged), Source/VaelenEconomy/CMakeLists.txt
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 37 (37 without asserts)
-  + Society 28 (28 without asserts) + Economy 4 (4 without asserts); ctest 72/72 in all six
+  + Society 28 (28 without asserts) + Economy 8 (8 without asserts); ctest 73/73 in all six
   Linux presets; every earlier frozen digest unchanged
-✓ AELVOR 128 for 100 years with the busiest region detailed: the world's whole stock unchanged every decade,
-  no stale house stock; frozen stocks digest b96d3bc0a8ee4141 (27581 grain, 179 houses holding)
-✓ Purity: 96 files, 0 violations
+✓ AELVOR 128 for 100 years with the busiest region detailed and every Phase 04 body and Phase 06 system:
+  frozen stocks digest 2e21806d2979bc15, rations digest 06b87708f4c215ef, 23070167 grain harvested
+✓ Purity: 98 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)

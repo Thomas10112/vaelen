@@ -4,10 +4,12 @@
 set(VAELEN_ECONOMY_PUBLIC_HEADERS
   Public/Vaelen/Economy/EconomyApi.h
   Public/Vaelen/Economy/Stocks.h
+  Public/Vaelen/Economy/Production.h
 )
 
 set(VAELEN_ECONOMY_SOURCES
   Private/Stocks.cpp
+  Private/Production.cpp
 )
 
 add_library(VaelenEconomy STATIC ${VAELEN_ECONOMY_SOURCES} ${VAELEN_ECONOMY_PUBLIC_HEADERS})

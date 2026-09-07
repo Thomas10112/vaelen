@@ -165,6 +165,16 @@ namespace Vaelen::Population
 					Plague = B.Event;
 				}
 			}
+			// The economy's ration, where one is written, replaces the land's (its
+			// harvest already took the drought and the stores into account).
+			if (HasRation)
+			{
+				const RegionRation* Fed = W.Components().GetPool(Ration).TryGet(RH);
+				if (Fed != nullptr)
+				{
+					RationPerMille = std::min<uint64>(1000u, Fed->PerMille);
+				}
+			}
 			const uint32 Refill = static_cast<uint32>(uint64{Rules.FoodRefillMax} * RationPerMille / 1000u);
 
 			// Each person: eat, hunger, recover, sicken, die.

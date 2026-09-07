@@ -71,6 +71,7 @@ Rules for this file:
 | [0046](#adr-0046-each-module-chronicles-its-own-events-through-its-own-capped-listener-into-the-one-record-store) | Each module chronicles its own events through its own capped listener into the one record store | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0047](#adr-0047-the-phase-05-gate-runs-every-population-and-society-system-over-the-256-pre-history-and-freezes-the-state-the-log-and-the-text) | The Phase 05 gate runs every population and society system over the 256 pre-history and freezes the state, the log and the text | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0048](#adr-0048-goods-are-counted-kinds-held-in-common-by-regions-and-by-the-houses-of-a-detailed-region-and-conserved-across-the-grains) | Goods are counted kinds, held in common by regions and by the houses of a detailed region, and conserved across the grains | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0049](#adr-0049-the-harvest-is-made-in-both-grains-by-the-same-rule-and-hunger-follows-the-grain-through-a-ration-the-need-system-observes) | The harvest is made in both grains by the same rule, and hunger follows the grain through a ration the need system observes | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -2868,6 +2869,68 @@ named things; Phase 06 must count.
 
 Accepted 2026-09-07. Files: `Source/VaelenEconomy/*`, `Tests/Economy/Test_Stocks.cpp`
 (4 tests). Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0049: The harvest is made in both grains by the same rule, and hunger follows the grain through a ration the need system observes
+
+### Context
+
+06.01 gave every region a stock; nothing moved it. Production must feed the needs of
+04.04 (which so far rationed a region by its capacity over its living, cut by droughts
+and softened by a council's stores), work in coarse and detailed regions alike so that
+a promotion does not change what a region eats, and leave the Phase 04 and 05 frozen
+runs untouched.
+
+### Decision
+
+1. One rule for the harvest at both grains: workers on the land within the capacity, a
+   fixed harvest per worker at ordinary farming. A coarse region counts seven tenths of
+   its people on the land as workers; a detailed region counts its persons of age, each
+   yielding 850 to 1150 per mille by farming skill, the land taking no more of them than
+   the capacity's share - so the two grains agree within a few tenths, and the tests hold
+   them within three.
+2. Where the grain goes follows the owner of 06.01: a coarse region's harvest to the
+   common stock, a detailed region's to the workers' houses, a share to the common stock
+   where a council keeps grain (05.05). The meals come the same way back: a house eats
+   from its own stock, then from the common one; the unhoused from the common one.
+3. Hunger follows the grain through one number: the ration - what the region could feed
+   over what it needed - written on the region as `RegionRation`, a Population type the
+   need system observes (`ObserveRation`) and that replaces the land's ration, droughts
+   included, since the harvest already took the drought. Without an observer the need
+   system keeps its Phase 04 rule, so nothing frozen moves.
+4. Droughts cut the harvest, not the meals, and are the harvest's cause; the shortfall is
+   an event with the same cause, so a famine's why reaches the drought through the grain.
+5. Grain in store spoils a tenth a year: the store of a region at peace converges to a
+   dozen harvests rather than growing without bound. The other goods follow the people
+   (timber burnt, salt used, cloth and tools made and worn, tools from ore) in the
+   common stock; luxuries wait for trade.
+
+### Alternatives and decision rule
+
+- Persons farming individually in a detailed region (a harvest per person entity):
+  rejected; the house is the owner of 06.01 and the unit that eats; a per-person split
+  would fold at every death.
+- The need system reading the stocks itself: rejected; Population must not know about
+  goods (layering); a ration is the smallest truthful interface, as the stores were.
+- Decided by robustness (one rule, one number, the Phase 04 behaviour kept where nothing
+  observes), then simplicity.
+
+### Consequences
+
+- A region past its capacity starves at both grains unless its store carries it; the
+  need system, as validated in 04.04, empties a hungry region within a few years - the
+  tests read the deaths after three.
+- The rations digest hashes every ration in region order; it and the stocks digest
+  freeze 06.02.
+- 06.03 markets read stock over need, the same numbers this task computes.
+
+### Status
+
+Accepted 2026-09-07. Files: `Source/VaelenEconomy/Public/Vaelen/Economy/Production.h`,
+`Private/Production.cpp`, `Source/VaelenPopulation/.../Needs.h/.cpp`,
+`Tests/Economy/Test_Production.cpp` (4 tests). Headless VALIDATED on the six Linux
+presets; engine side UNVERIFIED.
 
 ---
 
