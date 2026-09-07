@@ -56,6 +56,31 @@ namespace Vaelen::Economy
 			.GetPool(Persons.Detail)
 			.ForEach([&](EntityHandle, const Population::RegionDetail& D) { Regions.push_back(D.Region); });
 		std::sort(Regions.begin(), Regions.end());
+		// A house whose region went coarse again, or that died out, keeps neither
+		// wealth nor heir: both are readings of a detailed region, and the stock
+		// system folded its goods the same tick (06.01). This runs even when no
+		// region is detailed, so that the last demotion leaves nothing behind.
+		{
+			std::vector<EntityHandle> Forget;
+			W.Components()
+				.GetPool(Families.Family)
+				.ForEach(
+					[&](EntityHandle H, const Population::FamilyInfo& F)
+					{
+						const bool Detailed =
+							F.Extinct == 0 && std::find(Regions.begin(), Regions.end(), F.Region) != Regions.end();
+						if (!Detailed && (W.Components().GetPool(Wealth.Wealth).TryGet(H) != nullptr ||
+										  W.Components().GetPool(Wealth.Heir).TryGet(H) != nullptr))
+						{
+							Forget.push_back(H);
+						}
+					});
+			for (const EntityHandle H : Forget)
+			{
+				W.Components().GetPool(Wealth.Wealth).Remove(H);
+				W.Components().GetPool(Wealth.Heir).Remove(H);
+			}
+		}
 		if (Regions.empty())
 		{
 			return;
@@ -382,7 +407,7 @@ namespace Vaelen::Economy
 					R.HasHeir = Hr != nullptr;
 					R.Purse = P != nullptr ? *P : Society::HouseWealth{};
 					R.Heir = Hr != nullptr ? *Hr : HouseHeir{};
-					S.Stale += F.Extinct != 0 && P != nullptr ? 1u : 0u;
+					S.Stale += F.Extinct != 0 && (P != nullptr || Hr != nullptr) ? 1u : 0u;
 					Rows.push_back(R);
 				});
 		std::sort(Living.begin(), Living.end());

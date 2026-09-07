@@ -125,8 +125,8 @@ namespace Vaelen::Economy
 		uint32 Changes = 0;	 ///< fortune events, from the log
 		uint32 HeirsNamed = 0;
 		uint32 Inheritances = 0; ///< StockInherited events
-		uint32 Stale = 0;		 ///< wealth on an extinct house, or an heir naming a dead house
-		Hash64 Digest = 0;		 ///< every wealth then every heir in family order
+		uint32 Stale = 0;  ///< wealth or heir on an extinct house or a coarse region, or an heir naming a dead house
+		Hash64 Digest = 0; ///< every wealth then every heir in family order
 	};
 	VAELEN_ECONOMY_API WealthStats MeasureWealth(const World& W, const Population::FamilyTypes& Families,
 												 const WealthTypes& Wealth, uint32 Region);

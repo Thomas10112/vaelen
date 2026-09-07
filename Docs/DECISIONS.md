@@ -75,6 +75,7 @@ Rules for this file:
 | [0050](#adr-0050-a-price-is-an-integer-on-the-region-from-what-it-wants-over-what-it-holds-within-a-floor-and-a-ceiling) | A price is an integer on the region, from what it wants over what it holds, within a floor and a ceiling | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0051](#adr-0051-a-route-is-an-entity-between-two-neighbouring-markets-opened-by-a-price-gap-a-want-and-a-surplus-carrying-goods-one-way-and-closed-when-idle) | A route is an entity between two neighbouring markets, opened by a price gap, a want and a surplus, carrying goods one way, and closed when idle | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0052](#adr-0052-wealth-reaches-standing-as-a-rank-not-an-amount-and-an-extinct-houses-goods-follow-the-cultures-descent-custom) | Wealth reaches standing as a rank, not an amount, and an extinct house's goods follow the culture's descent custom | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0053](#adr-0053-nothing-of-the-fine-grain-outlives-it-a-coarse-region-keeps-counts-and-stocks-and-nothing-else) | Nothing of the fine grain outlives it: a coarse region keeps counts and stocks, and nothing else | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -3109,6 +3110,59 @@ Accepted 2026-09-07. Files: `Source/VaelenEconomy/Public/Vaelen/Economy/Wealth.h
 `Private/Wealth.cpp`, `Source/VaelenSociety/.../Standing.h/.cpp`,
 `Source/VaelenEconomy/.../Stocks.h/.cpp`, `Tests/Economy/Test_Wealth.cpp` (5 tests).
 Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0053: Nothing of the fine grain outlives it: a coarse region keeps counts and stocks, and nothing else
+
+### Context
+
+Five phases have added state that exists only while a region is detailed - persons,
+families' members, memberships, standing, bonds, house stocks, wealth, heirs - and each
+added its own rule for what a demotion keeps. By 06.05 the economy had three owners of
+fine-grained state (house stock, house wealth, house heir) written by two different
+systems, and only the first was cleared on demotion. A house of a coarse region kept a
+rank among houses that no longer existed and an heir nobody could inherit from.
+
+### Decision
+
+1. One rule for the whole economy: what is read from a detailed region dies with it. The
+   wealth system sweeps, every year and even when no region is detailed at all, every
+   house that died out or whose region went coarse, and removes its wealth and its heir;
+   the stock system had already folded its goods the same tick.
+2. What a coarse region keeps is only what it can keep truthfully: counts (population,
+   faith, strata, organisation seats) and stocks, which are the region's own, not a
+   reading of its persons. Everything else is recomputed at the next promotion.
+3. The invariant is proved, not asserted: a still world - the owners of goods and nothing
+   else - keeps every unit of every good, to the unit, through five hundred years of
+   promotions and demotions. A living world with every system running holds the weaker but
+   complete set of invariants over the same span.
+
+### Alternatives and decision rule
+
+- Keeping wealth ranks through a demotion as a memory (as organisation seats are kept):
+  rejected; a seat count is about the organisation, which survives, while a rank is about
+  a comparison between houses whose members no longer exist.
+- Clearing on the demotion event itself rather than sweeping: rejected; the sweep is one
+  rule that also catches a house that dies out while its region stays detailed, and it
+  needs no event ordering between two modules.
+- Decided by robustness (one rule, checked every year) over performance (a sweep of the
+  family pool a year is nothing beside the tick that precedes it).
+
+### Consequences
+
+- `MeasureWealth` counts a purse or an heir on a dead house as stale, and every long run
+  reports zero.
+- A region promoted after centuries coarse is valued from scratch: its houses' ranks and
+  heirs are this year's, not the ones it had before.
+- The two five-hundred-year digests freeze the grain behaviour of the whole economy; any
+  future system that writes fine-grained state must clear it the same way or they move.
+
+### Status
+
+Accepted 2026-09-07. Files: `Source/VaelenEconomy/Private/Wealth.cpp`,
+`Public/Vaelen/Economy/Wealth.h`, `Tests/Economy/Test_Grains.cpp` (2 tests). Headless
+VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
 

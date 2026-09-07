@@ -73,7 +73,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
-| 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | IN PROGRESS (06.01-06.05 VALIDATED headless; 06.06-06.08 PLANNED) |
+| 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | IN PROGRESS (06.01-06.06 VALIDATED headless; 06.07-06.08 PLANNED) |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
@@ -1742,6 +1742,27 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   heir, 12 inheritances).
 - Decision: ADR-0052.
 
+### 06.06 The economy across the grains - VALIDATED (headless)
+
+- Delivered: the last thing the fine grain left behind is gone. `WealthSystem` now sweeps,
+  every year and even when no region is detailed, every house that died out or whose region
+  went coarse again, and removes its `HouseWealth` and `HouseHeir`: both are readings of a
+  detailed region, and the stock system folded its goods the same tick (06.01), so nothing
+  of the fine grain outlives it. `MeasureWealth` counts a purse or an heir on a dead house
+  as stale, and the stat is zero at every check of both long runs.
+- Tests (Grains, 2): a still world of AELVOR 64 - only the owners of goods, with no
+  production, trade, wealth, meals or minds - keeps every unit of every good, to the unit,
+  through five hundred years in which three regions are detailed in turn every twenty-five
+  (21 promotions, nineteen demotions, a split at every promotion and a fold at every
+  demotion), with no stale or orphaned house stock at any check; frozen still digest
+  `ace29fbb38633cbf`. A living world of the same map, with every Phase 04, 05 and 06 system, holds
+  every economic invariant every twenty-five years - nothing stale or orphaned, every price
+  within its floor and ceiling, every ration at most a full one, every road between markets
+  that exist, a market wherever a stock is - stays identical to a second world tick for
+  tick, receives inheritances across the centuries and keeps its roads open; a snapshot at
+  year 250 continues to the same year 500; frozen living digest `9ac28d8ee3a7ef34`.
+- Decision: ADR-0053.
+
 ## 11. Phases 07-20: notes
 
 No task breakdown exists yet for Phases 07-20; each is broken down when the previous
@@ -1762,45 +1783,43 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 06 — ECONOMY
-TASK        : 06.05 — WEALTH AND INHERITANCE
+TASK        : 06.06 — THE ECONOMY ACROSS THE GRAINS
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████████████░░░░░░░░░░ 56%
+██████████████░░░░░░░░░░ 57%
 
 CURRENTLY
-→ 06.05 closed: the yearly WealthSystem, after Markets - every house of a detailed region is valued at
-  its region's prices and ranked among its neighbours (HouseWealth, a Society type the standing system
-  observes: a rich house lifts its members without standing ever knowing what a price is), and each
-  house names its heir by its culture's descent custom (05.03) - the eldest living child of the head
-  who carries the line and has a house of their own; the stock system honours that name when a house
-  dies out (ObserveHeirs): its goods pass to the heir instead of returning to the common stock, and a
-  house whose line has failed loses everything to the commons; FortuneChanged and HeirNamed events,
-  WealthOf, HeirOf, RichestOf, MeasureWealth
+→ 06.06 closed: a house whose region went coarse again, or that died out, now keeps neither wealth nor
+  heir — both are readings of a detailed region, and the stock system folded its goods the same tick —
+  so nothing of the fine grain survives the coarse one; proved by two five-hundred-year runs at 64 with
+  three regions detailed in turn every twenty-five years: a still world (only the owners of goods, no
+  production, trade, wealth or meals) keeps every unit of every good to the unit through twenty-one
+  promotions and nineteen demotions, and a living world with every Phase 04, 05 and 06 system holds
+  every economic invariant every twenty-five years — no stale or orphaned stock, purse or heir, prices
+  within their bounds, rations that are rations, roads between markets that exist, a market wherever a
+  stock is — with a snapshot at year 250 continuing to the same year 500
 
 COMPLETED
-✓ Phases 00-05 (headless) ; 06.01-06.04 (CI 53)
-✓ 06.05 Wealth and inheritance (5 tests: Wealth)
+✓ Phases 00-05 (headless) ; 06.01-06.05 (CI 54)
+✓ 06.06 The economy across the grains (2 tests: Grains)
 
 NEXT
-→ 06.06 Economy across the grains (stocks kept through demotion and honoured at promotion)
-→ 06.07 Economy in history
-→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
+→ 06.07 Economy in history (routes opened and closed, prices that mattered, fortunes made and lost)
+→ 06.08 Phase 06 gate
+→ The engine build is done (UE 5.6, 2026-09-07): the module glue is VALIDATED under UBT
 
 FILES
-+ Source/VaelenEconomy/Public/Vaelen/Economy/Wealth.h, Private/Wealth.cpp
-+ Tests/Economy/Test_Wealth.cpp
-~ Source/VaelenSociety/Public/Vaelen/Society/Standing.h, Private/Standing.cpp (HouseWealth, ObserveWealth,
-  RunAfter, the wealth weight in StandingScore; the Phase 05 digests unchanged)
-~ Source/VaelenEconomy/Public/Vaelen/Economy/Stocks.h, Private/Stocks.cpp (HouseHeir, ObserveHeirs,
-  StockInherited; the 06.01 digests unchanged), Source/VaelenEconomy/CMakeLists.txt
++ Tests/Economy/Test_Grains.cpp
+~ Source/VaelenEconomy/Private/Wealth.cpp, Public/Vaelen/Economy/Wealth.h (wealth and heirs cleared when
+  a region goes coarse or a house dies out)
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 37 (37 without asserts)
-  + Society 28 (28 without asserts) + Economy 21 (21 without asserts); ctest 76/76 in all six
+  + Society 28 (28 without asserts) + Economy 23 (23 without asserts); ctest 77/77 in all six
   Linux presets; every earlier frozen digest unchanged
-✓ AELVOR 128 for 100 years with the busiest region detailed and every Phase 04 body, Phase 05 society and
-  Phase 06 system: frozen wealth digest 8347935dd85ca3e9 (4 houses with an heir, 12 inheritances)
+✓ AELVOR 64, 500 years, three regions alternating: still world frozen ace29fbb38633cbf (21 promotions, every unit kept),
+  living world frozen 9ac28d8ee3a7ef34
 ✓ Purity: 104 files, 0 violations
 
 BLOCKERS
