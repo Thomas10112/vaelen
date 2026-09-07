@@ -73,7 +73,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
-| 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | IN PROGRESS (06.01-06.06 VALIDATED headless; 06.07-06.08 PLANNED) |
+| 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | IN PROGRESS (06.01-06.07 VALIDATED headless; 06.08 PLANNED) |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
@@ -1763,6 +1763,35 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   year 250 continues to the same year 500; frozen living digest `9ac28d8ee3a7ef34`.
 - Decision: ADR-0053.
 
+### 06.07 The economy in the chronicle - VALIDATED (headless)
+
+- Delivered: `EconomyHistory.h/.cpp` - `EconomyChronicleRules` (what is recorded and the
+  thresholds: a fortune must move 128 of 255, a shortfall must reach 20 units, a road must
+  have carried 100 before its abandonment is history, at most 16 records a region a year),
+  `EconomyChronicleState`, `EconomyChronicleTypes`, `EconomyContext`, the `EconomyChronicle`
+  listener over RouteOpened, RouteClosed, SettlementFounded, SettlementAbandoned,
+  PriceChanged, Shortfall, FortuneChanged and StockInherited, `NameRoute` ("the road from
+  Edavaken to Ekum"), `NameSettlement` ("the town of Edavaken"), `DescribeEconomyEvent`
+  (every economic event gets its own sentence after the year and the age; the lower layers
+  keep their own words), `ExportChronicleWithEconomy`, `ExportWhyWithEconomy`,
+  `CheckEconomyChronicle`.
+- Two corrections the writing of the chronicle brought out. A market appearing published
+  seven price-changed events - nearly seven hundred for the world at its first tick - so
+  the first pricing of a region is now silent and the 06.03 frozen count of changes becomes
+  584. A road reopened on a passing price gap published the same event as a road built, so
+  `RouteInfo` counts its openings (the field pairs with `Idle` in the same four bytes, the
+  struct keeps its 48) and only the first is history; the 06.04 trade digest becomes
+  `54cba9c0fc9ee231`.
+- Tests (3): every economic event of ten years of a detailed region has a line of its own,
+  prefixed by the year and the age, generic for nothing, naming no bare person or family,
+  while the other events keep their lines, and the names fall back plainly for a road or a
+  town that is gone; only what matters is recorded (1147 records where the same span
+  publishes thousands of harvests and carries), every recorded price is at a bound, a rule
+  that records nothing records nothing, and the why of a dear loaf reaches the drought
+  through the harvest; determinism, snapshot continuity, and the chronicle text of a
+  restored world identical to the original; frozen text digest `31b14de751d3d588`.
+- Decision: ADR-0054.
+
 ## 11. Phases 07-20: notes
 
 No task breakdown exists yet for Phases 07-20; each is broken down when the previous
@@ -1783,44 +1812,42 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 06 — ECONOMY
-TASK        : 06.06 — THE ECONOMY ACROSS THE GRAINS
+TASK        : 06.07 — THE ECONOMY IN THE CHRONICLE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████████████░░░░░░░░░░ 57%
+██████████████░░░░░░░░░░ 58%
 
 CURRENTLY
-→ 06.06 closed: a house whose region went coarse again, or that died out, now keeps neither wealth nor
-  heir — both are readings of a detailed region, and the stock system folded its goods the same tick —
-  so nothing of the fine grain survives the coarse one; proved by two five-hundred-year runs at 64 with
-  three regions detailed in turn every twenty-five years: a still world (only the owners of goods, no
-  production, trade, wealth or meals) keeps every unit of every good to the unit through twenty-one
-  promotions and nineteen demotions, and a living world with every Phase 04, 05 and 06 system holds
-  every economic invariant every twenty-five years — no stale or orphaned stock, purse or heir, prices
-  within their bounds, rations that are rations, roads between markets that exist, a market wherever a
-  stock is — with a snapshot at year 250 continuing to the same year 500
+→ 06.07 closed: EconomyChronicle, a listener over the trade, market, production and wealth events,
+  turns what matters into chronicle records - a road built, a road that carried something being
+  abandoned, a town risen or abandoned, a price that reached its floor or its ceiling, a region gone
+  short of grain, a fortune that really moved, an inheritance - bounded per region and year, and
+  DescribeEconomyEvent gives every economic event its own line in the words of the world; NameRoute,
+  NameSettlement, ExportChronicleWithEconomy, ExportWhyWithEconomy: the why of a dear loaf runs from
+  the price to the harvest to the drought
 
 COMPLETED
-✓ Phases 00-05 (headless) ; 06.01-06.05 (CI 54)
-✓ 06.06 The economy across the grains (2 tests: Grains)
+✓ Phases 00-05 (headless) ; 06.01-06.06
+✓ 06.07 The economy in the chronicle (3 tests: EconomyHistory)
 
 NEXT
-→ 06.07 Economy in history (routes opened and closed, prices that mattered, fortunes made and lost)
-→ 06.08 Phase 06 gate
+→ 06.08 Phase 06 gate, then the Phase 06 verdict and the Phase 07 breakdown
 → The engine build is done (UE 5.6, 2026-09-07): the module glue is VALIDATED under UBT
 
 FILES
-+ Tests/Economy/Test_Grains.cpp
-~ Source/VaelenEconomy/Private/Wealth.cpp, Public/Vaelen/Economy/Wealth.h (wealth and heirs cleared when
-  a region goes coarse or a house dies out)
++ Source/VaelenEconomy/Public/Vaelen/Economy/EconomyHistory.h, Private/EconomyHistory.cpp
++ Tests/Economy/Test_EconomyHistory.cpp
+~ Source/VaelenEconomy/Private/Markets.cpp (a market appearing is not a price changing),
+  Public/Vaelen/Economy/Trade.h, Private/Trade.cpp (a road counts its openings)
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 37 (37 without asserts)
-  + Society 28 (28 without asserts) + Economy 23 (23 without asserts); ctest 77/77 in all six
-  Linux presets; every earlier frozen digest unchanged
-✓ AELVOR 64, 500 years, three regions alternating: still world frozen ace29fbb38633cbf (21 promotions, every unit kept),
-  living world frozen 9ac28d8ee3a7ef34
-✓ Purity: 104 files, 0 violations
+  + Society 28 (28 without asserts) + Economy 26 (26 without asserts); ctest 78/78 in all six
+  Linux presets
+✓ AELVOR 128 for 100 years with the busiest region detailed: 1147 records, chronicle text frozen 31b14de751d3d588
+✓ Refrozen by the two corrections: markets changes 584 (was 1277), trade digest 54cba9c0fc9ee231
+✓ Purity: 106 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)

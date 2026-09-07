@@ -170,12 +170,14 @@ namespace Vaelen::Economy
 										  WantedStock(Consumption, Rules, static_cast<Good>(g), People), Stock);
 			}
 			RegionMarket* Market = W.Components().GetPool(Markets.Market).TryGet(RH);
-			for (uint32 g = 0; g < GoodCount; ++g)
+			for (uint32 g = 0; Market != nullptr && g < GoodCount; ++g)
 			{
-				const uint32 Old = Market != nullptr ? Market->Price[g] : 0u;
+				// A market appearing is not a price changing: the first pricing of a
+				// region is silent, or every region would open with seven events.
+				const uint32 Old = Market->Price[g];
 				const uint32 New = Fresh.Price[g];
 				const uint32 Gap = New > Old ? New - Old : Old - New;
-				if (Market == nullptr || uint64{Gap} * 1000u >= uint64{Old} * Rules.ChangePerMille)
+				if (uint64{Gap} * 1000u >= uint64{Old} * Rules.ChangePerMille)
 				{
 					Context.Events->Publish(Context.Tick, PriceChangedEvent, StockPayload{Region, 0, g, New},
 											W.Entities().GetId(RH),

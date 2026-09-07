@@ -41,10 +41,11 @@ namespace Vaelen::Economy
 	/// Component of a route entity (ids of kind Route).
 	struct RouteInfo
 	{
-		uint32 Index = 0; ///< 1-based, in order of opening
-		uint32 From = 0;  ///< the lower region index
-		uint32 To = 0;	  ///< the higher
-		uint32 Idle = 0;  ///< years in a row carrying nothing
+		uint32 Index = 0;	 ///< 1-based, in order of opening
+		uint32 From = 0;	 ///< the lower region index
+		uint32 To = 0;		 ///< the higher
+		uint16 Idle = 0;	 ///< years in a row carrying nothing
+		uint16 Openings = 0; ///< times this road was opened (1 the year it was built)
 		uint64 Opened = 0;
 		uint64 Closed = 0;	 ///< tick, 0 while open
 		uint64 Carried = 0;	 ///< units, both ways, over its life

@@ -221,7 +221,7 @@ namespace Vaelen::Economy
 			}
 			else
 			{
-				++Live->Idle;
+				Live->Idle = static_cast<uint16>(Live->Idle + 1u);
 			}
 			if (Live->Idle >= Rules.CloseAfterIdleYears)
 			{
@@ -300,6 +300,7 @@ namespace Vaelen::Economy
 				}
 				Info.Closed = 0;
 				Info.Idle = 0;
+				Info.Openings = static_cast<uint16>(Info.Openings < 0xffffu ? Info.Openings + 1u : Info.Openings);
 				Info.Opened = Context.Tick;
 				if (H.IsNull())
 				{

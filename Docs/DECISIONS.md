@@ -76,6 +76,7 @@ Rules for this file:
 | [0051](#adr-0051-a-route-is-an-entity-between-two-neighbouring-markets-opened-by-a-price-gap-a-want-and-a-surplus-carrying-goods-one-way-and-closed-when-idle) | A route is an entity between two neighbouring markets, opened by a price gap, a want and a surplus, carrying goods one way, and closed when idle | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0052](#adr-0052-wealth-reaches-standing-as-a-rank-not-an-amount-and-an-extinct-houses-goods-follow-the-cultures-descent-custom) | Wealth reaches standing as a rank, not an amount, and an extinct house's goods follow the culture's descent custom | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0053](#adr-0053-nothing-of-the-fine-grain-outlives-it-a-coarse-region-keeps-counts-and-stocks-and-nothing-else) | Nothing of the fine grain outlives it: a coarse region keeps counts and stocks, and nothing else | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0054](#adr-0054-the-chronicle-records-what-lasts-a-road-built-a-town-risen-a-price-at-its-bound-a-fortune-moved-not-the-churn-beneath-them) | The chronicle records what lasts: a road built, a town risen, a price at its bound, a fortune moved, not the churn beneath them | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -3163,6 +3164,60 @@ rank among houses that no longer existed and an heir nobody could inherit from.
 Accepted 2026-09-07. Files: `Source/VaelenEconomy/Private/Wealth.cpp`,
 `Public/Vaelen/Economy/Wealth.h`, `Tests/Economy/Test_Grains.cpp` (2 tests). Headless
 VALIDATED on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0054: The chronicle records what lasts: a road built, a town risen, a price at its bound, a fortune moved, not the churn beneath them
+
+### Context
+
+The economy publishes far more events than the society did: a harvest and a price for every
+region every year, a carry for every open road, a split at every promotion. A chronicle
+that recorded them would bury the reader and the world's history state under thousands of
+records a century, and the first draft did exactly that - 3794 records in ten years, of
+which 2935 were roads opening and closing.
+
+### Decision
+
+1. A record is written only for what a reader would still care about a century later: a
+   road built (its first opening), a road that carried something being abandoned, a town
+   risen or abandoned, a price that reached its floor or its ceiling, a region gone short
+   of grain past a threshold, a fortune that moved half the range of ranks, an inheritance.
+   Harvests, carries, endowments, splits, folds and ordinary price moves have lines but no
+   records: they are read from the log when wanted.
+2. Every economic event still gets a sentence. `DescribeEconomyEvent` covers all seventeen
+   of them, so the chronicle, the why and any later reader speak of the whole economy even
+   though only a part of it is recorded.
+3. Two things the drafting proved were bugs rather than noise, and were fixed at the
+   source rather than filtered here: a market's first pricing published seven price-change
+   events (a market appearing is not a price changing), and a road reopened on a passing
+   price gap published the same event as a road built (`RouteInfo` now counts its
+   openings). Filtering either in the listener would have left the log itself lying.
+
+### Alternatives and decision rule
+
+- Recording everything and paging the chronicle: rejected; the record count is the world's
+  history state, which snapshots and replays, and it must stay proportionate to what
+  happened rather than to how often systems ran.
+- A relevance score per event: rejected as unpredictable; thresholds in a rules struct are
+  readable, tunable and testable.
+- Decided by robustness (the log stays the whole truth, the chronicle a bounded reading of
+  it) and by fixing causes rather than symptoms.
+
+### Consequences
+
+- The frozen counts of two earlier tasks move deliberately: 06.03's price changes and
+  06.04's trade digest, both recorded in the task's entry.
+- A record's region is the region the event happened in, so the per-region-per-year cap
+  applies where a reader would notice a flood.
+- 06.08's gate counts records among its invariants.
+
+### Status
+
+Accepted 2026-09-07. Files: `Source/VaelenEconomy/Public/Vaelen/Economy/EconomyHistory.h`,
+`Private/EconomyHistory.cpp`, `Private/Markets.cpp`, `Public/Vaelen/Economy/Trade.h`,
+`Private/Trade.cpp`, `Tests/Economy/Test_EconomyHistory.cpp` (3 tests). Headless VALIDATED
+on the six Linux presets; engine side UNVERIFIED.
 
 ---
 

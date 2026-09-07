@@ -38,7 +38,7 @@ using namespace Vaelen::WorldGen;
 // year 300, the busiest region detailed, 100 years with every Phase 04 body
 // and Phase 06 system so far.
 #define VAELEN_MARKETS_FROZEN_128 0x5c3edf001360621eull
-#define VAELEN_MARKETS_CHANGES_128 1277u
+#define VAELEN_MARKETS_CHANGES_128 584u
 
 namespace
 {
