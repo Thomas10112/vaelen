@@ -74,6 +74,7 @@ Rules for this file:
 | [0049](#adr-0049-the-harvest-is-made-in-both-grains-by-the-same-rule-and-hunger-follows-the-grain-through-a-ration-the-need-system-observes) | The harvest is made in both grains by the same rule, and hunger follows the grain through a ration the need system observes | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0050](#adr-0050-a-price-is-an-integer-on-the-region-from-what-it-wants-over-what-it-holds-within-a-floor-and-a-ceiling) | A price is an integer on the region, from what it wants over what it holds, within a floor and a ceiling | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0051](#adr-0051-a-route-is-an-entity-between-two-neighbouring-markets-opened-by-a-price-gap-a-want-and-a-surplus-carrying-goods-one-way-and-closed-when-idle) | A route is an entity between two neighbouring markets, opened by a price gap, a want and a surplus, carrying goods one way, and closed when idle | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0052](#adr-0052-wealth-reaches-standing-as-a-rank-not-an-amount-and-an-extinct-houses-goods-follow-the-cultures-descent-custom) | Wealth reaches standing as a rank, not an amount, and an extinct house's goods follow the culture's descent custom | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -3049,6 +3050,65 @@ stay bounded in entities and events over centuries.
 Accepted 2026-09-07. Files: `Source/VaelenEconomy/Public/Vaelen/Economy/Trade.h`,
 `Private/Trade.cpp`, `Tests/Economy/Test_Trade.cpp` (4 tests). Headless VALIDATED on the
 six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0052: Wealth reaches standing as a rank, not an amount, and an extinct house's goods follow the culture's descent custom
+
+### Context
+
+Phase 06 must give money a social weight and let fortunes pass between generations,
+without the society module (Phase 05) learning what a price is, and without changing the
+frozen behaviour of any earlier task. Standing (05.02) already scores persons; stocks
+(06.01) already return an extinct house's goods to the common stock.
+
+### Decision
+
+1. A house's wealth is its goods at its own region's prices (`ValueOf`, 06.03), computed
+   yearly for every living house of a detailed region.
+2. Wealth reaches standing as a **rank** among the region's houses (0 to 255), never as an
+   amount. A rank is comparable across regions, bounded, and independent of the price
+   scale, so a standing score cannot be inflated by a bout of scarcity, and the society
+   module needs no notion of goods or money. `HouseWealth` lives in `Standing.h`, is
+   declared by the economy and observed by the standing system, exactly as the stores of
+   05.05 and the ration of 06.02 are observed by the systems below them. Without an
+   observer the Phase 05 score is unchanged.
+3. The heir of a house is the eldest living child of its head who carries the line by the
+   culture's descent custom (05.03) - sons where patrilineal, daughters where matrilineal -
+   and who has a house of their own. The name is written on the house as `HouseHeir` and
+   honoured by the stock system when the house dies out (`ObserveHeirs`): the goods pass to
+   the heir, and only a house whose line has failed loses them to the commons. Without the
+   hook, 06.01's behaviour and digests hold.
+4. Wealth and heirs are truths about the living: a house that dies out, or whose region
+   goes coarse, keeps neither.
+
+### Consequences, observed
+
+Because a bride joins her husband's house while a groom who already has one keeps it
+(04.03), a matrilineal world names many times more heirs than a patrilineal one: under
+patrilineal descent the sons hold the house itself, so a house that dies out has usually
+had no son to leave it to, and the commons take all. The tests measure that gap (two
+houses with an heir against a hundred and twenty-four in the same world and year) rather
+than assume symmetry; it is a legible consequence of the customs, not a defect.
+
+### Alternatives and decision rule
+
+- Wealth as points from the amount: rejected; prices move with scarcity and the score
+  would swing with a bad harvest.
+- Inheritance handled by the family system: rejected; Population must not know about
+  goods. The name is written by the economy and read by the economy; only the custom
+  comes from Society.
+- Splitting the goods among all children: rejected for Phase 06; one heir keeps the
+  invariant simple and matches how a house's stock is a single owner.
+- Decided by robustness (one owner, one number, earlier behaviour preserved without an
+  observer) and layering.
+
+### Status
+
+Accepted 2026-09-07. Files: `Source/VaelenEconomy/Public/Vaelen/Economy/Wealth.h`,
+`Private/Wealth.cpp`, `Source/VaelenSociety/.../Standing.h/.cpp`,
+`Source/VaelenEconomy/.../Stocks.h/.cpp`, `Tests/Economy/Test_Wealth.cpp` (5 tests).
+Headless VALIDATED on the six Linux presets; engine side UNVERIFIED.
 
 ---
 

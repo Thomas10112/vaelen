@@ -73,7 +73,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
-| 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | IN PROGRESS (06.01-06.04 VALIDATED headless; 06.05-06.08 PLANNED) |
+| 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | IN PROGRESS (06.01-06.05 VALIDATED headless; 06.06-06.08 PLANNED) |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
@@ -1707,6 +1707,41 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   `2e83bc0c672aba8f` (134864 units carried, 25 settlements founded).
 - Decision: ADR-0051.
 
+### 06.05 Wealth and inheritance - VALIDATED (headless)
+
+- Delivered: `Wealth.h/.cpp` - `WealthTypes` (`HouseWealth`, a Society type declared here and
+  observed by the standing system; `HouseHeir`, an Economy type observed by the stock
+  system), `WealthRules` (a child inherits from twelve; a rank moved by 250 per mille is an
+  event), events FortuneChanged (the house, its old and new rank) and HeirNamed (the house,
+  the heir's house, the heir), `WealthSystem` (LOD World, after Markets, `RunAfter`: a house
+  that died out or whose region went coarse keeps neither wealth nor heir; every living
+  house of a detailed region is valued at its region's prices - `ValueOf` from 06.03 - and
+  the region's houses are ranked 0 to 255 among themselves; each house then names its heir,
+  the eldest living child of the head who carries the line by the culture's descent custom
+  and has a house of their own in the region), `WealthOf`, `HeirOf`, `RichestOf`,
+  `MeasureWealth` (houses valued and with an heir, the richest, the sum of values, fortune
+  events, heirs named, inheritances, stale rows and a digest of every wealth then every heir
+  in family order). `Standing.h/.cpp` (Phase 05) gain `HouseWealth`, `StandingRules::
+  WealthPointsPerMille` (400 of the rank), a defaulted wealth argument to `StandingScore`,
+  `StandingSystem::ObserveWealth` and `RunAfter`; without an observer the score is the
+  Phase 05 one and the 05.02 digest holds. `Stocks.h/.cpp` (06.01) gain `HouseHeir`,
+  `StockSystem::ObserveHeirs` and the StockInherited event; without an observer an extinct
+  house's goods return to the common stock as before and the 06.01 digests hold.
+- Tests (5): the score rule alone (a full wealth rank is worth exactly its share, no
+  observer is worth nothing), then every house of the busiest region of AELVOR 128 valued at
+  its market with the ranks spanning 0 to 255, the richest first, and a pile of luxuries
+  lifting the poorest house to the top with a fortune event; the region's elite belong to
+  wealthier houses than its mean while standing keeps its own invariants; heirs follow each
+  house's own culture (cultures born of a split keep their descent), never the house itself,
+  and always a living child of the head who carries the line - and because a bride joins her
+  husband's house while a groom who has one keeps it (04.03), a matrilineal world names many
+  times more heirs than a patrilineal one, whose sons hold the house itself; sixty years
+  with heirs honoured give inheritances that name a living house of the region, while the
+  same world without the hook inherits nothing and returns more to the commons; determinism
+  and snapshot continuity; frozen wealth digest `8347935dd85ca3e9` after 100 years (4 houses with an
+  heir, 12 inheritances).
+- Decision: ADR-0052.
+
 ## 11. Phases 07-20: notes
 
 No task breakdown exists yet for Phases 07-20; each is broken down when the previous
@@ -1727,42 +1762,46 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 06 — ECONOMY
-TASK        : 06.04 — TRADE AND ROUTES
+TASK        : 06.05 — WEALTH AND INHERITANCE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-█████████████░░░░░░░░░░░ 55%
+██████████████░░░░░░░░░░ 56%
 
 CURRENTLY
-→ 06.04 closed: routes as entities of kind Route between neighbouring markets, opened the year a good is
-  twice as dear on one side, wanted there and in surplus on the other (at most four a region, a road once
-  built reopened rather than built again), carrying every year a quarter of the cheaper side's surplus of
-  every good up to the dearer side's want and a yearly limit, from common stock to common stock, and
-  closed after five years carrying nothing; settlements as entities of kind Settlement on a region whose
-  routes carried fifty units in a year, abandoned after ten years without any; events for every opening,
-  closing, carry, founding and abandoning; RoutesOf, RouteBetween, SettlementOf, MeasureTrade
+→ 06.05 closed: the yearly WealthSystem, after Markets - every house of a detailed region is valued at
+  its region's prices and ranked among its neighbours (HouseWealth, a Society type the standing system
+  observes: a rich house lifts its members without standing ever knowing what a price is), and each
+  house names its heir by its culture's descent custom (05.03) - the eldest living child of the head
+  who carries the line and has a house of their own; the stock system honours that name when a house
+  dies out (ObserveHeirs): its goods pass to the heir instead of returning to the common stock, and a
+  house whose line has failed loses everything to the commons; FortuneChanged and HeirNamed events,
+  WealthOf, HeirOf, RichestOf, MeasureWealth
 
 COMPLETED
-✓ Phases 00-05 (headless) ; 06.01-06.03 (CI 52)
-✓ 06.04 Trade and routes (4 tests: Trade)
+✓ Phases 00-05 (headless) ; 06.01-06.04 (CI 53)
+✓ 06.05 Wealth and inheritance (5 tests: Wealth)
 
 NEXT
-→ 06.05 Wealth and inheritance (a house's wealth at prices, its weight in standing, inheritance by descent)
-→ 06.06 Economy across the grains
+→ 06.06 Economy across the grains (stocks kept through demotion and honoured at promotion)
+→ 06.07 Economy in history
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenEconomy/Public/Vaelen/Economy/Trade.h, Private/Trade.cpp
-+ Tests/Economy/Test_Trade.cpp
-~ Source/VaelenEconomy/CMakeLists.txt
++ Source/VaelenEconomy/Public/Vaelen/Economy/Wealth.h, Private/Wealth.cpp
++ Tests/Economy/Test_Wealth.cpp
+~ Source/VaelenSociety/Public/Vaelen/Society/Standing.h, Private/Standing.cpp (HouseWealth, ObserveWealth,
+  RunAfter, the wealth weight in StandingScore; the Phase 05 digests unchanged)
+~ Source/VaelenEconomy/Public/Vaelen/Economy/Stocks.h, Private/Stocks.cpp (HouseHeir, ObserveHeirs,
+  StockInherited; the 06.01 digests unchanged), Source/VaelenEconomy/CMakeLists.txt
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 37 (37 without asserts)
-  + Society 28 (28 without asserts) + Economy 16 (16 without asserts); ctest 75/75 in all six
+  + Society 28 (28 without asserts) + Economy 21 (21 without asserts); ctest 76/76 in all six
   Linux presets; every earlier frozen digest unchanged
-✓ AELVOR 64 for 500 years with the busiest region detailed and every Phase 04 body and Phase 06 system:
-  frozen trade digest 2e83bc0c672aba8f, 134864 units carried, 25 settlements founded
-✓ Purity: 102 files, 0 violations
+✓ AELVOR 128 for 100 years with the busiest region detailed and every Phase 04 body, Phase 05 society and
+  Phase 06 system: frozen wealth digest 8347935dd85ca3e9 (4 houses with an heir, 12 inheritances)
+✓ Purity: 104 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)

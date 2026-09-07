@@ -42,7 +42,7 @@ namespace Vaelen::Society
 	}
 
 	uint32 StandingScore(const PersonInfo& P, const Population::PersonTraits* T, uint32 HouseMembers, uint8 Offices,
-						 uint64 Tick, const StandingRules& Rules) noexcept
+						 uint64 Tick, const StandingRules& Rules, uint32 WealthRank) noexcept
 	{
 		uint32 Score = std::min(HouseMembers, Rules.HouseMembersCap) * Rules.HousePointsPerMember;
 		Score += (Offices & static_cast<uint8>(Office::HeadOfHouse)) != 0 ? Rules.HeadOfHousePoints : 0u;
@@ -63,6 +63,7 @@ namespace Vaelen::Society
 			}
 			Score += Best * Rules.SkillPointsPerMille / 1000u;
 		}
+		Score += WealthRank * Rules.WealthPointsPerMille / 1000u;
 		return Score;
 	}
 
@@ -99,17 +100,20 @@ namespace Vaelen::Society
 			W.Components().GetPool(Standing.Standing).Remove(H);
 		}
 		// Heads of houses and house sizes, once.
-		std::vector<uint32> HeadOf; // family index -> head person index
+		std::vector<uint32> HeadOf;			   // family index -> head person index
+		std::vector<EntityHandle> HouseHandle; // family index -> its entity (for the wealth observer)
 		W.Components()
 			.GetPool(Families.Family)
 			.ForEach(
-				[&](EntityHandle, const Population::FamilyInfo& F)
+				[&](EntityHandle H, const Population::FamilyInfo& F)
 				{
 					if (F.Index >= HeadOf.size())
 					{
 						HeadOf.resize(usize{F.Index} + 1u, 0u);
+						HouseHandle.resize(usize{F.Index} + 1u);
 					}
 					HeadOf[F.Index] = F.Head;
+					HouseHandle[F.Index] = H;
 				});
 		// Organisation heads, once.
 		std::vector<uint32> OrgHead;
@@ -173,7 +177,12 @@ namespace Vaelen::Society
 				const uint32 Members =
 					R.Info.Family != 0 && R.Info.Family < HouseSize.size() ? HouseSize[R.Info.Family] : 0u;
 				R.Offices = Offices;
-				R.Score = StandingScore(R.Info, T, Members, Offices, Context.Tick, Rules);
+				const HouseWealth* Purse = HasWealth && R.Info.Family != 0 && R.Info.Family < HouseHandle.size() &&
+												   !HouseHandle[R.Info.Family].IsNull()
+											   ? W.Components().GetPool(Wealth).TryGet(HouseHandle[R.Info.Family])
+											   : nullptr;
+				R.Score = StandingScore(R.Info, T, Members, Offices, Context.Tick, Rules,
+										Purse != nullptr ? Purse->Rank : 0u);
 			}
 			// Rank: position in the score order (ties by index), scaled to 0..255; tiers by share.
 			std::vector<usize> Order(Adults.size());

@@ -194,12 +194,39 @@ namespace Vaelen::Economy
 				continue;
 			}
 			const uint32 Units = SumOf(Stock->Amount);
-			RegionStock* Common = RH.IsNull() ? nullptr : W.Components().GetPool(Economy.Region).TryGet(RH);
-			if (Common != nullptr)
+			// An extinct house with an heir of the same region passes its goods on;
+			// everything else joins the common stock.
+			const HouseHeir* Heir = !Coarse && HasHeirs ? W.Components().GetPool(Heirs).TryGet(Hs.Handle) : nullptr;
+			HouseStock* Inheriting = nullptr;
+			uint32 HeirIndex = 0;
+			if (Heir != nullptr && Heir->Family != 0)
+			{
+				for (const House& Other : Houses)
+				{
+					if (Other.Info.Index == Heir->Family && Other.Info.Extinct == 0 && Other.Info.Region == Region)
+					{
+						Inheriting = W.Components().GetPool(Economy.House).TryGet(Other.Handle);
+						HeirIndex = Other.Info.Index;
+						break;
+					}
+				}
+			}
+			if (Inheriting != nullptr)
 			{
 				for (uint32 g = 0; g < GoodCount; ++g)
 				{
-					Common->Amount[g] = AddSaturating(Common->Amount[g], Stock->Amount[g]);
+					Inheriting->Amount[g] = AddSaturating(Inheriting->Amount[g], Stock->Amount[g]);
+				}
+			}
+			else
+			{
+				RegionStock* Common = RH.IsNull() ? nullptr : W.Components().GetPool(Economy.Region).TryGet(RH);
+				if (Common != nullptr)
+				{
+					for (uint32 g = 0; g < GoodCount; ++g)
+					{
+						Common->Amount[g] = AddSaturating(Common->Amount[g], Stock->Amount[g]);
+					}
 				}
 			}
 			W.Components().GetPool(Economy.House).Remove(Hs.Handle);
@@ -210,9 +237,10 @@ namespace Vaelen::Economy
 			}
 			else
 			{
-				Context.Events->Publish(Context.Tick, StockReturnedEvent,
-										StockPayload{Region, Hs.Info.Index, GoodCount, Units},
-										W.Entities().GetId(Hs.Handle));
+				Context.Events->Publish(
+					Context.Tick, Inheriting != nullptr ? StockInheritedEvent : StockReturnedEvent,
+					StockPayload{Region, Inheriting != nullptr ? HeirIndex : Hs.Info.Index, GoodCount, Units},
+					W.Entities().GetId(Hs.Handle));
 			}
 		}
 		for (uint32 Region = 1; Region < RegionHandles.size(); ++Region)
@@ -507,7 +535,8 @@ namespace Vaelen::Economy
 		for (const Event& E : W.Log().All())
 		{
 			if (!(E.Is(StockEndowedEvent) || E.Is(StockSplitEvent) || E.Is(StockFoldedEvent) ||
-				  E.Is(StockReturnedEvent) || E.Is(StockAddedEvent) || E.Is(StockTakenEvent)))
+				  E.Is(StockReturnedEvent) || E.Is(StockInheritedEvent) || E.Is(StockAddedEvent) ||
+				  E.Is(StockTakenEvent)))
 			{
 				continue;
 			}
@@ -520,6 +549,7 @@ namespace Vaelen::Economy
 			S.Splits += E.Is(StockSplitEvent) ? 1u : 0u;
 			S.Folds += E.Is(StockFoldedEvent) ? 1u : 0u;
 			S.Returns += E.Is(StockReturnedEvent) ? 1u : 0u;
+			S.Inheritances += E.Is(StockInheritedEvent) ? 1u : 0u;
 			S.Added += E.Is(StockAddedEvent) ? 1u : 0u;
 			S.Taken += E.Is(StockTakenEvent) ? 1u : 0u;
 		}

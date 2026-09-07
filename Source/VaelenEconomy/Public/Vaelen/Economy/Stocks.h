@@ -64,6 +64,17 @@ namespace Vaelen::Economy
 	};
 	static_assert(sizeof(HouseStock) == 32, "HouseStock must stay padding free");
 
+	/// Component on a family entity: the house its goods pass to when it dies
+	/// out. Written by a later system (06.05 wealth) from the culture's descent
+	/// custom; the stock system honours it when told to observe the type, and
+	/// without an observer an extinct house's goods return to the common stock.
+	struct HouseHeir
+	{
+		uint32 Family = 0; ///< family index, 0 = none known
+		uint32 Reserved = 0;
+	};
+	static_assert(sizeof(HouseHeir) == 8, "HouseHeir must stay padding free");
+
 	struct EconomyTypes
 	{
 		ComponentType<RegionStock> Region;
@@ -96,6 +107,8 @@ namespace Vaelen::Economy
 	inline constexpr EventType<StockPayload> StockFoldedEvent = MakeEventType<StockPayload>("StockFolded");
 	/// An extinct house returned its goods to the common stock (Amount = units).
 	inline constexpr EventType<StockPayload> StockReturnedEvent = MakeEventType<StockPayload>("StockReturned");
+	/// An extinct house's goods passed to its heir (House = the heir, Amount = units).
+	inline constexpr EventType<StockPayload> StockInheritedEvent = MakeEventType<StockPayload>("StockInherited");
 	/// Units added to, or taken from, a stock by AddStock.
 	inline constexpr EventType<StockPayload> StockAddedEvent = MakeEventType<StockPayload>("StockAdded");
 	inline constexpr EventType<StockPayload> StockTakenEvent = MakeEventType<StockPayload>("StockTaken");
@@ -125,6 +138,13 @@ namespace Vaelen::Economy
 		/// Runs after another yearly system too (Lod), so that a promotion's
 		/// houses are endowed in the same tick. The system must exist.
 		void RunAfter(std::string_view Name) { After.emplace_back(Name); }
+		/// Optional: an extinct house's goods pass to the heir named on it
+		/// (Phase 06 wealth) instead of returning to the common stock.
+		void ObserveHeirs(ComponentType<HouseHeir> InHeirs) noexcept
+		{
+			Heirs = InHeirs;
+			HasHeirs = true;
+		}
 		void Tick(TickContext& Context) override;
 
 	private:
@@ -135,6 +155,8 @@ namespace Vaelen::Economy
 		Population::FamilyTypes Families;
 		EconomyTypes Economy;
 		EconomyRules Rules;
+		ComponentType<HouseHeir> Heirs;
+		bool HasHeirs = false;
 	};
 
 	/// The common stock of a region (nullptr before its endowment or for an unknown region).
@@ -167,6 +189,7 @@ namespace Vaelen::Economy
 		uint32 Splits = 0;
 		uint32 Folds = 0;
 		uint32 Returns = 0;
+		uint32 Inheritances = 0;
 		uint32 Added = 0;
 		uint32 Taken = 0;
 		Hash64 Digest = 0; ///< every common stock in region order, then every house stock in family order

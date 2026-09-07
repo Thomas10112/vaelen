@@ -61,6 +61,17 @@ namespace Vaelen::Society
 	};
 	static_assert(sizeof(PersonStanding) == 8, "PersonStanding must stay padding free");
 
+	/// Wealth of a house, on the family entity: written by a later module (Phase
+	/// 06 wealth), read by the standing and bondage systems when told to observe
+	/// the type. A rank among the region's houses, not an amount, so that
+	/// standing does not depend on prices.
+	struct HouseWealth
+	{
+		uint32 Rank = 0;  ///< 0 the poorest .. 255 the richest house of the region
+		uint32 Value = 0; ///< the house's goods at its market's prices, for the chronicle
+	};
+	static_assert(sizeof(HouseWealth) == 8, "HouseWealth must stay padding free");
+
 	struct StandingTypes
 	{
 		ComponentType<PersonStanding> Standing;
@@ -78,14 +89,15 @@ namespace Vaelen::Society
 		uint32 AgeBandPoints[4] = {0, 20, 40, 30}; ///< 16-30, 30-45, 45-60, 60+
 		uint32 TraitPointsPerMille = 250;		   ///< of (charm + will) / 2
 		uint32 SkillPointsPerMille = 300;		   ///< of the best skill
+		uint32 WealthPointsPerMille = 400;		   ///< of the house's wealth rank (0 without an observer)
 		uint32 ElitePerMille = 50;				   ///< top share of the ranked
 		uint32 NotablePerMille = 150;			   ///< next share
 	};
 
 	/// The score of one person under the rules (pure).
 	VAELEN_SOCIETY_API uint32 StandingScore(const Population::PersonInfo& P, const Population::PersonTraits* T,
-											uint32 HouseMembers, uint8 Offices, uint64 Tick,
-											const StandingRules& Rules) noexcept;
+											uint32 HouseMembers, uint8 Offices, uint64 Tick, const StandingRules& Rules,
+											uint32 WealthRank = 0) noexcept;
 
 	/// Yearly, for every detailed region: scores, ranks and tiers of the living adults.
 	class VAELEN_SOCIETY_API StandingSystem final : public ISystem
@@ -105,11 +117,29 @@ namespace Vaelen::Society
 			Bonds = InBonds;
 			HasBonds = true;
 		}
+		/// Optional: a house's wealth (Phase 06) weighs in its members' standing.
+		void ObserveWealth(ComponentType<HouseWealth> InWealth) noexcept
+		{
+			Wealth = InWealth;
+			HasWealth = true;
+		}
 		SimLod GetLod() const noexcept override { return SimLod::World; }
-		std::vector<std::string_view> GetDependencies() const override { return {"Organizations"}; }
+		std::vector<std::string_view> GetDependencies() const override
+		{
+			std::vector<std::string_view> Out{"Organizations"};
+			for (const std::string& Name : After)
+			{
+				Out.push_back(Name);
+			}
+			return Out;
+		}
+		/// Runs after another yearly system too (Wealth), so that this year's
+		/// wealth is the one weighed. The system must exist.
+		void RunAfter(std::string_view Name) { After.emplace_back(Name); }
 		void Tick(TickContext& Context) override;
 
 	private:
+		std::vector<std::string> After;
 		World* Owner;
 		History::PreHistoryTypes Types;
 		Population::PersonTypes Persons;
@@ -120,6 +150,8 @@ namespace Vaelen::Society
 		StandingRules Rules;
 		ComponentType<BondState> Bonds;
 		bool HasBonds = false;
+		ComponentType<HouseWealth> Wealth;
+		bool HasWealth = false;
 	};
 
 	/// The elite of a region: living adults by rank descending (then index), at most MaxCount (0 = all of the elite
