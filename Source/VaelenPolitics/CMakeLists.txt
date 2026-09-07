@@ -8,6 +8,7 @@ set(VAELEN_POLITICS_PUBLIC_HEADERS
   Public/Vaelen/Politics/Reach.h
   Public/Vaelen/Politics/Succession.h
   Public/Vaelen/Politics/Factions.h
+  Public/Vaelen/Politics/Diplomacy.h
 )
 
 set(VAELEN_POLITICS_SOURCES
@@ -16,6 +17,7 @@ set(VAELEN_POLITICS_SOURCES
   Private/Reach.cpp
   Private/Succession.cpp
   Private/Factions.cpp
+  Private/Diplomacy.cpp
 )
 
 add_library(VaelenPolitics STATIC ${VAELEN_POLITICS_SOURCES} ${VAELEN_POLITICS_PUBLIC_HEADERS})

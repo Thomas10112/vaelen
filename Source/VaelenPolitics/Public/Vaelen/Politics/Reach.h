@@ -80,6 +80,7 @@ namespace Vaelen::Politics
 		uint32 ReachPerGrain = 400;	 ///< a hop of reach per this much grain held
 		uint32 ReachCeiling = 4;	 ///< a word never carries further than this
 		uint32 UnpaidHoldLoss = 200; ///< per mille lost where the upkeep went unpaid
+		uint32 AnnexCost = 600;		 ///< grain to take a region another polity holds
 	};
 
 	/// A polity took a region (Polity, Region, 0, hops from the seat).
@@ -88,6 +89,19 @@ namespace Vaelen::Politics
 	inline constexpr EventType<PolityPayload> RegionSlippedEvent = MakeEventType<PolityPayload>("RegionSlipped");
 	/// A polity could not pay for carrying its word (Polity, 0, 0, grain short).
 	inline constexpr EventType<PolityPayload> UpkeepUnpaidEvent = MakeEventType<PolityPayload>("UpkeepUnpaid");
+	/// A polity took a region another one held (Polity, Region, the one it was taken from, hops).
+	inline constexpr EventType<PolityPayload> RegionAnnexedEvent = MakeEventType<PolityPayload>("RegionAnnexed");
+
+	/// Written by a higher layer (diplomacy, 07.06) and read where it is
+	/// observed: a region another polity may take from the one holding it. The
+	/// reach system never learns what a war is; it only learns that this ground
+	/// is takeable and dearer than empty ground.
+	struct RegionInPlay
+	{
+		uint32 By = 0; ///< the polity that may take it, 0 = nobody
+		uint32 Reserved = 0;
+	};
+	static_assert(sizeof(RegionInPlay) == 8, "RegionInPlay must stay padding free");
 
 	/// Yearly, after Law: measure the hold of every ruled region from its
 	/// distance to the seat, pay for it, let go what cannot be held, then take
@@ -121,6 +135,13 @@ namespace Vaelen::Politics
 			Line = InLine;
 			HasLine = true;
 		}
+		/// Optional: ground another polity has been put in a position to take
+		/// (07.06). Without this the system only ever takes what nobody rules.
+		void ObserveContest(ComponentType<RegionInPlay> InPlay) noexcept
+		{
+			InPlay_ = InPlay;
+			HasPlay = true;
+		}
 		void Tick(TickContext& Context) override;
 
 	private:
@@ -134,6 +155,8 @@ namespace Vaelen::Politics
 		ReachRules Rules;
 		ComponentType<PolityLine> Line;
 		bool HasLine = false;
+		ComponentType<RegionInPlay> InPlay_;
+		bool HasPlay = false;
 		WorldGen::RegionGraph Graph; ///< cache, rebuilt when the world's regions change
 		uint32 GraphRegions = 0;
 	};
@@ -147,12 +170,13 @@ namespace Vaelen::Politics
 
 	struct ReachStats
 	{
-		uint32 Held = 0;   ///< regions with authority running in them
-		uint32 Firm = 0;   ///< of those, held at more than half
-		uint32 Far = 0;	   ///< the greatest distance any region is held at
-		uint64 Spent = 0;  ///< grain spent by every polity carrying its word
-		uint64 Unpaid = 0; ///< grain of upkeep unpaid, last year
-		uint32 Taken = 0;  ///< events, from the log
+		uint32 Held = 0;	///< regions with authority running in them
+		uint32 Firm = 0;	///< of those, held at more than half
+		uint32 Far = 0;		///< the greatest distance any region is held at
+		uint64 Spent = 0;	///< grain spent by every polity carrying its word
+		uint64 Unpaid = 0;	///< grain of upkeep unpaid, last year
+		uint32 Taken = 0;	///< events, from the log
+		uint32 Annexed = 0; ///< of those, ground another polity was holding
 		uint32 Slipped = 0;
 		uint32 Unfunded = 0;
 		uint32 Bad = 0; ///< authority of a polity that is gone, a hold above the seat's, a ruled

@@ -74,7 +74,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | VALIDATED (headless, 06.01-06.08); UNVERIFIED (engine) |
-| 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | IN PROGRESS (07.01-07.05 VALIDATED headless; 07.06-07.08 PLANNED) |
+| 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | IN PROGRESS (07.01-07.06 VALIDATED headless; 07.07-07.08 PLANNED) |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
 | 10 | PLAYER | The player as one simulated person: enslaved start, body, needs, skills, relationships; player intent as commands into the simulation. | PLANNED |
@@ -1993,6 +1993,36 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   one seed raise the same factions in the same years; determinism, snapshot continuity, frozen
   factions digest `2906077fcd8b815d` after 100 years (15 formed, 13 took their region).
 - Decision: ADR-0060.
+
+### 07.06 Diplomacy - VALIDATED (headless)
+
+- Delivered: `Diplomacy.h/.cpp` - `Stance` (Pact, Peace, Rivalry, War) and `StanceName`, `Relation`
+  (48 bytes: the two polities with A always below B, stance, warmth per mille, border length, the
+  ticks of meeting and of turning, identity from the world seed) on entities of the new kind
+  `IdKind::Treaty`; `RegionInPlay` (8 bytes) declared by `Reach.h` and written here, so the reach
+  system can read it without ever learning what a war is; `DiplomacyTypes::Declare`,
+  `DiplomacyRules` (500 per mille at contact; a year warms by 40 for a shared culture and 15 per
+  road across the border, and cools by 8 per adjacent region pair and 20 per region the larger
+  holds over the smaller; pact at 750, peace at 450, rivalry at 200, with 60 of hysteresis), events
+  ContactMade, StanceChanged, RegionContested, `DiplomacySystem` (LOD World, after Factions: count
+  who touches whom and how long each border is by walking the region graph in region order, warm
+  and cool, turn the stances, and mark the weaker side's border regions in play wherever there is
+  war), `RelationBetween` (either way round), `NeighboursOf`, `MeasureDiplomacy` (relations by
+  stance, regions in play, events by kind, and the bad - a relation with a polity that is gone, A
+  not below B, a warmth or stance out of range, a contested region its supposed holder does not
+  hold - with a digest of every relation in index order then every contest in region order).
+  `ReachSystem` gains `ObserveContest`, `AnnexCost` and `RegionAnnexed`: ground put in play is
+  taken at the border rather than from the seat, so a polity's reach does not bind a war.
+- Tests (4): two powers on one world found, grow, meet, and hold exactly one relation for the pair
+  whichever side is asked; a long border between unequal neighbours cools to war, the weaker side's
+  regions go in play, and the stronger takes them one year at a time, every annexation naming the
+  polity it was taken from; with every drift silenced, a stance holds at the bar exactly and turns
+  only once the warmth has passed the edge by the hysteresis, a pact survives one bad year, war puts
+  ground in play and peace takes it straight back out; one power alone is nothing to anybody and
+  annexes nothing, the lookups refuse a pair that makes no sense, and two worlds of one seed keep
+  the same relations year for year; determinism, snapshot continuity, frozen treaty digest `9f07d235c61d3712`
+  after 100 years (4 contacts, 5 stances turned).
+- Decision: ADR-0061.
 ## 12. Phases 08-20: notes
 
 No task breakdown exists yet for Phases 07-20; each is broken down when the previous
@@ -2013,42 +2043,43 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 07 — POLITICS
-TASK        : 07.05 — FACTIONS
+TASK        : 07.06 — DIPLOMACY
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-█████████████████░░░░░░░ 69%
+██████████████████░░░░░░ 71%
 
 CURRENTLY
-→ 07.05 closed: a faction cannot change who sits - the council seats its head and succession only
-  judges the passing - so what it can do is take the ground away. It forms around a grievance with a
-  place and sometimes a person: a claimant the custom named and the council passed over, or a region
-  held so loosely for so long that its people stop counting themselves as ruled. It gathers strength
-  while nobody answers it and loses it when somebody does; at its threshold the region simply leaves
-  the polity, and then the faction is done - it wanted that, and it has it. A seat is not a province:
-  no faction ever rises in the region a polity rules from. FactionOf, FactionsOf, MeasureFactions
+→ 07.06 closed: two polities know each other when their ground touches - contact is a fact of the
+  region graph, not a decision. A relation warms and cools by things the world already has: a shared
+  culture, roads carrying goods across the border, the length of that border, and the shadow a much
+  larger neighbour casts. The stance follows the warmth with hysteresis, so a pact is not lost to one
+  bad year. And it has teeth: at war the weaker side's border regions are marked in play, and the
+  reach system - which could only take unruled ground - may take a contested region at a war price,
+  from the border rather than from the capital. RelationBetween, NeighboursOf, MeasureDiplomacy
 
 COMPLETED
-✓ Phases 00-06 (headless) (CI 64)
-✓ 07.01 polities · 07.02 law · 07.03 authority and reach · 07.04 succession
-✓ 07.05 factions (4 tests: Factions)
+✓ Phases 00-06 (headless) (CI 65)
+✓ 07.01 polities · 07.02 law · 07.03 reach · 07.04 succession · 07.05 factions
+✓ 07.06 diplomacy (4 tests: Diplomacy)
 
 NEXT
-→ 07.06 Diplomacy: what two polities are to each other, and what that changes
-→ 07.07 Politics in the chronicle
+→ 07.07 Politics in the chronicle: a line for every founding, law, war and revolt
+→ 07.08 Phase 07 gate
 
 FILES
-+ Source/VaelenPolitics/Public/Vaelen/Politics/Factions.h, Private/Factions.cpp
-+ Tests/Politics/Test_Factions.cpp
-~ Source/VaelenCore/Public/Vaelen/Core/Ids.h, Private/Ids.cpp (IdKind::Faction), Tests/Core/Test_Ids.cpp,
-  Source/VaelenPolitics/CMakeLists.txt
++ Source/VaelenPolitics/Public/Vaelen/Politics/Diplomacy.h, Private/Diplomacy.cpp
++ Tests/Politics/Test_Diplomacy.cpp
+~ Source/VaelenPolitics/Public/Vaelen/Politics/Reach.h, Private/Reach.cpp (RegionInPlay, ObserveContest,
+  RegionAnnexed, AnnexCost), Source/VaelenCore/.../Ids.h, Private/Ids.cpp (IdKind::Treaty),
+  Tests/Core/Test_Ids.cpp, Source/VaelenPolitics/CMakeLists.txt
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 160 + Population 36 + Society 27 + Economy 26
-  + Politics 20 (20 without asserts); ctest 76/76 in all six Linux presets; every earlier
+  + Politics 24 (24 without asserts); ctest 77/77 in all six Linux presets; every earlier
   frozen digest unchanged
-✓ AELVOR 128 for 100 years: frozen factions digest 2906077fcd8b815d (15 formed, 13 took their region)
-✓ Purity: 117 files, 0 violations
+✓ AELVOR 128, two powers over 100 years: frozen treaty digest 9f07d235c61d3712 (4 contacts, 5 stances turned)
+✓ Purity: 119 files, 0 violations
 
 BLOCKERS
 ∅ (the engine-side files stay UNVERIFIED until the next UE 5.6 build)

@@ -236,14 +236,33 @@ namespace Vaelen::Politics
 			std::vector<uint32> Edge;
 			for (uint32 R = 1; R < N; ++R)
 			{
-				if (RuledBy[R] != S.Index || Distance[R] == Unreached || Distance[R] + 1u > Far->Reach ||
-					R >= Graph.Neighbours.size())
+				if (RuledBy[R] != S.Index || Distance[R] == Unreached || R >= Graph.Neighbours.size())
 				{
 					continue;
 				}
+				// Empty ground is claimed from the seat, so the seat's reach
+				// binds it. Ground put in play is taken at the border, where the
+				// polity already stands, so the reach does not: a war is not
+				// fought from the capital.
+				const bool WithinReach = Distance[R] + 1u <= Far->Reach;
 				for (const uint16 Next : Graph.Neighbours[R])
 				{
-					if (Next == 0 || Next >= N || RuledBy[Next] != 0 || RegionHandles[Next].IsNull())
+					if (Next == 0 || Next >= N || RegionHandles[Next].IsNull())
+					{
+						continue;
+					}
+					if (RuledBy[Next] != 0)
+					{
+						// Ground somebody holds is takeable only where a higher
+						// layer has put it in play against them (07.06).
+						const RegionInPlay* Play =
+							HasPlay ? W.Components().GetPool(InPlay_).TryGet(RegionHandles[Next]) : nullptr;
+						if (Play == nullptr || Play->By != S.Index)
+						{
+							continue;
+						}
+					}
+					else if (!WithinReach)
 					{
 						continue;
 					}
@@ -259,12 +278,14 @@ namespace Vaelen::Politics
 			Edge.erase(std::unique(Edge.begin(), Edge.end()), Edge.end());
 			for (const uint32 R : Edge)
 			{
-				if (Purse->Amount[G_GRAIN] < Rules.ClaimCost)
+				const uint32 Held_ = RuledBy[R];
+				const uint32 Price = Held_ != 0 ? Rules.AnnexCost : Rules.ClaimCost;
+				if (Purse->Amount[G_GRAIN] < Price)
 				{
-					break;
+					continue; // dearer ground waits for a fuller treasury
 				}
-				Purse->Amount[G_GRAIN] -= Rules.ClaimCost;
-				Far->Spent += Rules.ClaimCost;
+				Purse->Amount[G_GRAIN] -= Price;
+				Far->Spent += Price;
 				++Far->Claimed;
 				RegionRule* Rule = W.Components().GetPool(Polities.Rule).TryGet(RegionHandles[R]);
 				if (Rule == nullptr)
@@ -297,7 +318,8 @@ namespace Vaelen::Politics
 				{
 					*Was = Taken;
 				}
-				Context.Events->Publish(Context.Tick, RegionTakenEvent, PolityPayload{S.Index, R, 0, Distance[R]},
+				Context.Events->Publish(Context.Tick, Held_ != 0 ? RegionAnnexedEvent : RegionTakenEvent,
+										PolityPayload{S.Index, R, Held_, Distance[R]},
 										W.Entities().GetId(RegionHandles[R]));
 			}
 		}
@@ -439,6 +461,7 @@ namespace Vaelen::Politics
 		for (const Event& E : W.Log().All())
 		{
 			S.Taken += E.Is(RegionTakenEvent) ? 1u : 0u;
+			S.Annexed += E.Is(RegionAnnexedEvent) ? 1u : 0u;
 			S.Slipped += E.Is(RegionSlippedEvent) ? 1u : 0u;
 			S.Unfunded += E.Is(UpkeepUnpaidEvent) ? 1u : 0u;
 		}

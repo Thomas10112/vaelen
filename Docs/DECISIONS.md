@@ -83,6 +83,7 @@ Rules for this file:
 | [0058](#adr-0058-authority-is-written-on-the-region-and-falls-with-the-walk-from-the-seat) | Authority is written on the region and falls with the walk from the seat | Accepted; headless VALIDATED |
 | [0059](#adr-0059-succession-is-judged-not-decided) | Succession is judged, not decided | Accepted; headless VALIDATED |
 | [0060](#adr-0060-a-faction-takes-ground-never-the-throne) | A faction takes ground, never the throne | Accepted; headless VALIDATED |
+| [0061](#adr-0061-a-relation-is-a-fact-of-the-ground-and-a-war-is-a-permission-not-an-order) | A relation is a fact of the ground, and a war is a permission, not an order | Accepted; headless VALIDATED |
 
 ---
 
@@ -3576,6 +3577,75 @@ Accepted 2026-09-07. Files: `Source/VaelenPolitics/Public/Vaelen/Politics/Factio
 `Private/Factions.cpp`, `Source/VaelenCore/.../Ids.h` and `Private/Ids.cpp`
 (`IdKind::Faction`), `Tests/Politics/Test_Factions.cpp` (4 tests). Headless VALIDATED
 on the six Linux presets.
+
+---
+
+## ADR-0061: A relation is a fact of the ground, and a war is a permission, not an order
+
+### Context
+
+07.06 has to make two polities mean something to each other without inventing a
+diplomatic apparatus - envoys, offers, treaties negotiated turn by turn - that
+nothing else in the model would support, and without a war system, which is
+Phase 08.
+
+### Decision
+
+1. **Contact is a fact of the region graph.** Two polities know each other when
+   their ground touches; nobody decides to meet. A relation is created on the
+   first touch and lives as an entity of its own kind (`IdKind::Treaty`), with
+   A always the lower index so a pair has exactly one relation whichever side
+   is asked.
+2. **The warmth drifts from what the world already has**: a shared culture, the
+   roads of 06.04 crossing the border, the length of that border, and the gap
+   in size between the two. No opinion is invented; every term is a number some
+   other phase already maintains.
+3. **The stance follows the warmth with hysteresis.** A stance holds until the
+   warmth has passed the edge of its band by a margin, so a pact is not lost to
+   one bad year and a war is not declared by a rounding.
+4. **A war is a permission, not an order.** Diplomacy marks the weaker side's
+   border regions as `RegionInPlay` - a struct **`Reach.h` declares** and
+   diplomacy writes - and stops there. The reach system, which could only ever
+   take unruled ground, may now take a contested region at a war price. It
+   never learns what a war is; it learns that this ground is takeable and
+   dearer. Whether anything is taken depends on the treasury, exactly as
+   claiming empty ground does.
+5. **A war is fought at the border, not from the capital.** Empty ground is
+   claimed within the seat's reach; ground in play is taken from wherever the
+   polity already stands. Without this a large polity could never annex
+   anything, since its own border is past its reach - which the first run
+   showed plainly.
+
+### Alternatives and decision rule
+
+- A war system with armies and battles: that is Phase 08. Putting it here would
+  duplicate what 08 must own.
+- Diplomacy moving the regions itself: rejected; two systems writing `RegionRule`
+  is two truths, and the reach system already owns the cost, the ordering and the
+  bookkeeping of taking ground.
+- Relations as a matrix on the polity: rejected; a relation has a history the
+  chronicle of 07.07 must be able to name, and an entity is what carries one.
+- A stance chosen by a ruler's traits: deferred; the traits of 04.05 belong to a
+  person, and a polity outlives its rulers. 07.04's unrest is where a ruler's
+  fortune already reaches the map.
+
+### Consequences
+
+- Conquest is emergent: two powers grow into each other, the border lengthens,
+  the warmth falls, the stance turns, ground goes in play, and the richer side
+  takes it - and a polity reduced to nothing dissolves by 07.01's own rule.
+- Everything taken in war is held like anything else: it costs upkeep, it is held
+  more loosely the further it is, and it can be neglected into a faction. There is
+  no special status for conquered ground.
+- Phase 08 will replace the permission with a contest: armies, sieges and losses
+  between the mark and the taking.
+
+### Status
+
+Accepted 2026-09-07. Files: `Source/VaelenPolitics/Public/Vaelen/Politics/Diplomacy.h`,
+`Private/Diplomacy.cpp`, `Reach.h` and `Private/Reach.cpp` (`RegionInPlay`,
+`ObserveContest`, `RegionAnnexed`), `Source/VaelenCore/.../Ids.h` (`IdKind::Treaty`),
+`Tests/Politics/Test_Diplomacy.cpp` (4 tests). Headless VALIDATED on the six Linux presets.
 
 ---
 
