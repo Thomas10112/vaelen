@@ -73,6 +73,7 @@ Rules for this file:
 | [0048](#adr-0048-goods-are-counted-kinds-held-in-common-by-regions-and-by-the-houses-of-a-detailed-region-and-conserved-across-the-grains) | Goods are counted kinds, held in common by regions and by the houses of a detailed region, and conserved across the grains | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0049](#adr-0049-the-harvest-is-made-in-both-grains-by-the-same-rule-and-hunger-follows-the-grain-through-a-ration-the-need-system-observes) | The harvest is made in both grains by the same rule, and hunger follows the grain through a ration the need system observes | Accepted; headless VALIDATED, engine side UNVERIFIED |
 | [0050](#adr-0050-a-price-is-an-integer-on-the-region-from-what-it-wants-over-what-it-holds-within-a-floor-and-a-ceiling) | A price is an integer on the region, from what it wants over what it holds, within a floor and a ceiling | Accepted; headless VALIDATED, engine side UNVERIFIED |
+| [0051](#adr-0051-a-route-is-an-entity-between-two-neighbouring-markets-opened-by-a-price-gap-a-want-and-a-surplus-carrying-goods-one-way-and-closed-when-idle) | A route is an entity between two neighbouring markets, opened by a price gap, a want and a surplus, carrying goods one way, and closed when idle | Accepted; headless VALIDATED, engine side UNVERIFIED |
 
 ---
 
@@ -2986,6 +2987,68 @@ compute alike.
 Accepted 2026-09-07. Files: `Source/VaelenEconomy/Public/Vaelen/Economy/Markets.h`,
 `Private/Markets.cpp`, `Tests/Economy/Test_Markets.cpp` (4 tests). Headless VALIDATED
 on the six Linux presets; engine side UNVERIFIED.
+
+---
+
+## ADR-0051: A route is an entity between two neighbouring markets, opened by a price gap, a want and a surplus, carrying goods one way, and closed when idle
+
+### Context
+
+06.03 gave every region prices; goods still never left their region. Trade must move
+goods where they are wanted, along the region graph of Phase 02, leave traces the
+chronicle and the later phases (infrastructure, war) can use - roads, settlements - and
+stay bounded in entities and events over centuries.
+
+### Decision
+
+1. A route is an entity of kind Route between two adjacent regions (in index order), a
+   settlement an entity of kind Settlement on a region. Both are records with a life:
+   opened and closed, founded and abandoned, so that a road or a town of the past is
+   history, not a deleted row.
+2. A route opens when, for some good, the price on one side is at least twice the
+   other's, the dear side holds less than it wants and the cheap side more: a gap alone
+   opened roads that carried nothing (the first draft churned five thousand of them in
+   three centuries); with the want and the surplus a road opens only where goods will
+   move. A region takes four routes at most; a road once built is reopened rather than
+   built again, so the entities are bounded by the graph's edges.
+3. Every year, after the markets have priced, every open route carries a quarter of the
+   cheap side's surplus of every good, up to what the dear side wants and a yearly
+   limit, from the one common stock to the other. Goods move one way and nothing is paid:
+   money and payment belong to wealth (06.05); in Phase 06 a route is a flow, not a
+   contract. A route that carried nothing for five years closes.
+4. A settlement is founded where a region's routes carried fifty units in a year, and
+   abandoned after ten years without traffic; it remembers its routes and traffic of the
+   last year, and its identity comes from the world seed for the naming to come.
+5. Every opening, closing, carry (one event a route a year, with the units), founding and
+   abandoning is an event about the route or the settlement.
+
+### Alternatives and decision rule
+
+- Trade by houses or merchants (persons carrying goods): rejected for Phase 06; the
+  common stocks are the owners at both grains and a flow between them is what the
+  markets can price; merchants are Phase 09 people with items.
+- Routes as graph edges kept in a table without entities: rejected; a road must have an
+  id for events, names and the chronicle, and its life is state.
+- Payment in goods of equal value: deferred to 06.05 with wealth; one-way flows keep this
+  task's invariant simple (goods conserved, only moved).
+- Decided by robustness (bounded entities, one open route per pair, one event a carry)
+  and evolvability (the rules are numbers; a payment can be added to the carry).
+
+### Consequences
+
+- Trade lowers the ore ceiling where no deposit is: the tests count fewer markets at the
+  ceiling with trade than without.
+- A flooded world closes every road and empties every settlement within the rule's
+  years; a drained one reopens them with new settlement indices and the same road
+  indices.
+- The trade digest hashes every route then every settlement in index order, closed and
+  abandoned included; 500 years at 64 freeze it.
+
+### Status
+
+Accepted 2026-09-07. Files: `Source/VaelenEconomy/Public/Vaelen/Economy/Trade.h`,
+`Private/Trade.cpp`, `Tests/Economy/Test_Trade.cpp` (4 tests). Headless VALIDATED on the
+six Linux presets; engine side UNVERIFIED.
 
 ---
 

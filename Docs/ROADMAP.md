@@ -73,7 +73,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 03 | HISTORY | Simulated pre-history that everything later inherits: eras, cultures, languages, religions, migrations, the historical record. | VALIDATED (headless); UNVERIFIED (engine) |
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
-| 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | IN PROGRESS (06.01-06.03 VALIDATED headless; 06.04-06.08 PLANNED) |
+| 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | IN PROGRESS (06.01-06.04 VALIDATED headless; 06.05-06.08 PLANNED) |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | PLANNED |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
@@ -1671,6 +1671,42 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   markets digest `5c3edf001360621e` after 100 years (1277 price events).
 - Decision: ADR-0050.
 
+### 06.04 Trade and routes - VALIDATED (headless)
+
+- Delivered: `Trade.h/.cpp` - `RouteInfo` (48 bytes: index, the two regions in order,
+  idle years, opened and closed ticks, units carried over its life, identity) on entities
+  of kind Route, `SettlementInfo` (48 bytes: index, region, open routes and traffic of the
+  last year, founded and abandoned ticks, quiet years, identity) on entities of kind
+  Settlement, `TradeTypes::Declare`, `TradeRules` (a route opens on a good twice as dear on
+  one side, wanted there and in surplus on the other; a quarter of the surplus carried a
+  year, 1000 units a good at most; four routes a region; closed after five idle years; a
+  settlement from fifty units of traffic a year, abandoned after ten quiet years), events
+  RouteOpened, RouteClosed, GoodsCarried (the route, the two regions, the units), 
+  SettlementFounded, SettlementAbandoned (`TradePayload`), `TradeSystem` (LOD World, after
+  Markets, `RunAfter`; the region graph cached as in 05.05: every open route in index
+  order carries every good from the cheaper side's common stock to the dearer side's, up
+  to the seller's surplus share, the buyer's want and the limit, the traffic counted on
+  both regions, the idle closed; then between neighbours with markets and no open route
+  the warranted are opened, a closed road between the same regions reopened; then the
+  settlements founded where the traffic is and abandoned where it stopped), `RoutesOf`,
+  `RouteBetween`, `SettlementOf`, `MeasureTrade` (routes open and closed, carries and
+  units from the log, settlements alive and abandoned, the busiest settlement's traffic,
+  bad routes - not adjacent, opened twice, out of order or past a region's number - and a
+  digest of every route then every settlement in index order).
+- Tests (4): AELVOR 128 at year 300 has open routes joining two markets each, units
+  carried, settlements on regions with routes and nothing bad, fewer markets at the ore
+  ceiling than the same world without trade (which has no route at all), and a region
+  flooded with luxuries beside a drained neighbour sees them cross on the route between
+  them the next year, the route's count rising; a world flooded with everything closes
+  every route within five years and abandons every settlement within ten with an event
+  each, nothing carried since, and drained again opens routes and founds settlements
+  with new indices; one route a region at most holds, a hundredfold gap opens nothing,
+  islands without a neighbour have no route, two worlds the same digest; 500 years at 64
+  with the busiest region detailed hold every road and settlement invariant every fifty
+  years, a snapshot at year 250 continued to the same year 500; frozen trade digest
+  `2e83bc0c672aba8f` (134864 units carried, 25 settlements founded).
+- Decision: ADR-0051.
+
 ## 11. Phases 07-20: notes
 
 No task breakdown exists yet for Phases 07-20; each is broken down when the previous
@@ -1691,42 +1727,42 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 06 — ECONOMY
-TASK        : 06.03 — MARKETS AND PRICES
+TASK        : 06.04 — TRADE AND ROUTES
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-█████████████░░░░░░░░░░░ 54%
+█████████████░░░░░░░░░░░ 55%
 
 CURRENTLY
-→ 06.03 closed: every region holding a stock is a market (RegionMarket: one integer price per good);
-  the yearly MarketSystem, after Production, prices every good at its base times what the region
-  wants (two years of its people's grain, three of every used good, a little luxury - the same
-  consumption rules the production uses) over what it holds, common stock and houses together, within
-  a quarter and eight times the base; a price moved by a quarter or more is an event, the year's
-  harvest its cause for grain (so a dear loaf's why reaches the drought); PriceFor, WantedStock,
-  MarketOf, ValueOf (a stock at prices, for 06.05 wealth), MeasureMarkets
+→ 06.04 closed: routes as entities of kind Route between neighbouring markets, opened the year a good is
+  twice as dear on one side, wanted there and in surplus on the other (at most four a region, a road once
+  built reopened rather than built again), carrying every year a quarter of the cheaper side's surplus of
+  every good up to the dearer side's want and a yearly limit, from common stock to common stock, and
+  closed after five years carrying nothing; settlements as entities of kind Settlement on a region whose
+  routes carried fifty units in a year, abandoned after ten years without any; events for every opening,
+  closing, carry, founding and abandoning; RoutesOf, RouteBetween, SettlementOf, MeasureTrade
 
 COMPLETED
-✓ Phases 00-05 (headless) ; 06.01-06.02 (CI 51)
-✓ 06.03 Markets and prices (4 tests: Markets)
+✓ Phases 00-05 (headless) ; 06.01-06.03 (CI 52)
+✓ 06.04 Trade and routes (4 tests: Trade)
 
 NEXT
-→ 06.04 Trade and routes (routes opened along the graph where prices differ, goods carried yearly, settlements)
-→ 06.05 Wealth and inheritance
+→ 06.05 Wealth and inheritance (a house's wealth at prices, its weight in standing, inheritance by descent)
+→ 06.06 Economy across the grains
 → Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
 
 FILES
-+ Source/VaelenEconomy/Public/Vaelen/Economy/Markets.h, Private/Markets.cpp
-+ Tests/Economy/Test_Markets.cpp
++ Source/VaelenEconomy/Public/Vaelen/Economy/Trade.h, Private/Trade.cpp
++ Tests/Economy/Test_Trade.cpp
 ~ Source/VaelenEconomy/CMakeLists.txt
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 162 (159 without asserts) + Population 37 (37 without asserts)
-  + Society 28 (28 without asserts) + Economy 12 (12 without asserts); ctest 74/74 in all six
+  + Society 28 (28 without asserts) + Economy 16 (16 without asserts); ctest 75/75 in all six
   Linux presets; every earlier frozen digest unchanged
-✓ AELVOR 128 for 100 years with the busiest region detailed and every Phase 04 body and Phase 06 system:
-  frozen markets digest 5c3edf001360621e, 1277 price events
-✓ Purity: 100 files, 0 violations
+✓ AELVOR 64 for 500 years with the busiest region detailed and every Phase 04 body and Phase 06 system:
+  frozen trade digest 2e83bc0c672aba8f, 134864 units carried, 25 settlements founded
+✓ Purity: 102 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)
