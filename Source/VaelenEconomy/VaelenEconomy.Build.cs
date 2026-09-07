@@ -1,6 +1,6 @@
 // VAELEN - VaelenEconomy module rules.
 //
-// STATUS: UNVERIFIED - not compiled in the headless CI (requires UE5).
+// STATUS: VALIDATED (UE 5.6, 2026-09-07) - compiled and run in the editor; not covered by the headless CI.
 //
 // VaelenEconomy is the fifth engine-agnostic kernel module (goods, stocks,
 // production, markets, trade and wealth over the Phase 04 persons and the

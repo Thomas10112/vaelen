@@ -1,7 +1,7 @@
 // VAELEN - primary game module.
 // Routes kernel log records into Unreal's logging system.
 //
-// STATUS: UNVERIFIED - not compiled in the headless CI (requires UE5).
+// STATUS: VALIDATED (UE 5.6, 2026-09-07) - compiled and run in the editor; not covered by the headless CI.
 #pragma once
 
 #include "CoreMinimal.h"

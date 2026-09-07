@@ -1,6 +1,6 @@
 // VAELEN - VaelenSim module rules.
 //
-// STATUS: UNVERIFIED - not compiled in the headless CI (requires UE5).
+// STATUS: VALIDATED (UE 5.6, 2026-09-07) - compiled and run in the editor; not covered by the headless CI.
 //
 // VaelenSim is the second engine-agnostic kernel module (entities, components,
 // systems, clock, events, persistence). Same rules as VaelenCore: pure C++20,

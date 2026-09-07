@@ -1,6 +1,6 @@
 // VAELEN - primary game module.
 //
-// STATUS: UNVERIFIED - not compiled in the headless CI (requires UE5).
+// STATUS: VALIDATED (UE 5.6, 2026-09-07) - compiled and run in the editor; not covered by the headless CI.
 #include "Vaelen.h"
 #include "VaelenLogSink.h"
 

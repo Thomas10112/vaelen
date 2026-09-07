@@ -1,6 +1,6 @@
 // VAELEN - VaelenPopulation module rules.
 //
-// STATUS: UNVERIFIED - not compiled in the headless CI (requires UE5).
+// STATUS: VALIDATED (UE 5.6, 2026-09-07) - compiled and run in the editor; not covered by the headless CI.
 //
 // VaelenPopulation is the third engine-agnostic kernel module (persons,
 // families, demographics over the Phase 03 pre-history). Same rules as

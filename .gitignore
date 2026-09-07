@@ -12,6 +12,7 @@ Saved/
 *.opensdf
 *.sdf
 *.sln
+.vsconfig
 *.suo
 *.xcodeproj
 *.xcworkspace

@@ -1,6 +1,6 @@
 // VAELEN - VaelenSociety module rules.
 //
-// STATUS: UNVERIFIED - not compiled in the headless CI (requires UE5).
+// STATUS: VALIDATED (UE 5.6, 2026-09-07) - compiled and run in the editor; not covered by the headless CI.
 //
 // VaelenSociety is the fourth engine-agnostic kernel module (organisations,
 // standing, norms and bondage over the Phase 04 persons). Same rules as

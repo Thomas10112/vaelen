@@ -27,6 +27,11 @@ namespace Vaelen
 	{
 	public:
 		explicit ComponentStore(const ComponentTypeRegistry& InTypes) noexcept : Types(&InTypes) {}
+		// A store owns its pools; copying one was never possible. Saying so
+		// also keeps class-level __declspec(dllexport) (modular editor builds)
+		// from instantiating an implicit copy over the move-only pool vector.
+		ComponentStore(const ComponentStore&) = delete;
+		ComponentStore& operator=(const ComponentStore&) = delete;
 
 		/// Creates the pool of a registered type. Creating it twice or for an
 		/// unregistered id is a Check failure; the existing pool (or a scratch

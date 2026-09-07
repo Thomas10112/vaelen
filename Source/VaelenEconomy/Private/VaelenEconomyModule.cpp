@@ -2,7 +2,7 @@
 // The ONLY Unreal-facing translation unit of the economy module.
 // Excluded from the headless CMake build (see Source/VaelenEconomy/CMakeLists.txt).
 //
-// STATUS: UNVERIFIED - not compiled in the headless CI (requires UE5).
+// STATUS: VALIDATED (UE 5.6, 2026-09-07) - compiled and run in the editor; not covered by the headless CI.
 #include "Modules/ModuleManager.h"
 
 class FVaelenEconomyModule : public IModuleInterface

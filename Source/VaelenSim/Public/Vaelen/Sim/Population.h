@@ -56,12 +56,14 @@ namespace Vaelen::History
 		uint32 Majority = 0;			  ///< culture with the most people (0 when empty)
 		uint32 SettledSince = 0;		  ///< years of continuous settlement (saturates)
 
-		uint32 SlotOf(uint32 CultureIndex) const noexcept;
+		// Exported one by one, not as a whole struct: the layout is asserted
+		// elsewhere and must stay a plain component.
+		VAELEN_SIM_API uint32 SlotOf(uint32 CultureIndex) const noexcept;
 		/// Adds people of a culture; returns false when no slot is free.
-		bool Add(uint32 CultureIndex, uint32 People) noexcept;
+		VAELEN_SIM_API bool Add(uint32 CultureIndex, uint32 People) noexcept;
 		/// Removes people of a culture (clamped); frees the slot at zero.
-		uint32 Remove(uint32 CultureIndex, uint32 People) noexcept;
-		void Recount() noexcept;
+		VAELEN_SIM_API uint32 Remove(uint32 CultureIndex, uint32 People) noexcept;
+		VAELEN_SIM_API void Recount() noexcept;
 	};
 
 	/// Simulation LOD of a region, set by a later module (Phase 04) while the

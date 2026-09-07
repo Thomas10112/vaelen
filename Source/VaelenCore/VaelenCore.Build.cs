@@ -1,6 +1,6 @@
 // VAELEN - VaelenCore module rules.
 //
-// STATUS: UNVERIFIED - not compiled in the headless CI (requires UE5).
+// STATUS: VALIDATED (UE 5.6, 2026-09-07) - compiled and run in the editor; not covered by the headless CI.
 //
 // VaelenCore is the ENGINE-AGNOSTIC simulation kernel. Everything under
 // Public/ and Private/ (except VaelenCoreModule.cpp) must compile without any

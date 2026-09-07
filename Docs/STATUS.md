@@ -1,6 +1,6 @@
 # VAELEN — Build status
 
-STATUS: VALIDATED for the state it reports, checked on 2026-09-05 against the sources on
+STATUS: VALIDATED for the state it reports, checked on 2026-09-07 against the sources on
 branch `claude/vaelen-master-prompt-aw7zqj` after the Phase 00 review pass. This is the
 living status document: it is refreshed at the end of every task (section "How to
 refresh").
@@ -14,7 +14,7 @@ VAELEN BUILD STATUS
 
 PHASE       : 06 — ECONOMY
 TASK        : 06.04 — TRADE AND ROUTES
-STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
+STATUS      : VALIDATED (headless) / VALIDATED (engine: first UE 5.6 build, 2026-09-07)
 
 PROGRESS
 █████████████░░░░░░░░░░░ 55%
@@ -31,11 +31,13 @@ CURRENTLY
 COMPLETED
 ✓ Phases 00-05 (headless) ; 06.01-06.03 (CI 52)
 ✓ 06.04 Trade and routes (4 tests: Trade)
+✓ First UE 5.6 build (2026-09-07): six modules compiled and linked, editor opened, module-started
+  line read from the Output Log; 14 engine files UNVERIFIED → VALIDATED
 
 NEXT
 → 06.05 Wealth and inheritance (a house's wealth at prices, its weight in standing, inheritance by descent)
 → 06.06 Economy across the grains
-→ Monday: first UE 5.6 build on the PC (ARCHITECTURE section 8 checklist)
+→ Engine-backed CI (still none: this build was run by hand, once)
 
 FILES
 + Source/VaelenEconomy/Public/Vaelen/Economy/Trade.h, Private/Trade.cpp
@@ -49,9 +51,12 @@ TESTS
 ✓ AELVOR 64 for 500 years with the busiest region detailed and every Phase 04 body and Phase 06 system:
   frozen trade digest 2e83bc0c672aba8f, 134864 units carried, 25 settlements founded
 ✓ Purity: 102 files, 0 violations
+✓ Engine: VaelenEditor Win64 Development rebuilt from scratch under UE 5.6.1 / MSVC 14.51, 0 errors;
+  editor opened; LogVaelen: VAELEN 0.0.1 - kernel save format v3 - kernel asserts on - module started
 
 BLOCKERS
-∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build)
+∅ (the Vaelen game target, the non-Development configurations and engine-backed CI are still
+  unexercised — ARCHITECTURE section 8.3)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -59,7 +64,7 @@ BLOCKERS
 
 | Task | Content | Status |
 |---|---|---|
-| 00.01 | Project architecture: `Vaelen.uproject`, targets, modules, CMake dual build, presets, CI, conventions | VALIDATED (headless) / UNVERIFIED (engine files never compiled by UBT) |
+| 00.01 | Project architecture: `Vaelen.uproject`, targets, modules, CMake dual build, presets, CI, conventions | VALIDATED (headless) / VALIDATED (engine: first UBT build 2026-09-07, ARCHITECTURE section 8) |
 | 00.02 | Core primitives: `CoreTypes`, `Version`, `Hash`, `Random`, `Ids` | VALIDATED: Hash 15, Random 29, Ids 19, Version 7, CoreTypes 1 tests |
 | 00.03 | Logging and assertions: `Log`, `Assert` | VALIDATED: Log 23, LogFloor 1, Assert 33 (23 of them in the assertions-off build) |
 | 00.04 | Test harness, runner, kernel purity checker | VALIDATED: Harness 5 tests, runner registry/shuffle/reverse entries, purity self-test 36 checks |
@@ -210,16 +215,17 @@ the purity checker, applied to headers and sources).
 | `VaelenCore/Public/Vaelen/Core/Random.h` | VALIDATED (Phase 00) — same note |
 | `VaelenCore/Public/Vaelen/Core/Ids.h` | VALIDATED (Phase 00) — same note |
 | `VaelenCore/Private/Assert.cpp`, `Log.cpp`, `Random.cpp`, `Ids.cpp`, `Version.cpp` | VALIDATED (Phase 00) — covered by the matching `Tests/Core/Test_*.cpp` |
-| `VaelenCore/Private/VaelenCoreModule.cpp` | UNVERIFIED (requires UE5) |
-| `VaelenCore/VaelenCore.Build.cs`, `Vaelen.Target.cs`, `VaelenEditor.Target.cs` | UNVERIFIED (requires UE5) |
-| `Vaelen/Vaelen.Build.cs`, `Vaelen/Public/Vaelen.h`, `Vaelen/Private/Vaelen.cpp`, `VaelenLogSink.h/.cpp` | UNVERIFIED (requires UE5) |
+| `VaelenCore/Private/VaelenCoreModule.cpp` | VALIDATED (UE 5.6, 2026-09-07) |
+| `VaelenCore/VaelenCore.Build.cs` | VALIDATED (UE 5.6, 2026-09-07) |
+| `Vaelen.Target.cs`, `VaelenEditor.Target.cs` | no STATUS line; `VaelenEditor` built 2026-09-07, the game target only had its rules assembly compiled |
+| `Vaelen/Vaelen.Build.cs`, `Vaelen/Public/Vaelen.h`, `Vaelen/Private/Vaelen.cpp`, `VaelenLogSink.h/.cpp` | VALIDATED (UE 5.6, 2026-09-07) |
 
 ### Source/VaelenSim (Phase 01)
 
 | File | STATUS |
 |---|---|
 | `Public/Vaelen/Sim/SimApi.h`, `PlainData.h`, `EntityHandle.h`, `EntityRegistry.h`, `ComponentType.h`, `ComponentPool.h`, `ComponentStore.h`, `SimClock.h`, `System.h`, `Event.h`, `EventBus.h`, `Archive.h`, `World.h`, `Snapshot.h`, `Private/EntityRegistry.cpp`, `ComponentType.cpp`, `ComponentStore.cpp`, `Scheduler.cpp`, `EventBus.cpp`, `Archive.cpp`, `World.cpp`, `Snapshot.cpp` | VALIDATED (Phase 01) — integration and long-duration tests arrive with 01.07 / 01.08 |
-| `Private/VaelenSimModule.cpp`, `VaelenSim.Build.cs` | UNVERIFIED (requires UE5) |
+| `Private/VaelenSimModule.cpp`, `VaelenSim.Build.cs` | VALIDATED (UE 5.6, 2026-09-07) |
 | `Public/Vaelen/Sim/TileGrid.h`, `WorldMap.h`, `Private/WorldMap.cpp` | VALIDATED (Phase 02) — covered by `Tests/Sim/Test_TileGrid.cpp`, `Test_WorldMap.cpp` |
 | `Public/Vaelen/Sim/FixedPoint.h`, `Noise.h`, `Private/Noise.cpp` | VALIDATED (Phase 02) — covered by `Tests/Sim/Test_FixedPoint.cpp`, `Test_Noise.cpp` |
 | `Public/Vaelen/Sim/WorldGen.h`, `Private/WorldGen.cpp` | VALIDATED (Phase 02) — covered by `Tests/Sim/Test_WorldGen.cpp`, `Test_Climate.cpp` |
@@ -239,7 +245,7 @@ the purity checker, applied to headers and sources).
 
 | File | STATUS |
 |---|---|
-| `VaelenPopulation.Build.cs`, `Private/VaelenPopulationModule.cpp` | UNVERIFIED — engine-side, not compiled headless |
+| `VaelenPopulation.Build.cs`, `Private/VaelenPopulationModule.cpp` | VALIDATED (UE 5.6, 2026-09-07) — engine-side, not compiled headless |
 | `CMakeLists.txt` | VALIDATED — six Linux presets |
 | `Public/Vaelen/Population/PopulationApi.h` | VALIDATED (Phase 04) |
 | `Public/Vaelen/Population/Persons.h`, `Private/Persons.cpp` | VALIDATED (Phase 04) — covered by `Tests/Population/Test_Persons.cpp` |
@@ -254,7 +260,7 @@ the purity checker, applied to headers and sources).
 
 | File | Status |
 |---|---|
-| `VaelenSociety.Build.cs`, `Private/VaelenSocietyModule.cpp` | UNVERIFIED — engine-side, not compiled headless |
+| `VaelenSociety.Build.cs`, `Private/VaelenSocietyModule.cpp` | VALIDATED (UE 5.6, 2026-09-07) — engine-side, not compiled headless |
 | `CMakeLists.txt` | VALIDATED (Phase 05) |
 | `Public/Vaelen/Society/SocietyApi.h` | VALIDATED (Phase 05) |
 | `Public/Vaelen/Society/Organizations.h`, `Private/Organizations.cpp` | VALIDATED (Phase 05) — covered by `Tests/Society/Test_Organizations.cpp` |
@@ -268,7 +274,7 @@ the purity checker, applied to headers and sources).
 
 | File | Status |
 |---|---|
-| `VaelenEconomy.Build.cs`, `Private/VaelenEconomyModule.cpp` | UNVERIFIED — engine-side, not compiled headless |
+| `VaelenEconomy.Build.cs`, `Private/VaelenEconomyModule.cpp` | VALIDATED (UE 5.6, 2026-09-07) — engine-side, not compiled headless |
 | `CMakeLists.txt` | VALIDATED (Phase 06) |
 | `Public/Vaelen/Economy/EconomyApi.h` | VALIDATED (Phase 06) |
 | `Public/Vaelen/Economy/Stocks.h`, `Private/Stocks.cpp` | VALIDATED (Phase 06) — covered by `Tests/Economy/Test_Stocks.cpp` |
@@ -366,11 +372,38 @@ Also run locally: `python3 Tools/check_kernel_purity.py --self-test` (36 checks,
 `python3 Tools/check_kernel_purity.py --root . --verbose` (12 files, 0 violations),
 `clang-format --style=file --dry-run -Werror` on every kernel and test source (0 drift).
 
+### Engine (development PC, 2026-09-07)
+
+Toolchain: UE 5.6.1 (`5.6.1-44394996+++UE5+Release-5.6`), MSVC 14.51.36256 from Visual
+Studio 2026 Community (the only x64 toolchain installed; UBT calls it "Visual Studio 2022
+compiler version 14.51.36256 is not a preferred version" and uses it anyway, so no
+`BuildConfiguration.xml` override was needed), Windows SDK 10.0.26100.0, Windows 11
+Enterprise 10.0.26200, .NET 8.0.300 bundled with the engine.
+
+| Step | Result |
+|---|---|
+| `Build.bat -projectfiles` | Succeeded, 14 s |
+| `Build.bat VaelenEditor Win64 Development` (first) | Failed: `C2280` on `ComponentStore`, then `LNK2019/LNK2001` on 7 kernel symbols |
+| `Rebuild.bat VaelenEditor Win64 Development` (after the fixes) | Succeeded, 77 actions, 65 s, 0 errors, 654 C4251 + 42 C4996 warnings |
+| `Binaries/Win64` | `UnrealEditor-Vaelen{Core,Sim,Population,Society,Economy}.dll` + `UnrealEditor-Vaelen.dll` |
+| Editor opened on `Vaelen.uproject` | `LogVaelen: VAELEN 0.0.1 - kernel save format v3 - kernel asserts on - module started` |
+| `check_kernel_purity.py` after the fixes (UE's bundled Python 3) | 102 files, 0 violations |
+| `clang-format 22.1.3 -i --style=file` on every edited source | 0 drift |
+
 ## Unverified
 
-- The Unreal build: no UE 5.6 installation is available in this environment. Every
-  engine-facing file is UNVERIFIED and was reviewed only by reasoning from the UE 5.6
-  API (see `Docs/ARCHITECTURE.md` section 8 for what the first engine build must confirm).
+- The `Vaelen` game target: only `VaelenEditor` was built on 2026-09-07, so the
+  monolithic path (every `VAELEN_<MODULE>_API` empty) has never been linked. Nor was any
+  configuration other than Development: the `VAELEN_ASSERTS_ENABLED=0` and
+  `VAELEN_LOG_COMPILED_MIN_LEVEL=2` branches of the `Build.cs` files stay unexercised
+  under UBT. `Docs/ARCHITECTURE.md` section 8.3 keeps the list.
+- Engine-backed CI: none. The first engine build was run by hand on the development PC,
+  once; nothing re-runs it.
+- The headless suites against the four kernel headers edited for that build
+  (`ComponentStore.h`, `Population.h`, `Religion.h`, `Regions.h`): the development PC has
+  no CMake, no Ninja and no system Python 3, so only the purity checker was re-run there
+  (102 files, 0 violations, through the Python bundled with UE). The GitHub matrix is
+  what confirms the 240+ tests and the frozen digests.
 - clang-cl on Windows: only Microsoft cl (MSVC 19.44) was exercised by CI; the
   `/clang:-ffp-contract=off` branch is untested.
 - Long-duration and integration test categories: deferred to Phase 01 (ROADMAP 01.07,

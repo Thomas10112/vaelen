@@ -92,7 +92,7 @@ namespace Vaelen::WorldGen
 		{
 			return Neighbours.empty() ? 0u : static_cast<uint32>(Neighbours.size() - 1);
 		}
-		bool AreAdjacent(uint16 A, uint16 B) const noexcept;
+		VAELEN_SIM_API bool AreAdjacent(uint16 A, uint16 B) const noexcept;
 	};
 	VAELEN_SIM_API RegionGraph BuildRegionGraph(const WorldMap& Map, const RegionLayers& Regions);
 

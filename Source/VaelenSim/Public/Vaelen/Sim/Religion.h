@@ -71,13 +71,15 @@ namespace Vaelen::History
 		uint32 Adherents[MaxFaiths] = {}; ///< believers per slot
 		uint32 Majority = 0;			  ///< religion with the most believers (0 when none)
 		uint32 Reserved = 0;
-		uint32 SlotOf(uint32 ReligionIndex) const noexcept;
-		uint32 Total() const noexcept;
+		// Exported one by one, not as a whole struct: the layout is asserted
+		// below and must stay a plain component.
+		VAELEN_SIM_API uint32 SlotOf(uint32 ReligionIndex) const noexcept;
+		VAELEN_SIM_API uint32 Total() const noexcept;
 		/// Adds believers; returns false when no slot is free.
-		bool Add(uint32 ReligionIndex, uint32 People) noexcept;
+		VAELEN_SIM_API bool Add(uint32 ReligionIndex, uint32 People) noexcept;
 		/// Removes believers (clamped); frees the slot at zero.
-		uint32 Remove(uint32 ReligionIndex, uint32 People) noexcept;
-		void Recount() noexcept;
+		VAELEN_SIM_API uint32 Remove(uint32 ReligionIndex, uint32 People) noexcept;
+		VAELEN_SIM_API void Recount() noexcept;
 	};
 	static_assert(sizeof(RegionFaith) == 40, "RegionFaith must stay padding free");
 

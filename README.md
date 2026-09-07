@@ -118,30 +118,40 @@ Version) and `Core.Registry`, `Core.Shuffled`, `Core.Reversed`. CMake options:
 `VAELEN_BUILD_TESTS` (ON), `VAELEN_WARNINGS_AS_ERRORS` (ON), `VAELEN_ENABLE_ASSERTS` (ON),
 `VAELEN_REQUIRE_PURITY_CHECK` (ON).
 
-## Open the Unreal project (UNVERIFIED)
+## Open the Unreal project
 
-1. Install Unreal Engine 5.6 and Visual Studio 2022 with the "Game development with C++"
-   workload (including the Unreal Engine components it offers).
+1. Install Unreal Engine 5.6 and Visual Studio (2022 or 2026) with the "Game development
+   with C++" workload (including the Unreal Engine components it offers).
 2. Right-click `Vaelen.uproject` and choose "Generate Visual Studio project files"
    (`Vaelen.sln` is git-ignored and always regenerated).
 3. Open the solution, build the `VaelenEditor` target in Development Editor, then launch the
    editor from `Vaelen.uproject`. On start the `Vaelen` module logs
    `VAELEN <version> - kernel save format v<n> - kernel asserts on - module started`.
 
-This path has not been exercised: no UE 5.6 installation or engine-backed CI runner is
-available in this repository's environment, so every Unreal-facing file is marked `UNVERIFIED`.
+This path was walked for the first time on 2026-09-07, on UE 5.6.1 with MSVC 14.51 from
+Visual Studio 2026 (UBT calls that toolchain "not a preferred version" and uses it anyway).
+`VaelenEditor Win64 Development` builds from scratch with no errors, the six modules load,
+and the editor prints:
+
+```
+LogVaelen: VAELEN 0.0.1 - kernel save format v3 - kernel asserts on - module started
+```
+
+Still not exercised: the `Vaelen` game target (monolithic), any configuration other than
+Development, and engine-backed CI — that build was run by hand, once.
+`Docs/ARCHITECTURE.md` section 8 records what it took and what it left.
 
 ## Status
 
 | Component | Where | STATUS |
 |---|---|---|
-| Kernel primitives: CoreTypes, Version, Assert, Log, Hash, Random, Ids | `Source/VaelenCore` | VALIDATED (Phase 00) headless with clang 18 and gcc 13; UNVERIFIED under UBT |
-| Kernel module registration | `Source/VaelenCore/Private/VaelenCoreModule.cpp` | UNVERIFIED (requires UE5) |
-| Unreal bridge module `Vaelen` | `Source/Vaelen` | UNVERIFIED (requires UE5) |
-| Simulation module (01.01 entities, 01.02 components, 01.03 systems and scheduler, 01.04 clock and calendar, 01.05 events, 01.06 world and snapshot, 01.07 deterministic replay gate, 01.08 long-duration mini-world gate, 02.01 tile grid and world map, 02.02 fixed point and noise, 02.03 elevation and coastline, 02.04 climate and biomes, 02.05 hydrology, 02.06 regions, 02.07 deposits, 02.08 pipeline gate; Phase 02 closed headless; 03.01 eras and chronicle, 03.02 cultures and coarse population, 03.03 languages and naming, 03.04 religions, 03.05 disasters and omens, 03.06 pre-history run, 03.07 queryable history, 03.08 gate; Phase 03 closed headless) | `Source/VaelenSim` | VALIDATED (Phase 01) headless; UNVERIFIED under UBT |
-| Population module (04.01 persons and the two grains of population, 04.02 ageing, mortality, fertility and the reconciliation of the grains, 04.03 families and lineage, 04.04 needs and body, 04.05 traits, skills and names, 04.06 LOD bridge, 04.07 persons in history, 04.08 gate) | `Source/VaelenPopulation` | VALIDATED (04.01-04.08, Phase 04 closed) headless; UNVERIFIED under UBT |
-| Society module (05.01 organisations: councils and temples, seats, heads, coarse counts; 05.02 standing: ranks, tiers, the elite; 05.03 norms per culture, marriages by culture; 05.04 bondage and slavery; 05.05 organisations acting; 05.06 the social shape across the grains; 05.07 society in history; 05.08 gate) | `Source/VaelenSociety` | VALIDATED (05.01-05.08, Phase 05 closed) headless; UNVERIFIED under UBT |
-| Economy module (06.01 goods and stocks: kinds, common and house stocks, the endowment, split and fold across the grains; 06.02 production and consumption: the harvest, the meals, the ration the needs observe, deposits and craft; 06.03 markets and prices: a market per region, prices from wanted over held, price events; 06.04 trade and routes: routes on price gaps, goods carried cheap to dear, settlements) | `Source/VaelenEconomy` | VALIDATED (06.01-06.04) headless; UNVERIFIED under UBT |
+| Kernel primitives: CoreTypes, Version, Assert, Log, Hash, Random, Ids | `Source/VaelenCore` | VALIDATED (Phase 00) headless with clang 18 and gcc 13; VALIDATED under UBT (UE 5.6, 2026-09-07) |
+| Kernel module registration | `Source/VaelenCore/Private/VaelenCoreModule.cpp` | VALIDATED (UE 5.6, 2026-09-07) |
+| Unreal bridge module `Vaelen` | `Source/Vaelen` | VALIDATED (UE 5.6, 2026-09-07) |
+| Simulation module (01.01 entities, 01.02 components, 01.03 systems and scheduler, 01.04 clock and calendar, 01.05 events, 01.06 world and snapshot, 01.07 deterministic replay gate, 01.08 long-duration mini-world gate, 02.01 tile grid and world map, 02.02 fixed point and noise, 02.03 elevation and coastline, 02.04 climate and biomes, 02.05 hydrology, 02.06 regions, 02.07 deposits, 02.08 pipeline gate; Phase 02 closed headless; 03.01 eras and chronicle, 03.02 cultures and coarse population, 03.03 languages and naming, 03.04 religions, 03.05 disasters and omens, 03.06 pre-history run, 03.07 queryable history, 03.08 gate; Phase 03 closed headless) | `Source/VaelenSim` | VALIDATED (Phase 01) headless; VALIDATED under UBT (UE 5.6, 2026-09-07) |
+| Population module (04.01 persons and the two grains of population, 04.02 ageing, mortality, fertility and the reconciliation of the grains, 04.03 families and lineage, 04.04 needs and body, 04.05 traits, skills and names, 04.06 LOD bridge, 04.07 persons in history, 04.08 gate) | `Source/VaelenPopulation` | VALIDATED (04.01-04.08, Phase 04 closed) headless; VALIDATED under UBT (UE 5.6, 2026-09-07) |
+| Society module (05.01 organisations: councils and temples, seats, heads, coarse counts; 05.02 standing: ranks, tiers, the elite; 05.03 norms per culture, marriages by culture; 05.04 bondage and slavery; 05.05 organisations acting; 05.06 the social shape across the grains; 05.07 society in history; 05.08 gate) | `Source/VaelenSociety` | VALIDATED (05.01-05.08, Phase 05 closed) headless; VALIDATED under UBT (UE 5.6, 2026-09-07) |
+| Economy module (06.01 goods and stocks: kinds, common and house stocks, the endowment, split and fold across the grains; 06.02 production and consumption: the harvest, the meals, the ration the needs observe, deposits and craft; 06.03 markets and prices: a market per region, prices from wanted over held, price events; 06.04 trade and routes: routes on price gaps, goods carried cheap to dear, settlements) | `Source/VaelenEconomy` | VALIDATED (06.01-06.04) headless; VALIDATED under UBT (UE 5.6, 2026-09-07) |
 | Test harness and runner | `Tests/Harness` | VALIDATED (Phase 00) |
 | Core test suites (133 tests, 108 without assertions) | `Tests/Core` | VALIDATED |
 | Kernel purity checker | `Tools/check_kernel_purity.py` | VALIDATED (Phase 00) |

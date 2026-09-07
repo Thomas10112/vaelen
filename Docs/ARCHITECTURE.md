@@ -20,7 +20,7 @@ Contents
 5. [Foundation primitives that exist today](#5-foundation-primitives-that-exist-today)
 6. [Test infrastructure](#6-test-infrastructure)
 7. [Build pipeline](#7-build-pipeline)
-8. [What is unverified today](#8-what-is-unverified-today)
+8. [The first engine build](#8-the-first-engine-build)
 9. [Determinism conventions embodied in the foundation](#9-determinism-conventions-embodied-in-the-foundation)
 10. [Coding rules enforced by tooling](#10-coding-rules-enforced-by-tooling)
 11. [Known discrepancies](#11-known-discrepancies)
@@ -107,10 +107,10 @@ file per module (rule R0).
 | Exceptions / RTTI | `bEnableExceptions = false`, `bUseRTTI = false` | `-fno-exceptions -fno-rtti`; MSVC: `/GR-`, `_HAS_EXCEPTIONS=0`, `/EHs-c- /wd4577` |
 | PCH / unity | `PCHUsage = NoPCHs`, `bUseUnity = false` | n/a |
 | Language | `CppStandardVersion.Cpp20` | `CMAKE_CXX_STANDARD 20`, extensions OFF |
-| Warnings | UBT defaults (not verified: no engine build has been run) | `-Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion -Wold-style-cast -Wcast-align -Wnon-virtual-dtor -Woverloaded-virtual -Wnull-dereference -Wdouble-promotion -Wformat=2`, `-Werror` when `VAELEN_WARNINGS_AS_ERRORS` (default ON); MSVC `/W4 /permissive- /utf-8 /WX` (the assertion and harness macros are written so constant conditions do not trigger C4127) |
+| Warnings | UBT defaults. The modular editor build is clean of errors and raises 654 C4251 (STL member of a dllexported class) and 42 C4996 (engine deprecations reached through `Vaelen.cpp`); neither is silenced, see section 8.3 | `-Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion -Wold-style-cast -Wcast-align -Wnon-virtual-dtor -Woverloaded-virtual -Wnull-dereference -Wdouble-promotion -Wformat=2`, `-Werror` when `VAELEN_WARNINGS_AS_ERRORS` (default ON); MSVC `/W4 /permissive- /utf-8 /WX` (the assertion and harness macros are written so constant conditions do not trigger C4127) |
 | Engine dependency | `VaelenCore` -> `Core` only (needed by `VaelenCoreModule.cpp`) | None |
 | Output | Runtime module, loading phase `PreDefault` | Static library `VaelenCore` (alias `Vaelen::Core`) and test executable `VaelenCoreTests` |
-| Status | UNVERIFIED (never compiled by UBT in this repository's history) | VALIDATED: clang 18 and gcc 13 (Linux), six presets, 133 tests, 0 warnings |
+| Status | VALIDATED (2026-09-07): UE 5.6.1, MSVC 14.51 (Visual Studio 2026), `VaelenEditor` Win64 Development built clean and opened; see section 8 | VALIDATED: clang 18 and gcc 13 (Linux), six presets, 133 tests, 0 warnings |
 
 Where the defines are consumed today: `VAELEN_UNREAL_BUILD` in `Assert.h` and `Log.h`
 (fallbacks only); `VAELEN_CORE_API` on every exported symbol (never on `constexpr`/inline
@@ -125,12 +125,12 @@ yet. Later kernel modules follow the same pattern with their own `VAELEN_<MODULE
 
 | Module | Kind | Layer | Depends on | Status |
 |---|---|---|---|---|
-| `VaelenCore` | Kernel (UBT Runtime module, `PreDefault`; CMake static library) | Foundation of SIMULATION and WORLD STATE | UBT: `Core` (module registration only). CMake: none. | VALIDATED headless; UNVERIFIED under UBT |
-| `VaelenSim` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 01 | SIMULATION (entities, components, systems, clock, events) | UBT: `Core`, `VaelenCore`. CMake: `Vaelen::Core`. | Phases 01-03 VALIDATED headless; UNVERIFIED under UBT |
-| `VaelenPopulation` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 04 | SIMULATION (persons, families, demographics) | UBT: `Core`, `VaelenCore`, `VaelenSim`. CMake: `Vaelen::Sim`, `Vaelen::Core`. | VALIDATED headless (04.01-04.08, Phase 04 closed); UNVERIFIED under UBT |
-| `VaelenSociety` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 05 | SIMULATION (organisations, standing, norms, bondage) | UBT: `Core`, `VaelenCore`, `VaelenSim`, `VaelenPopulation`. CMake: `Vaelen::Population`, `Vaelen::Sim`, `Vaelen::Core`. | VALIDATED headless (05.01-05.08, Phase 05 closed); UNVERIFIED under UBT |
-| `VaelenEconomy` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 06 | SIMULATION (goods, stocks, production, markets, trade, wealth) | UBT: `Core`, `VaelenCore`, `VaelenSim`, `VaelenPopulation`, `VaelenSociety`. CMake: `Vaelen::Society`, `Vaelen::Population`, `Vaelen::Sim`, `Vaelen::Core`. | 06.01-06.04 VALIDATED headless; UNVERIFIED under UBT |
-| `Vaelen` | Unreal primary game module (`IMPLEMENT_PRIMARY_GAME_MODULE`, Runtime, `Default`) | Engine bridge (PRESENTATION side) | `Core`, `CoreUObject`, `Engine`, `InputCore`, `VaelenCore` | UNVERIFIED (requires UE 5.6) |
+| `VaelenCore` | Kernel (UBT Runtime module, `PreDefault`; CMake static library) | Foundation of SIMULATION and WORLD STATE | UBT: `Core` (module registration only). CMake: none. | VALIDATED headless; VALIDATED under UBT (UE 5.6, 2026-09-07, editor) |
+| `VaelenSim` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 01 | SIMULATION (entities, components, systems, clock, events) | UBT: `Core`, `VaelenCore`. CMake: `Vaelen::Core`. | Phases 01-03 VALIDATED headless; VALIDATED under UBT (UE 5.6, 2026-09-07, editor) |
+| `VaelenPopulation` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 04 | SIMULATION (persons, families, demographics) | UBT: `Core`, `VaelenCore`, `VaelenSim`. CMake: `Vaelen::Sim`, `Vaelen::Core`. | VALIDATED headless (04.01-04.08, Phase 04 closed); VALIDATED under UBT (UE 5.6, 2026-09-07, editor) |
+| `VaelenSociety` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 05 | SIMULATION (organisations, standing, norms, bondage) | UBT: `Core`, `VaelenCore`, `VaelenSim`, `VaelenPopulation`. CMake: `Vaelen::Population`, `Vaelen::Sim`, `Vaelen::Core`. | VALIDATED headless (05.01-05.08, Phase 05 closed); VALIDATED under UBT (UE 5.6, 2026-09-07, editor) |
+| `VaelenEconomy` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 06 | SIMULATION (goods, stocks, production, markets, trade, wealth) | UBT: `Core`, `VaelenCore`, `VaelenSim`, `VaelenPopulation`, `VaelenSociety`. CMake: `Vaelen::Society`, `Vaelen::Population`, `Vaelen::Sim`, `Vaelen::Core`. | 06.01-06.04 VALIDATED headless; VALIDATED under UBT (UE 5.6, 2026-09-07, editor) |
+| `Vaelen` | Unreal primary game module (`IMPLEMENT_PRIMARY_GAME_MODULE`, Runtime, `Default`) | Engine bridge (PRESENTATION side) | `Core`, `CoreUObject`, `Engine`, `InputCore`, `VaelenCore` | VALIDATED (UE 5.6, 2026-09-07): built and started in the editor |
 
 `Vaelen` installs a kernel log sink (`FVaelenLogSink`, routes `Vaelen::LogRecord` to
 `UE_LOG(LogVaelen, ...)`) and a kernel assertion handler (`ensureAlwaysMsgf` for Ensure,
@@ -259,7 +259,7 @@ military, 50-51 knowledge (Phase 12). Values are part of the save format: append
   .clang-format                   Allman braces, tabs, 120 columns, PascalCase style base
   .editorconfig                   tabs for C++/C#, 2 spaces for md/yml/json/cmake/py
   .github/workflows/kernel-ci.yml headless CI matrix
-  Config/                         Default*.ini (engine, game, editor, input) - UNVERIFIED
+  Config/                         Default*.ini (engine, game, editor, input) - read by the editor 2026-09-07
   Content/                        empty (Unreal content, none yet)
   Docs/                           ARCHITECTURE.md (this document), CONVENTIONS.md (coding and process
                                   rules), DECISIONS.md (ADRs), ROADMAP.md (phases and tasks), STATUS.md
@@ -456,42 +456,128 @@ Verified in this repository: all six Linux presets with the exact preset command
 14/14 CTest entries pass, 133/133 tests (108/108 without assertions), 0 warnings, 0
 clang-format drift. GitHub Actions run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14).
 
-### 7.2 Engine-backed build (NOT automated)
+### 7.2 Engine-backed build (run by hand, NOT automated)
 
 The Unreal project (`Vaelen.uproject`, engine association 5.6, targets `Vaelen` and
 `VaelenEditor`) is built with UBT, outside of any workflow in this repository. There is
-no engine-backed CI runner, no workflow file for it, and no Unreal Automation test
+still no engine-backed CI runner, no workflow file for it, and no Unreal Automation test
 wrapper (`Config/DefaultEditor.ini` states that these are added once such a runner is
-available). Consequently the Unreal-facing files have never been compiled here (see
-section 8). Adding this pipeline is PLANNED; it requires a self-hosted or licensed runner
+available). Adding this pipeline is PLANNED; it requires a self-hosted or licensed runner
 with UE 5.6 installed.
 
-## 8. What is unverified today
+What exists instead is one manual run, on the development PC, on 2026-09-07 - the first
+in this repository's history. Section 8 records what it used, what it broke and what it
+proved. The commands, from the repository root:
 
-Every file below carries `// STATUS: UNVERIFIED - not compiled in the headless CI
-(requires UE5).` in its header. Their content was reviewed against the UE 5.6 API but
-never compiled, linked or executed.
+```
+"<UE>/Engine/Build/BatchFiles/Build.bat"   -projectfiles -project=<abs>/Vaelen.uproject -game -rocket
+"<UE>/Engine/Build/BatchFiles/Rebuild.bat" VaelenEditor Win64 Development -project=<abs>/Vaelen.uproject
+"<UE>/Engine/Binaries/Win64/UnrealEditor.exe" <abs>/Vaelen.uproject -log
+```
 
-| File | Claimed role |
+UBT refuses to build while the editor is open (`Unable to build while Live Coding is
+active`), including an editor sitting on the project browser with no project loaded:
+close it before rebuilding.
+
+## 8. The first engine build
+
+Done on 2026-09-07, on the development PC: UE 5.6.1 (`5.6.1-44394996+++UE5+Release-5.6`,
+installed at `D:/Users/Utilisateur/UE_5.6`), Windows 11 Enterprise 10.0.26200, MSVC
+14.51.36256 (Visual Studio 2026 Community, the only x64 toolchain installed), Windows SDK
+10.0.26100.0, bundled .NET 8.0.300. UBT prints `Visual Studio 2022 compiler version
+14.51.36256 is not a preferred version. Please use the latest preferred version
+14.38.33130` and then uses it: a warning, not a refusal, so the planned fallback to v143
+through `%APPDATA%/Unreal Engine/UnrealBuildTool/BuildConfiguration.xml` was not needed
+and no such file was written.
+
+Sequence: project files generated from `Vaelen.uproject`
+(`Engine/Build/BatchFiles/Build.bat -projectfiles -project=... -game -rocket`, 14 s), then
+`VaelenEditor Win64 Development` built with `Build.bat`, then rebuilt from scratch with
+`Rebuild.bat` (77 actions, 65 s, `Result: Succeeded`), then the editor opened on the
+provisional `OpenWorld` startup map. Six DLLs in `Binaries/Win64`:
+`UnrealEditor-Vaelen{Core,Sim,Population,Society,Economy}.dll` and `UnrealEditor-Vaelen.dll`.
+
+The module-started line in the Output Log, which is the check the build exists for:
+
+```
+LogVaelen: VAELEN 0.0.1 - kernel save format v3 - kernel asserts on - module started
+```
+
+Each file below now carries `// STATUS: VALIDATED (UE 5.6, 2026-09-07) - compiled and run
+in the editor; not covered by the headless CI.` in place of the UNVERIFIED line it had
+since Phase 00. The role column is unchanged: what was claimed is what the build found.
+
+| File | Role, now confirmed |
 |---|---|
-| `Source/VaelenCore/Private/VaelenCoreModule.cpp` | `FVaelenCoreModule : IModuleInterface`, `IMPLEMENT_MODULE(FVaelenCoreModule, VaelenCore)`, `IsGameModule() = true` (hot-reloadable project module) |
-| `Source/VaelenCore/VaelenCore.Build.cs` | Module rules described in section 2: no PCH, no unity, no exceptions/RTTI, C++20; defines `VAELEN_UNREAL_BUILD`, `VAELEN_CORE_EXPORTS`/`IMPORTS` (modular link type), `VAELEN_ASSERTS_ENABLED` and `VAELEN_LOG_COMPILED_MIN_LEVEL` from `Target.Configuration` |
+| `Source/Vaelen{Core,Sim,Population,Society,Economy}/Private/Vaelen<Module>Module.cpp` | `F<Module> : IModuleInterface`, `IMPLEMENT_MODULE`, `IsGameModule() = true` (hot-reloadable project module) |
+| `Source/Vaelen{Core,Sim,Population,Society,Economy}/<Module>.Build.cs` | Module rules described in section 2: no PCH, no unity, no exceptions/RTTI, C++20; `VAELEN_UNREAL_BUILD`, the `_EXPORTS`/`_IMPORTS` pair under `TargetLinkType.Modular`, and (VaelenCore) `VAELEN_ASSERTS_ENABLED` and `VAELEN_LOG_COMPILED_MIN_LEVEL` from `Target.Configuration` |
 | `Source/Vaelen/Vaelen.Build.cs` | Primary game module rules (Core, CoreUObject, Engine, InputCore, VaelenCore) |
 | `Source/Vaelen/Public/Vaelen.h` | `FVaelenModule`, `LogVaelen` category (`VAELEN_API`) |
-| `Source/Vaelen/Private/Vaelen.cpp` | Static asserts that `Vaelen::int64/uint64/uint32` are Unreal's; installs `FVaelenLogSink` and the Unreal assertion handler (first ensure per kernel site through `ensureAlwaysMsgf`, repeats as warnings; checks through `UE_LOG(Fatal)`); aligns the kernel log floor with `LogVaelen`'s verbosity; logs `VAELEN <version> - kernel save format v<n> - kernel asserts on/off - module started`; `IMPLEMENT_PRIMARY_GAME_MODULE` |
+| `Source/Vaelen/Private/Vaelen.cpp` | Static asserts that `Vaelen::int64/uint64/uint32` are Unreal's - all three hold under MSVC; installs `FVaelenLogSink` and the Unreal assertion handler (first ensure per kernel site through `ensureAlwaysMsgf`, repeats as warnings; checks through `UE_LOG(Fatal)`); aligns the kernel log floor with `LogVaelen`'s verbosity; logs the module-started line; `IMPLEMENT_PRIMARY_GAME_MODULE` |
 | `Source/Vaelen/Private/VaelenLogSink.h/.cpp` | Maps `LogLevel` Trace/Debug/Info/Warning/Error/Fatal to `VeryVerbose/Verbose/Log/Warning/Error/Error`; messages converted with `UTF8_TO_TCHAR` |
-| `Source/Vaelen.Target.cs`, `Source/VaelenEditor.Target.cs` | Game and Editor targets, `BuildSettingsVersion.V5`, include order `Unreal5_6` (C++20 is set per module) |
-| `Vaelen.uproject` | Module list and load order, plugins `EnhancedInput` and `ModelingToolsEditorMode` (Editor only) |
-| `Config/Default*.ini` | Engine (provisional rendering defaults, labelled), game (`ProjectVersion=0.0.1`), editor and input defaults |
 
-What the first engine build must confirm, in this order: (1) UBT accepts the module and
-target rules; (2) the kernel compiles under UBT's warning set with `VAELEN_CORE_API`
-expanding to the kernel-owned export/import attributes in the modular editor build;
-(3) `VAELEN_ASSERTS_ENABLED` is 1 in Development Editor (the module-started log line says
-"kernel asserts on"); (4) the fp-contract pragmas hold under UE's clang and MSVC
-toolchains (`ModuleRules.FPSemantics` was deliberately not set because it could not be
-confirmed here); (5) the module-started log line appears. Verification path: install
-UE 5.6, generate project files, build `VaelenEditor` (Development), open the project.
+Three engine files carried no STATUS line and still carry none, so nothing was flipped in
+them, but they were exercised: `Source/VaelenEditor.Target.cs` (built),
+`Source/Vaelen.Target.cs` (rules assembly compiled; the target itself was not built) and
+`Vaelen.uproject` (module list, load order and both plugins accepted by UBT and by the
+editor). `Config/Default*.ini` were read by the editor at startup, which also rewrites
+`DefaultEngine.ini` with an `AndroidFileServer` block on first open; that write is
+editor noise and was reverted, not committed.
+
+
+### 8.1 What the build answered
+
+The questions this section asked before there was a build, in the order it asked them:
+
+1. **UBT accepts the module and target rules** - yes, unchanged. Six modules, five kernel
+   ones with `NoPCHs`, no unity, no exceptions, no RTTI, C++20, and the primary game module
+   with shared PCHs. `IMPLEMENT_MODULE` / `IMPLEMENT_PRIMARY_GAME_MODULE` register cleanly
+   and UnrealHeaderTool has nothing to generate (`Total of 0 written`).
+2. **The kernel compiles under UBT with the kernel-owned `VAELEN_<MODULE>_API`** - yes,
+   after two fixes (8.2). The export macro is the kernel's own `__declspec(dllexport)` /
+   `dllimport`, driven by the `VAELEN_<MODULE>_EXPORTS` / `_IMPORTS` definitions the
+   `Build.cs` files set for `TargetLinkType.Modular`; UBT's own `VAELENSIM_API=DLLEXPORT`
+   token is defined alongside it and, as designed, is never read.
+3. **`VAELEN_ASSERTS_ENABLED` is 1 in Development Editor** - yes: the log line says
+   `kernel asserts on`.
+4. **The fp-contract pragmas hold under MSVC** - `#pragma fp_contract(off)` in
+   `Random.cpp` is accepted with no diagnostic (no C4068, no other warning in that
+   translation unit). Numeric equivalence with the Linux presets is not shown by this
+   build: the headless suites were not run here (no CMake on this machine).
+5. **The module-started log line appears** - yes, quoted above, at editor startup, before
+   the map loads.
+
+### 8.2 What the first build broke, and what each fix cost
+
+Two failures, both in the modular editor build and both caused by class-level
+`__declspec(dllexport)` - the case the headless CMake build (static libraries, empty
+export macros) cannot reach.
+
+| Failure | Diagnostic | Fix |
+|---|---|---|
+| `ComponentStore` could not be exported | `error C2280: unique_ptr<IComponentPool>::operator=(const unique_ptr&): attempting to reference a deleted function`, reached from `vector::operator=` instantiated by the dllexport of the class | Declared the copy constructor and copy assignment `= delete` in `ComponentStore` (`Source/VaelenSim/Public/Vaelen/Sim/ComponentStore.h`). A store owns its pools; copying one never compiled. `World`, `WorldMap` and `PreHistory` already say this - the store was the one that did not. |
+| Three kernel types were not exported at all | `LNK2019/LNK2001` on `History::RegionPopulation::{SlotOf,Add,Remove,Recount}`, `History::RegionFaith::{SlotOf,Total,Add,Remove,Recount}` and `WorldGen::RegionGraph::AreAdjacent`, from `UnrealEditor-Vaelen{Population,Society,Economy}.dll` | Put `VAELEN_SIM_API` on those member declarations (`Population.h`, `Religion.h`, `Regions.h`). Per member, not on the whole struct: `RegionPopulation` and `RegionFaith` are plain components whose `sizeof` is asserted, and they must stay that way. |
+
+Both are annotations, not logic: no statement of the kernel changed, no frozen digest was
+touched, and the purity checker still reports `102 files, 0 violations`.
+
+### 8.3 What is still unverified
+
+- **The `Vaelen` game target.** Only `VaelenEditor` was built. The monolithic path, where
+  every `VAELEN_<MODULE>_API` expands to nothing, has never been linked.
+- **The headless suites on this machine.** No CMake, no Ninja and no system Python 3 are
+  installed on the development PC, so the 240+ kernel tests were not re-run against the
+  four edited headers; the GitHub matrix is what confirms them.
+- **Any other configuration.** Only Win64 Development Editor was built - not DebugGame,
+  Test or Shipping, so the `VAELEN_ASSERTS_ENABLED=0` and
+  `VAELEN_LOG_COMPILED_MIN_LEVEL=2` branches of the `Build.cs` files are still unexercised
+  under UBT.
+- **Engine-backed CI.** Still none; see 7.2. This build was run by hand, once.
+- **654 C4251 warnings** (`std::vector` / `std::atomic` / `std::string_view` member of a
+  dllexported class needs a dll-interface) and 42 C4996 deprecations from engine headers
+  pulled in by `Vaelen.cpp`. Both are expected here - every module in the build is
+  compiled by one compiler against one CRT - and neither was silenced, because silencing
+  them is a decision for the phase that owns the presentation layer.
 
 ## 9. Determinism conventions embodied in the foundation
 
@@ -548,3 +634,7 @@ None between code, comments and this document after the Phase 00 review pass
 Builds and test runs executed (clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.15, clang-format 18.1.3, Linux x86_64): all six Linux presets, `ctest` 14/14,
 `VaelenCoreTests` 133/133 (108/108 without assertions); purity checker `12 files,
 0 violations`, self-test `36 checks, 0 failed`; clang-format dry run: 0 drift.
+Engine build executed (UE 5.6.1, MSVC 14.51.36256, Windows SDK 10.0.26100.0, Windows 11
+x64, 2026-09-07): `VaelenEditor Win64 Development` rebuilt from scratch, `Result:
+Succeeded`, six DLLs, editor opened; purity checker re-run after the four kernel-header
+edits: `102 files, 0 violations`; clang-format 22.1.3 on every edited source: 0 drift.
