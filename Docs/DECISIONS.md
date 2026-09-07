@@ -84,6 +84,7 @@ Rules for this file:
 | [0059](#adr-0059-succession-is-judged-not-decided) | Succession is judged, not decided | Accepted; headless VALIDATED |
 | [0060](#adr-0060-a-faction-takes-ground-never-the-throne) | A faction takes ground, never the throne | Accepted; headless VALIDATED |
 | [0061](#adr-0061-a-relation-is-a-fact-of-the-ground-and-a-war-is-a-permission-not-an-order) | A relation is a fact of the ground, and a war is a permission, not an order | Accepted; headless VALIDATED |
+| [0062](#adr-0062-history-is-narrower-than-the-log-and-the-topmost-describer-speaks-for-every-layer) | History is narrower than the log, and the topmost describer speaks for every layer | Accepted; headless VALIDATED |
 
 ---
 
@@ -3646,6 +3647,65 @@ Accepted 2026-09-07. Files: `Source/VaelenPolitics/Public/Vaelen/Politics/Diplom
 `Private/Diplomacy.cpp`, `Reach.h` and `Private/Reach.cpp` (`RegionInPlay`,
 `ObserveContest`, `RegionAnnexed`), `Source/VaelenCore/.../Ids.h` (`IdKind::Treaty`),
 `Tests/Politics/Test_Diplomacy.cpp` (4 tests). Headless VALIDATED on the six Linux presets.
+
+---
+
+## ADR-0062: History is narrower than the log, and the topmost describer speaks for every layer
+
+### Context
+
+07.07 is the fourth chronicle layer (03.06 the world's, 04.07 the person's, 05.07
+the society's, 06.07 the economy's). The pattern was settled by then; what this
+task had to settle was *what a political event has to be to be history*, and how
+a world with four layers of describers tells one story rather than four.
+
+### Decision
+
+1. **The narrowness is the design.** A politics log of forty years holds 1838
+   events; the chronicle keeps 30. The rule for each kind is the same one 06.07
+   used for prices - record the ends, not the motion:
+   - a settled succession is not history (the council seated its head, as it
+     does); an empty seat and a succession the custom did not name are;
+   - a tax moving a notch is not history; a tax at its floor or its ceiling is,
+     because the polity has run out of room in one direction;
+   - a faction forming or fading is not history; a province throwing off its
+     master is;
+   - a stance drifting through rivalry is not history; a pact sworn and a war
+     begun are.
+2. **Every event still has a sentence**, recorded or not. `DescribePoliticsEvent`
+   covers all twenty-one, so anything read out of the log - by a test, by the why
+   chain, by a later tool - reads as the world's own words, and nothing ever
+   falls back to "event 12 of type 0x...".
+3. **The topmost describer speaks for every layer under it.** `PoliticsContext`
+   carries an optional `EconomyContext`, which carries a `SocietyContext`, which
+   knows the person layer. One call describes any event in the world at the
+   fullest words available. Without this, a chronicle of a whole world would lose
+   the words of its middle - the mistake 06.08 found and fixed for the economy.
+
+### Alternatives and decision rule
+
+- Recording every political event: rejected; a century would leave tens of
+  thousands of records and the chronicle would be the log with extra steps.
+- A separate describer per layer, chosen by the caller: rejected; the caller
+  would have to know which layer an event came from, which is exactly what the
+  layering is meant to hide.
+- Recording law changes at every step: rejected; the bound is the moment the rule
+  itself becomes visible, and a polity pinned at its ceiling is a fact about the
+  polity, not about the year.
+
+### Consequences
+
+- The chronicle of a world with two powers reads as a history: foundings, seats
+  taken, taxes demanded, dues paid, provinces thrown off, wars, annexations.
+- 07.08's gate can freeze the chronicle text as a digest, which catches any
+  change in wording, ordering or narrowness at once.
+- A fifth layer (Phase 08's wars) will carry a `PoliticsContext` the same way.
+
+### Status
+
+Accepted 2026-09-07. Files: `Source/VaelenPolitics/Public/Vaelen/Politics/PoliticsHistory.h`,
+`Private/PoliticsHistory.cpp`, `Tests/Politics/Test_PoliticsHistory.cpp` (3 tests).
+Headless VALIDATED on the six Linux presets.
 
 ---
 

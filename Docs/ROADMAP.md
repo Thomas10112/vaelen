@@ -74,7 +74,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | VALIDATED (headless, 06.01-06.08); UNVERIFIED (engine) |
-| 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | IN PROGRESS (07.01-07.06 VALIDATED headless; 07.07-07.08 PLANNED) |
+| 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | IN PROGRESS (07.01-07.07 VALIDATED headless; 07.08 PLANNED) |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
 | 10 | PLAYER | The player as one simulated person: enslaved start, body, needs, skills, relationships; player intent as commands into the simulation. | PLANNED |
@@ -2023,6 +2023,26 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   the same relations year for year; determinism, snapshot continuity, frozen treaty digest `9f07d235c61d3712`
   after 100 years (4 contacts, 5 stances turned).
 - Decision: ADR-0061.
+
+### 07.07 Politics in the chronicle - VALIDATED (headless)
+
+- Delivered: `PoliticsHistory.h/.cpp` - `PoliticsChronicleRules` (what is recorded: foundings and
+  endings, empty seats and disputed successions, laws at a bound, revolts, contacts and the two ends
+  of the diplomatic scale, annexations; sixteen records a region a year at most),
+  `PoliticsChronicleState`, `PoliticsChronicleTypes::Declare`, `PoliticsContext` (carrying an
+  optional `EconomyContext` so the topmost describer speaks for every layer under it),
+  `PoliticsChronicle` listener, `NamePolity` ("the polity of Edavaken"), `NameFaction`,
+  `DescribePoliticsEvent` giving each of the twenty-one politics events its own sentence after the
+  year and the age, `ExportChronicleWithPolitics`, `ExportWhyWithPolitics`, `CheckPoliticsChronicle`.
+- Tests (3): every political event of forty years has a line of its own - prefixed by the year and
+  the age, never falling back to the generic event text, never naming a bare index where a name was
+  meant - while the events of the layers below keep their own words through the same describer; only
+  what a century would remember is recorded (1838 political events leave 30 records), a settled
+  succession is never among them, every recorded law stood at one of its own bounds, every line of
+  the chronicle ends in a full stop, and the why of an annexation runs back through the causes each
+  system wrote; determinism, snapshot continuity, and the chronicle text of a restored world
+  identical to the original; frozen text digest `2082522228252ab5` after 100 years (80 records, 4301 lines).
+- Decision: ADR-0062.
 ## 12. Phases 08-20: notes
 
 No task breakdown exists yet for Phases 07-20; each is broken down when the previous
@@ -2043,43 +2063,42 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 07 — POLITICS
-TASK        : 07.06 — DIPLOMACY
+TASK        : 07.07 — POLITICS IN THE CHRONICLE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████████████████░░░░░░ 71%
+███████████████████░░░░░ 73%
 
 CURRENTLY
-→ 07.06 closed: two polities know each other when their ground touches - contact is a fact of the
-  region graph, not a decision. A relation warms and cools by things the world already has: a shared
-  culture, roads carrying goods across the border, the length of that border, and the shadow a much
-  larger neighbour casts. The stance follows the warmth with hysteresis, so a pact is not lost to one
-  bad year. And it has teeth: at war the weaker side's border regions are marked in play, and the
-  reach system - which could only take unruled ground - may take a contested region at a war price,
-  from the border rather than from the capital. RelationBetween, NeighboursOf, MeasureDiplomacy
+→ 07.07 closed: every one of the twenty-one politics events has a sentence of its own, and a record
+  only for what a century would remember. A settled succession is not history; a disputed one is. A
+  tax moving a notch is not history; a tax at its floor or its ceiling is. A faction forming is not
+  history; a province throwing off its master is. Over forty years of a world with two powers, 1838
+  political events leave 30 records. The describer of the topmost layer speaks for every layer under
+  it, so the same chronicle still says what the economy, the society and the people did.
+  NamePolity, NameFaction, DescribePoliticsEvent, ExportChronicleWithPolitics, ExportWhyWithPolitics,
+  CheckPoliticsChronicle
 
 COMPLETED
-✓ Phases 00-06 (headless) (CI 65)
-✓ 07.01 polities · 07.02 law · 07.03 reach · 07.04 succession · 07.05 factions
-✓ 07.06 diplomacy (4 tests: Diplomacy)
+✓ Phases 00-06 (headless) (CI 66)
+✓ 07.01 polities · 07.02 law · 07.03 reach · 07.04 succession · 07.05 factions · 07.06 diplomacy
+✓ 07.07 politics in the chronicle (3 tests: PoliticsHistory)
 
 NEXT
-→ 07.07 Politics in the chronicle: a line for every founding, law, war and revolt
-→ 07.08 Phase 07 gate
+→ 07.08 Phase 07 gate: 500 years at 256 with every Phase 04 to 07 system, invariants every decade,
+  frozen digests; Phase 07 closed against the exit criteria
 
 FILES
-+ Source/VaelenPolitics/Public/Vaelen/Politics/Diplomacy.h, Private/Diplomacy.cpp
-+ Tests/Politics/Test_Diplomacy.cpp
-~ Source/VaelenPolitics/Public/Vaelen/Politics/Reach.h, Private/Reach.cpp (RegionInPlay, ObserveContest,
-  RegionAnnexed, AnnexCost), Source/VaelenCore/.../Ids.h, Private/Ids.cpp (IdKind::Treaty),
-  Tests/Core/Test_Ids.cpp, Source/VaelenPolitics/CMakeLists.txt
++ Source/VaelenPolitics/Public/Vaelen/Politics/PoliticsHistory.h, Private/PoliticsHistory.cpp
++ Tests/Politics/Test_PoliticsHistory.cpp
+~ Source/VaelenPolitics/CMakeLists.txt
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 160 + Population 36 + Society 27 + Economy 26
-  + Politics 24 (24 without asserts); ctest 77/77 in all six Linux presets; every earlier
+  + Politics 27 (27 without asserts); ctest 78/78 in all six Linux presets; every earlier
   frozen digest unchanged
-✓ AELVOR 128, two powers over 100 years: frozen treaty digest 9f07d235c61d3712 (4 contacts, 5 stances turned)
-✓ Purity: 119 files, 0 violations
+✓ AELVOR 128, two powers over 100 years: frozen chronicle text 2082522228252ab5 (80 records, 4301 lines)
+✓ Purity: 121 files, 0 violations
 
 BLOCKERS
 ∅ (the engine-side files stay UNVERIFIED until the next UE 5.6 build)
