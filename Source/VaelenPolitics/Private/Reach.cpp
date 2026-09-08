@@ -208,6 +208,16 @@ namespace Vaelen::Politics
 				}
 				RuledBy[R] = 0;
 				++Far->Slipped;
+				// Whoever takes the ground away cancels the demand on it. The law
+				// system runs before this one, so without this the region would be
+				// assessed for a whole year on behalf of a master it no longer has.
+				// What it already owes it still owes: the arrears wait for whoever
+				// comes next.
+				Economy::RegionDues* Owed = W.Components().GetPool(Laws.Dues).TryGet(RegionHandles[R]);
+				if (Owed != nullptr)
+				{
+					Owed->PerMille = 0;
+				}
 				RegionAuthority* Gone = W.Components().GetPool(Reaches.Authority).TryGet(RegionHandles[R]);
 				if (Gone != nullptr)
 				{

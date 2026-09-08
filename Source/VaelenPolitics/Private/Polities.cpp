@@ -220,16 +220,31 @@ namespace Vaelen::Politics
 				Held += Rule != nullptr && Rule->Polity == P->Index ? 1u : 0u;
 			}
 			P->Regions = Held;
-			// Dissolution: no council of its own, or nothing left to rule.
-			const bool Ruined = Members == 0 || Held == 0 || (P->Seat < N && CouncilOf[P->Seat] != Council);
+			// Dissolution: no council of its own, nothing left to rule, or the
+			// seat itself gone. A polity rules through the council of its seat
+			// (ADR-0056); once that ground belongs to somebody else the council
+			// sits in another realm, and there is nothing left to rule through.
+			// Only a conquest can take a seat - a faction never rises in a
+			// capital (07.05) and a seat never slips for want of hold (07.03) -
+			// so this is what makes a conquest decisive.
+			const bool SeatLost = P->Seat >= N || RegionHandles[P->Seat].IsNull() || [&]
+			{
+				const RegionRule* Rule = W.Components().GetPool(Polities.Rule).TryGet(RegionHandles[P->Seat]);
+				return Rule == nullptr || Rule->Polity != P->Index;
+			}();
+			const bool Ruined = Members == 0 || Held == 0 || SeatLost || (P->Seat < N && CouncilOf[P->Seat] != Council);
 			if (!Ruined)
 			{
 				continue;
 			}
+			// A polity is given its first years to grow into itself - but not when
+			// the seat itself is gone. Losing a capital is not a failure to grow,
+			// and a polity ruling through a council that now sits in another
+			// realm is a contradiction rather than a young state.
 			const uint64 Years = uint64{History::TicksPerYear} * Rules.DissolveAfterYears;
-			if (Context.Tick < P->Founded + Years)
+			if (!SeatLost && Context.Tick < P->Founded + Years)
 			{
-				continue; // a polity is given its first years
+				continue;
 			}
 			P->Dissolved = Context.Tick;
 			P->Ruler = 0;

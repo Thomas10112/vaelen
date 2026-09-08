@@ -85,6 +85,7 @@ Rules for this file:
 | [0060](#adr-0060-a-faction-takes-ground-never-the-throne) | A faction takes ground, never the throne | Accepted; headless VALIDATED |
 | [0061](#adr-0061-a-relation-is-a-fact-of-the-ground-and-a-war-is-a-permission-not-an-order) | A relation is a fact of the ground, and a war is a permission, not an order | Accepted; headless VALIDATED |
 | [0062](#adr-0062-history-is-narrower-than-the-log-and-the-topmost-describer-speaks-for-every-layer) | History is narrower than the log, and the topmost describer speaks for every layer | Accepted; headless VALIDATED |
+| [0063](#adr-0063-a-seat-cannot-be-taken) | A seat cannot be taken | Accepted; headless VALIDATED |
 
 ---
 
@@ -3706,6 +3707,68 @@ a world with four layers of describers tells one story rather than four.
 Accepted 2026-09-07. Files: `Source/VaelenPolitics/Public/Vaelen/Politics/PoliticsHistory.h`,
 `Private/PoliticsHistory.cpp`, `Tests/Politics/Test_PoliticsHistory.cpp` (3 tests).
 Headless VALIDATED on the six Linux presets.
+
+---
+
+## ADR-0063: A seat cannot be taken
+
+### Context
+
+The Phase 07 gate ran five centuries of two powers at 256 with every system of
+Phases 04 to 07 and found what no task test could: a polity whose capital had
+been annexed went on standing, ruling through a council that now sat inside
+another realm. Three systems can take ground - the reach system lets a region
+slip (07.03), a faction takes its own region (07.05), and a war puts ground in
+play (07.06) - and each had its own answer for capitals. Two said no; one said
+nothing.
+
+### Decision
+
+1. **A seat cannot be taken.** The rule is now the same in all three places: a
+   seat does not slip for want of hold, no faction rises in it, and no war puts
+   it in play. A polity ends when its council ends or when it has nothing left,
+   never by having its capital seized.
+2. Taking a capital is a siege, and a siege is Phase 08. When 08.04 adds it, it
+   will be the only way, and it will go through the polity system rather than
+   around it.
+3. Belt and braces: a polity that somehow loses its seat is dissolved **at
+   once**, without the founding grace. Losing a capital is not a failure to
+   grow, and a young polity ruling from another realm's ground is a
+   contradiction rather than a state that needs time.
+4. Whoever takes ground away cancels the demand on it. The law system (07.02)
+   runs before the systems that free ground, so without this a freed region was
+   assessed for a whole year on behalf of a master it no longer had. What it
+   already owes it still owes: the arrears wait for whoever comes next.
+
+### Alternatives and decision rule
+
+- A polity that moves its seat when it loses one: rejected for Phase 07; the
+  seat is where the council sits, and a council does not move. It may return in
+  Phase 08 as a term of surrender.
+- Dissolving a polity the moment its capital falls, taken by war: that is what
+  the first fix did, and it worked - but it left the three systems disagreeing
+  about whether a seat is takeable at all. One rule stated in one place beats
+  three rules that happen to agree.
+- Tolerating the inconsistency in the invariant: rejected. An invariant that
+  tolerates a lie for a year is not an invariant; a polity ruling from enemy
+  ground is exactly the kind of thing the gate exists to catch.
+
+### Consequences
+
+- Conquest can take every province and stops at the wall. A polity reduced to
+  its capital is a rump that may grow again - which is a better world than one
+  where a lucky annexation ends a state.
+- The three "the seat is inviolable" rules can now be stated as one line in the
+  documentation and tested as one property.
+- 08.04 has a clear brief: the siege is the only door, and it opens through
+  07.01.
+
+### Status
+
+Accepted 2026-09-07. Files: `Source/VaelenPolitics/Private/Polities.cpp`,
+`Private/Reach.cpp`, `Private/Factions.cpp`, `Private/Diplomacy.cpp`,
+`Public/Vaelen/Politics/Factions.h`, `Tests/Politics/Test_PoliticsGate.cpp` (1 test).
+Headless VALIDATED on the six Linux presets with every gate run.
 
 ---
 

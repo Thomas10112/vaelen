@@ -296,6 +296,22 @@ namespace Vaelen::Politics
 		// 4. What a war puts in play: the border regions of the weaker side.
 		//    Written on the region, so the reach system can take one without
 		//    ever learning what a war is.
+		// A seat is never put in play. It does not slip for want of hold (07.03),
+		// no faction rises in it (07.05), and no war takes it: a polity ends when
+		// its council ends or when it has nothing left, never by having its
+		// capital seized. Taking a capital is a siege, and a siege is Phase 08.
+		std::vector<uint32> Capitals;
+		W.Components()
+			.GetPool(Polities.Polity)
+			.ForEach(
+				[&](EntityHandle, const PolityInfo& P)
+				{
+					if (P.Dissolved == 0 && P.Seat != 0)
+					{
+						Capitals.push_back(P.Seat);
+					}
+				});
+		std::sort(Capitals.begin(), Capitals.end());
 		std::vector<uint32> Marked(N, 0u);
 		for (const Known& K : Existing)
 		{
@@ -314,7 +330,8 @@ namespace Vaelen::Politics
 			const uint32 Weak = Strong == Bond->A ? Bond->B : Bond->A;
 			for (uint32 R = 1; R < N; ++R)
 			{
-				if (RuledBy[R] != Weak || R >= Graph.Neighbours.size() || Marked[R] != 0)
+				if (RuledBy[R] != Weak || R >= Graph.Neighbours.size() || Marked[R] != 0 ||
+					std::binary_search(Capitals.begin(), Capitals.end(), R))
 				{
 					continue;
 				}

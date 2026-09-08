@@ -24,3 +24,5 @@ list(APPEND VAELEN_POLITICS_TEST_NAMES Politics.Registry Politics.Shuffled)
 
 set_tests_properties(${VAELEN_POLITICS_TEST_NAMES} PROPERTIES TIMEOUT 300)
 set_tests_properties(Politics.Shuffled PROPERTIES TIMEOUT 5400)
+# The Phase 07 gate runs 500 years of a whole world with two powers, twice.
+set_tests_properties(Politics.PoliticsGate PROPERTIES TIMEOUT 2400)

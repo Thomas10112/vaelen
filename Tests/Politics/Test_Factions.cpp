@@ -125,6 +125,7 @@ namespace
 			Words->ObserveLine(Heirs.Line);
 			Rebels = std::make_unique<FactionSystem>(Instance, Ages.Types(), Persons, Polities, Reaches, Heirs, Parties,
 													 InFactions);
+			Rebels->ObserveDues(Laws.Dues);
 			Houses->RunAfter("Lod");
 			Stocks->RunAfter("Lod");
 			Harvest->ObserveTraits(Traits.Traits);

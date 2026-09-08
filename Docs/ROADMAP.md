@@ -74,8 +74,8 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 04 | POPULATION | Persons and families: birth, ageing, death, lineage, needs, demographics. | VALIDATED (headless, 04.01-04.08); UNVERIFIED (engine) |
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | VALIDATED (headless, 06.01-06.08); UNVERIFIED (engine) |
-| 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | IN PROGRESS (07.01-07.07 VALIDATED headless; 07.08 PLANNED) |
-| 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED |
+| 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | VALIDATED headless (07.01-07.08, phase closed); UNVERIFIED under UBT |
+| 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED (08.01-08.08 broken down, section 12) |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
 | 10 | PLAYER | The player as one simulated person: enslaved start, body, needs, skills, relationships; player intent as commands into the simulation. | PLANNED |
 | 11 | MINING COLONY | The starting place: a huge autonomous mining colony simulated by the same systems at full detail. | PLANNED |
@@ -2043,10 +2043,53 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   system wrote; determinism, snapshot continuity, and the chronicle text of a restored world
   identical to the original; frozen text digest `2082522228252ab5` after 100 years (80 records, 4301 lines).
 - Decision: ADR-0062.
-## 12. Phases 08-20: notes
 
-No task breakdown exists yet for Phases 07-20; each is broken down when the previous
+### 07.08 Phase 07 gate - VALIDATED (headless)
+
+- Delivered: `Tests/Politics/Test_PoliticsGate.cpp` - AELVOR at 256 after 300 years of pre-history,
+  its two most peopled regions detailed (a world with one polity has no diplomacy, no war and no
+  ground that can change hands), and every Phase 04, 05, 06 and 07 system running for 500 years.
+  Every decade the invariants of all four phases hold: persons consistent with the counts, no astray
+  membership, standing over the living and free only, bonds and strata sound, customs within their
+  bounds, every cause resolving in the log, nothing stale or orphaned in the economy, a market
+  wherever a stock is, every price within its bounds, every ration at most a full one, no bad road -
+  and, new here, no polity ruling from ground it does not hold, no region demanded of by nobody,
+  every ruled region carrying the authority of its master, no line disagreeing with its polity, no
+  faction in ground its polity does not hold, no relation with a power that has ended, the regions
+  held equal to the regions ruled, and every record of all four chronicles described and
+  era-consistent. Frozen: world `2ab8cc1ac3511587` at year 250, `3fa464fbbbad5fe6` at year 500,
+  log `9dee76991a6bc9c8`, chronicle text `a4e5ee1fb64db8ab`. A snapshot at year 250 restored into a fresh
+  world runs to the same year 500, the same log and the same text.
+- Found by the gate, and only by running everything at once for five centuries:
+  1. A region freed by a slip (07.03) or a revolt (07.05) went on being assessed for a year,
+     because the law system runs before the systems that free ground. Whoever takes the ground away
+     now cancels the demand on it; what it already owes it still owes.
+  2. A polity whose capital was annexed (07.06) went on standing, ruling through a council that sat
+     in another realm. The rule that resolves it makes the other three consistent: **a seat cannot
+     be taken** - it does not slip for want of hold (07.03), no faction rises in it (07.05), and no
+     war puts it in play (07.06). Taking a capital is a siege, and a siege is Phase 08.
+  3. A polity that lost its seat inside its founding grace was kept alive by that grace. Losing a
+     capital is not a failure to grow, so a seat lost now ends a polity at once.
+- Decision: ADR-0063.
+## 12. Phase 08 - MILITARY: task breakdown
+
+Broken down on the closing of Phase 07. Phases 09-20 are broken down as each previous
 phase closes.
+
+| Task | Content | Test kind |
+|---|---|---|
+| 08.01 | `VaelenMilitary` module; a levy raised from a polity's people and paid out of its treasury; ArmyInfo on entities of kind Army; MeasureArmies | unit, deterministic |
+| 08.02 | Marching: an army moves on the region graph, one hop a season, and costs grain where it stands | unit, integration with 07.03 |
+| 08.03 | Battle: two armies in one region resolve by strength, ground and a stream drawn from the world seed; losses in persons where the region is detailed | unit, deterministic, edge |
+| 08.04 | Siege: an army before a seat; a capital taken only here, and what that does to the polity of 07.01 | integration with 07.01 and 07.06 |
+| 08.05 | War as a thing with a beginning and an end: aims, exhaustion, terms; the stance of 07.06 follows it rather than leading it | unit, integration |
+| 08.06 | What war costs the living: the dead, the displaced, the harvests taken, the standing of those who fought | integration with 04.x and 06.02 |
+| 08.07 | War in the chronicle: levies, marches, battles, sieges, terms; the why of a lost province | text, deterministic |
+| 08.08 | Phase 08 gate: 500 years at 256 with every Phase 04 to 08 system, invariants every decade, frozen digests; Phase 08 closed against section 2 | long-duration |
+
+Every task ends with the usual report block, the docs refreshed and a commit.
+
+## 12b. Phases 09-20: notes
 
  Fixed points already in the code: `IdKind` values for Region, Tile, River,
 ResourceDeposit (Phase 02), Culture, Language, Religion, Person, Family, Organization
@@ -2062,42 +2105,52 @@ class and Enhanced Input mappings arrive in Phase 10.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 07 — POLITICS
-TASK        : 07.07 — POLITICS IN THE CHRONICLE
+PHASE       : 07 — POLITICS (CLOSED)
+TASK        : 07.08 — PHASE 07 GATE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███████████████████░░░░░ 73%
+███████████████████░░░░░ 75%
 
 CURRENTLY
-→ 07.07 closed: every one of the twenty-one politics events has a sentence of its own, and a record
-  only for what a century would remember. A settled succession is not history; a disputed one is. A
-  tax moving a notch is not history; a tax at its floor or its ceiling is. A faction forming is not
-  history; a province throwing off its master is. Over forty years of a world with two powers, 1838
-  political events leave 30 records. The describer of the topmost layer speaks for every layer under
-  it, so the same chronicle still says what the economy, the society and the people did.
-  NamePolity, NameFaction, DescribePoliticsEvent, ExportChronicleWithPolitics, ExportWhyWithPolitics,
-  CheckPoliticsChronicle
+→ Phase 07 closed. Five centuries of AELVOR at 256 with its two most peopled regions detailed and
+  every Phase 04, 05, 06 and 07 system running: 2 polities standing and 32 ended, 42 regions ruled,
+  4.28 million grain taken in dues, 284 rulers seated of whom 90 took a seat the custom named for
+  another, 40 provinces thrown off by their own people, 158 regions taken in war, 449 political
+  records. Every invariant of all four phases holds every decade; the snapshot of year 250 restored
+  into a fresh world runs to the same year 500, the same log and the same story.
+
+The gate found three real defects, none of which the task tests could have:
+  · a region freed by a slip or a revolt kept being taxed for a year, because the law system runs
+    before the systems that free ground - whoever takes the ground away now cancels the demand;
+  · a polity whose capital was annexed went on standing, ruling from ground that was no longer its
+    own - and the rule that resolves it makes the other three consistent: A SEAT CANNOT BE TAKEN.
+    It does not slip for want of hold (07.03), no faction rises in it (07.05), and no war puts it in
+    play (07.06). Taking a capital is a siege, and a siege is Phase 08;
+  · a polity that lost its seat during its founding grace was kept alive by that grace - losing a
+    capital is not a failure to grow, so it now ends at once.
 
 COMPLETED
-✓ Phases 00-06 (headless) (CI 66)
+✓ Phases 00-06 (headless) (CI 67)
 ✓ 07.01 polities · 07.02 law · 07.03 reach · 07.04 succession · 07.05 factions · 07.06 diplomacy
-✓ 07.07 politics in the chronicle (3 tests: PoliticsHistory)
+✓ 07.07 politics in the chronicle · 07.08 Phase 07 gate (1 test: PoliticsGate)
+✓ PHASE 07 POLITICS: VALIDATED (headless)
 
 NEXT
-→ 07.08 Phase 07 gate: 500 years at 256 with every Phase 04 to 07 system, invariants every decade,
-  frozen digests; Phase 07 closed against the exit criteria
+→ Phase 08 MILITARY, broken down into 08.01-08.08 (ROADMAP section 12)
 
 FILES
-+ Source/VaelenPolitics/Public/Vaelen/Politics/PoliticsHistory.h, Private/PoliticsHistory.cpp
-+ Tests/Politics/Test_PoliticsHistory.cpp
-~ Source/VaelenPolitics/CMakeLists.txt
++ Tests/Politics/Test_PoliticsGate.cpp
+~ Source/VaelenPolitics/Private/Polities.cpp (a seat lost ends a polity at once),
+  Private/Reach.cpp and Private/Factions.cpp (freed ground is demanded nothing),
+  Private/Diplomacy.cpp (a seat is never put in play),
+  Public/Vaelen/Politics/Factions.h (ObserveDues), Tests/Politics/CMakeLists.txt
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 160 + Population 36 + Society 27 + Economy 26
-  + Politics 27 (27 without asserts); ctest 78/78 in all six Linux presets; every earlier
-  frozen digest unchanged
-✓ AELVOR 128, two powers over 100 years: frozen chronicle text 2082522228252ab5 (80 records, 4301 lines)
+  + Politics 28 (28 without asserts); ctest 78/78 in all six Linux presets, every gate
+  included; every earlier frozen digest unchanged
+✓ Phase 07 gate: frozen 250=2ab8cc1ac3511587 500=3fa464fbbbad5fe6 log=9dee76991a6bc9c8 text=a4e5ee1fb64db8ab
 ✓ Purity: 121 files, 0 violations
 
 BLOCKERS

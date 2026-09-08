@@ -23,6 +23,7 @@
 
 #include "Vaelen/Core/CoreTypes.h"
 #include "Vaelen/Politics/PoliticsApi.h"
+#include "Vaelen/Politics/Law.h"
 #include "Vaelen/Politics/Polities.h"
 #include "Vaelen/Politics/Reach.h"
 #include "Vaelen/Politics/Succession.h"
@@ -115,6 +116,14 @@ namespace Vaelen::Politics
 			  Lines(InLines), Factions(InFactions), Rules(InRules)
 		{
 		}
+		/// Optional: the dues written on a region (07.02). A province that throws
+		/// off its master is demanded nothing more; without this it would be
+		/// assessed for a year on behalf of a polity that no longer holds it.
+		void ObserveDues(ComponentType<Economy::RegionDues> InDues) noexcept
+		{
+			Dues = InDues;
+			HasDues = true;
+		}
 		const char* GetName() const noexcept override { return "Factions"; }
 		SimLod GetLod() const noexcept override { return SimLod::World; }
 		std::vector<std::string_view> GetDependencies() const override
@@ -139,6 +148,8 @@ namespace Vaelen::Politics
 		SuccessionTypes Lines;
 		FactionTypes Factions;
 		FactionRules Rules;
+		ComponentType<Economy::RegionDues> Dues;
+		bool HasDues = false;
 	};
 
 	/// A faction by index (nullptr when unknown), standing or ended.

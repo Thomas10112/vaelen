@@ -208,6 +208,14 @@ namespace Vaelen::Politics
 					A->Distance = 0;
 				}
 				RuledBy[F->Region] = 0;
+				if (HasDues)
+				{
+					Economy::RegionDues* Owed = W.Components().GetPool(Dues).TryGet(RegionHandles[F->Region]);
+					if (Owed != nullptr)
+					{
+						Owed->PerMille = 0;
+					}
+				}
 				F->Ended = Context.Tick;
 				Context.Events->Publish(Context.Tick, FactionRevoltedEvent,
 										PolityPayload{F->Polity, F->Region, F->Claimant, F->Strength},

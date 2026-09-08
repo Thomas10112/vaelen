@@ -50,9 +50,9 @@ using namespace Vaelen::WorldGen;
 // Recorded on clang 18 / Linux x86_64 on 2026-09-07 (07.02): AELVOR 128 at
 // year 300, the busiest region detailed, 100 years with every Phase 04, 05,
 // 06 and 07 system so far.
-#define VAELEN_TREATY_FROZEN_128 0x9f07d235c61d3712ull
-#define VAELEN_TREATY_CONTACTS_128 4u
-#define VAELEN_TREATY_TURNS_128 5u
+#define VAELEN_TREATY_FROZEN_128 0x06ba03a0697211b6ull
+#define VAELEN_TREATY_CONTACTS_128 1u
+#define VAELEN_TREATY_TURNS_128 2u
 
 namespace
 {
@@ -128,6 +128,7 @@ namespace
 			Words->ObserveLine(Heirs.Line);
 			Rebels = std::make_unique<FactionSystem>(Instance, Ages.Types(), Persons, Polities, Reaches, Heirs, Parties,
 													 InFactions);
+			Rebels->ObserveDues(Laws.Dues);
 			Envoys = std::make_unique<DiplomacySystem>(Instance, Ages.Types(), Trade, Polities, Treaties, InTreaties);
 			Words->ObserveContest(Treaties.Contested);
 			Houses->RunAfter("Lod");
