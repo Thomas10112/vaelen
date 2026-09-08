@@ -53,14 +53,11 @@ namespace Vaelen::Politics
 		{
 			return;
 		}
-		// The region graph does not change once the world is generated; it is
-		// rebuilt only when the count of regions does, which is never after
-		// generation but is once at a snapshot restored into a fresh world.
-		if (GraphRegions != static_cast<uint32>(N))
-		{
-			Graph = WorldGen::BuildRegionGraph(W.Map(), Types.World.Regions);
-			GraphRegions = static_cast<uint32>(N);
-		}
+		// The graph is derived from the map, so the cache is keyed on the map
+		// and not on the count of regions: two different maps can share a count,
+		// and a snapshot loaded over a world that has already ticked would
+		// otherwise leave this walking an adjacency that no longer exists.
+		const WorldGen::RegionGraph& Graph = Roads.Of(W.Map(), Types.World.Regions);
 
 		std::vector<uint32> RuledBy(N, 0u);
 		for (uint32 R = 1; R < N; ++R)

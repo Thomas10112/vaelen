@@ -96,6 +96,31 @@ namespace Vaelen::WorldGen
 	};
 	VAELEN_SIM_API RegionGraph BuildRegionGraph(const WorldMap& Map, const RegionLayers& Regions);
 
+	/// A region graph kept across ticks, for the systems that walk it every year.
+	///
+	/// The graph is not state: it is derived from the map, and it is stale the
+	/// moment the map is replaced. Keying the cache on the count of regions - the
+	/// obvious cheap thing - is wrong, because two entirely different maps can
+	/// have the same count, and a snapshot loaded into a world that has already
+	/// ticked would then leave every system walking the adjacency of a world that
+	/// no longer exists: every distance, every hold, every march and every retreat
+	/// computed on the wrong graph, silently. This keys on the map's own revision.
+	class VAELEN_SIM_API RegionGraphCache
+	{
+	public:
+		/// The graph of this map, built on the first call and whenever the map has
+		/// been replaced since the last one.
+		const RegionGraph& Of(const WorldMap& Map, const RegionLayers& Regions);
+		/// Times the graph has actually been built, for the tests.
+		uint32 Builds() const noexcept { return Built; }
+
+	private:
+		RegionGraph Graph;
+		uint64 Key = 0;
+		bool Held = false;
+		uint32 Built = 0;
+	};
+
 	struct RegionStats
 	{
 		uint32 Regions = 0;

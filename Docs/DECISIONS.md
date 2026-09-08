@@ -91,6 +91,7 @@ Rules for this file:
 | [0066](#adr-0066-a-battle-is-settled-in-one-year-by-numbers-ground-and-a-stream) | A battle is settled in one year by numbers, ground and a stream | Accepted; headless VALIDATED |
 | [0067](#adr-0067-a-seat-is-taken-only-by-sitting-in-front-of-it) | A seat is taken only by sitting in front of it | Accepted; headless VALIDATED |
 | [0068](#adr-0068-the-war-is-the-thing-and-the-stance-follows-it) | The war is the thing, and the stance follows it | Accepted; headless VALIDATED |
+| [0069](#adr-0069-a-derived-cache-is-keyed-on-what-it-was-derived-from) | A derived cache is keyed on what it was derived from | Accepted; headless VALIDATED |
 
 ---
 
@@ -4122,6 +4123,72 @@ treasury 07.03 spends on holding its provinces.
 Accepted 2026-09-08. Files: `Source/VaelenMilitary/Public/Vaelen/Military/War.h`,
 `Source/VaelenMilitary/Private/War.cpp`, `Tests/Military/Test_War.cpp`
 (4 tests). Headless VALIDATED on the six Linux presets.
+
+---
+
+## ADR-0069: A derived cache is keyed on what it was derived from
+
+### Context
+
+The region adjacency graph is derived from the map. Three systems walk it every
+year - authority and reach (07.03), marching (08.02) and battles (08.03) - and
+building it every tick would be wasteful, so each of them kept it and rebuilt
+it when the count of regions changed. The count was chosen because it is cheap
+and because, after generation, it never changes.
+
+An adversarial review found and reproduced what that misses. `LoadSnapshot`
+replaces the world's map wholesale, and the snapshot checks validate the seed
+and the layout of the layers, not the map's dimensions or contents. AELVOR has
+ninety-nine regions at 128 tiles a side and ninety-nine at 112. Load a 128
+image into a world that has already ticked on a 112 map and every system keeps
+the old adjacency: every distance, hold, upkeep, slip, claim, march and retreat
+of that tick runs on the graph of a world that no longer exists, silently. The
+same image gives two different worlds, which is the one thing the simulation
+promises never to do.
+
+### Decision
+
+1. **A cache of a derived thing is keyed on the thing it was derived from**, not
+   on any property of it. `WorldMap` counts the times its shape or contents have
+   been replaced wholesale - by generation, or by a snapshot loaded over it -
+   and exposes that as `Revision()`.
+2. **One `RegionGraphCache`, in VaelenSim**, keyed on that revision and the
+   grid, used by all three systems. Three copies of a caching rule is three
+   chances to get it wrong, and this one was wrong three times.
+3. **The count of regions is never a key.** It is a property of the map, and a
+   property that two different maps can share is not an identity.
+
+### Alternatives and decision rule
+
+- Rebuilding the graph every tick: correct and simple, and rejected on the
+  decision rule only after the cheap exact key was available. A 256-square
+  world at five hundred years with three systems walking it is sixty-five
+  thousand tiles a rebuild, three times a year.
+- Hashing the region layer as the key: correct, and O(tiles) every tick for
+  every system - the same cost as the rebuild it is meant to avoid.
+- Validating the map's dimensions in `LoadSnapshot` and refusing a mismatch:
+  rejected as the wrong fix in the wrong place. Loading a save of another world
+  size is a reasonable thing to do; the bug is that a derived cache did not
+  notice.
+
+### Consequences
+
+- Every frozen digest is unchanged. The fix changes nothing in a world that was
+  never mishandled, which is what a fix for a stale cache should look like.
+- Two tests hold it: one at the Sim level, that the cache rebuilds when the map
+  under it changes though the count does not (and it records the 128/112
+  collision that makes the old key wrong); one at the Politics level, that a
+  snapshot loaded into a world which has already run fifty years on another map
+  gives exactly the world the image came from.
+- Anything else derived from the map and kept across ticks now has a key to use.
+
+### Status
+
+Accepted 2026-09-08. Files: `Source/VaelenSim/Public/Vaelen/Sim/Regions.h`,
+`Source/VaelenSim/Private/Regions.cpp`, `Source/VaelenSim/Public/Vaelen/Sim/WorldMap.h`,
+`Source/VaelenSim/Private/WorldMap.cpp`, `Source/VaelenPolitics/.../Reach.*`,
+`Source/VaelenMilitary/.../March.*`, `.../Battle.*`, `Tests/Sim/Test_Regions.cpp`,
+`Tests/Politics/Test_Reach.cpp`. Headless VALIDATED on the six Linux presets.
 
 ---
 

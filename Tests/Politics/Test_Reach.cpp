@@ -650,3 +650,46 @@ VAELEN_TEST(Reach, DeterministicSnapshotSafeAndFrozen)
 	VT_CHECK_EQ(ComputeStateDigest(R.Instance), ComputeStateDigest(A.Instance));
 	VT_CHECK_EQ(R.Words_().Digest, S.Digest);
 }
+
+VAELEN_TEST(Reach, ASnapshotLoadedOverAWorldThatHasRunGivesTheSameWorld)
+{
+	// The region graph is derived from the map, and the systems that walk it
+	// every year keep it. A cache keyed on the count of regions - the obvious
+	// cheap thing - is stale after a snapshot is loaded over a world that has
+	// already ticked, because two entirely different maps can carry the same
+	// count: AELVOR has ninety-nine regions at 128 tiles a side and
+	// ninety-nine at 112. Every distance, hold, upkeep, slip and claim of the
+	// tick would then run on the adjacency of a world that no longer exists,
+	// and the same image would give two different worlds.
+	Run Source(AelvorSeed);
+	VT_REQUIRE(Source.Ages.Generate(Run::Square(128), 300));
+	VT_CHECK(RequestDetail(Source.Instance, Source.Lod, Source.Busiest()));
+	Source.Ages.Run(50);
+	std::vector<uint8> Image;
+	SaveSnapshot(Source.Instance, Image);
+	VT_REQUIRE(!Image.empty());
+	Source.Ages.Run(50);
+	const Hash64 Truth = ComputeStateDigest(Source.Instance);
+
+	// The image loaded into a world that has never run.
+	Run Fresh(AelvorSeed);
+	VT_REQUIRE(LoadSnapshot(Fresh.Instance, Image.data(), Image.size()) == SnapshotResult::Ok);
+	Fresh.Ages.Run(50);
+	VT_CHECK_EQ(ComputeStateDigest(Fresh.Instance), Truth);
+
+	// The same image loaded into a world whose systems have already walked
+	// another map of the same count of regions.
+	Run Used(AelvorSeed);
+	VT_REQUIRE(Used.Ages.Generate(Run::Square(112), 40));
+	Used.Ages.Run(3);
+	VT_REQUIRE(LoadSnapshot(Used.Instance, Image.data(), Image.size()) == SnapshotResult::Ok);
+	Used.Ages.Run(50);
+	VT_CHECK_MSG(ComputeStateDigest(Used.Instance) == Truth,
+				 "a snapshot loaded over a world that had run gave another world: %016llx against %016llx",
+				 static_cast<unsigned long long>(ComputeStateDigest(Used.Instance)),
+				 static_cast<unsigned long long>(Truth));
+	VAELEN_LOG_INFO(LogReach, "snapshot over a used world: state %016llx, reaches %016llx",
+					static_cast<unsigned long long>(ComputeStateDigest(Used.Instance)),
+					static_cast<unsigned long long>(Used.Words_().Digest));
+	VT_CHECK_EQ(Used.Words_().Digest, Source.Words_().Digest);
+}

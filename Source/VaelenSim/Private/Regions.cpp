@@ -3,6 +3,7 @@
 //
 // STATUS: VALIDATED (Phase 02) - covered by Tests/Sim/Test_Regions.cpp
 #include "Vaelen/Sim/Regions.h"
+#include "Vaelen/Core/Hash.h"
 #include "Vaelen/Core/Assert.h"
 #include "Vaelen/Sim/Noise.h"
 #include "Vaelen/Sim/World.h"
@@ -411,6 +412,21 @@ namespace Vaelen::WorldGen
 			}
 		}
 		return true;
+	}
+
+	const RegionGraph& RegionGraphCache::Of(const WorldMap& Map, const RegionLayers& Regions)
+	{
+		const WorldGrid Bounds = Map.Grid();
+		const uint64 Now =
+			HashCombine(HashUInt64(Map.Revision()), HashCombine(HashUInt64(Bounds.Width), HashUInt64(Bounds.Height)));
+		if (!Held || Key != Now)
+		{
+			Graph = BuildRegionGraph(Map, Regions);
+			Key = Now;
+			Held = true;
+			++Built;
+		}
+		return Graph;
 	}
 
 	RegionGraph BuildRegionGraph(const WorldMap& Map, const RegionLayers& Regions)

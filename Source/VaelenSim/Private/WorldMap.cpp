@@ -50,6 +50,7 @@ namespace Vaelen
 		{
 			L->Reset(Bounds.TileCount());
 		}
+		++Replaced;
 		return true;
 	}
 
@@ -105,6 +106,7 @@ namespace Vaelen
 				{
 					L->Reset(0);
 				}
+				++Replaced;
 			}
 			else if (!Config.IsValid() || Config.Grid() != WorldGrid{Width, Height} || !Reset(Config))
 			{

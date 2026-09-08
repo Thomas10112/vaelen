@@ -85,6 +85,14 @@ namespace Vaelen
 		/// Adopts a config and resizes every layer to zero-filled values.
 		/// Returns false (with a report, map untouched) on an invalid config.
 		bool Reset(const WorldGenConfig& InConfig);
+
+		/// Counts the times this map's shape or contents have been replaced
+		/// wholesale - by generation, or by a snapshot loaded over it. Anything
+		/// derived from the map (the region graph, above all) is stale the moment
+		/// this changes, and a cache keyed on anything cheaper - the count of
+		/// regions, say, which two entirely different maps can share - is a
+		/// silent way to run a tick on a world that no longer exists.
+		uint64 Revision() const noexcept { return Replaced; }
 		const WorldGenConfig& Config() const noexcept { return Configuration; }
 		const WorldGrid& Grid() const noexcept { return Bounds; }
 		bool IsReady() const noexcept { return Bounds.IsValid(); }
@@ -114,6 +122,7 @@ namespace Vaelen
 
 		WorldGenConfig Configuration;
 		WorldGrid Bounds;
+		uint64 Replaced = 0; ///< see Revision()
 		std::vector<std::unique_ptr<ITileLayer>> Layers;
 		/// Scratch layer for failed lookups, never serialised.
 		TileLayer<uint8> Scratch{0};

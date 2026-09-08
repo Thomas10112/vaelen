@@ -157,8 +157,7 @@ namespace Vaelen::Politics
 		bool HasLine = false;
 		ComponentType<RegionInPlay> InPlay_;
 		bool HasPlay = false;
-		WorldGen::RegionGraph Graph; ///< cache, rebuilt when the world's regions change
-		uint32 GraphRegions = 0;
+		WorldGen::RegionGraphCache Roads; ///< rebuilt when the map it was built from is replaced
 	};
 
 	/// The authority running in a region (nullptr while no polity has ever held it).

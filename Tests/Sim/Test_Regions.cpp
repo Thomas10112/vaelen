@@ -336,3 +336,36 @@ VAELEN_TEST(Regions, DefaultSizeBaseline)
 					S.Regions, S.SmallestTiles, S.LargestTiles,
 					VAELEN_ASSERTS_ENABLED ? " [asserts on]" : " [asserts off]");
 }
+
+VAELEN_TEST(Regions, AGraphCacheFollowsTheMapAndNotTheCountOfRegions)
+{
+	// The adjacency graph is derived from the map, so a cache of it is stale
+	// the moment the map is replaced - by a fresh generation, or by a snapshot
+	// loaded over a world that has already run. Keying such a cache on the
+	// count of regions is the obvious cheap thing and it is wrong: two
+	// entirely different maps can carry the same count.
+	GenWorld W(AelvorSeed);
+	VT_REQUIRE(W.GenerateFrom(128, 128));
+	RegionGraphCache Cache;
+	const uint32 OnLarge = Cache.Of(W.Instance.Map(), W.Regions).RegionCount();
+	VT_CHECK_EQ(Cache.Builds(), 1u);
+	VT_CHECK(OnLarge > 0);
+	// Asking again about the same map builds nothing.
+	VT_CHECK_EQ(Cache.Of(W.Instance.Map(), W.Regions).RegionCount(), OnLarge);
+	VT_CHECK_EQ(Cache.Builds(), 1u);
+
+	// A map replaced under it is another map, whatever it counts.
+	VT_REQUIRE(W.GenerateFrom(112, 112));
+	const RegionGraph& Second = Cache.Of(W.Instance.Map(), W.Regions);
+	VT_CHECK_EQ(Cache.Builds(), 2u);
+	const RegionGraph Truth = BuildRegionGraph(W.Instance.Map(), W.Regions);
+	VT_CHECK_EQ(Second.RegionCount(), Truth.RegionCount());
+	uint32 Wrong = 0;
+	for (uint32 R = 1; R <= Truth.RegionCount(); ++R)
+	{
+		Wrong += Second.Neighbours[R] == Truth.Neighbours[R] ? 0u : 1u;
+	}
+	VT_CHECK_EQ(Wrong, 0u);
+	VAELEN_LOG_INFO(LogRegions, "graph cache: %u regions at 128, %u at 112, %u build(s)", OnLarge, Second.RegionCount(),
+					Cache.Builds());
+}
