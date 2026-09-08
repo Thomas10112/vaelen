@@ -4477,3 +4477,51 @@ presets into `out/build/<preset>`:
 Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). Purity: `python3 Tools/check_kernel_purity.py --self-test`
 -> 36 checks, 0 failed; `--root . --verbose` -> 12 files, 0 violations, 2 exemptions.
 clang-format 18 dry run: 0 drift. GitHub Actions run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14). The engine (UBT) build was not executed.
+
+## ADR-0074: A building is a thing that holds, not a number the simulation reads
+
+### Context
+
+Phase 09 gives the world infrastructure. The easy version of that is a number:
+`RegionGranary`, read by the famine code, raised by whoever wants it lower. Two
+phases already show why that ends badly. 05.05 gave councils a granary as a
+number on a region, and nothing in the world can point at it; 06.04 gave the
+world routes as artefacts of trade, and a route is not a road anybody built.
+Both are useful and neither is a thing.
+
+### Decision
+
+1. **A building is an entity of kind Building standing in a region**, with what
+   it is, how much of it there is, how sound it still is, and what it cost. It
+   can be pointed at, saved, named, ruined and inherited by a later phase.
+2. **A building is never a number the simulation reads instead of the world.**
+   A granary does not make a famine less likely; it holds grain, and the famine
+   of 06.02 finds the grain there. Anything that cannot be expressed as a thing
+   that holds, lowers or raises something an earlier phase already computes does
+   not belong in this phase (09.02 is where every kind gets its effect).
+3. **It is raised out of what the region holds IN COMMON, never out of a house's
+   own goods.** A granary is not one family's. So a coarse region builds out of
+   its common stock and a detailed one out of what a council put by (05.05),
+   which is the same rule read from the other end - and a region that cannot
+   feed the builders does not get the granary, however many people it has.
+4. **A region keeps at most one work of each kind and makes it bigger.** A
+   granary of three is one building enlarged twice, not three granaries. It
+   keeps the region's summary a small fixed table, gives 09.05 one thing to let
+   fall rather than a heap, and makes "how big is the granary here" a single
+   number - `KeptSize` - which is the only thing 09.02 will read.
+5. **The summary on the region is a cache, and the buildings are the truth.**
+   `RegionWorks` exists so the layers below need not walk every building in the
+   world; `MeasureBuildings` recomputes it from the buildings and counts any
+   disagreement as `Bad`, so the cache cannot drift in silence.
+
+### Consequences
+
+The cost is real and it is paid in the log: the raising is published first and
+every unit of timber, tools and grain is taken with that event as its cause, so
+"what did this granary cost" is a query, not a comment. A test proves the sum of
+what the raisings took equals the sum of what the buildings say they cost.
+
+Nothing built does anything yet. That is deliberate: 09.01 makes the thing exist
+and be paid for, 09.02 gives every kind its effect on the layers below, and 09.05
+lets what is not kept fall down.
+

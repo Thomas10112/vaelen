@@ -76,7 +76,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | VALIDATED (headless, 06.01-06.08); UNVERIFIED (engine) |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | VALIDATED headless (07.01-07.08, phase closed); UNVERIFIED under UBT |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | CLOSED (08.01-08.08 VALIDATED headless; UNVERIFIED under UBT) |
-| 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
+| 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | BROKEN DOWN (09.01-09.08, section 13) |
 | 10 | PLAYER | The player as one simulated person: enslaved start, body, needs, skills, relationships; player intent as commands into the simulation. | PLANNED |
 | 11 | MINING COLONY | The starting place: a huge autonomous mining colony simulated by the same systems at full detail. | PLANNED |
 | 12 | GAMEPLAY | Interaction verbs, knowledge (documents, maps), reputation and consequences without main quest or canonical ending. | PLANNED |
@@ -2315,70 +2315,99 @@ Army, War, Faction, Treaty, Battle (Phases 07-08), Document, Map (Phase 12); `VA
 (Phase 16); `Config/DefaultEngine.ini` and `DefaultInput.ini` note that the game engine
 class and Enhanced Input mappings arrive in Phase 10.
 
-## 13. Current BUILD STATUS
+## 13. Phase 09 - INFRASTRUCTURE: task breakdown
+
+Broken down on the closing of Phase 08. Phases 10-20 are broken down as each previous
+phase closes.
+
+What already exists, and what this phase is therefore not: 06.04 gave the world routes
+between regions and settlements where they meet, as artefacts of trade - a route opens
+because a price gap opened and closes because nothing crossed it. 05.05 gave councils a
+granary as a number on a region. Phase 09 does not replace either. It gives the world the
+things people actually build and keep - buildings that cost goods and labour and decay
+when nobody minds them - and makes the routes and the granaries of the earlier phases the
+first two examples of it.
+
+| Task | Content | Test kind |
+|---|---|---|
+| 09.01 | `VaelenInfrastructure` module; `BuildingInfo` on entities of kind Building - what it is, where it stands, who raised it, what it cost, and its state of repair; raised out of the goods of 06.01 and the labour of the people; `MeasureBuildings` | unit, deterministic |
+| 09.02 | What a building does: a granary that holds grain against a famine (folding in the `RegionStores` of 05.05), a mill that lifts the harvest of 06.02, walls that raise the wall of 08.04. A building is the reason a number moves, never a number of its own | integration with 05.05, 06.02 and 08.04 |
+| 09.03 | Settlements as places rather than as marks on a trade route: a size that grows with the people and the traffic, the buildings it holds, and the first thing on the map that is smaller than a region | integration with 06.04 and 04.x |
+| 09.04 | Roads as things that are built and kept: a route of 06.04 becomes a road with a state, built with goods and labour, cheapening what crosses it, and falling back to a track when nobody keeps it | integration with 06.04 |
+| 09.05 | Decay: everything built falls down unless it is kept, at a rate set by what it is, by the weather of 02.x and by the wars of 08.x; ruins as a thing the world remembers and can build on | unit, long-duration, edge |
+| 09.06 | Logistics: what a road is worth to an army (08.02 marches further on one and eats less beside it) and to a polity (the word of 07.03 carries further and costs less along one) | integration with 07.03 and 08.02 |
+| 09.07 | Infrastructure in the chronicle: a granary raised, a road cut, a mill fallen in; the why of a famine that a granary would have stopped | text, deterministic |
+| 09.08 | Phase 09 gate: 500 years at 256 with every Phase 04 to 09 system, invariants every decade, frozen digests; Phase 09 closed against section 2 | long-duration |
+
+Every task ends with the usual report block, the docs refreshed and a commit.
+
+The rule the phase is written to: **a building is never a number the simulation reads
+instead of the world.** A granary does not make a famine less likely; it holds grain, and
+the famine of 06.02 finds the grain there. A road does not make an army faster; it lowers
+the cost of a hop that 08.02 already walks. Anything that cannot be expressed as a thing
+that holds, lowers or raises something an earlier phase already computes does not belong
+in this phase.
+
+## 14. Current BUILD STATUS
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 08 — MILITARY — CLOSED
-TASK        : 08.08 — THE PHASE GATE
-STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
+PHASE       : 09 — INFRASTRUCTURE — IN PROGRESS
+TASK        : 09.01 — BUILDINGS
+STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████████████████████░░ 85%
+██████████████████████░░ 86%
 
 CURRENTLY
-→ Phase 08 closed. Five centuries at 256 with every Phase 04 to 08 system running, the two most
-  peopled regions simulated person by person, every invariant of every military measure checked each
-  decade along with the Phase 07 ones under it, a snapshot at year 250 reloaded and replayed to the
-  same year 500, and four frozen digests.
+→ Phase 09 broken down into 09.01 to 09.08, and 09.01 shipped: the VaelenInfrastructure module and
+  buildings as entities of kind Building.
 
-  The gate found four defects and all four are closed. A snapshot of year 250 replayed to year 500
-  gave a different world - the worst kind of defect this project can have, and the reason a gate
-  exists. MeasurePolities counted a polity whose seat had just been stormed as incoherent, and one
-  whose ruler had just been killed in a war: neither is incoherence, both are the world, and 07.01
-  answers both on its next tick - split out as Doomed and Bereft so that Bad keeps its meaning. And a
-  host kept a marching order on ground the enemy had just left, beaten and fallen back or destroyed or
-  a capital that had changed hands: an order to march on nothing. The war, the siege and the battle
-  each now clear the orders they invalidate.
+  A building is a thing standing in a region, not a number the simulation reads instead of the world.
+  It is raised out of what the region holds IN COMMON - never out of a house's own goods, because a
+  granary is not one family's - and out of the hands the fields can spare for a year. A region keeps
+  at most one work of each kind and makes it bigger as it grows, so a granary of three is one
+  building enlarged twice. The raising is published first and every unit of timber, tools and grain
+  is taken with that event as its cause, so "what did this granary cost" is a query and not a
+  comment.
 
-WHAT PHASE 08 IS
-→ An army is people taken out of regions, and every man is recorded on the region he came from. It
-  marches on the region graph towards the nearest enemy host, one hop a season, eating off the ground
-  it stands on. Two hosts on one region settle it in a year by numbers, whose ground it is, and a
-  stream fixed by the world seed. A capital changes hands only under siege, and the polity that loses
-  one ends. A war is a thing with a beginning and an end, closed by exhaustion, and the stance of
-  07.06 follows it. The fallen are dead where they came from, those who came back are known for it,
-  and people leave ground an army will not get off. And a chronicle keeps the small part of all that
-  a century would remember, with the why of a lost province walked back to the battle.
+  Nothing built does anything yet, and that is deliberate: 09.02 gives every kind its effect on the
+  layers below (the granary of 05.05, the harvest of 06.02, the wall of 08.04), and 09.05 lets what
+  is not kept fall down.
+
+WHAT PHASE 09 IS
+→ What already exists and what this phase is therefore not: 06.04 gave the world routes as artefacts
+  of trade, and 05.05 gave councils a granary as a number on a region. Phase 09 does not replace
+  either. It gives the world the things people actually build and keep - buildings that cost goods
+  and labour and decay when nobody minds them - and makes those routes and those granaries the first
+  two examples of it.
 
 COMPLETED
 ✓ Phases 00-07 (headless, Phase 07 closed) (CI 68)
-✓ 08.01 levies and armies (CI 69), 08.02 marching, 08.03 battle, 08.04 siege
-✓ 08.05 war with an end, 08.06 what war costs the living, 08.07 war in the chronicle
-✓ 08.08 the phase gate — Phase 08 CLOSED
-✓ Every defect the adversarial review confirmed is closed (4 of 4), and the four the gate found
+✓ Phase 08 MILITARY closed: levies, marching, battle, siege, war, the toll, the chronicle, the gate
+✓ Phase 09 broken down into 09.01-09.08 (roadmap section 13)
+✓ 09.01 buildings — the module, BuildingInfo, RegionWorks, MeasureBuildings, 4 tests
 
 NEXT
-→ Phase 09 breakdown, then 09.01
+→ 09.02 — what a building does: the granary of 05.05, the harvest of 06.02, the wall of 08.04
 
-TESTS (the phase-closing run, six presets with every gate)
-✓ Core 133 (108 without asserts) + Sim 161 + Population 37 + Society 27 + Economy 27
-  + Politics 29 + Military 29; ctest 92/92 in all six Linux presets
-✓ AELVOR 256, five centuries: 250=795f25aed60dcb61 500=90b8eda971f657f2
-  log=de646de7ded3e7fd text=d704a925653f8ecb
-✓ The snapshot of year 250 reloaded and replayed reaches exactly the same year 500
-✓ Purity: 136 files, 0 violations; clang-format: 0 files need formatting
+TESTS (a task inside a phase runs two presets; six at the gate)
+✓ linux-clang-debug and linux-gcc-release green, ctest 88/88 each (gates and shuffled excluded)
+✓ VaelenInfrastructureTests 4 run, 4 passed, 90 checks, on both presets
+✓ AELVOR 128 at year 420, one region detailed: 93 buildings standing over 31 regions,
+  93 raisings and 48 enlargements, digest d7336afc0a7a3951
+✓ Every unit the raisings took out of the common stocks equals what the buildings say they cost
+✓ Purity: 139 files, 0 violations; clang-format: 0 files need formatting
 
 EXIT CRITERIA (roadmap section 2)
-✓ 1. Six Linux presets green with every gate; Windows MSVC and macOS run in CI
-✓ 2. Determinism tests for every system of the phase: same seed, snapshot round trip, frozen values
-✓ 3. No file of the phase carries PROTOTYPE or INCOMPLETE; the engine-facing files of Source/Vaelen
-     stay UNVERIFIED, as the report says
-✓ 4. Unit, integration, deterministic, edge and long-duration tests for every system
-✓ 5. ARCHITECTURE, CONVENTIONS, DECISIONS and ROADMAP updated; ADR-0064 to ADR-0073
+◻ 1. Six Linux presets with every gate — at the Phase 09 gate (09.08)
+✓ 2. Determinism tests for 09.01: same seed, snapshot round trip and replay, frozen digest
+◻ 3. Buildings.h/.cpp are PROTOTYPE until the Phase 09 gate; engine-facing files stay UNVERIFIED
+✓ 4. Unit, integration, deterministic and edge tests for the system; long-duration at 09.08
+✓ 5. ARCHITECTURE, DECISIONS, ROADMAP and STATUS updated; ADR-0074
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)
@@ -2386,7 +2415,7 @@ BLOCKERS
 
 ```
 
-## 14. Verification record
+## 15. Verification record
 
 Commands run on 2026-09-05 (clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.15, clang-format 18.1.3, Linux x86_64) with the checked-in presets, each into
 `out/build/<preset>`:

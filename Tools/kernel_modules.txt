@@ -15,3 +15,4 @@ VaelenSociety
 VaelenEconomy
 VaelenPolitics
 VaelenMilitary
+VaelenInfrastructure

@@ -132,6 +132,7 @@ yet. Later kernel modules follow the same pattern with their own `VAELEN_<MODULE
 | `VaelenEconomy` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 06 | SIMULATION (goods, stocks, production, markets, trade, wealth) | UBT: `Core`, `VaelenCore`, `VaelenSim`, `VaelenPopulation`, `VaelenSociety`. CMake: `Vaelen::Society`, `Vaelen::Population`, `Vaelen::Sim`, `Vaelen::Core`. | 06.01-06.08 VALIDATED headless; VALIDATED under UBT (UE 5.6, 2026-09-07, editor) |
 | `VaelenPolitics` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 07 | SIMULATION (polities, law, authority, succession, diplomacy) | UBT: `Core`, `VaelenCore`, `VaelenSim`, `VaelenPopulation`, `VaelenSociety`, `VaelenEconomy`. CMake: `Vaelen::Economy`, `Vaelen::Society`, `Vaelen::Population`, `Vaelen::Sim`, `Vaelen::Core`. | 07.01-07.08 VALIDATED headless, Phase 07 closed; UNVERIFIED under UBT (newer than the first Unreal build) |
 | `VaelenMilitary` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 08 | SIMULATION (levies, armies, battle, siege, war) | UBT: `Core`, `VaelenCore`, `VaelenSim`, `VaelenPopulation`, `VaelenSociety`, `VaelenEconomy`, `VaelenPolitics`. CMake: `Vaelen::Politics` and below. | 08.01-08.08 VALIDATED headless, Phase 08 closed; UNVERIFIED under UBT |
+| `VaelenInfrastructure` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 09 | SIMULATION (buildings, settlements, roads, decay, logistics) | UBT: `Core`, `VaelenCore`, `VaelenSim`, `VaelenPopulation`, `VaelenSociety`, `VaelenEconomy`, `VaelenPolitics`, `VaelenMilitary`. CMake: `Vaelen::Military` and below. | 09.01 PROTOTYPE headless; UNVERIFIED under UBT |
 | `VaelenPolitics` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 07 | SIMULATION (polities, law, authority, succession, diplomacy) | UBT: `Core`, `VaelenCore`, `VaelenSim`, `VaelenPopulation`, `VaelenSociety`, `VaelenEconomy`. CMake: `Vaelen::Economy`, `Vaelen::Society`, `Vaelen::Population`, `Vaelen::Sim`, `Vaelen::Core`. | 07.01 VALIDATED headless; UNVERIFIED under UBT (newer than the first Unreal build) |
 | `Vaelen` | Unreal primary game module (`IMPLEMENT_PRIMARY_GAME_MODULE`, Runtime, `Default`) | Engine bridge (PRESENTATION side) | `Core`, `CoreUObject`, `Engine`, `InputCore`, `VaelenCore` | VALIDATED (UE 5.6, 2026-09-07): built and started in the editor |
 
@@ -154,7 +155,7 @@ in `ExtraModuleNames`.
 | 06 ECONOMY | `VaelenEconomy` | Kernel | Exists: the module, goods as kinds, stocks held in common by every region and by the houses of a detailed region, endowed once from the land, split at a promotion, folded at a demotion, returned by an extinct house, conserved across the grains, moved by hand with a cause (06.01); the yearly harvest from the land, the people and their farming, cut by droughts, spoiled in store, eaten by house, the ration written for the need system, the deposits and the craft (06.02); a market on every region with integer prices from what it wants over what it holds within a floor and a ceiling, price events with the harvest as cause (06.03); routes between neighbouring markets opened on price gaps and closed when idle, goods carried yearly from the cheap side to the dear one, settlements founded by the traffic and abandoned without it (06.04); houses valued and ranked at their market with the rank weighing in standing, heirs named by the descent custom and an extinct house's goods passing to its heir (06.05); nothing of the fine grain outliving it, proved by five hundred years of alternating detail that keep every unit of every good (06.06); roads, towns, prices at their bounds, shortfalls, fortunes and inheritances in the chronicle, with a line for every economic event and the why of a dear loaf reaching the drought (06.07); the whole of it held for five hundred years at 256 beside every Phase 04 and 05 system (06.08, Phase 06 closed). |
 | 07 POLITICS | `VaelenPolitics` | Kernel | Exists: the module, polities as entities founded on the councils of Phase 05, seated in a region, ruled by that council's head, holding regions that remember whose they are through every change of detail, dissolved when they rule nothing (07.01); law as one number on the polity, written onto every region it rules as dues the economy's production system observes, collected in grain into a treasury, moving by itself with what the treasury holds (07.02); authority written on every ruled region and falling with its distance from the seat, the upkeep a word costs, ground taken while the treasury pays and ground that slips free when it does not (07.03); the line a polity remembers, the claimant its culture's descent custom names, and the unrest a seat taken by anyone else takes off every hold (07.04); factions as entities of their own kind, formed around a passed-over claimant or a province held too loosely, gathering while unanswered and taking their region out of the polity at their threshold (07.05); relations between polities whose ground touches, warmed and cooled by culture, trade, border and size, with a war marking the weaker border in play for the reach system to take (07.06); a sentence for every political event and a record only for what a century would remember (07.07); the phase gate, five centuries of two powers at 256 with every Phase 04 to 07 system (07.08). Phase closed. |
 | 08 MILITARY | `VaelenMilitary` | Kernel | Exists: the module, levies raised from the regions a polity holds and fed out of its treasury, armies as entities that melt when they are not fed (08.01), marching on the region graph towards the nearest enemy ground, eating off what it stands on and loosening an enemy ruler's grip (08.02). battle between two hosts on one region, decided by strength, whose ground it is and a stream fixed by the world seed (08.03). siege, the only way a capital changes hands and a polity ends (08.04). war as a thing with a beginning and an end, opened by a relation turning and closed by exhaustion, with the stance of 07.06 following it (08.05). what war costs the living - the dead where they came from, the standing of those who came back, the people who would not stay (08.06). war in the chronicle, a sentence for every military event and the why of a lost province (08.07), and the phase gate: five centuries at 256 with every Phase 04 to 08 system (08.08). Phase closed. |
-| 09 INFRASTRUCTURE | `VaelenInfrastructure` | Kernel | Buildings, settlements, routes. |
+| 09 INFRASTRUCTURE | `VaelenInfrastructure` | Kernel | Exists: the module, buildings as entities of kind Building raised out of a region's common stock and the hands it can spare, one work of each kind per region made bigger as the region grows, what each has cost recorded and taken in the log (09.01). |
 | 10 PLAYER, 11 MINING COLONY, 12 GAMEPLAY | `VaelenGame` | Unreal | Player, input, gameplay commands; the mining colony start is content in the domain modules plus `VaelenGame`, not a separate module. |
 | 13 PRESENTATION | `VaelenPresentation` | Unreal | Rendering / audio / animation of world state, read-only. |
 | 14 UI | `VaelenUI` | Unreal | UI, read-only view plus command submission through `VaelenGame`. |
@@ -181,7 +182,7 @@ flowchart BT
         Economy["VaelenEconomy (Phase 06)"]
         Politics["VaelenPolitics (Phase 07)"]
         Military["VaelenMilitary (Phase 08)"]
-        Infrastructure["VaelenInfrastructure (PLANNED)"]
+        Infrastructure["VaelenInfrastructure (Phase 09)"]
         Persistence["VaelenPersistence (PLANNED)"]
         DevTools["VaelenDevTools (PLANNED)"]
         Modding["VaelenModding (PLANNED)"]
@@ -204,8 +205,7 @@ flowchart BT
     Politics --> Society
     Politics --> Economy
     Military --> Politics
-    Infrastructure --> Economy
-    Infrastructure --> World
+    Infrastructure --> Military
     Persistence --> Military
     Persistence --> Infrastructure
     DevTools --> Persistence
@@ -222,8 +222,8 @@ flowchart BT
 
     classDef existing fill:#d9ead3,stroke:#38761d,color:#000;
     classDef planned fill:#f3f3f3,stroke:#999,color:#000,stroke-dasharray: 4 2;
-    class Core,Bridge,Sim,Population existing;
-    class World,History,Society,Economy,Politics,Military,Infrastructure,Persistence,DevTools,Modding,Game,Presentation,UI planned;
+    class Core,Bridge,Sim,Population,Society,Economy,Politics,Military,Infrastructure existing;
+    class World,History,Persistence,DevTools,Modding,Game,Presentation,UI planned;
 ```
 
 Arrows mean "depends on". Solid green nodes exist; dashed nodes are PLANNED and their
@@ -279,6 +279,7 @@ military, 50-51 knowledge (Phase 12). Values are part of the save format: append
     VaelenEconomy/                KERNEL MODULE (Phase 06): Public/Vaelen/Economy/*.h, Private/*.cpp, VaelenEconomy.Build.cs, CMakeLists.txt
     VaelenPolitics/               KERNEL MODULE (Phase 07): Public/Vaelen/Politics/*.h, Private/*.cpp, VaelenPolitics.Build.cs, CMakeLists.txt
     VaelenMilitary/               KERNEL MODULE (Phase 08): Public/Vaelen/Military/*.h, Private/*.cpp, VaelenMilitary.Build.cs, CMakeLists.txt
+    VaelenInfrastructure/         KERNEL MODULE (Phase 09): Public/Vaelen/Infrastructure/*.h, Private/*.cpp, VaelenInfrastructure.Build.cs, CMakeLists.txt
       Public/Vaelen/Core/         CoreTypes.h Version.h Assert.h Log.h Hash.h Random.h Ids.h
       Private/                    Assert.cpp Log.cpp Random.cpp Ids.cpp Version.cpp
                                   VaelenCoreModule.cpp (Unreal-facing, UBT only)
