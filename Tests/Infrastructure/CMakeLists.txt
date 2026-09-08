@@ -24,3 +24,5 @@ list(APPEND VAELEN_INFRASTRUCTURE_TEST_NAMES Infrastructure.Registry Infrastruct
 
 set_tests_properties(${VAELEN_INFRASTRUCTURE_TEST_NAMES} PROPERTIES TIMEOUT 300)
 set_tests_properties(Infrastructure.Shuffled PROPERTIES TIMEOUT 5400)
+# Five centuries at 256 with every Phase 04 to 09 system running.
+set_tests_properties(Infrastructure.InfrastructureGate PROPERTIES TIMEOUT 5400)
