@@ -1,7 +1,7 @@
 // VAELEN - VaelenMilitary
 // Phase 08.06: what war costs the living.
 //
-// STATUS: PROTOTYPE (Phase 08) - unit/integration/deterministic/edge tests in Tests/Military
+// STATUS: VALIDATED (Phase 08) - unit/integration/deterministic/edge tests in Tests/Military
 
 #include "Vaelen/Military/Toll.h"
 

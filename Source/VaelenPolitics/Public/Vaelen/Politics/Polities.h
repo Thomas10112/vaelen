@@ -138,7 +138,13 @@ namespace Vaelen::Politics
 		uint32 Ruled = 0;	 ///< regions belonging to a standing polity
 		uint32 Unruled = 0;	 ///< regions carrying a rule of a dissolved polity
 		uint32 Headless = 0; ///< standing polities without a living ruler
-		uint32 Bad = 0;		 ///< a seat outside its polity, a ruler who is not the council's head, a double claim
+		uint32 Doomed = 0;	 ///< standing polities whose seat is ruled by somebody else. Not an incoherence:
+							 ///< a seat can be stormed (08.04), and this system dissolves what has lost one
+							 ///< on its next tick. Counted so that a gate can see it happen.
+		uint32 Bereft = 0;	 ///< standing polities whose ruler is dead. Also not an incoherence: a ruler can
+							 ///< fall in a war (08.06) like anybody else, and this system seats the council's
+							 ///< head in his place on its next tick.
+		uint32 Bad = 0;		 ///< a ruler who is not the council's head, or a double claim
 		uint32 Founded = 0;	 ///< events, from the log
 		uint32 Ended = 0;
 		uint32 Seatings = 0;

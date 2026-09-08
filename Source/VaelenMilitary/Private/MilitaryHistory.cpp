@@ -1,7 +1,7 @@
 // VAELEN - VaelenMilitary
 // Phase 08.07: war in the chronicle.
 //
-// STATUS: PROTOTYPE (Phase 08) - integration/text/deterministic tests in Tests/Military
+// STATUS: VALIDATED (Phase 08) - integration/text/deterministic tests in Tests/Military
 
 #include "Vaelen/Military/MilitaryHistory.h"
 

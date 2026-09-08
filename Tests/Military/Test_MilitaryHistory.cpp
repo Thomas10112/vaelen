@@ -2,7 +2,7 @@
 // Phase 08.07: war in the chronicle - the few military events a century keeps,
 // a sentence for every one of them, and the why of a lost province.
 //
-// STATUS: PROTOTYPE (Phase 08)
+// STATUS: VALIDATED (Phase 08)
 
 #include "Vaelen/Economy/Markets.h"
 #include "Vaelen/Economy/Production.h"
@@ -153,10 +153,10 @@ namespace
 													Orders, InColumns);
 			Swords = std::make_unique<BattleSystem>(Instance, Ages.Types(), Polities, Reaches, Treaties, Hosts, Orders,
 													Fields, InFields);
-			Ramparts = std::make_unique<SiegeSystem>(Instance, Ages.Types(), Polities, Reaches, Treaties, Hosts, Walls,
-													 InWalls);
-			Terms =
-				std::make_unique<WarSystem>(Instance, Ages.Types(), Polities, Treaties, Fields, Quarrels, InQuarrels);
+			Ramparts = std::make_unique<SiegeSystem>(Instance, Ages.Types(), Polities, Reaches, Treaties, Hosts, Orders,
+													 Walls, InWalls);
+			Terms = std::make_unique<WarSystem>(Instance, Ages.Types(), Polities, Treaties, Fields, Hosts, Orders,
+												Quarrels, InQuarrels);
 			Reckoning =
 				std::make_unique<TollSystem>(Instance, Ages.Types(), Persons, Standing, Polities, Orders, Cost, InCost);
 			Ranks->ObserveService(Standing.Service);

@@ -1,7 +1,7 @@
 // VAELEN - VaelenMilitary
 // Phase 08.03: battle.
 //
-// STATUS: PROTOTYPE (Phase 08) - unit/integration/deterministic/edge tests in Tests/Military
+// STATUS: VALIDATED (Phase 08) - unit/integration/deterministic/edge tests in Tests/Military
 
 #include "Vaelen/Military/Battle.h"
 
@@ -250,6 +250,17 @@ namespace Vaelen::Military
 				Beaten->Aim = 0;
 				Beaten->Hops = 0;
 				Beaten->Arrived = 0;
+			}
+			// And so is the winner, when what it marched on was the host it has just
+			// beaten rather than the ground it is standing on. The beaten host is
+			// about to leave this region or stop existing; an order to march on it
+			// where it no longer is is an order to march on nothing.
+			MarchOrder* Standing_ = W.Components().GetPool(Marches.Order).TryGet(WonAt.Handle);
+			if (Standing_ != nullptr && Standing_->Aim == Region && !IsFoe(WonAt.Polity, RuledBy[Region]))
+			{
+				Standing_->Aim = 0;
+				Standing_->Hops = 0;
+				Standing_->Arrived = 0;
 			}
 
 			const bool Shattered = uint64{Lost->Strength} * 1000u < uint64{Won->Strength} * Rules.BreakUnderPerMille;

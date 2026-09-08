@@ -1,7 +1,7 @@
 // VAELEN - VaelenMilitary
 // Phase 08.02: marching.
 //
-// STATUS: PROTOTYPE (Phase 08) - unit/integration/deterministic/edge tests in Tests/Military
+// STATUS: VALIDATED (Phase 08) - unit/integration/deterministic/edge tests in Tests/Military
 
 #include "Vaelen/Military/March.h"
 

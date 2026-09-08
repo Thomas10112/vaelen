@@ -2,7 +2,7 @@
 // Phase 08.06: what war costs the living - the dead where they came from, the
 // standing of those who came back, and the people who would not stay.
 //
-// STATUS: PROTOTYPE (Phase 08)
+// STATUS: VALIDATED (Phase 08)
 
 #include "Vaelen/Economy/Markets.h"
 #include "Vaelen/Economy/Production.h"
@@ -151,10 +151,10 @@ namespace
 													Orders, InColumns);
 			Swords = std::make_unique<BattleSystem>(Instance, Ages.Types(), Polities, Reaches, Treaties, Hosts, Orders,
 													Fields, InFields);
-			Ramparts = std::make_unique<SiegeSystem>(Instance, Ages.Types(), Polities, Reaches, Treaties, Hosts, Walls,
-													 InWalls);
-			Terms =
-				std::make_unique<WarSystem>(Instance, Ages.Types(), Polities, Treaties, Fields, Quarrels, InQuarrels);
+			Ramparts = std::make_unique<SiegeSystem>(Instance, Ages.Types(), Polities, Reaches, Treaties, Hosts, Orders,
+													 Walls, InWalls);
+			Terms = std::make_unique<WarSystem>(Instance, Ages.Types(), Polities, Treaties, Fields, Hosts, Orders,
+												Quarrels, InQuarrels);
 			Reckoning =
 				std::make_unique<TollSystem>(Instance, Ages.Types(), Persons, Standing, Polities, Orders, Cost, InCost);
 			Ranks->ObserveService(Standing.Service);

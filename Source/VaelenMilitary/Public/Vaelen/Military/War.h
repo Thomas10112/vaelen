@@ -1,7 +1,7 @@
 // VAELEN - VaelenMilitary
 // Phase 08.05: war as a thing with a beginning and an end.
 //
-// STATUS: PROTOTYPE (Phase 08) - unit/integration/deterministic/edge tests in Tests/Military
+// STATUS: VALIDATED (Phase 08) - unit/integration/deterministic/edge tests in Tests/Military
 //
 // Until now a war was a stance: 07.06 cooled a relation past a threshold and
 // everything downstream read "at war" off it. That is enough to start a war and
@@ -26,6 +26,7 @@
 #include "Vaelen/Core/CoreTypes.h"
 #include "Vaelen/Military/Armies.h"
 #include "Vaelen/Military/Battle.h"
+#include "Vaelen/Military/March.h"
 #include "Vaelen/Military/MilitaryApi.h"
 #include "Vaelen/Military/Siege.h"
 #include "Vaelen/Politics/Diplomacy.h"
@@ -95,10 +96,10 @@ namespace Vaelen::Military
 	{
 	public:
 		WarSystem(World& InWorld, const History::PreHistoryTypes& InTypes, Politics::PolityTypes InPolities,
-				  Politics::DiplomacyTypes InRelations, BattleTypes InBattles, WarTypes InWars,
-				  WarRules InRules) noexcept
+				  Politics::DiplomacyTypes InRelations, BattleTypes InBattles, ArmyTypes InArmies, MarchTypes InMarches,
+				  WarTypes InWars, WarRules InRules) noexcept
 			: Owner(&InWorld), Types(InTypes), Polities(InPolities), Relations(InRelations), Battles(InBattles),
-			  Wars(InWars), Rules(InRules)
+			  Armies(InArmies), Marches(InMarches), Wars(InWars), Rules(InRules)
 		{
 		}
 		const char* GetName() const noexcept override { return "Wars"; }
@@ -122,6 +123,8 @@ namespace Vaelen::Military
 		Politics::PolityTypes Polities;
 		Politics::DiplomacyTypes Relations;
 		BattleTypes Battles;
+		ArmyTypes Armies;
+		MarchTypes Marches;
 		WarTypes Wars;
 		WarRules Rules;
 	};

@@ -24,4 +24,6 @@ list(APPEND VAELEN_MILITARY_TEST_NAMES Military.Registry Military.Shuffled)
 
 set_tests_properties(${VAELEN_MILITARY_TEST_NAMES} PROPERTIES TIMEOUT 300)
 set_tests_properties(Military.Shuffled PROPERTIES TIMEOUT 5400)
+# Five centuries at 256 with every Phase 04 to 08 system running.
+set_tests_properties(Military.MilitaryGate PROPERTIES TIMEOUT 3600)
 

@@ -1,7 +1,7 @@
 // VAELEN - VaelenMilitary
 // Phase 08.04: siege.
 //
-// STATUS: PROTOTYPE (Phase 08) - unit/integration/deterministic/edge tests in Tests/Military
+// STATUS: VALIDATED (Phase 08) - unit/integration/deterministic/edge tests in Tests/Military
 
 #include "Vaelen/Military/Siege.h"
 
@@ -190,6 +190,27 @@ namespace Vaelen::Military
 			Context.Events->Publish(Context.Tick, SeatTakenEvent,
 									Politics::PolityPayload{Besieging->Polity, R, Besieging->Index, Seated},
 									W.Entities().GetId(RegionHandles[R]));
+			// A seat that has changed hands is nobody's aim any more: 08.02 chose it
+			// when an enemy ruled it, and an enemy no longer does. Cleared here
+			// rather than tolerated, because an aim that is not enemy ground is not
+			// an aim.
+			W.Components()
+				.GetPool(Armies.Army)
+				.ForEach(
+					[&](EntityHandle Host, const ArmyInfo& A)
+					{
+						if (A.Disbanded != 0)
+						{
+							return;
+						}
+						MarchOrder* Under = W.Components().GetPool(Marches.Order).TryGet(Host);
+						if (Under != nullptr && Under->Aim == R)
+						{
+							Under->Aim = 0;
+							Under->Hops = 0;
+							Under->Arrived = 0;
+						}
+					});
 			++Walls->Taken;
 			Walls->Besieger = 0;
 			Walls->Army = 0;

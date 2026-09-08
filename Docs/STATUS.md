@@ -12,52 +12,63 @@ refresh").
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 08 — MILITARY
-TASK        : 08.07 — WAR IN THE CHRONICLE
+PHASE       : 08 — MILITARY — CLOSED
+TASK        : 08.08 — THE PHASE GATE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-█████████████████████░░░ 82%
+██████████████████████░░ 85%
 
 CURRENTLY
-→ 08.07 closed: the phase had spent six tasks making war happen and none of it saying so. An event log
-  is a record and not a chronicle - it holds every hop of every march and every measure of grain, which
-  is exactly what nobody remembers. A chronicle is the small part a century keeps: a levy called, a
-  host broken, a capital stormed, a war begun and a war ended. Same shape as 07.07 one layer up - a
-  listener that keeps the few that matter, a sentence for all seventeen military events whether kept or
-  not, stamped with the year and the age in the same hand as every layer below, and falling through to
-  the politics text for everything else.
+→ Phase 08 closed. Five centuries at 256 with every Phase 04 to 08 system running, the two most
+  peopled regions simulated person by person, every invariant of every military measure checked each
+  decade along with the Phase 07 ones under it, a snapshot at year 250 reloaded and replayed to the
+  same year 500, and four frozen digests.
 
-  And the causes are chained now, so the why of a lost province is a chain rather than a line. A battle
-  publishes first and hands its event id to the levy releases it caused and to the breaking that
-  followed; a burial names the release that reported the fallen. Three steps back:
-    Year 364, age of Okerdun: Kratfa buried 1 man of its own.
-      because 1 man of Kratfa did not come back.
-      because the polity of Eva won a battle in Zakru; the beaten side left 9 men on it.
+  The gate found four defects and all four are closed. A snapshot of year 250 replayed to year 500
+  gave a different world - the worst kind of defect this project can have, and the reason a gate
+  exists. MeasurePolities counted a polity whose seat had just been stormed as incoherent, and one
+  whose ruler had just been killed in a war: neither is incoherence, both are the world, and 07.01
+  answers both on its next tick - split out as Doomed and Bereft so that Bad keeps its meaning. And a
+  host kept a marching order on ground the enemy had just left, beaten and fallen back or destroyed or
+  a capital that had changed hands: an order to march on nothing. The war, the siege and the battle
+  each now clear the orders they invalidate.
+
+WHAT PHASE 08 IS
+→ An army is people taken out of regions, and every man is recorded on the region he came from. It
+  marches on the region graph towards the nearest enemy host, one hop a season, eating off the ground
+  it stands on. Two hosts on one region settle it in a year by numbers, whose ground it is, and a
+  stream fixed by the world seed. A capital changes hands only under siege, and the polity that loses
+  one ends. A war is a thing with a beginning and an end, closed by exhaustion, and the stance of
+  07.06 follows it. The fallen are dead where they came from, those who came back are known for it,
+  and people leave ground an army will not get off. And a chronicle keeps the small part of all that
+  a century would remember, with the why of a lost province walked back to the battle.
 
 COMPLETED
 ✓ Phases 00-07 (headless, Phase 07 closed) (CI 68)
 ✓ 08.01 levies and armies (CI 69), 08.02 marching, 08.03 battle, 08.04 siege
 ✓ 08.05 war with an end, 08.06 what war costs the living, 08.07 war in the chronicle
-✓ Every defect the adversarial review confirmed is closed (4 of 4)
+✓ 08.08 the phase gate — Phase 08 CLOSED
+✓ Every defect the adversarial review confirmed is closed (4 of 4), and the four the gate found
 
 NEXT
-→ 08.08 Phase 08 gate: 500 years at 256 with every Phase 04 to 08 system, invariants every decade,
-  frozen digests; Phase 08 closed against section 2 of the roadmap
+→ Phase 09 breakdown, then 09.01
 
-FILES
-+ Source/VaelenMilitary/Public/Vaelen/Military/MilitaryHistory.h, Private/MilitaryHistory.cpp
-+ Tests/Military/Test_MilitaryHistory.cpp
-~ Source/VaelenMilitary/ (Armies.h, Armies.cpp, Battle.cpp, Toll.cpp: the causes chained)
+TESTS (the phase-closing run, six presets with every gate)
+✓ Core 133 (108 without asserts) + Sim 161 + Population 37 + Society 27 + Economy 27
+  + Politics 29 + Military 29; ctest 92/92 in all six Linux presets
+✓ AELVOR 256, five centuries: 250=795f25aed60dcb61 500=90b8eda971f657f2
+  log=de646de7ded3e7fd text=d704a925653f8ecb
+✓ The snapshot of year 250 reloaded and replayed reaches exactly the same year 500
+✓ Purity: 136 files, 0 violations; clang-format: 0 files need formatting
 
-TESTS
-✓ Core 133 + Sim 161 + Population 37 + Society 27 + Economy 26 + Politics 29 + Military 28
-  ctest 86/86; purity 136 files, 0 violations
-✓ Two worlds of one seed write the same chronicle word for word: 241 records, text 88eee3886fdd6d57
-
-VERIFICATION CADENCE
-→ Two presets a task (clang-debug for the assertions, gcc-release for the optimised), six at a phase
-  close. Four minutes instead of thirty, and the two that actually find things.
+EXIT CRITERIA (roadmap section 2)
+✓ 1. Six Linux presets green with every gate; Windows MSVC and macOS run in CI
+✓ 2. Determinism tests for every system of the phase: same seed, snapshot round trip, frozen values
+✓ 3. No file of the phase carries PROTOTYPE or INCOMPLETE; the engine-facing files of Source/Vaelen
+     stay UNVERIFIED, as the report says
+✓ 4. Unit, integration, deterministic, edge and long-duration tests for every system
+✓ 5. ARCHITECTURE, CONVENTIONS, DECISIONS and ROADMAP updated; ADR-0064 to ADR-0073
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)
@@ -232,7 +243,7 @@ Phase 07 against the exit criteria (`Docs/ROADMAP.md` section 2): (1) CI matrix 
 | 08.05 | War as a thing with a beginning and an end: opened by a relation turning, held open while it runs, closed by exhaustion, with the stance of 07.06 following it | VALIDATED: War 4 tests |
 | 08.06 | What war costs the living: the dead where they came from, the standing of those who came back, the people who would not stay | VALIDATED: Toll 4 tests |
 | 08.07 | War in the chronicle: a sentence for every military event, the few a century keeps, and the why of a lost province walked back to the battle | VALIDATED: MilitaryHistory 4 tests |
-| 08.08 | Phase 08 gate | PLANNED |
+| 08.08 | Phase 08 gate: five centuries at 256 with every Phase 04 to 08 system, every invariant each decade, a snapshot replayed, four frozen digests | VALIDATED: MilitaryGate 1 test |
 
 ## File status
 
@@ -442,10 +453,11 @@ the purity checker, applied to headers and sources).
 | `Military/Test_War.cpp` (Phase 08) | VALIDATED | 4 |
 | `Military/Test_Toll.cpp` (Phase 08) | VALIDATED | 4 |
 | `Military/Test_MilitaryHistory.cpp` (Phase 08) | VALIDATED | 4 |
+| `Military/Test_MilitaryGate.cpp` (Phase 08) | VALIDATED | 1 |
 | `Politics/Test_Law.cpp` (Phase 07) | VALIDATED | 4 |
 | `Politics/Test_Law.cpp` (Phase 07) | VALIDATED | 4 |
 
-Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 6, Deposits 5, WorldPipeline 4, History 3, Population 5, Naming 5, Religion 5, Disasters 5, PreHistory 5, HistoryText 5, HistoryGate 2 (161 tests; 158 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.History`, `Sim.Population`, `Sim.Naming`, `Sim.Religion`, `Sim.Disasters`, `Sim.PreHistory`, `Sim.HistoryText`, `Sim.HistoryGate`, `Sim.Registry`, `Sim.Shuffled` (42 entries in total). Population suites: Persons 6, Lives 5, Families 5, Needs 6, Traits 5, Lod 5, PersonHistory 5, PopulationGate 1 (38 tests; 38 without assertions); CTest entries `Population.Persons`, `Population.Lives`, `Population.Families`, `Population.Needs`, `Population.Traits`, `Population.Lod`, `Population.PersonHistory`, `Population.PopulationGate`, `Population.Registry`, `Population.Shuffled` (10 entries). Society suites: Organizations 5, Standing 4, Norms 4, Bondage 4, Decisions 4, Strata 3, SocietyHistory 3, SocietyGate 1 (28 tests; 28 without assertions); CTest entries `Society.Organizations`, `Society.Standing`, `Society.Norms`, `Society.Bondage`, `Society.Decisions`, `Society.Strata`, `Society.SocietyHistory`, `Society.SocietyGate`, `Society.Registry`, `Society.Shuffled` (10 entries). Economy suites: Stocks 4, Production 4, Markets 4, Trade 4, Wealth 5, Grains 2, EconomyHistory 3, EconomyGate 1 (27 tests; 27 without assertions); CTest entries `Economy.Stocks`, `Economy.Production`, `Economy.Markets`, `Economy.Trade`, `Economy.Wealth`, `Economy.Grains`, `Economy.EconomyHistory`, `Economy.EconomyGate`, `Economy.Registry`, `Economy.Shuffled` (10 entries). Politics suites: Polities 4, Law 4, Reach 5, Succession 4, Factions 4, Diplomacy 4, PoliticsHistory 3, PoliticsGate 1 (29 tests; 29 without assertions); CTest entries `Politics.Diplomacy`, `Politics.Factions`, `Politics.Law`, `Politics.Polities`, `Politics.PoliticsGate`, `Politics.PoliticsHistory`, `Politics.Reach`, `Politics.Succession`, `Politics.Registry`, `Politics.Shuffled` (10 entries). Military suites: Armies 4, Battle 4, March 4, MilitaryHistory 4, Siege 4, Toll 4, War 4 (28 tests; 28 without assertions); CTest entries `Military.Armies`, `Military.Battle`, `Military.March`, `Military.MilitaryHistory`, `Military.Siege`, `Military.Toll`, `Military.War`, `Military.Registry`, `Military.Shuffled` (9 entries).
+Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 6, Deposits 5, WorldPipeline 4, History 3, Population 5, Naming 5, Religion 5, Disasters 5, PreHistory 5, HistoryText 5, HistoryGate 2 (161 tests; 158 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.History`, `Sim.Population`, `Sim.Naming`, `Sim.Religion`, `Sim.Disasters`, `Sim.PreHistory`, `Sim.HistoryText`, `Sim.HistoryGate`, `Sim.Registry`, `Sim.Shuffled` (42 entries in total). Population suites: Persons 6, Lives 5, Families 5, Needs 6, Traits 5, Lod 5, PersonHistory 5, PopulationGate 1 (38 tests; 38 without assertions); CTest entries `Population.Persons`, `Population.Lives`, `Population.Families`, `Population.Needs`, `Population.Traits`, `Population.Lod`, `Population.PersonHistory`, `Population.PopulationGate`, `Population.Registry`, `Population.Shuffled` (10 entries). Society suites: Organizations 5, Standing 4, Norms 4, Bondage 4, Decisions 4, Strata 3, SocietyHistory 3, SocietyGate 1 (28 tests; 28 without assertions); CTest entries `Society.Organizations`, `Society.Standing`, `Society.Norms`, `Society.Bondage`, `Society.Decisions`, `Society.Strata`, `Society.SocietyHistory`, `Society.SocietyGate`, `Society.Registry`, `Society.Shuffled` (10 entries). Economy suites: Stocks 4, Production 4, Markets 4, Trade 4, Wealth 5, Grains 2, EconomyHistory 3, EconomyGate 1 (27 tests; 27 without assertions); CTest entries `Economy.Stocks`, `Economy.Production`, `Economy.Markets`, `Economy.Trade`, `Economy.Wealth`, `Economy.Grains`, `Economy.EconomyHistory`, `Economy.EconomyGate`, `Economy.Registry`, `Economy.Shuffled` (10 entries). Politics suites: Polities 4, Law 4, Reach 5, Succession 4, Factions 4, Diplomacy 4, PoliticsHistory 3, PoliticsGate 1 (29 tests; 29 without assertions); CTest entries `Politics.Diplomacy`, `Politics.Factions`, `Politics.Law`, `Politics.Polities`, `Politics.PoliticsGate`, `Politics.PoliticsHistory`, `Politics.Reach`, `Politics.Succession`, `Politics.Registry`, `Politics.Shuffled` (10 entries). Military suites: Armies 4, Battle 4, March 4, MilitaryGate 1, MilitaryHistory 4, Siege 4, Toll 4, War 4 (29 tests; 29 without assertions); CTest entries `Military.Armies`, `Military.Battle`, `Military.March`, `Military.MilitaryGate`, `Military.MilitaryHistory`, `Military.Siege`, `Military.Toll`, `Military.War`, `Military.Registry`, `Military.Shuffled` (10 entries).
 
 ### Tools/ and CI
 
@@ -462,12 +474,12 @@ Toolchain: clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.1
 
 | Preset | Build | `ctest` | `VaelenCoreTests` | `VaelenSimTests` | `VaelenPopulationTests` | `VaelenSocietyTests` | `VaelenEconomyTests` | `VaelenPoliticsTests` | `VaelenMilitaryTests` |
 |---|---|---|---|---|---|---|---|---|---|
-| linux-clang-debug | 0 warnings | 86/86 passed | 133 run, 133 passed, 22427 checks | 161 run, 161 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 28 run, 28 passed |
-| linux-gcc-debug | 0 warnings | 86/86 passed | 133 run, 133 passed, 22427 checks | 161 run, 161 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 28 run, 28 passed |
-| linux-clang-release | 0 warnings | 86/86 passed | 133 run, 133 passed, 22427 checks | 161 run, 161 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 28 run, 28 passed |
-| linux-gcc-release | 0 warnings | 86/86 passed | 133 run, 133 passed, 22427 checks | 161 run, 161 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 28 run, 28 passed |
-| linux-clang-noasserts | 0 warnings | 86/86 passed | 108 run, 108 passed, 22214 checks | 158 run, 158 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 28 run, 28 passed |
-| linux-gcc-noasserts | 0 warnings | 86/86 passed | 108 run, 108 passed, 22214 checks | 158 run, 158 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 28 run, 28 passed |
+| linux-clang-debug | 0 warnings | 92/92 passed | 133 run, 133 passed, 22427 checks | 161 run, 161 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 29 run, 29 passed |
+| linux-gcc-debug | 0 warnings | 92/92 passed | 133 run, 133 passed, 22427 checks | 161 run, 161 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 29 run, 29 passed |
+| linux-clang-release | 0 warnings | 92/92 passed | 133 run, 133 passed, 22427 checks | 161 run, 161 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 29 run, 29 passed |
+| linux-gcc-release | 0 warnings | 92/92 passed | 133 run, 133 passed, 22427 checks | 161 run, 161 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 29 run, 29 passed |
+| linux-clang-noasserts | 0 warnings | 92/92 passed | 108 run, 108 passed, 22214 checks | 158 run, 158 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 29 run, 29 passed |
+| linux-gcc-noasserts | 0 warnings | 92/92 passed | 108 run, 108 passed, 22214 checks | 158 run, 158 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 29 run, 29 passed |
 
 Mini-world baseline (100 000 ticks, 41 entities, 305 027 events, 34 168 227-byte snapshot), logged by `Sim.MiniWorld`, not asserted: clang debug 0.39 s (255 k ticks/s), gcc debug 0.40 s, clang release 0.135 s (739 k ticks/s), gcc release without assertions 0.127 s (790 k ticks/s); snapshot 0.09-0.14 s.
 

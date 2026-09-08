@@ -2,7 +2,7 @@
 // Phase 08.04: siege - a host sitting before an enemy seat, and the only way a
 // capital ever changes hands.
 //
-// STATUS: PROTOTYPE (Phase 08)
+// STATUS: VALIDATED (Phase 08)
 
 #include "Vaelen/Economy/Markets.h"
 #include "Vaelen/Economy/Production.h"
@@ -146,8 +146,8 @@ namespace
 													Orders, InColumns);
 			Swords = std::make_unique<BattleSystem>(Instance, Ages.Types(), Polities, Reaches, Treaties, Hosts, Orders,
 													Fields, InFields);
-			Ramparts = std::make_unique<SiegeSystem>(Instance, Ages.Types(), Polities, Reaches, Treaties, Hosts, Walls,
-													 InWalls);
+			Ramparts = std::make_unique<SiegeSystem>(Instance, Ages.Types(), Polities, Reaches, Treaties, Hosts, Orders,
+													 Walls, InWalls);
 			Words->ObserveContest(Treaties.Contested);
 			Houses->RunAfter("Lod");
 			Stocks->RunAfter("Lod");

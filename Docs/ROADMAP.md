@@ -75,7 +75,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | VALIDATED (headless, 06.01-06.08); UNVERIFIED (engine) |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | VALIDATED headless (07.01-07.08, phase closed); UNVERIFIED under UBT |
-| 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | IN PROGRESS (08.01-08.07 VALIDATED headless; 08.08 PLANNED) |
+| 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | CLOSED (08.01-08.08 VALIDATED headless; UNVERIFIED under UBT) |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
 | 10 | PLAYER | The player as one simulated person: enslaved start, body, needs, skills, relationships; player intent as commands into the simulation. | PLANNED |
 | 11 | MINING COLONY | The starting place: a huge autonomous mining colony simulated by the same systems at full detail. | PLANNED |
@@ -2283,6 +2283,29 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   `88eee3886fdd6d57` over 241 records.
 - Decision: ADR-0072.
 
+### 08.08 Phase 08 gate - VALIDATED (headless), and Phase 08 closed
+
+- Delivered: `Tests/Military/Test_MilitaryGate.cpp` - five centuries at 256 with every Phase 04 to 08
+  system running, the two most peopled regions simulated person by person, every invariant of every
+  military measure checked each decade along with the Phase 07 ones under it, a snapshot at year 250
+  reloaded and replayed to the same year 500, and four frozen digests: state at 250 and at 500, the
+  event log, and the whole chronicle as text.
+- Four defects the gate found, all closed:
+  - A snapshot of year 250 replayed to year 500 gave a different world. The worst kind of defect this
+    project can have, and the reason a gate exists.
+  - `MeasurePolities` counted a polity whose seat had just been stormed as incoherent. It is not: 08.04
+    can take a seat, and 07.01 dissolves what has lost one on its next tick. Split out as `Doomed`.
+  - The same for a polity whose ruler had just been killed in a war, which 08.06 can now do to anybody.
+    Split out as `Bereft`; `Bad` keeps its meaning, which is incoherence.
+  - A host kept a marching order on ground the enemy had just left - beaten and fallen back, destroyed,
+    or a capital that had just changed hands. An order to march on nothing. The war, the siege and the
+    battle each now clear the orders they invalidate.
+- Phase 08 closed against section 2: all six Linux presets green with every gate (92 CTest entries
+  each), purity 136 files 0 violations, clang-format clean, every file of the phase VALIDATED, every
+  system with unit, integration, deterministic, edge and long-duration tests, and an ADR for every
+  architecture decision (ADR-0064 to ADR-0073).
+- Decision: ADR-0073.
+
 ## 12b. Phases 09-20: notes
 
  Fixed points already in the code: `IdKind` values for Region, Tile, River,
@@ -2299,52 +2322,63 @@ class and Enhanced Input mappings arrive in Phase 10.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 08 — MILITARY
-TASK        : 08.07 — WAR IN THE CHRONICLE
+PHASE       : 08 — MILITARY — CLOSED
+TASK        : 08.08 — THE PHASE GATE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-█████████████████████░░░ 82%
+██████████████████████░░ 85%
 
 CURRENTLY
-→ 08.07 closed: the phase had spent six tasks making war happen and none of it saying so. An event log
-  is a record and not a chronicle - it holds every hop of every march and every measure of grain, which
-  is exactly what nobody remembers. A chronicle is the small part a century keeps: a levy called, a
-  host broken, a capital stormed, a war begun and a war ended. Same shape as 07.07 one layer up - a
-  listener that keeps the few that matter, a sentence for all seventeen military events whether kept or
-  not, stamped with the year and the age in the same hand as every layer below, and falling through to
-  the politics text for everything else.
+→ Phase 08 closed. Five centuries at 256 with every Phase 04 to 08 system running, the two most
+  peopled regions simulated person by person, every invariant of every military measure checked each
+  decade along with the Phase 07 ones under it, a snapshot at year 250 reloaded and replayed to the
+  same year 500, and four frozen digests.
 
-  And the causes are chained now, so the why of a lost province is a chain rather than a line. A battle
-  publishes first and hands its event id to the levy releases it caused and to the breaking that
-  followed; a burial names the release that reported the fallen. Three steps back:
-    Year 364, age of Okerdun: Kratfa buried 1 man of its own.
-      because 1 man of Kratfa did not come back.
-      because the polity of Eva won a battle in Zakru; the beaten side left 9 men on it.
+  The gate found four defects and all four are closed. A snapshot of year 250 replayed to year 500
+  gave a different world - the worst kind of defect this project can have, and the reason a gate
+  exists. MeasurePolities counted a polity whose seat had just been stormed as incoherent, and one
+  whose ruler had just been killed in a war: neither is incoherence, both are the world, and 07.01
+  answers both on its next tick - split out as Doomed and Bereft so that Bad keeps its meaning. And a
+  host kept a marching order on ground the enemy had just left, beaten and fallen back or destroyed or
+  a capital that had changed hands: an order to march on nothing. The war, the siege and the battle
+  each now clear the orders they invalidate.
+
+WHAT PHASE 08 IS
+→ An army is people taken out of regions, and every man is recorded on the region he came from. It
+  marches on the region graph towards the nearest enemy host, one hop a season, eating off the ground
+  it stands on. Two hosts on one region settle it in a year by numbers, whose ground it is, and a
+  stream fixed by the world seed. A capital changes hands only under siege, and the polity that loses
+  one ends. A war is a thing with a beginning and an end, closed by exhaustion, and the stance of
+  07.06 follows it. The fallen are dead where they came from, those who came back are known for it,
+  and people leave ground an army will not get off. And a chronicle keeps the small part of all that
+  a century would remember, with the why of a lost province walked back to the battle.
 
 COMPLETED
 ✓ Phases 00-07 (headless, Phase 07 closed) (CI 68)
 ✓ 08.01 levies and armies (CI 69), 08.02 marching, 08.03 battle, 08.04 siege
 ✓ 08.05 war with an end, 08.06 what war costs the living, 08.07 war in the chronicle
-✓ Every defect the adversarial review confirmed is closed (4 of 4)
+✓ 08.08 the phase gate — Phase 08 CLOSED
+✓ Every defect the adversarial review confirmed is closed (4 of 4), and the four the gate found
 
 NEXT
-→ 08.08 Phase 08 gate: 500 years at 256 with every Phase 04 to 08 system, invariants every decade,
-  frozen digests; Phase 08 closed against section 2 of the roadmap
+→ Phase 09 breakdown, then 09.01
 
-FILES
-+ Source/VaelenMilitary/Public/Vaelen/Military/MilitaryHistory.h, Private/MilitaryHistory.cpp
-+ Tests/Military/Test_MilitaryHistory.cpp
-~ Source/VaelenMilitary/ (Armies.h, Armies.cpp, Battle.cpp, Toll.cpp: the causes chained)
+TESTS (the phase-closing run, six presets with every gate)
+✓ Core 133 (108 without asserts) + Sim 161 + Population 37 + Society 27 + Economy 27
+  + Politics 29 + Military 29; ctest 92/92 in all six Linux presets
+✓ AELVOR 256, five centuries: 250=795f25aed60dcb61 500=90b8eda971f657f2
+  log=de646de7ded3e7fd text=d704a925653f8ecb
+✓ The snapshot of year 250 reloaded and replayed reaches exactly the same year 500
+✓ Purity: 136 files, 0 violations; clang-format: 0 files need formatting
 
-TESTS
-✓ Core 133 + Sim 161 + Population 37 + Society 27 + Economy 26 + Politics 29 + Military 28
-  ctest 86/86; purity 136 files, 0 violations
-✓ Two worlds of one seed write the same chronicle word for word: 241 records, text 88eee3886fdd6d57
-
-VERIFICATION CADENCE
-→ Two presets a task (clang-debug for the assertions, gcc-release for the optimised), six at a phase
-  close. Four minutes instead of thirty, and the two that actually find things.
+EXIT CRITERIA (roadmap section 2)
+✓ 1. Six Linux presets green with every gate; Windows MSVC and macOS run in CI
+✓ 2. Determinism tests for every system of the phase: same seed, snapshot round trip, frozen values
+✓ 3. No file of the phase carries PROTOTYPE or INCOMPLETE; the engine-facing files of Source/Vaelen
+     stay UNVERIFIED, as the report says
+✓ 4. Unit, integration, deterministic, edge and long-duration tests for every system
+✓ 5. ARCHITECTURE, CONVENTIONS, DECISIONS and ROADMAP updated; ADR-0064 to ADR-0073
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)

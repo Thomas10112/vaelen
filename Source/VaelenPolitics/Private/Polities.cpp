@@ -369,16 +369,23 @@ namespace Vaelen::Politics
 				continue;
 			}
 			++S.Standing;
-			// The seat belongs to its own polity; the ruler is the council's head and alive.
+			// The ruler is the council's head and alive. The seat is another
+			// matter: a polity whose seat is ruled by somebody else has had it
+			// stormed (08.04) and is dissolved on this system's next tick, which
+			// is a fact about the world and not an incoherence in it.
 			bool Bad = false;
 			const auto Seat =
 				std::find_if(Rules_.begin(), Rules_.end(), [&](const auto& E) { return E.first == P.Seat; });
-			Bad = Bad || Seat == Rules_.end() || Seat->second.Polity != P.Index;
+			S.Doomed += Seat == Rules_.end() || Seat->second.Polity != P.Index ? 1u : 0u;
 			if (P.Ruler != 0)
 			{
 				const Population::PersonInfo* Person = Population::FindPerson(W, Persons, P.Ruler);
-				Bad = Bad || Person == nullptr || Person->State != static_cast<uint8>(Population::LifeState::Alive);
-				Bad = Bad || P.Council >= HeadOf.size() || HeadOf[P.Council] != P.Ruler;
+				const bool Living =
+					Person != nullptr && Person->State == static_cast<uint8>(Population::LifeState::Alive);
+				S.Bereft += Living ? 0u : 1u;
+				// Whether he is the council's head is the incoherence; whether he is
+				// alive is the world, and this system answers it on its next tick.
+				Bad = Bad || P.Council >= HeadOf.size() || (Living && HeadOf[P.Council] != P.Ruler);
 			}
 			else
 			{

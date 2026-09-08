@@ -1,7 +1,7 @@
 // VAELEN - VaelenMilitary
 // Phase 08.05: war as a thing with a beginning and an end.
 //
-// STATUS: PROTOTYPE (Phase 08) - unit/integration/deterministic/edge tests in Tests/Military
+// STATUS: VALIDATED (Phase 08) - unit/integration/deterministic/edge tests in Tests/Military
 
 #include "Vaelen/Military/War.h"
 
@@ -261,6 +261,26 @@ namespace Vaelen::Military
 						if (Play.By == SideA || Play.By == SideB)
 						{
 							Play.By = 0;
+						}
+					});
+			// And the marching ends with it. A host still under an order to walk on
+			// ground that is no longer enemy ground is an order nobody gave: 08.01
+			// sends it home on its next tick, and until then it is under nothing.
+			W.Components()
+				.GetPool(Armies.Army)
+				.ForEach(
+					[&](EntityHandle H, const ArmyInfo& Host)
+					{
+						if (Host.Disbanded != 0 || (Host.Polity != SideA && Host.Polity != SideB))
+						{
+							return;
+						}
+						MarchOrder* Under = W.Components().GetPool(Marches.Order).TryGet(H);
+						if (Under != nullptr)
+						{
+							Under->Aim = 0;
+							Under->Hops = 0;
+							Under->Arrived = 0;
 						}
 					});
 		}

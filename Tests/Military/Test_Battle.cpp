@@ -2,7 +2,7 @@
 // Phase 08.03: battle - two hosts of polities at war standing on one region,
 // settled in a year by strength, whose ground it is, and the stream.
 //
-// STATUS: PROTOTYPE (Phase 08)
+// STATUS: VALIDATED (Phase 08)
 
 #include "Vaelen/Economy/Markets.h"
 #include "Vaelen/Economy/Production.h"

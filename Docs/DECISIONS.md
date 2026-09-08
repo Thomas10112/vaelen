@@ -95,6 +95,7 @@ Rules for this file:
 | [0070](#adr-0070-a-person-index-is-never-handed-out-twice) | A person index is never handed out twice | Accepted; headless VALIDATED |
 | [0071](#adr-0071-the-numbers-land-on-people) | The numbers land on people | Accepted; headless VALIDATED |
 | [0072](#adr-0072-a-chronicle-is-the-small-part-a-century-keeps) | A chronicle is the small part a century keeps | Accepted; headless VALIDATED |
+| [0073](#adr-0073-a-gate-is-where-the-phase-finds-out-what-it-got-wrong) | A gate is where the phase finds out what it got wrong | Accepted; headless VALIDATED |
 
 ---
 
@@ -4394,6 +4395,68 @@ up, and the same argument.
 Accepted 2026-09-08. Files: `Source/VaelenMilitary/Public/Vaelen/Military/MilitaryHistory.h`,
 `Source/VaelenMilitary/Private/MilitaryHistory.cpp`, `Tests/Military/Test_MilitaryHistory.cpp`
 (4 tests). Headless VALIDATED on the six Linux presets.
+
+---
+
+## ADR-0073: A gate is where the phase finds out what it got wrong
+
+### Context
+
+Every task of Phase 08 shipped green: its own tests passed, the six presets
+passed, the frozen digests held. The gate runs five centuries at 256 with every
+Phase 04 to 08 system at once and checks every invariant of every one of them
+each decade. It failed immediately, four different ways.
+
+That is not a failure of the tasks. It is what a gate is for, and the four are
+worth recording because they are all the same shape: a system tested against
+its own module behaves; the same system tested against every module it stands
+on does not.
+
+### Decision
+
+1. **The gate checks the invariants of every module beneath the phase**, not
+   only the phase's own. Three of the four defects were found by checking the
+   Phase 07 measures inside a Phase 08 world.
+2. **A measure's `Bad` means incoherence, and nothing else.** `MeasurePolities`
+   counted a polity whose seat had just been stormed, and one whose ruler had
+   just been killed, as bad. Neither is: 08.04 can take a seat and 08.06 can
+   kill anybody, and 07.01 answers both on its next tick. They are now `Doomed`
+   and `Bereft` - counted, visible to a gate, and not confused with a world
+   that does not add up. A measure written before a phase existed will call that
+   phase's normal outcomes wrong; the fix is to name them, not to widen `Bad`.
+3. **A cross-layer write clears what it invalidates, in the same tick.** A host
+   marching on an enemy that has been beaten and fallen back, destroyed, or
+   whose capital has changed hands, is under an order to march on nothing. The
+   battle, the siege and the war each now clear the orders they invalidate,
+   rather than leaving a stale one for the next year's march to notice.
+4. **A snapshot replayed must reach the world it was taken from**, over the
+   whole length of the gate and not a decade of it. That check found a
+   divergence at 250 years that nothing shorter had.
+
+### Alternatives and decision rule
+
+- Tolerating the one-tick transients in the gate (allowing `Bad <= 1` in a year
+  a seat was stormed): rejected. It would have hidden the third defect, which
+  was a real stale order and not a transient at all.
+- Leaving stale orders for the next year's march to overwrite: rejected. It
+  works, and it means the world spends a tick in a state its own measures call
+  wrong, which is exactly the state a gate cannot distinguish from a bug.
+
+### Consequences
+
+- Phase 08 is closed: six Linux presets green with every gate, 92 CTest entries
+  each, purity 136 files 0 violations, every file of the phase VALIDATED.
+- The four frozen digests of the gate - state at 250 and 500, the event log, and
+  the chronicle as text - are the strongest guard the project has: any change to
+  any system of any phase from 04 to 08 that alters the world will move one.
+- Phase 09 inherits a world where war is a thing that happens to people.
+
+### Status
+
+Accepted 2026-09-08. Files: `Tests/Military/Test_MilitaryGate.cpp`,
+`Source/VaelenPolitics/Private/Polities.cpp`, `Source/VaelenMilitary/Private/Battle.cpp`,
+`Private/Siege.cpp`, `Private/War.cpp`. Headless VALIDATED on the six Linux
+presets with every gate.
 
 ---
 

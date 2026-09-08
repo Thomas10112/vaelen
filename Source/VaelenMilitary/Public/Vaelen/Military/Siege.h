@@ -2,7 +2,7 @@
 // Phase 08.04: siege - a host before a seat, and the only way a capital ever
 // changes hands.
 //
-// STATUS: PROTOTYPE (Phase 08) - unit/integration/deterministic/edge tests in Tests/Military
+// STATUS: VALIDATED (Phase 08) - unit/integration/deterministic/edge tests in Tests/Military
 //
 // Everything else in the phase moves men about and kills them. Nothing so far
 // takes anything. A province can slip to a neighbour when its ruler's grip
@@ -22,6 +22,7 @@
 #include "Vaelen/Core/CoreTypes.h"
 #include "Vaelen/Military/Armies.h"
 #include "Vaelen/Military/Battle.h"
+#include "Vaelen/Military/March.h"
 #include "Vaelen/Military/MilitaryApi.h"
 #include "Vaelen/Politics/Diplomacy.h"
 #include "Vaelen/Politics/Polities.h"
@@ -88,9 +89,9 @@ namespace Vaelen::Military
 	public:
 		SiegeSystem(World& InWorld, const History::PreHistoryTypes& InTypes, Politics::PolityTypes InPolities,
 					Politics::ReachTypes InReaches, Politics::DiplomacyTypes InRelations, ArmyTypes InArmies,
-					SiegeTypes InSieges, SiegeRules InRules) noexcept
+					MarchTypes InMarches, SiegeTypes InSieges, SiegeRules InRules) noexcept
 			: Owner(&InWorld), Types(InTypes), Polities(InPolities), Reaches(InReaches), Relations(InRelations),
-			  Armies(InArmies), Sieges(InSieges), Rules(InRules)
+			  Armies(InArmies), Marches(InMarches), Sieges(InSieges), Rules(InRules)
 		{
 		}
 		const char* GetName() const noexcept override { return "Sieges"; }
@@ -115,6 +116,7 @@ namespace Vaelen::Military
 		Politics::ReachTypes Reaches;
 		Politics::DiplomacyTypes Relations;
 		ArmyTypes Armies;
+		MarchTypes Marches;
 		SiegeTypes Sieges;
 		SiegeRules Rules;
 	};

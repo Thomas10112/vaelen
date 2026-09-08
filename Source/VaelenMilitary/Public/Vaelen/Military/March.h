@@ -2,7 +2,7 @@
 // Phase 08.02: marching - where a host goes, how long it takes to get there,
 // and what it eats off the ground it crosses.
 //
-// STATUS: PROTOTYPE (Phase 08) - unit/integration/deterministic/edge tests in Tests/Military
+// STATUS: VALIDATED (Phase 08) - unit/integration/deterministic/edge tests in Tests/Military
 //
 // A host raised at a seat is of no use at the seat. It marches, and it marches
 // on the region graph the world was partitioned into (02.05), one hop a

@@ -1,6 +1,7 @@
 // VAELEN - Tests/Military
-// Phase 08.05: war as a thing with a beginning and an end - opened by a
-// relation turning, held open while it runs, and closed by exhaustion.
+// Phase 08.08: the phase gate - five centuries at 256 with every Phase 04 to 08
+// system running, every invariant of every one of them checked each decade, and
+// the whole thing frozen.
 //
 // STATUS: VALIDATED (Phase 08)
 
@@ -14,6 +15,8 @@
 #include "Vaelen/Military/Armies.h"
 #include "Vaelen/Military/Battle.h"
 #include "Vaelen/Military/Siege.h"
+#include "Vaelen/Military/MilitaryHistory.h"
+#include "Vaelen/Military/Toll.h"
 #include "Vaelen/Military/War.h"
 #include "Vaelen/Military/March.h"
 #include "Vaelen/Politics/Diplomacy.h"
@@ -41,7 +44,9 @@
 #include "VaelenTest.h"
 
 #include <algorithm>
+#include <chrono>
 #include <memory>
+#include <string>
 #include <vector>
 
 using namespace Vaelen;
@@ -53,16 +58,17 @@ using namespace Vaelen::Population;
 using namespace Vaelen::Society;
 using namespace Vaelen::WorldGen;
 
-// Recorded on clang 18 / Linux x86_64 (08.05): AELVOR 128 at year 300, the two
-// most peopled regions detailed, 100 years with every Phase 04 to 08 system so
-// far, wars included.
-#define VAELEN_WAR_FROZEN_128 0x7f5a5a47a3be40dfull
-#define VAELEN_WAR_OVER_128 5u
-#define VAELEN_WAR_FALLEN_128 1968u
+// Recorded on clang 18 / Linux x86_64 (08.08): AELVOR 256 at year 300, the two
+// most peopled regions detailed, five centuries with every Phase 04 to 08
+// system running.
+#define VAELEN_MILGATE_FROZEN_256_250 0x795f25aed60dcb61ull
+#define VAELEN_MILGATE_FROZEN_256_500 0x90b8eda971f657f2ull
+#define VAELEN_MILGATE_LOG_256_500 0xde646de7ded3e7fdull
+#define VAELEN_MILGATE_TEXT_256_500 0xd704a925653f8ecbull
 
 namespace
 {
-	VAELEN_DEFINE_LOG_CATEGORY(LogWar);
+	VAELEN_DEFINE_LOG_CATEGORY(LogMilitaryGate);
 
 	constexpr uint64 AelvorSeed = 0x41454c564f52ull;
 
@@ -73,7 +79,8 @@ namespace
 					 ReachRules InReach = ReachRules{}, LawRules InLaws = LawRules{},
 					 PolityRules InRules = PolityRules{}, MarchRules InColumns = MarchRules{},
 					 BattleRules InFields = BattleRules{}, SiegeRules InWalls = SiegeRules{},
-					 WarRules InQuarrels = WarRules{})
+					 WarRules InQuarrels = WarRules{}, TollRules InCost = TollRules{},
+					 MilitaryChronicleRules InAnnals = MilitaryChronicleRules{})
 			: Instance(Config(Seed)), Ages(Instance, PreHistoryRules{})
 		{
 			Persons = PersonTypes::Declare(Instance, Ages);
@@ -100,6 +107,8 @@ namespace
 			Fields = BattleTypes::Declare(Instance);
 			Walls = SiegeTypes::Declare(Instance);
 			Quarrels = WarTypes::Declare(Instance);
+			Cost = TollTypes::Declare(Instance);
+			Records = MilitaryChronicleTypes::Declare(Instance);
 			Stores = Instance.Types().Register<RegionStores>("RegionStores"); // a council's granary (05.05)
 			Instance.Components().CreatePool(Stores);
 			LifeRules Life;
@@ -153,6 +162,15 @@ namespace
 													 Walls, InWalls);
 			Terms = std::make_unique<WarSystem>(Instance, Ages.Types(), Polities, Treaties, Fields, Hosts, Orders,
 												Quarrels, InQuarrels);
+			Reckoning =
+				std::make_unique<TollSystem>(Instance, Ages.Types(), Persons, Standing, Polities, Orders, Cost, InCost);
+			Ranks->ObserveService(Standing.Service);
+			SocietyCtx = SocietyContext{Persons, Families, Organizations};
+			EconomyCtx = EconomyContext{Persons, Families, Trade, Markets, MarketRules{}, &SocietyCtx};
+			PoliticsCtx =
+				PoliticsContext{Persons, Polities, Laws, LawRules{}, Reaches, Heirs, Parties, Treaties, &EconomyCtx};
+			MilitaryCtx = MilitaryContext{Hosts, Orders, Fields, Walls, Quarrels, Cost, &PoliticsCtx};
+			Annalist = std::make_unique<MilitaryChronicle>(Instance, Ages.Types(), MilitaryCtx, Records, InAnnals);
 			Words->ObserveContest(Treaties.Contested);
 			Houses->RunAfter("Lod");
 			Stocks->RunAfter("Lod");
@@ -184,7 +202,9 @@ namespace
 			Instance.Systems().Add(Swords.get());
 			Instance.Systems().Add(Ramparts.get());
 			Instance.Systems().Add(Terms.get());
+			Instance.Systems().Add(Reckoning.get());
 			Instance.Build();
+			Annalist->Attach();
 		}
 		static WorldConfig Config(uint64 Seed)
 		{
@@ -291,6 +311,35 @@ namespace
 		const SiegeInfo* Rampart(uint32 Region) const { return SiegeOf(Instance, Ages.Types(), Walls, Region); }
 		WarStats Quarrels_(WarRules R = WarRules{}) const { return MeasureWars(Instance, Quarrels, R); }
 		const WarInfo* Quarrel(uint32 Index) const { return WarOf(Instance, Quarrels, Index); }
+		TollStats Cost_(TollRules R = TollRules{}) const
+		{
+			return MeasureToll(Instance, Ages.Types(), Standing, Cost, R);
+		}
+		const RegionToll* Reckoned(uint32 Region) const { return TollOf(Instance, Ages.Types(), Cost, Region); }
+		MilitaryChronicleStats Annals_() const
+		{
+			return CheckMilitaryChronicle(Instance, Ages.Types(), MilitaryCtx, Records);
+		}
+		uint32 Chronicle(std::string& Out, uint32 MaxLines = 0) const
+		{
+			return ExportChronicleWithMilitary(Instance, Ages.Types(), MilitaryCtx, Out, MaxLines);
+		}
+		uint32 Why(PersistentId Id, std::string& Out) const
+		{
+			return ExportWhyWithMilitary(Instance, Ages.Types(), MilitaryCtx, Id, Out);
+		}
+		std::string Describe(const Event& E) const
+		{
+			std::string Line;
+			DescribeMilitaryEvent(Instance, Ages.Types(), MilitaryCtx, E, Line);
+			return Line;
+		}
+		/// Living people of a region, from the coarse count.
+		uint32 Living(uint32 Region) const
+		{
+			const RegionPopulation* P = Counts(Region);
+			return P != nullptr ? P->Total : 0u;
+		}
 		const WarInfo* QuarrelBetween(uint32 A, uint32 B) const { return WarBetween(Instance, Quarrels, A, B); }
 		/// Every war on record, in index order.
 		std::vector<WarInfo> AllWars() const
@@ -657,6 +706,12 @@ namespace
 		BattleTypes Fields;
 		SiegeTypes Walls;
 		WarTypes Quarrels;
+		TollTypes Cost;
+		MilitaryChronicleTypes Records;
+		SocietyContext SocietyCtx;
+		EconomyContext EconomyCtx;
+		PoliticsContext PoliticsCtx;
+		MilitaryContext MilitaryCtx;
 		ComponentType<RegionStores> Stores;
 		std::unique_ptr<LifeSystem> Lives;
 		std::unique_ptr<FamilySystem> Houses;
@@ -682,6 +737,8 @@ namespace
 		std::unique_ptr<BattleSystem> Swords;
 		std::unique_ptr<SiegeSystem> Ramparts;
 		std::unique_ptr<WarSystem> Terms;
+		std::unique_ptr<TollSystem> Reckoning;
+		std::unique_ptr<MilitaryChronicle> Annalist;
 	};
 } // namespace
 
@@ -698,283 +755,165 @@ namespace
 		return Wide;
 	}
 
-	/// Two powers grown into each other until they are at war, or the years run
-	/// out. Returns the year war broke out, or 0.
-	uint32 UntilWar(Run& W, uint32 Years, uint32 Grain = 60000)
+} // namespace
+
+namespace
+{
+	double Seconds(const std::chrono::steady_clock::time_point& From)
 	{
-		if (!W.Ages.Generate(Run::Square(128), 300))
+		return std::chrono::duration<double>(std::chrono::steady_clock::now() - From).count();
+	}
+
+	/// Everything that must hold in every year of the phase, of every module it
+	/// stands on. Returns the failures.
+	uint32 CheckInvariants(VaelenTest::Context& Ctx, const Run& W, uint32 Year)
+	{
+		uint32 Failures = 0;
+		const ArmyStats Ho = W.Hosts_();
+		const MarchStats Ma = W.Columns_();
+		const BattleStats Ba = W.Fields_();
+		const SiegeStats Si = W.Walls_();
+		const WarStats Wa = W.Quarrels_();
+		const TollStats To = W.Cost_();
+		const uint32 Bad = Ho.Bad + Ma.Bad + Ba.Bad + Si.Bad + Wa.Bad + To.Bad;
+		if (Bad != 0)
 		{
-			return 0;
+			++Failures;
+			VT_CHECK_MSG(false, "year %u: %u bad armies, %u marches, %u battles, %u sieges, %u wars, %u tolls", Year,
+						 Ho.Bad, Ma.Bad, Ba.Bad, Si.Bad, Wa.Bad, To.Bad);
 		}
-		const std::vector<uint32> Ranked = W.Ranked();
-		if (Ranked.size() < 2 || !RequestDetail(W.Instance, W.Lod, Ranked[0]) ||
-			!RequestDetail(W.Instance, W.Lod, Ranked[1]))
+		// Nothing is invented and nothing is lost: the men the regions say are
+		// away are exactly the men under arms, in every year of five centuries.
+		if (Ho.Away != Ho.Men)
 		{
-			return 0;
+			++Failures;
+			VT_CHECK_MSG(false, "year %u: %u men away against %u under arms", Year, Ho.Away, Ho.Men);
 		}
-		for (uint32 Year = 1; Year <= Years; ++Year)
+		// Every war that broke out is either still being fought or over.
+		if (Wa.Began != Wa.Running + Wa.Over)
 		{
-			for (const uint32 P : W.Powers())
-			{
-				W.Endow(P, Grain);
-			}
-			W.Ages.Run(1);
-			if (W.Treaties_().Wars > 0)
-			{
-				return Year;
-			}
+			++Failures;
+			VT_CHECK_MSG(false, "year %u: %u wars begun, %u running and %u over", Year, Wa.Began, Wa.Running, Wa.Over);
 		}
-		return 0;
+		// Every battle ends in a host falling back or a host destroyed.
+		if (Ba.Breakings + Ba.Retreats != Ba.Battles_)
+		{
+			++Failures;
+			VT_CHECK_MSG(false, "year %u: %u battles, %u breakings and %u retreats", Year, Ba.Battles_, Ba.Breakings,
+						 Ba.Retreats);
+		}
+		// Every record of the military chronicle has a sentence and sits in the
+		// era it happened in.
+		const MilitaryChronicleStats An = W.Annals_();
+		if (An.Described != An.Records || An.EraConsistent != An.Records)
+		{
+			++Failures;
+			VT_CHECK_MSG(false, "year %u: %u of %u records described, %u in their own era", Year, An.Described,
+						 An.Records, An.EraConsistent);
+		}
+		// And the ground under it all still adds up: the Phase 07 measures.
+		const PolityStats Po = MeasurePolities(W.Instance, W.Ages.Types(), W.Persons, W.Organizations, W.Polities);
+		const ReachStats Re = MeasureReach(W.Instance, W.Ages.Types(), W.Polities, W.Reaches, WideReach());
+		const DiplomacyStats Di =
+			MeasureDiplomacy(W.Instance, W.Ages.Types(), W.Polities, W.Treaties, DiplomacyRules{});
+		if (Po.Bad + Re.Bad + Di.Bad != 0)
+		{
+			++Failures;
+			VT_CHECK_MSG(false, "year %u: %u bad polities, %u reaches, %u relations", Year, Po.Bad, Re.Bad, Di.Bad);
+		}
+		return Failures;
 	}
 } // namespace
 
-VAELEN_TEST(War, AWarBeginsWithARelationAndEndsWithExhaustion)
+VAELEN_TEST(MilitaryGate, FiveCenturiesOfWarAt256HoldEveryInvariantAndFreeze)
 {
 	Run W(AelvorSeed, ArmyRules{}, DiplomacyRules{}, FactionRules{}, SuccessionRules{}, WideReach());
-	VT_REQUIRE(UntilWar(W, 40) != 0);
-	for (uint32 Year = 0; Year < 120 && W.Quarrels_().Over < 2; ++Year)
-	{
-		for (const uint32 P : W.Powers())
-		{
-			W.Endow(P, 60000);
-		}
-		W.Ages.Run(1);
-		const WarStats S = W.Quarrels_();
-		VT_CHECK_EQ(S.Bad, 0u);
-		VT_CHECK_EQ(W.Hosts_().Bad, 0u);
-		VT_CHECK_EQ(W.Walls_().Bad, 0u);
-		VT_CHECK_EQ(S.Began, S.Running + S.Over);
-		VT_CHECK_EQ(S.Ended, S.Over);
-
-		// While a war runs its relation is at war, whatever the warmth has
-		// done; when it is over the relation is at peace, at a warmth that
-		// will hold for a while.
-		for (const WarInfo& F : W.AllWars())
-		{
-			const Relation* Bond = W.Bond(F.A, F.B);
-			if (Bond == nullptr || W.QuarrelBetween(F.A, F.B) != nullptr)
-			{
-				continue;
-			}
-			if (F.Ended == 0)
-			{
-				VT_CHECK_EQ(Bond->Stance_, static_cast<uint32>(Stance::War));
-			}
-		}
-	}
-	const WarStats S = W.Quarrels_();
-	VAELEN_LOG_INFO(LogWar, "wars: %u began, %u over (%u decided, %u white), %llu fallen, longest %u years", S.Began,
-					S.Over, S.Decided, S.White, static_cast<unsigned long long>(S.Fallen), S.LongestYears);
-	VT_REQUIRE(S.Over > 0);
-	VT_CHECK(S.Fallen > 0);
-	VT_CHECK(S.LongestYears >= WarRules{}.LeastYears);
-
-	// Every war that is over left its relation at peace, warmed enough that
-	// 07.06 will not turn it straight back round.
-	uint32 Checked = 0;
-	for (const WarInfo& F : W.AllWars())
-	{
-		if (F.Ended == 0)
-		{
-			continue;
-		}
-		const Relation* Bond = W.Bond(F.A, F.B);
-		if (Bond == nullptr || W.QuarrelBetween(F.A, F.B) != nullptr)
-		{
-			continue; // they have fallen out again since
-		}
-		++Checked;
-		VT_CHECK_MSG(Bond->Stance_ != static_cast<uint32>(Stance::War), "war %u is over and %u and %u are still at war",
-					 F.Index, F.A, F.B);
-		VT_CHECK(Bond->Warmth >= WarRules{}.PeaceWarmth);
-	}
-	VT_CHECK(Checked > 0);
-	VAELEN_LOG_INFO(LogWar, "%u peace(s) written and still holding", Checked);
-}
-
-VAELEN_TEST(War, WhatItCostsIsWhatEndsIt)
-{
-	Run W(AelvorSeed, ArmyRules{}, DiplomacyRules{}, FactionRules{}, SuccessionRules{}, WideReach());
-	VT_REQUIRE(UntilWar(W, 40) != 0);
-	for (uint32 Year = 0; Year < 140; ++Year)
-	{
-		for (const uint32 P : W.Powers())
-		{
-			W.Endow(P, 60000);
-		}
-		W.Ages.Run(1);
-	}
-	const std::vector<WarInfo> All = W.AllWars();
-	VT_REQUIRE(!All.empty());
-	uint32 Index = 0;
-	uint32 ByExhaustion = 0;
-	uint32 ByRuin = 0;
-	for (const WarInfo& F : All)
-	{
-		VT_CHECK_EQ(F.Index, ++Index);
-		VT_CHECK(F.A != 0 && F.B != 0 && F.A < F.B);
-		VT_CHECK(F.WearA <= 1000 && F.WearB <= 1000);
-		// Wear is at least what the years alone cost, and no side is worn
-		// without the war having run.
-		VT_CHECK(F.WearA >= std::min<uint32>(1000u, F.Years * WarRules{}.WearPerYear));
-		VT_CHECK(F.WearB >= std::min<uint32>(1000u, F.Years * WarRules{}.WearPerYear));
-		if (F.Ended == 0)
-		{
-			VT_CHECK_EQ(F.Winner, 0u);
-			continue;
-		}
-		VT_CHECK(F.Ended >= F.Began);
-		const PolityInfo* SideA = W.Polity(F.A);
-		const PolityInfo* SideB = W.Polity(F.B);
-		const bool Ruined = (SideA != nullptr && SideA->Dissolved != 0) || (SideB != nullptr && SideB->Dissolved != 0);
-		if (Ruined)
-		{
-			++ByRuin;
-			continue; // a war ends when a side does, whatever it had borne
-		}
-		++ByExhaustion;
-		// Nothing ends by exhaustion before it has run its least years, and
-		// nothing ends by exhaustion that neither side was willing to stop.
-		VT_CHECK_MSG(F.Years >= WarRules{}.LeastYears, "war %u ended after %u year(s)", F.Index, F.Years);
-		const bool Forfeited = F.WearA >= WarRules{}.ForfeitAt || F.WearB >= WarRules{}.ForfeitAt;
-		const bool Willing = F.WearA >= WarRules{}.WillingAt && F.WearB >= WarRules{}.WillingAt;
-		VT_CHECK_MSG(Forfeited || Willing, "war %u ended with wear %u and %u", F.Index, F.WearA, F.WearB);
-		if (F.Winner != 0)
-		{
-			// A war somebody won is one the other side could not go on with.
-			const uint32 LoserWear = F.Winner == F.A ? F.WearB : F.WearA;
-			VT_CHECK_MSG(LoserWear >= WarRules{}.ForfeitAt, "war %u won by %u against a side worn only %u", F.Index,
-						 F.Winner, LoserWear);
-		}
-	}
-	VAELEN_LOG_INFO(LogWar, "%u war(s) ended by exhaustion, %u by a side being ruined", ByExhaustion, ByRuin);
-	VT_CHECK(ByExhaustion + ByRuin > 0);
-	VT_CHECK_EQ(W.Quarrels_().Bad, 0u);
-}
-
-VAELEN_TEST(War, RulesAndEdges)
-{
-	// A world with nothing in it has fought no wars, and the lookups refuse
-	// what does not exist.
-	Run Empty(AelvorSeed);
-	const WarStats Nothing = Empty.Quarrels_();
-	VT_CHECK_EQ(Nothing.Running, 0u);
-	VT_CHECK_EQ(Nothing.Over, 0u);
-	VT_CHECK_EQ(Nothing.Fallen, 0u);
-	VT_CHECK_EQ(Nothing.Bad, 0u);
-	VT_CHECK(Empty.Quarrel(0xfffffff0u) == nullptr);
-	VT_CHECK(Empty.QuarrelBetween(0, 0) == nullptr);
-	VT_CHECK(Empty.QuarrelBetween(7, 7) == nullptr);
-	VT_CHECK(Empty.QuarrelBetween(1, 2) == nullptr);
-
-	// A war nobody will ever agree to stop only ends when a side does.
-	WarRules Endless;
-	Endless.LeastYears = 100000;
-	Run E(AelvorSeed, ArmyRules{}, DiplomacyRules{}, FactionRules{}, SuccessionRules{}, WideReach(), LawRules{},
-		  PolityRules{}, MarchRules{}, BattleRules{}, SiegeRules{}, Endless);
-	VT_REQUIRE(UntilWar(E, 40) != 0);
-	for (uint32 Year = 0; Year < 40; ++Year)
-	{
-		for (const uint32 P : E.Powers())
-		{
-			E.Endow(P, 60000);
-		}
-		E.Ages.Run(1);
-	}
-	const WarStats Long = E.Quarrels_(Endless);
-	VT_REQUIRE(Long.Began > 0);
-	VT_CHECK_EQ(Long.Bad, 0u);
-	for (const WarInfo& F : E.AllWars())
-	{
-		if (F.Ended == 0)
-		{
-			continue;
-		}
-		// The only way out was for a side to stop existing.
-		const PolityInfo* SideA = E.Polity(F.A);
-		const PolityInfo* SideB = E.Polity(F.B);
-		VT_CHECK_MSG((SideA != nullptr && SideA->Dissolved != 0) || (SideB != nullptr && SideB->Dissolved != 0),
-					 "war %u ended after %u year(s) with both sides standing", F.Index, F.Years);
-	}
-
-	// A war neither side has the stomach for ends the moment it is allowed to.
-	WarRules Brief;
-	Brief.WillingAt = 0;
-	Brief.LeastYears = 3;
-	Run B(AelvorSeed, ArmyRules{}, DiplomacyRules{}, FactionRules{}, SuccessionRules{}, WideReach(), LawRules{},
-		  PolityRules{}, MarchRules{}, BattleRules{}, SiegeRules{}, Brief);
-	VT_REQUIRE(UntilWar(B, 40) != 0);
-	for (uint32 Year = 0; Year < 40; ++Year)
-	{
-		for (const uint32 P : B.Powers())
-		{
-			B.Endow(P, 60000);
-		}
-		B.Ages.Run(1);
-	}
-	const WarStats Short = B.Quarrels_(Brief);
-	VT_REQUIRE(Short.Over > 0);
-	VT_CHECK_EQ(Short.Bad, 0u);
-	for (const WarInfo& F : B.AllWars())
-	{
-		if (F.Ended == 0)
-		{
-			continue;
-		}
-		VT_CHECK_MSG(F.Years <= Brief.LeastYears + 1u, "war %u ran %u years with nobody willing to fight it", F.Index,
-					 F.Years);
-	}
-	VAELEN_LOG_INFO(LogWar, "edges: %u endless war(s) begun, %u brief war(s) over", Long.Began, Short.Over);
-}
-
-VAELEN_TEST(War, DeterministicSnapshotSafeAndFrozen)
-{
-	Run A(AelvorSeed, ArmyRules{}, DiplomacyRules{}, FactionRules{}, SuccessionRules{}, WideReach());
-	Run B(AelvorSeed, ArmyRules{}, DiplomacyRules{}, FactionRules{}, SuccessionRules{}, WideReach());
-	VT_REQUIRE(A.Ages.Generate(Run::Square(128), 300));
-	VT_REQUIRE(B.Ages.Generate(Run::Square(128), 300));
-	const std::vector<uint32> Ranked = A.Ranked();
+	VT_REQUIRE(W.Ages.Generate(Run::Square(256), 300));
+	// Two powers, so that the whole phase is exercised: a world with one polity
+	// has no war to raise a levy for.
+	const std::vector<uint32> Ranked = W.Ranked();
 	VT_REQUIRE(Ranked.size() >= 2);
-	for (uint32 i = 0; i < 2; ++i)
-	{
-		VT_CHECK(RequestDetail(A.Instance, A.Lod, Ranked[i]));
-		VT_CHECK(RequestDetail(B.Instance, B.Lod, Ranked[i]));
-	}
+	const uint32 First = Ranked[0];
+	const uint32 Second = Ranked[1];
+	VT_CHECK(RequestDetail(W.Instance, W.Lod, First));
+	VT_CHECK(RequestDetail(W.Instance, W.Lod, Second));
+	const auto Start = std::chrono::steady_clock::now();
 	uint32 Failures = 0;
+	Hash64 At250 = 0;
 	std::vector<uint8> Image;
-	for (uint32 Year = 1; Year <= 100; ++Year)
+	for (uint32 Decade = 1; Decade <= 50; ++Decade)
 	{
-		A.Ages.Run(1);
-		B.Ages.Run(1);
-		if (Year == 50)
+		W.Ages.Run(10);
+		Failures += CheckInvariants(Ctx, W, Decade * 10);
+		if (Failures > 20)
 		{
-			SaveSnapshot(A.Instance, Image);
+			break;
 		}
-		if (Year % 10 != 0)
+		if (Decade % 10 == 0)
 		{
-			continue;
+			const ArmyStats Ho = W.Hosts_();
+			const BattleStats Ba = W.Fields_();
+			const SiegeStats Si = W.Walls_();
+			const WarStats Wa = W.Quarrels_();
+			const TollStats To = W.Cost_();
+			const MilitaryChronicleStats An = W.Annals_();
+			VAELEN_LOG_INFO(LogMilitaryGate,
+							"year %u: %u host(s) of %u men, %u war(s) begun (%u over), %u battle(s), %u seat(s) "
+							"stormed, %llu fallen, %llu fled, %u record(s)",
+							Decade * 10, Ho.Standing, Ho.Men, Wa.Began, Wa.Over, Ba.Fought, Si.Stormed,
+							static_cast<unsigned long long>(To.Fallen), static_cast<unsigned long long>(To.Fled),
+							An.Records);
 		}
-		const WarStats S = A.Quarrels_();
-		if (S.Bad != 0 || A.Quarrels_().Digest != B.Quarrels_().Digest)
+		if (Decade == 25)
 		{
-			++Failures;
-			VT_CHECK_MSG(false, "year %u: %u bad, wars %s", Year, S.Bad,
-						 A.Quarrels_().Digest == B.Quarrels_().Digest ? "same" : "differ");
+			At250 = ComputeStateDigest(W.Instance);
+			SaveSnapshot(W.Instance, Image);
 		}
 	}
+	const double Elapsed = Seconds(Start);
 	VT_CHECK_EQ(Failures, 0u);
-	const WarStats S = A.Quarrels_();
-	VAELEN_LOG_INFO(LogWar,
-					"frozen: wars128=%016llx over=%u fallen=%llu (%u running, %u decided, %u white, longest %u)",
-					static_cast<unsigned long long>(S.Digest), S.Over, static_cast<unsigned long long>(S.Fallen),
-					S.Running, S.Decided, S.White, S.LongestYears);
-	VT_CHECK_EQ(S.Digest, Hash64{VAELEN_WAR_FROZEN_128});
-	VT_CHECK_EQ(S.Over, uint32{VAELEN_WAR_OVER_128});
-	VT_CHECK_EQ(S.Fallen, uint64{VAELEN_WAR_FALLEN_128});
+	const Hash64 At500 = ComputeStateDigest(W.Instance);
+	const Hash64 Log = W.Instance.Log().Digest();
+	std::string Text;
+	W.Chronicle(Text);
+	const Hash64 TextDigest = HashString(Text.c_str());
+	VAELEN_LOG_INFO(LogMilitaryGate,
+					"gate: 500 years at 256 with regions %u and %u detailed in %.1f s [asserts %s]; frozen: "
+					"250=%016llx 500=%016llx log=%016llx text=%016llx",
+					First, Second, Elapsed, VAELEN_ASSERTS_ENABLED ? "on" : "off",
+					static_cast<unsigned long long>(At250), static_cast<unsigned long long>(At500),
+					static_cast<unsigned long long>(Log), static_cast<unsigned long long>(TextDigest));
+
+	// Five centuries of war really happened: levies called, hosts marched and
+	// broken, capitals stormed, wars begun and ended, and people who paid for it.
+	const ArmyStats Ho = W.Hosts_();
+	const BattleStats Ba = W.Fields_();
+	const SiegeStats Si = W.Walls_();
+	const WarStats Wa = W.Quarrels_();
+	const TollStats To = W.Cost_();
+	const MilitaryChronicleStats An = W.Annals_();
+	VT_CHECK(Ho.Raisings > 0);
+	VT_CHECK(Ba.Fought > 0);
+	VT_CHECK(Wa.Began > 0 && Wa.Over > 0);
+	VT_CHECK(To.Fallen > 0);
+	VT_CHECK(An.Records > 0 && An.Described == An.Records);
+	VT_CHECK(Text.find(" went to war.") != std::string::npos);
+	VT_CHECK(Text.find(" won a battle in ") != std::string::npos);
+	VAELEN_LOG_INFO(
+		LogMilitaryGate, "five centuries: %u levies, %u battles, %u seats stormed, %u wars (%u decided), %llu men dead",
+		Ho.Raisings, Ba.Fought, Si.Stormed, Wa.Began, Wa.Decided, static_cast<unsigned long long>(To.Fallen));
+
+	// The world of year 250 is still there, and it runs on into the same year
+	// 500 the first one reached.
 	VT_REQUIRE(!Image.empty());
 	Run R(AelvorSeed, ArmyRules{}, DiplomacyRules{}, FactionRules{}, SuccessionRules{}, WideReach());
 	VT_REQUIRE(LoadSnapshot(R.Instance, Image.data(), Image.size()) == SnapshotResult::Ok);
-	R.Ages.Run(50);
-	VT_CHECK_EQ(ComputeStateDigest(R.Instance), ComputeStateDigest(A.Instance));
-	VT_CHECK_EQ(R.Quarrels_().Digest, S.Digest);
+	VT_CHECK_EQ(ComputeStateDigest(R.Instance), At250);
+	R.Ages.Run(250);
+	VT_CHECK_EQ(ComputeStateDigest(R.Instance), At500);
+
+	VT_CHECK_EQ(At250, Hash64{VAELEN_MILGATE_FROZEN_256_250});
+	VT_CHECK_EQ(At500, Hash64{VAELEN_MILGATE_FROZEN_256_500});
+	VT_CHECK_EQ(Log, Hash64{VAELEN_MILGATE_LOG_256_500});
+	VT_CHECK_EQ(TextDigest, Hash64{VAELEN_MILGATE_TEXT_256_500});
 }

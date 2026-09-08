@@ -1,7 +1,7 @@
 // VAELEN - VaelenMilitary
 // Phase 08.03: battle - what happens when two hosts stand on the same ground.
 //
-// STATUS: PROTOTYPE (Phase 08) - unit/integration/deterministic/edge tests in Tests/Military
+// STATUS: VALIDATED (Phase 08) - unit/integration/deterministic/edge tests in Tests/Military
 //
 // 08.02 puts hosts in motion; sooner or later two of them, of polities at war,
 // end a year in the same region. A battle is what settles that, and it settles

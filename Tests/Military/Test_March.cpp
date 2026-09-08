@@ -2,7 +2,7 @@
 // Phase 08.02: marching - a host walks the region graph towards the nearest
 // enemy ground, one hop a season, and eats off whatever it stands on.
 //
-// STATUS: PROTOTYPE (Phase 08)
+// STATUS: VALIDATED (Phase 08)
 
 #include "Vaelen/Economy/Markets.h"
 #include "Vaelen/Economy/Production.h"

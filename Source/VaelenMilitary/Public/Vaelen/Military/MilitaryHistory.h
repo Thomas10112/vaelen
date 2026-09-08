@@ -1,7 +1,7 @@
 // VAELEN - VaelenMilitary
 // Phase 08.07: war in the chronicle.
 //
-// STATUS: PROTOTYPE (Phase 08) - integration/text/deterministic tests in Tests/Military
+// STATUS: VALIDATED (Phase 08) - integration/text/deterministic tests in Tests/Military
 //
 // The phase has spent six tasks making war happen and none of it saying so. An
 // event log is a record and not a chronicle: it holds every hop of every march
