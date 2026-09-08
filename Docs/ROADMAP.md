@@ -75,7 +75,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | VALIDATED (headless, 06.01-06.08); UNVERIFIED (engine) |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | VALIDATED headless (07.01-07.08, phase closed); UNVERIFIED under UBT |
-| 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | IN PROGRESS (08.01-08.06 VALIDATED headless; 08.07-08.08 PLANNED) |
+| 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | IN PROGRESS (08.01-08.07 VALIDATED headless; 08.08 PLANNED) |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
 | 10 | PLAYER | The player as one simulated person: enslaved start, body, needs, skills, relationships; player intent as commands into the simulation. | PLANNED |
 | 11 | MINING COLONY | The starting place: a huge autonomous mining colony simulated by the same systems at full detail. | PLANNED |
@@ -2256,6 +2256,33 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   (1847 fallen over 39 regions).
 - Decision: ADR-0071.
 
+### 08.07 War in the chronicle - VALIDATED (headless)
+
+- Delivered: `MilitaryHistory.h/.cpp`, the shape of 07.07 one layer up - `MilitaryChronicleRules` (which
+  kinds are kept, and the marks a toll must pass to be worth remembering: a region losing two or three
+  men is not history, a region losing eight in a year is the year it is remembered for),
+  `MilitaryChronicleState`, `MilitaryChronicleTypes::Declare`, `MilitaryContext` (every military type
+  plus, optionally, the politics context, so that a polity is named by its seat rather than its
+  number), `MilitaryChronicle` listener over ArmyRaised, ArmyStarved, BattleFought, ArmyBroken,
+  SiegeLaid, SeatTaken, WarBegan, WarEnded, WarDead and PeopleFled, `NameArmy`, `NameWar`,
+  `DescribeMilitaryEvent` (a sentence for all seventeen military events, stamped with the year and the
+  age in the same hand as every layer below, and falling through to the politics text for everything
+  else), `ExportChronicleWithMilitary`, `ExportWhyWithMilitary`, `CheckMilitaryChronicle`.
+- Causes chained, so the why of a lost province is a chain and not a single line: a battle publishes
+  first and hands its event id to the levy releases it caused and to the breaking or the falling back
+  that followed, and a burial in a region names the release that reported the fallen. A burial now
+  walks back three steps - "Kratfa buried one of its own, because one man of Kratfa did not come back,
+  because the polity of Eva won a battle in Zakru".
+- Tests (4): the chronicle keeps what a century would remember and every record has a sentence, sits
+  in the era it happened in, and names a region unless it is a war; every one of the four hundred and
+  eighty-four military events of a sixty-year war reads as a sentence stamped with its year, a storm
+  names both polities, and a burial walks back three steps to the battle that caused it; a chronicle
+  that keeps nothing keeps nothing though the war still happens, one allowed a line a region a year
+  drops the rest and says so, and a toll too small to be news is not news though the people still
+  died; two worlds of one seed write the same chronicle, word for word, frozen at
+  `88eee3886fdd6d57` over 241 records.
+- Decision: ADR-0072.
+
 ## 12b. Phases 09-20: notes
 
  Fixed points already in the code: `IdKind` values for Region, Tile, River,
@@ -2273,54 +2300,54 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 08 — MILITARY
-TASK        : 08.06 — WHAT WAR COSTS THE LIVING
+TASK        : 08.07 — WAR IN THE CHRONICLE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████████████░░░░ 81%
+█████████████████████░░░ 82%
 
 CURRENTLY
-→ 08.06 closed: everything the phase had built so far moved numbers. A levy is men taken out of regions
-  and a battle is men taken out of a levy, and at no point did anybody actually die - the count of men
-  away came back down and the people of the region were exactly as many as before. That is the
-  difference between a wargame and a world. So the levy now says why men left it, and the numbers land
-  on people: the fallen are dead where they came from, real persons struck out where a region is
-  simulated person by person and people off the count where it is not; the men who came home carry it,
-  because 05.02 grants standing for what other people know about you and a man who marched and came
-  back is granted something a man who stayed is not; and people leave ground an army will not get off,
-  which is how a province is emptied without a battle being fought on it. Nothing here decides
-  anything - it reads what the war did and writes what it cost. RegionToll, PersonService, TollOf,
-  MeasureToll
+→ 08.07 closed: the phase had spent six tasks making war happen and none of it saying so. An event log
+  is a record and not a chronicle - it holds every hop of every march and every measure of grain, which
+  is exactly what nobody remembers. A chronicle is the small part a century keeps: a levy called, a
+  host broken, a capital stormed, a war begun and a war ended. Same shape as 07.07 one layer up - a
+  listener that keeps the few that matter, a sentence for all seventeen military events whether kept or
+  not, stamped with the year and the age in the same hand as every layer below, and falling through to
+  the politics text for everything else.
+
+  And the causes are chained now, so the why of a lost province is a chain rather than a line. A battle
+  publishes first and hands its event id to the levy releases it caused and to the breaking that
+  followed; a burial names the release that reported the fallen. Three steps back:
+    Year 364, age of Okerdun: Kratfa buried 1 man of its own.
+      because 1 man of Kratfa did not come back.
+      because the polity of Eva won a battle in Zakru; the beaten side left 9 men on it.
 
 COMPLETED
 ✓ Phases 00-07 (headless, Phase 07 closed) (CI 68)
-✓ 08.01 levies and armies (4 tests: Armies) (CI 69)
-✓ 08.02 marching, 08.03 battle, 08.04 siege, 08.05 war with an end (16 tests)
+✓ 08.01 levies and armies (CI 69), 08.02 marching, 08.03 battle, 08.04 siege
+✓ 08.05 war with an end, 08.06 what war costs the living, 08.07 war in the chronicle
 ✓ Every defect the adversarial review confirmed is closed (4 of 4)
-✓ 08.06 what war costs the living (4 tests: Toll)
 
 NEXT
-→ 08.07 War in the chronicle: levies, marches, battles, sieges, terms; the why of a lost province
-→ 08.08 Phase 08 gate
+→ 08.08 Phase 08 gate: 500 years at 256 with every Phase 04 to 08 system, invariants every decade,
+  frozen digests; Phase 08 closed against section 2 of the roadmap
 
 FILES
-+ Source/VaelenMilitary/Public/Vaelen/Military/Toll.h, Private/Toll.cpp
-+ Tests/Military/Test_Toll.cpp
-~ Source/VaelenMilitary/ (Armies.h, Armies.cpp, Battle.cpp: LevyEnd and the LevyReleased record)
-~ Source/VaelenSociety/ (Standing.h, Standing.cpp: PersonService and what it is worth)
++ Source/VaelenMilitary/Public/Vaelen/Military/MilitaryHistory.h, Private/MilitaryHistory.cpp
++ Tests/Military/Test_MilitaryHistory.cpp
+~ Source/VaelenMilitary/ (Armies.h, Armies.cpp, Battle.cpp, Toll.cpp: the causes chained)
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 161 + Population 37 + Society 27 + Economy 26
-  + Politics 29 + Military 24; ctest 85/85 in all six Linux presets
-✓ AELVOR 128, two powers over 100 years: frozen toll digest bcb49ab4dbd74565 (1847 fallen over 39
-  regions, 884 home, 113 fled, 90 people carrying a war on their standing)
-✓ Three phase gates re-run at 256 over 500 years and refrozen: declaring PersonService changes the type
-  registry and so the state digest, though nothing in those gates writes one. Every invariant unchanged.
-✓ Purity: 134 files, 0 violations
+✓ Core 133 + Sim 161 + Population 37 + Society 27 + Economy 26 + Politics 29 + Military 28
+  ctest 86/86; purity 136 files, 0 violations
+✓ Two worlds of one seed write the same chronicle word for word: 241 records, text 88eee3886fdd6d57
+
+VERIFICATION CADENCE
+→ Two presets a task (clang-debug for the assertions, gcc-release for the optimised), six at a phase
+  close. Four minutes instead of thirty, and the two that actually find things.
 
 BLOCKERS
-! CI had not completed a run since 68 - every push cancelled the one before it. Run 78 is going on the
-  person-index commit; nothing is pushed until it finishes.
+∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ```

@@ -211,11 +211,6 @@ namespace Vaelen::Military
 				std::min(Lost->Strength, std::max<uint32>(1u, Lost->Strength * Rules.LoserLostPerMille / 1000u));
 			const uint32 WinnerFell =
 				std::min(Won->Strength, std::max<uint32>(1u, Won->Strength * Rules.WinnerLostPerMille / 1000u));
-			// The fallen leave the levies of the regions that gave them, all of them.
-			VAELEN_ENSURE(ReleaseLevy(W, Types, Armies, Lost->Polity, LoserFell, LevyEnd::Fallen, Context) ==
-						  LoserFell);
-			VAELEN_ENSURE(ReleaseLevy(W, Types, Armies, Won->Polity, WinnerFell, LevyEnd::Fallen, Context) ==
-						  WinnerFell);
 			Lost->Strength -= LoserFell;
 			Won->Strength -= WinnerFell;
 
@@ -237,9 +232,16 @@ namespace Vaelen::Military
 												 static_cast<int32>(Region));
 			const EntityHandle Written = W.CreateEntity(IdKind::Battle);
 			W.Components().GetPool(Battles.Battle).Add(Written, Record);
-			Context.Events->Publish(Context.Tick, BattleFoughtEvent,
-									Politics::PolityPayload{Record.Winner, Region, Record.Index, LoserFell},
-									W.Entities().GetId(Written));
+			const PersistentId Fought = Context.Events->Publish(
+				Context.Tick, BattleFoughtEvent,
+				Politics::PolityPayload{Record.Winner, Region, Record.Index, LoserFell}, W.Entities().GetId(Written));
+
+			// The fallen leave the levies of the regions that gave them, all of them,
+			// and the record of each says which battle it was.
+			VAELEN_ENSURE(ReleaseLevy(W, Types, Armies, Lost->Polity, LoserFell, LevyEnd::Fallen, Context, Fought) ==
+						  LoserFell);
+			VAELEN_ENSURE(ReleaseLevy(W, Types, Armies, Won->Polity, WinnerFell, LevyEnd::Fallen, Context, Fought) ==
+						  WinnerFell);
 
 			// A beaten host is under no orders until it is given new ones.
 			MarchOrder* Beaten = W.Components().GetPool(Marches.Order).TryGet(LostAt.Handle);
@@ -260,7 +262,7 @@ namespace Vaelen::Military
 				Lost->Disbanded = Context.Tick;
 				Context.Events->Publish(Context.Tick, ArmyBrokenEvent,
 										Politics::PolityPayload{LostAt.Polity, Region, LostAt.Index, LoserFell + Rest},
-										W.Entities().GetId(LostAt.Handle));
+										W.Entities().GetId(LostAt.Handle), Fought);
 				continue;
 			}
 			const uint32 Back = FallBackFrom(Region, LostAt.Polity, WonAt.Polity);
@@ -271,7 +273,7 @@ namespace Vaelen::Military
 			Context.Events->Publish(
 				Context.Tick, ArmyRetreatedEvent,
 				Politics::PolityPayload{LostAt.Polity, Back != 0 ? Back : Region, LostAt.Index, Lost->Strength},
-				W.Entities().GetId(LostAt.Handle));
+				W.Entities().GetId(LostAt.Handle), Fought);
 		}
 	}
 

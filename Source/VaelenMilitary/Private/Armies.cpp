@@ -326,7 +326,7 @@ namespace Vaelen::Military
 	}
 
 	uint32 ReleaseLevy(World& W, const History::PreHistoryTypes& Types, const ArmyTypes& Armies, uint32 Polity,
-					   uint32 Men, LevyEnd Why, TickContext& Context)
+					   uint32 Men, LevyEnd Why, TickContext& Context, PersistentId Cause)
 	{
 		if (Polity == 0 || Men == 0)
 		{
@@ -370,7 +370,7 @@ namespace Vaelen::Military
 				Context.Events->Publish(
 					Context.Tick, LevyReleasedEvent,
 					Politics::PolityPayload{Polity, static_cast<uint32>(R), static_cast<uint32>(Why), Back},
-					W.Entities().GetId(RegionHandles[R]));
+					W.Entities().GetId(RegionHandles[R]), Cause);
 			}
 		}
 		return Men - Left;

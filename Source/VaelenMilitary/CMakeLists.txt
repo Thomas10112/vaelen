@@ -9,6 +9,7 @@ set(VAELEN_MILITARY_PUBLIC_HEADERS
   Public/Vaelen/Military/Siege.h
   Public/Vaelen/Military/War.h
   Public/Vaelen/Military/Toll.h
+  Public/Vaelen/Military/MilitaryHistory.h
 )
 
 set(VAELEN_MILITARY_SOURCES
@@ -18,6 +19,7 @@ set(VAELEN_MILITARY_SOURCES
   Private/Siege.cpp
   Private/War.cpp
   Private/Toll.cpp
+  Private/MilitaryHistory.cpp
 )
 
 add_library(VaelenMilitary STATIC ${VAELEN_MILITARY_SOURCES} ${VAELEN_MILITARY_PUBLIC_HEADERS})

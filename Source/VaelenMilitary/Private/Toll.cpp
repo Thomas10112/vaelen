@@ -63,6 +63,9 @@ namespace Vaelen::Military
 		std::vector<uint32> Fell(N, 0u);
 		std::vector<uint32> Came(N, 0u);
 		std::vector<uint32> Whose(N, 0u);
+		// The release that reported the fallen, so that a burial can say why: the
+		// men did not come back, because a battle was lost.
+		std::vector<PersistentId> Because(N, PersistentId{});
 		for (const Event& E : W.Log().All())
 		{
 			if (E.Tick <= Since || !E.Is(LevyReleasedEvent))
@@ -77,6 +80,7 @@ namespace Vaelen::Military
 			if (P.Person == static_cast<uint32>(LevyEnd::Fallen))
 			{
 				Fell[P.Region] += P.Value;
+				Because[P.Region] = E.Id;
 			}
 			else
 			{
@@ -168,7 +172,7 @@ namespace Vaelen::Military
 				{
 					Context.Events->Publish(Context.Tick, WarDeadEvent,
 											Politics::PolityPayload{Whose[R], R, 0u, Struck},
-											W.Entities().GetId(RegionHandles[R]));
+											W.Entities().GetId(RegionHandles[R]), Because[R]);
 				}
 			}
 

@@ -163,7 +163,8 @@ namespace Vaelen::Military
 	/// knows they are no longer under arms, which is what keeps the men the regions
 	/// say are away exactly equal to the men under arms.
 	VAELEN_MILITARY_API uint32 ReleaseLevy(World& W, const History::PreHistoryTypes& Types, const ArmyTypes& Armies,
-										   uint32 Polity, uint32 Men, LevyEnd Why, TickContext& Context);
+										   uint32 Polity, uint32 Men, LevyEnd Why, TickContext& Context,
+										   PersistentId Cause = {});
 	/// Every ordered pair of polities at war, sorted, so that a caller can ask
 	/// whether one is at war with another by binary search. Both (A, B) and (B, A)
 	/// are listed, because who declared what is 07.06's business and not the

@@ -94,6 +94,7 @@ Rules for this file:
 | [0069](#adr-0069-a-derived-cache-is-keyed-on-what-it-was-derived-from) | A derived cache is keyed on what it was derived from | Accepted; headless VALIDATED |
 | [0070](#adr-0070-a-person-index-is-never-handed-out-twice) | A person index is never handed out twice | Accepted; headless VALIDATED |
 | [0071](#adr-0071-the-numbers-land-on-people) | The numbers land on people | Accepted; headless VALIDATED |
+| [0072](#adr-0072-a-chronicle-is-the-small-part-a-century-keeps) | A chronicle is the small part a century keeps | Accepted; headless VALIDATED |
 
 ---
 
@@ -4325,6 +4326,74 @@ Accepted 2026-09-08. Files: `Source/VaelenMilitary/Public/Vaelen/Military/Toll.h
 `Source/VaelenMilitary/Private/Toll.cpp`, `Source/VaelenMilitary/.../Armies.h`,
 `Source/VaelenSociety/.../Standing.h`, `Tests/Military/Test_Toll.cpp` (4 tests).
 Headless VALIDATED on the six Linux presets.
+
+---
+
+## ADR-0072: A chronicle is the small part a century keeps
+
+### Context
+
+Six tasks of Phase 08 make war happen and none of them say so. The event log
+holds all of it - every hop of every march, every measure of grain foraged,
+every man released from every levy - which is precisely what nobody remembers.
+07.07 already settled the shape for politics; this is the same shape one layer
+up, and the same argument.
+
+### Decision
+
+1. **The chronicle keeps a few kinds and drops the rest.** A levy called, a
+   host melting for want of grain, a battle, a host broken, a siege laid, a
+   capital stormed, a war begun, a war ended - and a toll only past a mark. A
+   region losing two or three men is not history; a region losing eight in a
+   year is the year it is remembered for.
+2. **Every military event has a sentence, kept or not.** The describer is not
+   the listener: anything the log holds can be read out, which is what the why
+   export and any future interface need. It falls through to the politics text
+   for everything else, so a military chronicle can tell you about a harvest.
+3. **The line is stamped in the same hand as every layer below** - the year and
+   the age first. A chronicle whose lines do not agree on their own format is
+   not a chronicle.
+4. **A polity is named by its seat where the politics context is at hand.** The
+   military layer knows a polity is a thing with a number; only 07.01 knows it
+   is a thing with a seat. Where the context is absent the number is used, and
+   where a polity has been dissolved the number is all there is - which is the
+   honest answer, not a failure.
+5. **Causes are chained where one thing really did cause another.** A battle
+   publishes its own event first and hands that id to the levy releases it
+   caused and to the breaking or the falling back that followed; a burial names
+   the release that reported the fallen. That, and not a new data structure, is
+   what makes "the why of a lost province" a chain: three steps from a village
+   burying a man to the battle that killed him.
+
+### Alternatives and decision rule
+
+- Recording every military event: rejected. The chronicle would be the log with
+  extra steps, and a century of two powers would produce tens of thousands of
+  records nobody could read.
+- A separate "war record" entity summarising each war: rejected as a second
+  representation of what `WarInfo` already is. The chronicle's job is the
+  sentence, not the state.
+- Storing cause ids on the components (a siege remembering the event that laid
+  it): rejected for now. It would grow three structs past their size asserts to
+  deepen chains that are already three steps, and the ones that matter - a
+  burial back to its battle - are chained without it.
+
+### Consequences
+
+- A hundred years of AELVOR 128 with two powers writes 241 military records,
+  and two worlds of one seed write them word for word: the chronicle text is
+  now a frozen digest like any other.
+- The seventeen military events all read as sentences, which is what 08.08's
+  gate will check across five centuries and what a Phase 12 interface will
+  show.
+- Chaining causes cost a reordering in the battle - it publishes before it
+  releases - and nothing else.
+
+### Status
+
+Accepted 2026-09-08. Files: `Source/VaelenMilitary/Public/Vaelen/Military/MilitaryHistory.h`,
+`Source/VaelenMilitary/Private/MilitaryHistory.cpp`, `Tests/Military/Test_MilitaryHistory.cpp`
+(4 tests). Headless VALIDATED on the six Linux presets.
 
 ---
 
