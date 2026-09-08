@@ -90,6 +90,7 @@ Rules for this file:
 | [0065](#adr-0065-a-host-walks-the-region-graph-and-eats-what-it-stands-on) | A host walks the region graph, and eats what it stands on | Accepted; headless VALIDATED |
 | [0066](#adr-0066-a-battle-is-settled-in-one-year-by-numbers-ground-and-a-stream) | A battle is settled in one year by numbers, ground and a stream | Accepted; headless VALIDATED |
 | [0067](#adr-0067-a-seat-is-taken-only-by-sitting-in-front-of-it) | A seat is taken only by sitting in front of it | Accepted; headless VALIDATED |
+| [0068](#adr-0068-the-war-is-the-thing-and-the-stance-follows-it) | The war is the thing, and the stance follows it | Accepted; headless VALIDATED |
 
 ---
 
@@ -4042,6 +4043,84 @@ only when it loses its seat. Conquest needs a way to take a seat.
 
 Accepted 2026-09-08. Files: `Source/VaelenMilitary/Public/Vaelen/Military/Siege.h`,
 `Source/VaelenMilitary/Private/Siege.cpp`, `Tests/Military/Test_Siege.cpp`
+(4 tests). Headless VALIDATED on the six Linux presets.
+
+---
+
+## ADR-0068: The war is the thing, and the stance follows it
+
+### Context
+
+Through 08.04 a war was a stance. 07.06 cooled a relation past a threshold and
+everything downstream - levies, marches, battles, sieges - read "at war" off
+that one field. It starts a war well enough. It cannot end one, because the
+thing that would end a war is two powers deciding that what it has cost them is
+more than what it might win, and a stance has no memory of what it has cost.
+
+The review found the other half of the problem. A relation outlives the
+polities in it, by design: 07.06 keeps it as a record. But 07.06 only ever
+revisits pairs whose ground still touches, so a relation left at war over a
+polity that has been dissolved is never revisited and never turns. The survivor
+read that frozen record as a live war for ever after: it kept a host raised and
+fed it out of the treasury, year on year, against nobody - draining the same
+treasury 07.03 spends on holding its provinces.
+
+### Decision
+
+1. **A war is an entity**, of kind War, opened when a relation turns to war and
+   never destroyed: a war that has ended is a thing the world remembers, with
+   the years it ran, the men each side lost, and who won it.
+2. **The stance follows the war.** While a war is open its relation is held at
+   war whatever the warmth has done, because a war is not called off by a good
+   harvest; when the war ends the stance is written back to peace at a warmth
+   that will hold for a while and then not. 07.06 still decides when a war
+   *begins*: cooling into war is a political fact, and the military layer has
+   no business deciding who falls out with whom.
+3. **What ends a war is exhaustion**, kept per side: a little every year for
+   the war simply going on, more for every hundred men lost, a great deal for a
+   capital lost. A side worn past forfeiting will take any terms; two sides
+   worn past willing make a white peace. Nothing ends in the three years it
+   began.
+4. **A war ends when a side does.** A polity dissolved ends its wars, with the
+   other side the winner, and a war stance standing over a polity that is gone
+   is written back to peace even where no war was ever opened for it.
+5. **Terms are what has already happened.** Whoever holds ground at the end
+   keeps it, and what the war put in play (07.06) stops being in play. There is
+   no separate negotiation: the fighting already moved what was going to move,
+   and a treaty clause that handed over a province nobody had taken would be a
+   number with no history behind it.
+
+### Alternatives and decision rule
+
+- War aims declared at the outbreak, with the peace judged against them:
+  rejected for now. An aim is a claim on a specific province, and nothing in
+  07.06 produces one - the relation cools because of borders, size and culture,
+  not because of a grievance with a place. 07.05 has grievances with places;
+  when a faction can carry one into a war, aims will have something real to be
+  made of.
+- Exhaustion kept on the polity rather than on the war: rejected. A polity in
+  two wars is worn differently by each, and a polity that made peace should
+  recover from that war rather than from all of them at once.
+- Ending a war by letting 07.06's warmth drift back up: rejected. It is what
+  the code already did by accident, and it produced wars that ended because the
+  harvest was good and wars that never ended at all.
+
+### Consequences
+
+- Wars now recur rather than running for ever: on AELVOR 128 two powers fight
+  five wars in a century, most of them white peaces of fifteen to eighteen
+  years, and the decided ones are decided by a capital falling.
+- A siege has something to interrupt it. A war that ends lifts every siege in
+  it, and the wall mends during the peace, so taking a capital needs a war long
+  enough to finish the job - which is why the wars that are won are the ones
+  where a seat fell.
+- 08.06 has the number it needs: the men each side lost in each war, kept on
+  the war itself.
+
+### Status
+
+Accepted 2026-09-08. Files: `Source/VaelenMilitary/Public/Vaelen/Military/War.h`,
+`Source/VaelenMilitary/Private/War.cpp`, `Tests/Military/Test_War.cpp`
 (4 tests). Headless VALIDATED on the six Linux presets.
 
 ---

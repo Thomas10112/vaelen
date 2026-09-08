@@ -75,7 +75,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | VALIDATED (headless, 06.01-06.08); UNVERIFIED (engine) |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | VALIDATED headless (07.01-07.08, phase closed); UNVERIFIED under UBT |
-| 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | IN PROGRESS (08.01-08.04 VALIDATED headless; 08.05-08.08 PLANNED) |
+| 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | IN PROGRESS (08.01-08.05 VALIDATED headless; 08.06-08.08 PLANNED) |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
 | 10 | PLAYER | The player as one simulated person: enslaved start, body, needs, skills, relationships; player intent as commands into the simulation. | PLANNED |
 | 11 | MINING COLONY | The starting place: a huge autonomous mining colony simulated by the same systems at full detail. | PLANNED |
@@ -2206,6 +2206,33 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   wall through sixty years of war; determinism, snapshot continuity, frozen sieges digest `{SH}`
   after 100 years ({SS} seat stormed, {SL} sieges laid).
 - Decision: ADR-0067.
+
+### 08.05 War as a thing with a beginning and an end - VALIDATED (headless)
+
+- Delivered: `War.h/.cpp` - `WarInfo` (64 bytes: the two sides, years run, men each has lost, what it
+  has worn each of them down to in per mille, capitals that changed hands in it, the winner, the ticks
+  it began and ended, an identity from the world seed) on entities of kind War, outliving the fighting
+  because a war that has ended is a thing the world remembers; `WarTypes::Declare`, `WarRules` (60 per
+  mille of exhaustion a hundred men lost, 20 a year for the war simply going on, 400 for a capital
+  lost, a side worn to 700 takes any terms, two worn to 450 make a white peace, no war ends in the
+  three years it began, a peace is written at 450 warmth), events WarBegan, WarEnded, `WarSystem` (LOD
+  World, after Sieges: open a war for every relation that has turned to one, hold the stance at war
+  while it runs, wear both sides down with what the year cost them, and write the peace when one of
+  them has had enough), `WarOf`, `WarBetween`, `MeasureWars`.
+- Defect closed, from the adversarial review and reproduced there: a relation outlives the polities in
+  it (07.06 keeps it as a record) and 07.06 only ever revisits pairs whose ground still touches, so a
+  war stance left standing over a dissolved polity was read as a live war for ever after - the
+  survivor kept a host raised and fed it out of its treasury against an enemy that no longer existed,
+  which drained the same treasury 07.03 spends on holding provinces. A war ends when a side does, and
+  a war stance over a polity that is gone is written back to peace.
+- Tests (4): wars open when a relation turns, the count begun is the count running plus the count
+  over, a running war holds its relation at war and an ended one leaves it at peace warm enough that
+  07.06 will not turn it straight back round; every ended war either lost a side or ran its least
+  years and wore somebody past willing, and a war somebody won is one the other side could not go on
+  with; a war nobody will agree to stop only ends when a side does, one neither side has the stomach
+  for ends the moment it is allowed to, and the lookups refuse what does not exist; determinism,
+  snapshot continuity, frozen wars digest `{WH}` after 100 years ({WO} wars over, {WF} fallen).
+- Decision: ADR-0068.
 
 ## 12b. Phases 09-20: notes
 
