@@ -421,7 +421,8 @@ namespace Vaelen::Infrastructure
 			}
 			Previous = P.Settlement;
 
-			const auto Found = std::lower_bound(Alive.begin(), Alive.end(), std::pair<uint32, uint8>{P.Settlement, 0u});
+			const auto Found =
+				std::lower_bound(Alive.begin(), Alive.end(), std::pair<uint32, uint8>{P.Settlement, uint8{0}});
 			if (Found == Alive.end() || Found->first != P.Settlement)
 			{
 				++S.Bad; // a body with no settlement under it
