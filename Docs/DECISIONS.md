@@ -4791,3 +4791,54 @@ The effect on a host is exact: on the same tick from one snapshot, a host on
 region 52 took 410 grain off the field with no road beside it and 256 with one -
 the same appetite divided by 1600 over 1000, which is what the rule says. What
 it needs comes up the way rather than off the ground it is standing in.
+
+
+## ADR-0080: The chronicle of a phase speaks for every phase under it
+
+### Context
+
+Phase 09 has spent six tasks building things and none of it saying so. The event
+log holds every unit of timber taken and every year a road was mended, which is
+exactly what nobody remembers. This is the third time the project has hit the
+same problem (07.07, 08.07), and the third time it is solved the same way, which
+is the point of recording it once more.
+
+### Decision
+
+1. **The same shape as 08.07, one layer up.** A listener turns the few events
+   that matter into records; a describer gives every infrastructure event a
+   sentence whether the chronicle kept it or not; two exports give the whole
+   chronicle in order and the why of one event walked back to its root.
+2. **The describer of the topmost layer speaks for every layer under it.**
+   `DescribeWorksEvent` falls through to the military text, which falls through
+   to the politics text, and so down to the person. An infrastructure chronicle
+   can tell you about a harvest, and it does:
+   `Year 0, age of Divik: Edavaken harvested 994 of grain.`
+3. **A road is filed at the end it runs from**, the way 08.07 files a war at the
+   seat of the side its record names. A thing that belongs to two regions still
+   has to be findable from one of them.
+4. **What is history and what is not is a rule, not a judgement.** A raising is
+   history and an enlargement from two to three is not (`RecordEnlargements`
+   defaults to zero); a town growing by one is not, and a town reaching a size
+   worth remembering is.
+5. **A fall names the blow that finished it.** `BuildingFellEvent` is published
+   with the flood or eruption of the year as its cause where there was one, so
+   that the why is a chain and not a line.
+
+### Consequences
+
+The sentence this phase existed to be able to write:
+
+```
+Year 431, age of Ekut: the granary of Osvin fell in.
+  because a flood struck Osvin and 23 died.
+  because omens of flood were seen over Osvin.
+```
+
+Two hundred and fifty years at 128 keep 737 records of 1613 infrastructure
+events - 98 raisings, 41 falls, 74 roads and 524 towns - and two worlds of one
+seed write all 1138 lines of it word for word.
+
+The why of a fall the years alone brought about is one line, and that is the
+truth of it: nothing caused it but time, and a chronicle that invented a cause
+there would be worse than one that says so.

@@ -2356,56 +2356,53 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 09 — INFRASTRUCTURE — IN PROGRESS
-TASK        : 09.06 — LOGISTICS
+TASK        : 09.07 — INFRASTRUCTURE IN THE CHRONICLE
 STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████████████████ 91%
+████████████████████████ 92%
 
 CURRENTLY
-→ 09.04 made roads and gave them one job: more of the trade that already wanted to happen gets
-  across. That is the economy's side of a road, and it is not what a road was ever mainly for. An
-  army marches on it; a courier, a tax collector and a garrison go up it.
+→ Six tasks of building and none of it saying so. The event log holds every unit of timber taken and
+  every year a road was mended, which is exactly what nobody remembers. A chronicle is the small part
+  a century keeps: a granary raised, a mill fallen in, a road cut, a town settled.
 
-  So the roads touching a region become ONE number on that region, and the two systems that already
-  walk the ground hop by hop read it: 08.02's host gets further along it in a year and eats less
-  beside it, because what it needs comes up the way rather than off the field it stands in; 07.03's
-  word carries further before the hold falls away, and costs less to carry that far.
+  The same shape as 08.07 one layer up, and the describer of the topmost layer speaks for every layer
+  under it - so an infrastructure chronicle can tell you about a harvest. A road is filed at the end
+  it runs from, the way 08.07 files a war at a seat. And a fall now names the blow that finished it,
+  which is what makes the why a chain rather than a line:
 
-  A region is served by its BEST road, never by the sum of them. Four tracks meeting at a village do
-  not make a highway, and adding them up would make the busiest crossroads unconquerable by
-  arithmetic rather than by anything anybody did.
+    Year 431, age of Ekut: the granary of Osvin fell in.
+      because a flood struck Osvin and 23 died.
+      because omens of flood were seen over Osvin.
 
-  Neither system learned what a road is. Both read a component they were told to observe, and bare
-  ground is a factor of one to the unit - which is why every frozen digest of Phases 07 and 08 came
-  through this task unchanged.
+  The why of a fall the years alone brought about is one line, and that is the truth of it: nothing
+  caused it but time, and a chronicle that invented a cause there would be worse than one that says so.
 
 COMPLETED
 ✓ Phases 00-07 (headless, Phase 07 closed) · Phase 08 MILITARY closed
-✓ CI run 82 green on all nine jobs
-✓ 09.01 buildings · 09.02 what a building does · 09.03 places · 09.04 roads · 09.05 decay and ruins
-✓ 09.06 logistics — RegionWays, LogisticsSystem, EaseOf, MeasureLogistics, 5 tests
+✓ CI run 86: the Windows MSVC build is green again after the narrowing fix
+✓ 09.01 buildings · 09.02 what they do · 09.03 places · 09.04 roads · 09.05 decay · 09.06 logistics
+✓ 09.07 infrastructure in the chronicle — WorksChronicle, DescribeWorksEvent, the two exports, 5 tests
 
 NEXT
-→ 09.07 — infrastructure in the chronicle: a granary raised, a road cut, a mill fallen in, and the
-  why of a famine a granary would have stopped
+→ 09.08 — the Phase 09 gate: five centuries at 256 with every Phase 04 to 09 system, every invariant
+  each decade, a snapshot replayed, frozen digests — then Phase 09 closed against section 2
 
 TESTS (a task inside a phase runs two presets; six at the gate)
-✓ VaelenInfrastructureTests 28 run, 28 passed
-✓ AELVOR 128 at year 450: 4 made roads serving 8 regions, best ease 200, digest 0d2760dcc43a63f2
-✓ Two years played twice from one snapshot: region 19, two hops from its seat, was held at 274 with
-  its road and had slipped free entirely without it
-✓ One year played twice from one snapshot: a host on region 52 took 410 grain off the field with no
-  road beside it and 256 with one — the same appetite over 1600/1000, to the unit
-✓ Every frozen digest of Phases 07 and 08 unchanged
+✓ VaelenInfrastructureTests 33 run, 33 passed
+✓ AELVOR 128, 250 years: 737 records kept of 1613 infrastructure events — 98 raisings, 41 falls,
+  74 roads, 524 towns — every one with a sentence, a region and its age
+✓ Two worlds of one seed write all 1138 lines word for word: text aa12c3d978c63373
+✓ An infrastructure chronicle tells you about a harvest, through the military and politics text
 
 EXIT CRITERIA (roadmap section 2)
 ◻ 1. Six Linux presets with every gate — at the Phase 09 gate (09.08)
-✓ 2. Determinism tests for 09.01 to 09.06: same seed, snapshot round trip and replay, frozen digests
+✓ 2. Determinism tests for 09.01 to 09.07: same seed, snapshot round trip and replay, frozen digests
 ◻ 3. The files of the phase are PROTOTYPE until the Phase 09 gate; engine files stay UNVERIFIED
-◻ 4. Unit, integration, deterministic, edge and long-duration tests: the war side of 09.05's extra
-     wear is still wired-but-unproven and waits on the Phase 09 gate. Disclosed, not claimed.
-✓ 5. ARCHITECTURE, DECISIONS, ROADMAP and STATUS updated; ADR-0074 to ADR-0079
+◻ 4. Unit, integration, deterministic, edge, text and long-duration tests: the war side of 09.05's
+     extra wear is still wired-but-unproven and waits on the gate. Disclosed, not claimed.
+✓ 5. ARCHITECTURE, DECISIONS, ROADMAP and STATUS updated; ADR-0074 to ADR-0080
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)

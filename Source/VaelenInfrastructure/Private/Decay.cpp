@@ -49,30 +49,40 @@ namespace Vaelen::Infrastructure
 		//    (a flood or an eruption, never a drought or a plague - those kill
 		//    people, not walls) and the war that stood on it.
 		std::vector<uint32> Extra(N, 0u);
-		W.Components()
-			.GetPool(Types.Disasters.Disaster)
-			.ForEach(
-				[&](EntityHandle, const History::DisasterInfo& D)
+		// Taken off the log rather than the record, because a fall wants to name
+		// the blow that finished it: the why of a fallen mill is the flood.
+		std::vector<PersistentId> Blame(N);
+		{
+			const std::vector<Event>& All = W.Log().All();
+			for (usize i = All.size(); i > 0; --i)
+			{
+				const Event& E = All[i - 1];
+				// This year's blows only. The system runs after Disasters (see
+				// GetDependencies), so a blow of this year carries this tick.
+				if (E.Tick != Context.Tick)
 				{
-					if (D.Region == 0 || D.Region >= N || D.Severity == 0)
-					{
-						return;
-					}
-					// This year's blow only. The system runs after Disasters (see
-					// GetDependencies), so a blow of this year carries this tick.
-					if (D.Struck != Context.Tick)
-					{
-						return; // an older blow; the walls have had their year
-					}
-					const bool Breaks = D.Kind == static_cast<uint32>(History::DisasterKind::Flood) ||
-										D.Kind == static_cast<uint32>(History::DisasterKind::Eruption);
-					if (!Breaks)
-					{
-						return;
-					}
-					const uint32 S = D.Severity > 3 ? 2u : D.Severity - 1u;
-					Extra[D.Region] += Rules.StormWear[S];
-				});
+					break;
+				}
+				if (!E.Is(History::DisasterStruckEvent))
+				{
+					continue;
+				}
+				const History::DisasterPayload P = E.Get<History::DisasterPayload>();
+				if (P.Region == 0 || P.Region >= N || P.Severity == 0)
+				{
+					continue;
+				}
+				const bool Breaks = P.Kind == static_cast<uint32>(History::DisasterKind::Flood) ||
+									P.Kind == static_cast<uint32>(History::DisasterKind::Eruption);
+				if (!Breaks)
+				{
+					continue;
+				}
+				const uint32 S = P.Severity > 3 ? 2u : P.Severity - 1u;
+				Extra[P.Region] += Rules.StormWear[S];
+				Blame[P.Region] = E.Id; // the last one read is the earliest of the year
+			}
+		}
 
 		if (HasWar)
 		{
@@ -158,8 +168,8 @@ namespace Vaelen::Infrastructure
 			// It is finished. The ruin stays where it stood.
 			Work_->Fell = Context.Tick;
 			Context.Events->Publish(Context.Tick, BuildingFellEvent,
-									WorksPayload{Work_->Region, Work_->Index, Kind, Work_->Size},
-									W.Entities().GetId(H));
+									WorksPayload{Work_->Region, Work_->Index, Kind, Work_->Size}, W.Entities().GetId(H),
+									Blame[Work_->Region]);
 		}
 	}
 
