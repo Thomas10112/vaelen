@@ -503,22 +503,43 @@ void AVaelenAtlasActor::BuildAelvor()
 	}
 
 	// The centroid of every region, for the towns, the roads and the seats.
+	//
+	// TArray<FVector>::SetNum default-constructs its new slots, and the engine's
+	// FVector default constructor leaves X, Y and Z untouched. A region index no
+	// region ever writes - a hole in the numbering - would therefore hold
+	// whatever was in that memory, and the town, seat or road drawn on it would
+	// land kilometres away in the sky. Grow zeroed, and keep a mask of the slots
+	// a region actually placed: nothing is drawn on the others.
 	TArray<FVector> Centre;
 	TArray<int32> People;
+	TArray<bool> Placed;
 	Centre.Init(FVector::ZeroVector, 1);
 	People.Init(0, 1);
+	Placed.Init(false, 1);
 	Run.Instance.Components()
 		.GetPool(T.World.RegionTypes_.Region)
 		.ForEach(
 			[&](EntityHandle H, const RegionInfo& R)
 			{
 				const int32 Index = static_cast<int32>(R.Index);
+				// Regions are addressed as 16-bit indices throughout the kernel;
+				// anything past that is not a region this can draw.
+				if (Index <= 0 || Index > 0xffff)
+				{
+					return;
+				}
 				if (Index >= Centre.Num())
 				{
-					Centre.SetNum(Index + 1);
+					Centre.SetNumZeroed(Index + 1);
 					People.SetNumZeroed(Index + 1);
+					Placed.SetNumZeroed(Index + 1);
 				}
 				const TileCoord C = Grid.CoordOf(R.CentroidTile);
+				if (C.X < 0 || C.Y < 0 || C.X >= static_cast<int32>(Grid.Width) ||
+					C.Y >= static_cast<int32>(Grid.Height))
+				{
+					return;
+				}
 				const uint32 I = Grid.IndexOf(C);
 				const double Units = static_cast<double>(Height[I]) / 4294967296.0;
 				const FVector2D At = WorldXY(static_cast<uint32>(C.X), static_cast<uint32>(C.Y));
@@ -526,7 +547,12 @@ void AVaelenAtlasActor::BuildAelvor()
 				const Vaelen::History::RegionPopulation* Counts =
 					Run.Instance.Components().GetPool(T.Population.Population).TryGet(H);
 				People[Index] = Counts != nullptr ? static_cast<int32>(Counts->Total) : 0;
+				Placed[Index] = true;
 			});
+
+	// Marks and roads whose region placed no centre. Counted and reported rather
+	// than drawn: a mark on an unplaced centre is a lie about where it stands.
+	int32 Adrift = 0;
 
 	int32 Towns = 0;
 	if (bShowTowns)
@@ -539,6 +565,11 @@ void AVaelenAtlasActor::BuildAelvor()
 					const int32 Index = static_cast<int32>(S.Region);
 					if (S.Abandoned != 0 || Index <= 0 || Index >= Centre.Num())
 					{
+						return;
+					}
+					if (!Placed[Index])
+					{
+						++Adrift;
 						return;
 					}
 					FTransform Mark;
@@ -560,6 +591,11 @@ void AVaelenAtlasActor::BuildAelvor()
 					const int32 Index = static_cast<int32>(P.Seat);
 					if (P.Dissolved != 0 || Index <= 0 || Index >= Centre.Num())
 					{
+						return;
+					}
+					if (!Placed[Index])
+					{
+						++Adrift;
 						return;
 					}
 					FTransform Mark;
@@ -594,6 +630,11 @@ void AVaelenAtlasActor::BuildAelvor()
 						{
 							return;
 						}
+						if (!Placed[From] || !Placed[To])
+						{
+							++Adrift;
+							return;
+						}
 						const FVector Lift(0, 0, TileSize * 0.5f);
 						const FTransform Where = GetActorTransform();
 						DrawDebugLine(Here, Where.TransformPosition(Centre[From] + Lift),
@@ -620,6 +661,11 @@ void AVaelenAtlasActor::BuildAelvor()
 		PreHistoryYears + Years, LandTiles, Peopled, static_cast<long long>(Living), Towns, RoadCount, Rule.Standing,
 		Detail, Simulated);
 	UE_LOG(LogVaelenAtlas, Display, TEXT("%s"), *Report);
+	if (Adrift > 0)
+	{
+		UE_LOG(LogVaelenAtlas, Warning,
+			   TEXT("AELVOR: %d mark(s) or road(s) named a region that placed no centre; not drawn"), Adrift);
+	}
 	if (GEngine != nullptr)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 12.0f, FColor(232, 190, 92), Report);
