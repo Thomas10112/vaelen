@@ -4641,3 +4641,50 @@ invariant that keeps the two components honest with each other, and
 `MeasurePlaces` checks it along with the tile being inside its own region, one
 place to a tile, and the town's own count of works agreeing with the buildings
 placed there.
+
+
+## ADR-0077: A road is what somebody made of a route, and it falls back to one
+
+### Context
+
+A route of 06.04 is not a road. It is a fact about prices: grain was dearer
+there than here, often enough and long enough that somebody carried it. It opens
+because a gap opened and closes because nothing crossed it, and nobody ever
+built it. 09.04 has to let the world build one without turning the route into
+something the economy no longer recognises.
+
+### Decision
+
+1. **A road is a second component on the route entity**, the same shape as
+   09.03's places on settlements. Trade knows the route exists and why;
+   infrastructure knows what has been made of it. No digest of Phase 06 moved.
+2. **It is cut out of the two ends together, half each.** A road is never one
+   region's: both common stocks pay the timber and both must have the hands to
+   spare. A region rich in timber beside a poor one still gets no road.
+3. **Only where enough already crosses.** A road is not a wager on trade that
+   does not exist yet: the route must already have carried enough over its life
+   to be worth the timber, and a further grade needs that much again in a single
+   year. What a road does is let more of the trade that already wanted to happen
+   get across - it creates none.
+4. **What it does is one number, where trade already reads it.**
+   `RouteEase::CarryPerMille` raises both the share of a surplus carried and the
+   yearly cap, and no road is a factor of one to the unit. Same contract as
+   ADR-0075's four hooks.
+5. **Falling back is not destruction.** Unkept, a road wears; with nothing left
+   to wear it loses a grade; at grade zero it is a track again - which is what a
+   route was before anybody touched it. The entity lives, the route lives, and
+   regions with timber can cut it again. Nothing in this phase deletes anything.
+
+### Consequences
+
+Most roads outlive the trade that made them and then go: 22 roads cut over a
+century at 128, of which 3 are still made and 19 have gone back to tracks. The
+reason is worth stating plainly - a road on a route trade has closed cannot be
+kept, because keeping is a thing the two ends do for a route that is still
+carrying. A road outliving its reason for a decade and then fading is the
+behaviour wanted, not a defect.
+
+The effect on trade is real and small: 321 307 units carried with roads against
+321 110 with roads worth nothing, over the same century of the same world,
+built the same way and paid for the same. Small is correct here. A road that
+doubled trade would be a road that created it.

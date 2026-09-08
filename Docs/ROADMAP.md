@@ -2356,28 +2356,30 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 09 — INFRASTRUCTURE — IN PROGRESS
-TASK        : 09.03 — SETTLEMENTS AS PLACES
+TASK        : 09.04 — ROADS
 STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███████████████████████░ 88%
+███████████████████████░ 89%
 
 CURRENTLY
-→ 06.04 already founds settlements, and they are not places. A settlement of 06.04 is a fact about
-  trade: goods changed hands here often enough and long enough that somebody stayed. It has a region,
-  a traffic and a count of routes - and no position, no size and nothing standing in it.
+→ A route of 06.04 is not a road. It is a fact about prices: grain was dearer there than here, often
+  enough and long enough that somebody carried it. It opens because a gap opened and closes because
+  nothing crossed it, and nobody ever built it.
 
-  09.03 gives it a body, as a second component on the same entity rather than a wider SettlementInfo:
-  trade knows why the town is there, infrastructure knows where it is and how big. A place stands on
-  ONE TILE of its region, chosen once and never moved - on water where the region has water, at its
-  heart where it has none, and never on ground another place already holds, a ruin included. It is
-  the first thing on this map smaller than a region, which is what 09.04 needs to run a road to it,
-  Phase 13 to draw it, and a player to stand in it.
+  09.04 lets the regions at its two ends make something of it. A road is cut out of both common
+  stocks, half each, and out of the hands both can spare - a road is never one region's - and only
+  where enough already crosses to be worth the timber. What it does is let more of the trade that
+  already wanted to happen get across: one number, RouteEase::CarryPerMille, where trade already
+  reads, and no road is a factor of one to the unit.
 
-  A region holds several places over the centuries and most of them are ruins: 120 places in 120
-  years at 128, of which 32 stand and 88 emptied. So "the place in this region" has to mean the one
-  still standing, and only fall back to the oldest ruin when nothing stands. Getting that wrong is
-  what the first run of the test caught - buildings placed in towns abandoned two centuries earlier.
+  And it has to be kept. Unkept it wears; with nothing left to wear it loses a grade; at grade zero
+  it is a track again - which is what a route was before anybody touched it. Nothing is destroyed and
+  no entity dies: it falls back to what the economy always had, and can be cut again.
+
+  Most roads outlive the trade that made them and then go: 22 cut over a century, 3 still made, 19
+  back to tracks. A road on a route trade has closed cannot be kept, because keeping is a thing the
+  two ends do for a route that is still carrying. That is the behaviour wanted, not a defect.
 
 WHAT PHASE 09 IS
 → 06.04 gave the world routes as artefacts of trade and 05.05 gave councils a granary as a number on
@@ -2387,30 +2389,30 @@ WHAT PHASE 09 IS
 
 COMPLETED
 ✓ Phases 00-07 (headless, Phase 07 closed)
-✓ Phase 08 MILITARY closed: levies, marching, battle, siege, war, the toll, the chronicle, the gate
-✓ CI run 82 green on all nine jobs — six Linux presets with every gate, clang-format, Windows MSVC,
-  macOS AppleClang — on the tree carrying 09.01 and 09.02
-✓ 09.01 buildings — the module, BuildingInfo, RegionWorks, MeasureBuildings, 4 tests
-✓ 09.02 what a building does — four hooks, WorksSystem, MeasureWorks, 5 tests
-✓ 09.03 settlements as places — PlaceInfo, BuildingPlace, PlaceSystem, MeasurePlaces, 4 tests
+✓ Phase 08 MILITARY closed
+✓ CI run 82 green on all nine jobs, on the tree carrying 09.01 and 09.02
+✓ 09.01 buildings · 09.02 what a building does · 09.03 settlements as places
+✓ 09.04 roads — RoadInfo, RouteEase, RoadSystem, MeasureRoads, 5 tests
 
 NEXT
-→ 09.04 — roads: a route of 06.04 built and kept, cheapening what crosses it, falling back to a track
+→ 09.05 — decay and ruins: everything built falls down unless it is kept
 
 TESTS (a task inside a phase runs two presets; six at the gate)
-✓ linux-clang-debug and linux-gcc-release green, ctest 90/90 each (gates and shuffled excluded)
-✓ VaelenInfrastructureTests 13 run, 13 passed, on both presets
-✓ AELVOR 128 at year 420: 120 places, 32 standing, 88 emptied, 2394 townsfolk, largest 6,
-  42 works inside towns and 50 in the countryside, digest c61d14222c153d7b
-✓ Every standing place on a tile of its own region, one place to a tile
-✓ Purity: 143 files, 0 violations; clang-format: 0 files need formatting
+✓ linux-clang-debug and linux-gcc-release green, ctest 91/91 each (gates and shuffled excluded)
+✓ VaelenInfrastructureTests 18 run, 18 passed, on both presets
+✓ AELVOR 128 at year 420: 22 roads cut, 3 still made, 19 tracks, 4320 timber, digest 7ede5ba455016378
+✓ Two worlds of one seed, roads cut and paid for the same, worth nothing in one: 321 307 units
+  carried against 321 110
+✓ A road nobody can ever keep loses every grade and ends a track, and every road left standing was
+  cut too recently to have fallen
+✓ Purity: 145 files, 0 violations; clang-format: 0 files need formatting
 
 EXIT CRITERIA (roadmap section 2)
 ◻ 1. Six Linux presets with every gate — at the Phase 09 gate (09.08)
-✓ 2. Determinism tests for 09.01 to 09.03: same seed, snapshot round trip and replay, frozen digests
+✓ 2. Determinism tests for 09.01 to 09.04: same seed, snapshot round trip and replay, frozen digests
 ◻ 3. The files of the phase are PROTOTYPE until the Phase 09 gate; engine files stay UNVERIFIED
-✓ 4. Unit, integration, deterministic and edge tests for all three systems; long-duration at 09.08
-✓ 5. ARCHITECTURE, DECISIONS, ROADMAP and STATUS updated; ADR-0074 to ADR-0076
+✓ 4. Unit, integration, deterministic and edge tests for all four systems; long-duration at 09.08
+✓ 5. ARCHITECTURE, DECISIONS, ROADMAP and STATUS updated; ADR-0074 to ADR-0077
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)

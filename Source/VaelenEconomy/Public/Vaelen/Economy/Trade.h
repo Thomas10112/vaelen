@@ -68,6 +68,17 @@ namespace Vaelen::Economy
 	};
 	static_assert(sizeof(SettlementInfo) == 48, "SettlementInfo must stay padding free");
 
+	/// What a made road adds to what a route can carry, on the route entity:
+	/// written by a later module (Phase 09 infrastructure), read by the trade
+	/// system when told to observe the type. A road does not create trade; it
+	/// means more of the trade that already wanted to happen gets across.
+	struct RouteEase
+	{
+		uint32 CarryPerMille = 0; ///< added to both the share carried and the yearly cap
+		uint32 Reserved = 0;
+	};
+	static_assert(sizeof(RouteEase) == 8, "RouteEase must stay padding free");
+
 	struct TradeTypes
 	{
 		ComponentType<RouteInfo> Route;
@@ -125,6 +136,13 @@ namespace Vaelen::Economy
 			return Out;
 		}
 		void RunAfter(std::string_view Name) { After.emplace_back(Name); }
+		/// Optional: the roads made on the routes (09.04). A route with a road on
+		/// it carries more; a route without one carries exactly what it always did.
+		void ObserveRoads(ComponentType<RouteEase> InEase) noexcept
+		{
+			Ease = InEase;
+			HasEase = true;
+		}
 		void Tick(TickContext& Context) override;
 
 	private:
@@ -139,6 +157,8 @@ namespace Vaelen::Economy
 		ProductionRules Consumption;
 		MarketRules Prices;
 		TradeRules Rules;
+		ComponentType<RouteEase> Ease;
+		bool HasEase = false;
 		Hash64 GraphDigest = 0;		 ///< derived cache, not state
 		WorldGen::RegionGraph Graph; ///< derived cache, not state
 	};

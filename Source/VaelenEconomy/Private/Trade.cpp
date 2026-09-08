@@ -164,6 +164,10 @@ namespace Vaelen::Economy
 			const uint32 A = Rt.Info.From;
 			const uint32 B = Rt.Info.To;
 			uint64 Units = 0;
+			// A made road (09.04) lets more of the trade that already wanted to
+			// happen get across. No road is a factor of one, to the unit.
+			const RouteEase* Made = HasEase ? W.Components().GetPool(Ease).TryGet(Rt.Handle) : nullptr;
+			const uint64 Easier = 1000u + (Made != nullptr ? Made->CarryPerMille : 0u);
 			if (A < N && B < N && Common[A] != nullptr && Common[B] != nullptr && Market[A] != nullptr &&
 				Market[B] != nullptr)
 			{
@@ -185,8 +189,9 @@ namespace Vaelen::Economy
 					{
 						continue;
 					}
-					uint64 Carry = std::min<uint64>({(HeldS - WantS) * Rules.CarryPerMille / 1000u, WantD - HeldD,
-													 Rules.CarryMax, Common[S]->Amount[g]});
+					uint64 Carry =
+						std::min<uint64>({(HeldS - WantS) * Rules.CarryPerMille / 1000u * Easier / 1000u, WantD - HeldD,
+										  uint64{Rules.CarryMax} * Easier / 1000u, Common[S]->Amount[g]});
 					if (Carry == 0)
 					{
 						continue;
