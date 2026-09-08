@@ -202,7 +202,10 @@ VAELEN_TEST(Persons, DemotionFoldsTheLivingBackAndDestroysThePersons)
 	const uint32 Created =
 		PromoteRegion(W.Instance, W.Ages.Types(), W.Persons, MaterialiseRules{}, Region, W.Instance.Now());
 	VT_REQUIRE(Created > 0);
-	VT_CHECK_EQ(W.Instance.Entities().GetAliveCount(), EntitiesBefore + Created);
+	// The persons, and the one entity the world's person counter lives on: it
+	// is made with the first index ever taken and outlives every demotion,
+	// which is the whole point of it (see PersonCounter).
+	VT_CHECK_EQ(W.Instance.Entities().GetAliveCount(), EntitiesBefore + Created + 1u);
 	// A few persons die and one changes faith by hand: the fold reflects the living.
 	uint32 Killed = 0;
 	uint32 Converted = 0;
@@ -227,7 +230,9 @@ VAELEN_TEST(Persons, DemotionFoldsTheLivingBackAndDestroysThePersons)
 	const uint32 Removed = DemoteRegion(W.Instance, W.Ages.Types(), W.Persons, Region);
 	VT_CHECK_EQ(Removed, Created);
 	VT_CHECK(!IsDetailed(W.Instance, W.Ages.Types(), W.Persons, Region));
-	VT_CHECK_EQ(W.Instance.Entities().GetAliveCount(), EntitiesBefore);
+	// Every person is gone; the counter is not, so the indices they had are
+	// never handed out again.
+	VT_CHECK_EQ(W.Instance.Entities().GetAliveCount(), EntitiesBefore + 1u);
 	VT_CHECK_EQ(MeasureDetail(W.Instance, W.Ages.Types(), W.Persons).Persons, 0u);
 	const RegionPopulation After = *W.Counts(Region);
 	VT_CHECK_EQ(After.Total, Before.Total - Killed);
@@ -366,4 +371,86 @@ VAELEN_TEST(Persons, FrozenPersonsAreReproducedByEveryCompilerAndPlatform)
 					Created);
 	VT_CHECK_EQ(S.PersonsDigest, Hash64{VAELEN_PERSONS_FROZEN_128});
 	VT_CHECK_EQ(Created, uint32{VAELEN_PERSONS_COUNT_128});
+}
+
+VAELEN_TEST(Persons, AnIndexIsNeverHandedOutTwice)
+{
+	// Things outside the population remember a person by index: a council's
+	// head (05.01), a polity's ruler (07.01), a line's claimant (07.04), a
+	// faction's (07.05). Allocating one past the highest person alive looks
+	// equivalent to a counter and is not - demoting a region destroys every
+	// person in it, which lowers that highest, and the next promotion hands
+	// the same indices out again to strangers who inherit every claim the dead
+	// had.
+	Run W(AelvorSeed);
+	VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
+	auto IndicesOf = [&](uint32 Region)
+	{
+		std::vector<uint32> Out;
+		W.Instance.Components()
+			.GetPool(W.Persons.Person)
+			.ForEach(
+				[&](EntityHandle, const PersonInfo& P)
+				{
+					if (P.Region == Region)
+					{
+						Out.push_back(P.Index);
+					}
+				});
+		std::sort(Out.begin(), Out.end());
+		return Out;
+	};
+	auto Alive = [&](uint32 Index)
+	{
+		bool Found = false;
+		W.Instance.Components()
+			.GetPool(W.Persons.Person)
+			.ForEach([&](EntityHandle, const PersonInfo& P) { Found = Found || P.Index == Index; });
+		return Found;
+	};
+
+	const uint32 First = W.Busiest();
+	VT_REQUIRE(First != 0);
+	VT_REQUIRE(PromoteRegion(W.Instance, W.Ages.Types(), W.Persons, MaterialiseRules{}, First, W.Instance.Now()) > 0);
+	const std::vector<uint32> Given = IndicesOf(First);
+	VT_REQUIRE(!Given.empty());
+	VT_CHECK(Given.front() > 0);
+
+	// The whole region is destroyed, and with it every index it held.
+	VT_CHECK_EQ(DemoteRegion(W.Instance, W.Ages.Types(), W.Persons, First), static_cast<uint32>(Given.size()));
+	for (const uint32 Index : Given)
+	{
+		VT_CHECK(!Alive(Index));
+	}
+
+	// Another region peopled afterwards takes indices past everything the dead
+	// were ever given, so a head, a ruler or a claimant remembered by one of
+	// those indices resolves to nobody rather than to a stranger.
+	uint32 Second = 0;
+	W.Instance.Components()
+		.GetPool(W.Ages.Types().World.RegionTypes_.Region)
+		.ForEach(
+			[&](EntityHandle H, const RegionInfo& R)
+			{
+				const RegionPopulation* P =
+					W.Instance.Components().GetPool(W.Ages.Types().Population.Population).TryGet(H);
+				if (Second == 0 && R.Index != First && P != nullptr && P->Total > 0)
+				{
+					Second = R.Index;
+				}
+			});
+	VT_REQUIRE(Second != 0);
+	VT_REQUIRE(PromoteRegion(W.Instance, W.Ages.Types(), W.Persons, MaterialiseRules{}, Second, W.Instance.Now()) > 0);
+	const std::vector<uint32> Fresh = IndicesOf(Second);
+	VT_REQUIRE(!Fresh.empty());
+	VT_CHECK_MSG(Fresh.front() > Given.back(), "region %u was handed index %u, which region %u had already used",
+				 Second, Fresh.front(), First);
+	uint32 Recycled = 0;
+	for (const uint32 Index : Given)
+	{
+		Recycled += Alive(Index) ? 1u : 0u;
+	}
+	VT_CHECK_EQ(Recycled, 0u);
+	VAELEN_LOG_INFO(LogPersons, "indices: region %u used %u..%u and was demoted; region %u begins at %u", First,
+					Given.front(), Given.back(), Second, Fresh.front());
 }

@@ -45,7 +45,10 @@ using namespace Vaelen::WorldGen;
 // Recorded on clang 18 / Linux x86_64 on 2026-09-07 (06.06): AELVOR 64 at
 // year 120, three regions detailed in turn every 25 years for 500 years.
 #define VAELEN_GRAINS_STILL_64 0xace29fbb38633cbfull
-#define VAELEN_GRAINS_LIVING_64 0x9ac28d8ee3a7ef34ull
+// Refrozen 2026-09-08: person indices are taken from a counter that only
+// goes up, so a demoted region no longer hands its indices out again (see
+// PersonCounter).
+#define VAELEN_GRAINS_LIVING_64 0x3262bff481851b8dull
 #define VAELEN_GRAINS_PROMOTIONS_64 21u
 
 namespace

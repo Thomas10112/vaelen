@@ -41,8 +41,12 @@ using namespace Vaelen::WorldGen;
 // Recorded on clang 18 / Linux x86_64 on 2026-09-06 (05.08): AELVOR 256 after
 // 300 years of pre-history, the busiest region detailed and lived through 500
 // years with every Phase 04 and 05 system, the customs as drawn.
-#define VAELEN_SOCGATE_FROZEN_256_250 0x889fc7e83a94df1bull
-#define VAELEN_SOCGATE_FROZEN_256_500 0xca261287c80ff699ull
+// Refrozen 2026-09-08: person indices are taken from a counter that only ever
+// goes up, so a demoted region no longer hands its indices out again to the
+// people made after it, and the world's one counter entity is state like any
+// other. Every invariant of the gate is unchanged; only the state digests are.
+#define VAELEN_SOCGATE_FROZEN_256_250 0x5e183505faa6ea10ull
+#define VAELEN_SOCGATE_FROZEN_256_500 0xbbfcd4c296cd2fdfull
 #define VAELEN_SOCGATE_LOG_256_500 0xd7b7173341039dc8ull
 #define VAELEN_SOCGATE_TEXT_256_500 0xe719182682fdfd8eull
 

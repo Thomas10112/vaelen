@@ -92,6 +92,7 @@ Rules for this file:
 | [0067](#adr-0067-a-seat-is-taken-only-by-sitting-in-front-of-it) | A seat is taken only by sitting in front of it | Accepted; headless VALIDATED |
 | [0068](#adr-0068-the-war-is-the-thing-and-the-stance-follows-it) | The war is the thing, and the stance follows it | Accepted; headless VALIDATED |
 | [0069](#adr-0069-a-derived-cache-is-keyed-on-what-it-was-derived-from) | A derived cache is keyed on what it was derived from | Accepted; headless VALIDATED |
+| [0070](#adr-0070-a-person-index-is-never-handed-out-twice) | A person index is never handed out twice | Accepted; headless VALIDATED |
 
 ---
 
@@ -4189,6 +4190,70 @@ Accepted 2026-09-08. Files: `Source/VaelenSim/Public/Vaelen/Sim/Regions.h`,
 `Source/VaelenSim/Private/WorldMap.cpp`, `Source/VaelenPolitics/.../Reach.*`,
 `Source/VaelenMilitary/.../March.*`, `.../Battle.*`, `Tests/Sim/Test_Regions.cpp`,
 `Tests/Politics/Test_Reach.cpp`. Headless VALIDATED on the six Linux presets.
+
+---
+
+## ADR-0070: A person index is never handed out twice
+
+### Context
+
+`PersonInfo::Index` is the compact key everything outside the population uses
+to name a person: a council's head (05.01), a polity's ruler (07.01), a line's
+sitting ruler and its claimant (07.04), a faction's claimant (07.05). All three
+places that made people - promotion, birth, and the LOD bridge - allocated the
+next index as one past the highest person alive.
+
+That is not a counter. Population LOD demotes a region by destroying every
+person in it, which lowers the highest alive, and the next promotion or birth
+hands the same band of indices out again. An adversarial review reproduced what
+follows: the council of a demoted region keeps a `Head` pointing at a destroyed
+person, `FindPerson` correctly returns nothing for it - until the index is
+recycled onto a live adult in another region, at which point 07.01 seats that
+stranger as the polity's ruler and 07.04 names their children as claimants to a
+throne they have never heard of. Nothing detects it, because every check that
+could have is written in terms of the index.
+
+### Decision
+
+1. **One counter, in world state.** A `PersonCounter` singleton component lives
+   on one entity of the world, made with the first index ever taken, seeded past
+   anything that already exists so that a world built before it keeps its
+   people. It only ever goes up, it is carried in a snapshot like any other
+   state, and it is destroyed by nothing.
+2. **Every person takes its index from `TakePersonIndices`.** All three
+   allocation sites go through it. There is no other way to get one.
+3. **The fix belongs in the allocator, not in the readers.** Teaching 07.01 to
+   check that its ruler still sits on the council it was seated from would fix
+   one reader; there are four, and the next one written would not know.
+
+### Alternatives and decision rule
+
+- Deriving the index from the entity id, whose allocator is already monotonic:
+  rejected. It would make indices sparse, and several places size an array by
+  the highest index they have seen.
+- Clearing every reference when a region is demoted: rejected. The population
+  would have to know about councils, polities, lines and factions - the exact
+  inversion of the layering the project is built on.
+- Never destroying people on demotion: rejected; that is what LOD is for.
+
+### Consequences
+
+- Four frozen state digests moved - the population gate, the society gate, the
+  economy gate and the politics gate - because in a run where a region is
+  demoted the indices genuinely differ now. Every invariant those gates check is
+  unchanged; only the digests are, and they are refrozen with the reason written
+  beside them.
+- The world carries one more entity, for the counter, from the first person it
+  ever makes.
+- Anything else that hands out a dense index from "one past the highest alive"
+  has the same defect. Nothing else does today.
+
+### Status
+
+Accepted 2026-09-08. Files: `Source/VaelenPopulation/Public/Vaelen/Population/Persons.h`,
+`Source/VaelenPopulation/Private/Persons.cpp`, `Private/Lives.cpp`,
+`Private/Lod.cpp`, `Tests/Population/Test_Persons.cpp`. Headless VALIDATED on
+the six Linux presets, with every phase gate re-run at 256 over 500 years.
 
 ---
 

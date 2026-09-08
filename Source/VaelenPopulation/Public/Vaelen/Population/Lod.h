@@ -105,8 +105,7 @@ namespace Vaelen::Population
 		PersonTypes Persons;
 		LodTypes Lod;
 		LodRules Rules;
-		Hash64 GraphDigest = 0;		 ///< derived cache, not state
-		WorldGen::RegionGraph Graph; ///< derived cache, not state
+		WorldGen::RegionGraphCache Roads; ///< derived, rebuilt when the map it came from is replaced
 	};
 
 	struct LodStats

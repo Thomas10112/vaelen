@@ -74,10 +74,30 @@ namespace Vaelen::Population
 	};
 	static_assert(sizeof(RegionDetail) == 24, "RegionDetail must stay padding free");
 
+	/// Singleton component: the next person index to hand out, and the only place
+	/// one is ever taken from.
+	///
+	/// A person index must never be handed out twice in the life of a world,
+	/// because things outside the population remember one: a council's head
+	/// (05.01), a polity's ruler (07.01), a line's claimant (07.04), a faction's
+	/// (07.05). Allocating one past the highest person alive looks equivalent and
+	/// is not: demoting a region destroys every person in it (Population LOD),
+	/// which lowers that highest, and the next promotion or birth hands the same
+	/// indices out again - to strangers, who inherit every claim the dead had. The
+	/// counter only ever goes up, and it is carried in a snapshot like any other
+	/// state.
+	struct PersonCounter
+	{
+		uint32 Next = 1; ///< the next index to hand out; 0 is never a person
+		uint32 Reserved = 0;
+	};
+	static_assert(sizeof(PersonCounter) == 8, "PersonCounter must stay padding free");
+
 	struct PersonTypes
 	{
 		ComponentType<PersonInfo> Person;
 		ComponentType<RegionDetail> Detail;
+		ComponentType<PersonCounter> Counter;  ///< one per world, made when the first person is
 		ComponentType<History::RegionLod> Lod; ///< the marker the coarse systems observe
 		/// Declares the three types. The coarse systems of a PreHistory learn the
 		/// marker through Attach; without it they keep moving detailed regions.
@@ -116,6 +136,11 @@ namespace Vaelen::Population
 	/// Materialises the counts of a region into person entities. Returns the
 	/// persons created; 0 when the region is unknown, already detailed,
 	/// unsettled or above MaxPersonsPerRegion (nothing changes then).
+	/// Takes Count consecutive person indices and returns the first of them,
+	/// making the world's counter on the first call. Every person ever made takes
+	/// its index from here; see PersonCounter for why nothing else may.
+	VAELEN_POPULATION_API uint32 TakePersonIndices(World& W, const PersonTypes& Persons, uint32 Count);
+
 	VAELEN_POPULATION_API uint32 PromoteRegion(World& W, const History::PreHistoryTypes& Types,
 											   const PersonTypes& Persons, const MaterialiseRules& Rules, uint32 Region,
 											   SimTick Now);

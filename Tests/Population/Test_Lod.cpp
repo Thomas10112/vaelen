@@ -28,7 +28,10 @@ using namespace Vaelen::WorldGen;
 // Recorded on clang 18 / Linux x86_64 on 2026-09-06 (04.06): AELVOR 128 at
 // year 300, the two busiest regions detailed in turn every 50 years for 200
 // years with lives and the bridge.
-#define VAELEN_LOD_FROZEN_128 0xd0f481c80e1e49d8ull
+// Refrozen 2026-09-08: person indices are taken from a counter that only
+// goes up, so a demoted region no longer hands its indices out again to the
+// people promoted after it (see PersonCounter).
+#define VAELEN_LOD_FROZEN_128 0x25340bd6f788726aull
 #define VAELEN_LOD_EMIGRANTS_128 207u
 #define VAELEN_LOD_IMMIGRANTS_128 0u
 

@@ -62,8 +62,12 @@ using namespace Vaelen::WorldGen;
 // Recorded on clang 18 / Linux x86_64 on 2026-09-07 (07.08): AELVOR 256 at
 // year 300, its two most peopled regions detailed, 500 years with every
 // Phase 04, 05, 06 and 07 system.
-#define VAELEN_POLGATE_FROZEN_256_250 0x2ab8cc1ac3511587ull
-#define VAELEN_POLGATE_FROZEN_256_500 0x3fa464fbbbad5fe6ull
+// Refrozen 2026-09-08: person indices are taken from a counter that only ever
+// goes up, so a demoted region no longer hands its indices out again to the
+// people made after it, and the world's one counter entity is state like any
+// other. Every invariant of the gate is unchanged; only the state digests are.
+#define VAELEN_POLGATE_FROZEN_256_250 0xa289bf9e93673717ull
+#define VAELEN_POLGATE_FROZEN_256_500 0x810fde4acd8a1221ull
 #define VAELEN_POLGATE_LOG_256_500 0x9dee76991a6bc9c8ull
 #define VAELEN_POLGATE_TEXT_256_500 0xa4e5ee1fb64db8abull
 

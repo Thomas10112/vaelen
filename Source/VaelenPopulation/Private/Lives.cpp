@@ -123,10 +123,9 @@ namespace Vaelen::Population
 			.GetPool(Persons.Detail)
 			.ForEach([&](EntityHandle, const RegionDetail& D) { Regions.push_back(D.Region); });
 		std::sort(Regions.begin(), Regions.end());
-		uint32 NextIndex = 0;
-		W.Components()
-			.GetPool(Persons.Person)
-			.ForEach([&](EntityHandle, const PersonInfo& P) { NextIndex = P.Index > NextIndex ? P.Index : NextIndex; });
+		// Indices are taken one at a time from the world's counter, never from
+		// the highest person alive: a demoted region lowers that, and the same
+		// index handed out twice puts a stranger on a throne (see PersonCounter).
 
 		for (const uint32 Region : Regions)
 		{
@@ -201,7 +200,7 @@ namespace Vaelen::Population
 				if (Mother.Spouse != 0)
 				{
 					PersonInfo Child;
-					Child.Index = ++NextIndex;
+					Child.Index = TakePersonIndices(W, Persons, 1);
 					Child.Region = Region;
 					Child.Culture = Mother.Culture;
 					Child.Religion = Mother.Religion;
@@ -251,7 +250,7 @@ namespace Vaelen::Population
 					}
 				}
 				PersonInfo Child;
-				Child.Index = ++NextIndex;
+				Child.Index = TakePersonIndices(W, Persons, 1);
 				Child.Region = Region;
 				Child.Culture = Mother.Culture;
 				Child.Religion = Mother.Religion;

@@ -34,8 +34,11 @@ using namespace Vaelen::WorldGen;
 // year 120, two of the three busiest regions detailed in turn every 25 years
 // for 500 years with every Phase 04 and 05 system so far, every institution
 // allowed.
-#define VAELEN_STRATA_FROZEN_64 0x7d6be89760aa4807ull
-#define VAELEN_STRATA_BOUND_64 1168u
+// Refrozen 2026-09-08: person indices are taken from a counter that only
+// goes up, so a demoted region no longer hands its indices out again (see
+// PersonCounter).
+#define VAELEN_STRATA_FROZEN_64 0x3cbbe29d0e1c623aull
+#define VAELEN_STRATA_BOUND_64 1193u
 #define VAELEN_STRATA_PROMOTIONS_64 21u
 
 namespace

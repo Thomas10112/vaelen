@@ -24,15 +24,6 @@ namespace Vaelen::Population
 			PersonInfo Info;
 		};
 
-		uint32 HighestIndex(const World& W, const PersonTypes& Persons)
-		{
-			uint32 Highest = 0;
-			W.Components()
-				.GetPool(Persons.Person)
-				.ForEach([&](EntityHandle, const PersonInfo& P) { Highest = P.Index > Highest ? P.Index : Highest; });
-			return Highest;
-		}
-
 		uint32 LanguageOfCulture(const World& W, const History::PreHistoryTypes& Types, uint32 Culture)
 		{
 			uint32 Best = 0;
@@ -217,13 +208,9 @@ namespace Vaelen::Population
 		{
 			return;
 		}
-		const Hash64 Key = HashBytes(reinterpret_cast<const char*>(&W.Map().Config()), sizeof(W.Map().Config()));
-		if (Graph.Neighbours.empty() || GraphDigest != Key)
-		{
-			Graph = WorldGen::BuildRegionGraph(W.Map(), Types.World.Regions);
-			GraphDigest = Key;
-		}
-		uint32 NextIndex = HighestIndex(W, Persons);
+		// Keyed on the map itself: a config is not an identity either, since a
+		// snapshot can carry another world's tiles under the same config.
+		const WorldGen::RegionGraph& Graph = Roads.Of(W.Map(), Types.World.Regions);
 		for (const uint32 D : Current)
 		{
 			if (D >= Graph.Neighbours.size() || D >= Regions.size() || Regions[D].IsNull())
@@ -342,7 +329,7 @@ namespace Vaelen::Population
 						Religion = OtherFaith->Remove(Faith, 1) > 0 ? Faith : 0u;
 					}
 					PersonInfo P;
-					P.Index = ++NextIndex;
+					P.Index = TakePersonIndices(W, Persons, 1);
 					P.Region = D;
 					P.Culture = Culture;
 					P.Religion = Religion;

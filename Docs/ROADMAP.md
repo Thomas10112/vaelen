@@ -2251,31 +2251,27 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 08 — MILITARY
-TASK        : 08.05 — WAR AS A THING WITH AN END (+ a determinism defect closed)
+TASK        : 08.05 CLOSED — the last two review defects closed with it
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
 ████████████████████░░░░ 80%
 
 CURRENTLY
-→ 08.05 closed: until now a war was a stance - 07.06 cooled a relation past a threshold and everything
-  downstream read "at war" off it. That is enough to start a war and no use for ending one, because
-  what would end it, two exhausted powers agreeing to stop, has nowhere to live: a stance has no memory
-  of what it has cost. So the war is now the thing and the stance follows it. A relation that cools
-  into war opens a war; while it is open the stance stays at war however the warmth drifts, because a
-  war is not called off by a good harvest; and when it ends the stance is written back to peace. What
-  ends it is exhaustion - a little every year, more per hundred men lost, a great deal for a capital
-  lost. A side worn past forfeiting takes any terms; two worn past willing make a white peace. Terms
-  are what has already happened. WarInfo, WarOf, WarBetween, MeasureWars
+→ A person index must never be handed out twice in the life of a world, because things outside the
+  population remember one: a council's head (05.01), a polity's ruler (07.01), a line's claimant
+  (07.04), a faction's (07.05). Allocating one past the highest person alive looks equivalent to a
+  counter and is not - demoting a region destroys every person in it, which lowers that highest, and
+  the next promotion or birth hands the same indices out again to strangers who inherit every claim
+  the dead had. Reproduced by the adversarial review: a council of a demoted region kept a head
+  pointing at a destroyed person, and the moment the index was recycled 07.01 seated a live adult from
+  another region as the polity's ruler, with 07.04 then naming that stranger's children as claimants.
+  A PersonCounter now lives on one entity of the world, made with the first index ever taken, and it
+  only goes up. Every index a person has ever had is spent for good.
 
-→ Two defects from the adversarial review closed with it, both reproduced there. A relation outlives
-  the polities in it, and 07.06 only revisits pairs whose ground still touches, so a war stance left
-  over a dissolved polity was read as a live war for ever - the survivor kept a host under arms and fed
-  it against nobody. And the region graph, derived from the map, was cached against the count of
-  regions by all three systems that walk it: AELVOR has ninety-nine regions at 128 tiles a side and
-  ninety-nine at 112, so a snapshot loaded over a world that had ticked left every distance, hold,
-  march and retreat running on the adjacency of a world that no longer existed. The map now counts the
-  times it has been replaced, and one RegionGraphCache in VaelenSim keys on that.
+  Held by a test: a region takes 1..1460, is demoted, and the region peopled after it begins at 1461
+  rather than at 1. Every invariant of every phase gate is unchanged; four state digests moved, because
+  the indices genuinely differ once a region has been demoted, and they are refrozen with the reason.
 
 COMPLETED
 ✓ Phases 00-07 (headless, Phase 07 closed) (CI 68)
@@ -2284,35 +2280,30 @@ COMPLETED
 ✓ 08.03 battle (4 tests: Battle)
 ✓ 08.04 siege (4 tests: Siege)
 ✓ 08.05 war with an end (4 tests: War)
-✓ The region graph cached against the map it was built from (2 tests: Regions, Reach)
+✓ Every defect the adversarial review confirmed is closed (4 of 4)
 
 NEXT
 → 08.06 What war costs the living: the dead, the displaced, the harvests taken, the standing of those who fought
 → 08.07 War in the chronicle
 
-OPEN DEFECTS (adversarial review, reproduced)
-! Person indices are allocated as one past the highest in the pool, so demoting a region hands its
-  indices out again; a council of a demoted region keeps a head that is now a stranger, and 07.01 can
-  seat that stranger as a ruler. The fix belongs in the allocator - a monotonic counter carried in
-  world state - not in the readers.
-
 FILES
-+ Source/VaelenMilitary/Public/Vaelen/Military/War.h, Private/War.cpp
-+ Tests/Military/Test_War.cpp
-+ Source/VaelenSim/ RegionGraphCache (Regions.h, Regions.cpp) and WorldMap::Revision
-~ Source/VaelenPolitics/ (Reach.h, Reach.cpp), Source/VaelenMilitary/ (March.*, Battle.*)
-~ Tests/Sim/Test_Regions.cpp, Tests/Politics/Test_Reach.cpp
++ PersonCounter and TakePersonIndices (Source/VaelenPopulation/.../Persons.h, Private/Persons.cpp)
+~ Source/VaelenPopulation/Private/Lives.cpp, Private/Lod.cpp (the other two allocation sites)
+~ Source/VaelenPopulation/Public/Vaelen/Population/Lod.h (its own graph cache folded into the shared one)
+~ Tests/Population/Test_Persons.cpp, Test_Lod.cpp, Tests/Society/Test_Strata.cpp,
+  Tests/Economy/Test_Grains.cpp, the four phase gates (digests refrozen)
 
 TESTS
-✓ Core 133 (108 without asserts) + Sim 161 + Population 36 + Society 27 + Economy 26
-  + Politics 29 + Military 20 (20 without asserts); ctest 84/84 in all six Linux presets
-✓ AELVOR 128, two powers over 100 years: frozen wars digest 7f5a5a47a3be40df (5 wars over, 1968 fallen);
-  every earlier frozen digest unchanged, the graph fix included
-✓ A snapshot loaded over a world that had run gives state 3e05a6c84cfb98f9, the world the image came from
+✓ Core 133 (108 without asserts) + Sim 161 + Population 37 + Society 27 + Economy 26
+  + Politics 29 + Military 20; ctest 84/84 in all six Linux presets
+✓ Every phase gate re-run at 256 over 500 years: History, Population, Society, Economy, Politics all
+  green, every invariant unchanged
 ✓ Purity: 132 files, 0 violations
 
 BLOCKERS
-∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)
+! CI has not completed a run since 68: every push since has cancelled the run before it
+  (concurrency: cancel-in-progress). The Windows MSVC and macOS legs are therefore unverified for
+  08.02 to 08.05. Nothing is pushed after this until one run finishes.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ```

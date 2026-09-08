@@ -60,11 +60,41 @@ namespace Vaelen::Population
 		PersonTypes T;
 		T.Person = W.Types().Register<PersonInfo>("PersonInfo");
 		T.Detail = W.Types().Register<RegionDetail>("RegionDetail");
+		T.Counter = W.Types().Register<PersonCounter>("PersonCounter");
 		T.Lod = W.Types().Register<History::RegionLod>("RegionLod");
 		W.Components().CreatePool(T.Person);
 		W.Components().CreatePool(T.Detail);
+		W.Components().CreatePool(T.Counter);
 		W.Components().CreatePool(T.Lod);
 		return T;
+	}
+
+	uint32 TakePersonIndices(World& W, const PersonTypes& Persons, uint32 Count)
+	{
+		if (Count == 0)
+		{
+			return 0;
+		}
+		EntityHandle Held;
+		W.Components()
+			.GetPool(Persons.Counter)
+			.ForEach([&](EntityHandle H, const PersonCounter&) { Held = Held.IsNull() ? H : Held; });
+		if (Held.IsNull())
+		{
+			// The first index ever taken in this world. Start past anything that
+			// already exists, so that a world built before the counter did keeps
+			// the indices it has.
+			Held = W.CreateEntity(IdKind::Entity);
+			W.Components().GetPool(Persons.Counter).Add(Held, PersonCounter{HighestPersonIndex(W, Persons) + 1u, 0u});
+		}
+		PersonCounter* Next = W.Components().GetPool(Persons.Counter).TryGet(Held);
+		if (Next == nullptr)
+		{
+			return 0;
+		}
+		const uint32 First = Next->Next;
+		Next->Next += Count;
+		return First;
 	}
 
 	PersonTypes PersonTypes::Declare(World& W, History::PreHistory& Ages)
@@ -146,7 +176,7 @@ namespace Vaelen::Population
 			return Faith.Religion[FaithSlot];
 		};
 
-		uint32 Index = HighestPersonIndex(W, Persons);
+		// Indices are taken from the counter, never from the highest alive.
 		Draw D{HashCombine(HashCombine(HashUInt64(W.Config().Seed), HashUInt64(Region)), HashUInt64(Now))};
 		const uint32 YoungLimit = Rules.MaxAgeYears / 3u;
 		uint32 Created = 0;
@@ -159,7 +189,7 @@ namespace Vaelen::Population
 			for (uint32 N = 0; N < People.Count[S]; ++N)
 			{
 				PersonInfo P;
-				P.Index = ++Index;
+				P.Index = TakePersonIndices(W, Persons, 1);
 				P.Region = Region;
 				P.Culture = People.Culture[S];
 				P.Religion = NextFaith();
