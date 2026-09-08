@@ -59,7 +59,9 @@ jobs:
   windows:
     name: Windows (MSVC)
     runs-on: windows-2022
-    timeout-minutes: 70
+    # An MSVC debug build runs the suite about four times slower than Linux
+    # debug does, and it is the one leg that cannot be parallelised away.
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -70,7 +72,10 @@ jobs:
       - name: Build
         run: cmake --build --preset windows-msvc-debug
       - name: Test
-        run: ctest --preset windows-msvc-debug
+        # Everything but the shuffled re-runs: those re-run every suite a second
+        # time to catch order dependence between tests, which is a property of
+        # the tests and not of the compiler. Every Linux leg runs them.
+        run: ctest --preset windows-msvc-debug -E Shuffled
 
   macos:
     name: macOS (AppleClang)
