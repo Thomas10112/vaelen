@@ -87,6 +87,7 @@ Rules for this file:
 | [0062](#adr-0062-history-is-narrower-than-the-log-and-the-topmost-describer-speaks-for-every-layer) | History is narrower than the log, and the topmost describer speaks for every layer | Accepted; headless VALIDATED |
 | [0063](#adr-0063-a-seat-cannot-be-taken) | A seat cannot be taken | Accepted; headless VALIDATED |
 | [0064](#adr-0064-an-army-is-people-taken-out-of-regions) | An army is people taken out of regions | Accepted; headless VALIDATED |
+| [0065](#adr-0065-a-host-walks-the-region-graph-and-eats-what-it-stands-on) | A host walks the region graph, and eats what it stands on | Accepted; headless VALIDATED |
 
 ---
 
@@ -3827,6 +3828,71 @@ none of them.
 Accepted 2026-09-08. Files: `Source/VaelenMilitary/*`,
 `Tests/Military/Test_Armies.cpp` (4 tests). Headless VALIDATED on the six Linux
 presets.
+
+---
+
+## ADR-0065: A host walks the region graph, and eats what it stands on
+
+### Context
+
+08.01 raises hosts and leaves them at the seat. Getting them anywhere needs a
+notion of distance and a notion of speed, and the world offers two: the tile
+grid, which is where things actually are, and the region graph of 02.05, which
+is how the world is partitioned into places with names, rulers and people.
+
+### Decision
+
+1. **A host moves on the region graph, not on the tile grid.** A hop is a move
+   to a neighbouring region. Distance is counted in hops, so the nearest enemy
+   ground is the one fewest regions away rather than the one fewest miles away.
+   Everything a war touches - rule, hold, dues, people - is written per region;
+   moving per tile would give a precision nothing else in the simulation has.
+2. **One hop a season, no faster, whatever the distance.** Speed is a rule, not
+   a function of terrain or supply. A host four hops from its aim takes a year.
+3. **The aim is chosen fresh every year**, by a breadth-first walk from where
+   the host stands: the nearest region ruled by somebody its polity is at war
+   with, ties going to the lower region index so that the road a host takes is
+   the same on every run of the same seed. A front that moves changes the aim,
+   which is right: a host does not march on a city that has already fallen.
+4. **A host eats off the ground it ends the year on**, out of the region's
+   common stock (06.01), and this is separate from the grain the treasury pays
+   it (08.01). Marching is a cost the land bears, not the crown.
+5. **A host standing on somebody else's ground loosens their grip on it**, and
+   nothing more. It does not take the region: that is 08.04's business. But
+   07.03 already turns a grip that keeps loosening into ground that slips, so
+   an army parked on a province is a slow political fact before it is a
+   military one.
+
+### Alternatives and decision rule
+
+- Movement on the tile grid with terrain costs: rejected as precision the rest
+  of the simulation cannot answer. Robust over performant: a region graph walk
+  is a handful of hops on a graph of a hundred nodes, and every neighbour of it
+  - rule, hold, stock - is already indexed by region.
+- A path computed once and followed to the end: rejected; the world changes
+  under a marching army, and a host that keeps walking towards a region its
+  own side has since taken is a bug the tests would have to tolerate.
+- Taking the region on arrival: rejected. Standing somewhere and holding it are
+  different things, and collapsing them would leave 08.03 and 08.04 nothing to
+  do.
+- Foraging out of the treasury instead of the land: rejected; it would make war
+  a purely fiscal event and leave no mark on the people 08.06 has to account
+  for.
+
+### Consequences
+
+- An enemy host is now a reason a province slips, through the hold of 07.03,
+  with no new machinery.
+- Two hosts can stand in the same region. Nothing resolves that yet; 08.03
+  does.
+- The frozen march digest is the first that depends on the region graph's
+  adjacency, so a change to region partitioning will show up here first.
+
+### Status
+
+Accepted 2026-09-08. Files: `Source/VaelenMilitary/Public/Vaelen/Military/March.h`,
+`Source/VaelenMilitary/Private/March.cpp`, `Tests/Military/Test_March.cpp`
+(4 tests). Headless VALIDATED on the six Linux presets.
 
 ---
 

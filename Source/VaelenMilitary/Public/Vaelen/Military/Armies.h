@@ -150,8 +150,9 @@ namespace Vaelen::Military
 		uint32 Raisings = 0; ///< events, from the log
 		uint32 Disbandings = 0;
 		uint32 Starvings = 0;
-		uint32 Bad = 0;	   ///< an army of a polity that is gone, standing in ground it does not hold,
-						   ///< with no men, or men away that no army accounts for
+		uint32 Bad = 0;	   ///< an army of a polity that is gone, standing on a region that is not there,
+						   ///< with no men, or men away that no army accounts for. Where a host stands
+						   ///< is 08.02's business: a marching host is on enemy ground on purpose.
 		Hash64 Digest = 0; ///< every army in index order, then every levy in region order
 	};
 	VAELEN_MILITARY_API ArmyStats MeasureArmies(const World& W, const History::PreHistoryTypes& Types,

@@ -75,7 +75,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | VALIDATED (headless, 06.01-06.08); UNVERIFIED (engine) |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | VALIDATED headless (07.01-07.08, phase closed); UNVERIFIED under UBT |
-| 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | IN PROGRESS (08.01 VALIDATED headless; 08.02-08.08 PLANNED) |
+| 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | IN PROGRESS (08.01-08.02 VALIDATED headless; 08.03-08.08 PLANNED) |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
 | 10 | PLAYER | The player as one simulated person: enslaved start, body, needs, skills, relationships; player intent as commands into the simulation. | PLANNED |
 | 11 | MINING COLONY | The starting place: a huge autonomous mining colony simulated by the same systems at full detail. | PLANNED |
@@ -2118,6 +2118,34 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   snapshot continuity, frozen armies digest `028ec9ea8f5092f7` after 100 years (2 levies called, 254 men).
 - Decision: ADR-0064.
 
+### 08.02 Marching - VALIDATED (headless)
+
+- Delivered: `March.h/.cpp` - `MarchOrder` (16 bytes: the region it is marching on, hops still to
+  walk, hops walked since it was raised, whether it is standing on its aim) on the army entity,
+  `RegionForage` (8 bytes: grain taken off it last year, consecutive years a host has stood on it)
+  on the region, `MarchTypes::Declare`, `MarchRules` (four hops a year - one a season, nothing
+  further than twelve hops marched on, 2 grain a man a year taken off the ground, 60 per mille of
+  hold cost to a ruler an enemy host is standing on), events ArmyMarched, ArmyForaged, ArmyArrived,
+  `MarchSystem` (LOD World, after Armies: a breadth-first walk of the region graph from where the
+  host stands gives the nearest enemy ground - ties to the lower region index, so the road is the
+  same on every run - then up to four hops of the shortest way towards it, then the host eats off
+  the region it ends the year on and loosens the grip of any ruler it is standing on), `OrderOf`,
+  `ForageOf`, `MeasureMarches` (hosts under an order, arrived, idle, abroad, hops walked, regions
+  foraged, grain taken, events by kind, and the bad - an order left on a host that went home, an
+  aim that is not enemy ground, an arrival that is not where the host stands, grain taken off
+  ground nobody stood on - with a digest of every order in army index order then every forage in
+  region order). `MeasureArmies` relaxed accordingly: where a host stands is the march's business,
+  and a marching host is on enemy ground on purpose.
+- Tests (4): a host walks no faster than a hop a season and, while its aim does not change, gets
+  strictly closer to it every year until it is standing on it; a host eats off the ground it ends
+  the year on, ground nobody stood on is not eaten, and a ravenous host strips a region's common
+  stock to nothing, so the grain really leaves the world rather than being counted twice; a host
+  with no hops to give never leaves the seat it was raised at, one that cannot see past its own
+  ground marches on nothing, one that takes nothing takes nothing, a host that went home is under
+  no order, and the lookups refuse what does not exist; determinism, snapshot continuity, frozen
+  marches digest `ae71515bd66bae56` after 100 years (16 hops walked, 9 marches).
+- Decision: ADR-0065.
+
 ## 12b. Phases 09-20: notes
 
  Fixed points already in the code: `IdKind` values for Region, Tile, River,
@@ -2135,47 +2163,47 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 08 — MILITARY
-TASK        : 08.01 — LEVIES AND ARMIES
+TASK        : 08.02 — MARCHING
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███████████████████░░░░░ 76%
+███████████████████░░░░░ 77%
 
 CURRENTLY
-→ 08.01 closed: the seventh kernel module VaelenMilitary. An army is not a thing a polity owns; it is
-  people taken out of regions. A levy is raised only where there is a reason - a war of 07.06 - and
-  only from ground the polity actually holds: a region held loosely gives few men and one held under
-  the floor gives none, because a levy is obedience and 07.03 already measures obedience. The men are
-  recorded on the regions they came from, so nothing is invented and nothing is lost - the invariant
-  the tests hold to every year is that the men the regions say are away are exactly the men under
-  arms. A host eats out of the treasury 07.02 fills; one that cannot be fed is not disbanded by an
-  order, it melts, and what melts walks home. ArmyOf, ArmiesOf, LevyOf, MeasureArmies
+→ 08.02 closed: a host raised at a seat is of no use at the seat. It walks the region graph the world
+  was partitioned into in 02.05, one hop a season - four hops a year, no faster, whatever the distance -
+  towards the nearest ground held by somebody its polity is at war with. Nearest by hops, not by miles,
+  because the graph is what an army can actually walk. Marching is not paid for by the treasury: a host
+  eats off the ground it ends the year on, out of the region's common stock, and a host standing on
+  somebody else's ground loosens their grip on it - it does not take the region, 08.04 does that, but
+  07.03 already knows what a grip that keeps loosening comes to. MarchOrder, RegionForage, OrderOf,
+  ForageOf, MeasureMarches
 
 COMPLETED
 ✓ Phases 00-07 (headless, Phase 07 closed) (CI 68)
-✓ 08.01 levies and armies (4 tests: Armies)
+✓ 08.01 levies and armies (4 tests: Armies) (CI 69)
+✓ 08.02 marching (4 tests: March)
 
 NEXT
-→ 08.02 Marching: an army moves on the region graph, one hop a season, and costs grain where it stands
-→ 08.03 Battle
+→ 08.03 Battle: two armies in one region resolve by strength, ground and a stream drawn from the world seed
+→ 08.04 Siege
 
 FILES
-+ Source/VaelenMilitary/ (VaelenMilitary.Build.cs, CMakeLists.txt, Public/Vaelen/Military/MilitaryApi.h,
-  Armies.h, Private/Armies.cpp, Private/VaelenMilitaryModule.cpp)
-+ Tests/Military/ (CMakeLists.txt, Test_Armies.cpp)
-~ CMakeLists.txt, Tests/CMakeLists.txt, Tools/kernel_modules.txt, Vaelen.uproject, Vaelen.Target.cs,
-  VaelenEditor.Target.cs
++ Source/VaelenMilitary/Public/Vaelen/Military/March.h, Private/March.cpp
++ Tests/Military/Test_March.cpp
+~ Source/VaelenMilitary/CMakeLists.txt, Public/Vaelen/Military/Armies.h, Private/Armies.cpp
+~ Source/Vaelen/Private/VaelenAtlasActor.cpp
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 160 + Population 36 + Society 27 + Economy 26
-  + Politics 28 + Military 4 (4 without asserts); ctest 80/80 in all six Linux presets;
+  + Politics 28 + Military 8 (8 without asserts); ctest 81/81 in all six Linux presets;
   every earlier frozen digest unchanged
-✓ AELVOR 128, two powers over 100 years: frozen armies digest 028ec9ea8f5092f7 (2 levies called, 254 men)
-✓ Purity: 124 files, 0 violations
+✓ AELVOR 128, two powers over 100 years: frozen marches digest ae71515bd66bae56 (16 hops walked, 9 marches),
+  frozen armies digest 028ec9ea8f5092f7 unchanged
+✓ Purity: 126 files, 0 violations
 
 BLOCKERS
-∅ (engine-side files of the new module stay UNVERIFIED until the next UE 5.6 build; the project
-  files must be regenerated for UBT to see VaelenMilitary)
+∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 

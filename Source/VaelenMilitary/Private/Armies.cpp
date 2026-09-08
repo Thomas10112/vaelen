@@ -395,7 +395,8 @@ namespace Vaelen::Military
 			S.Fed += A.Fed;
 			S.Bad += A.Strength == 0 ? 1u : 0u;
 			S.Bad += std::binary_search(StandingPolities.begin(), StandingPolities.end(), A.Polity) ? 0u : 1u;
-			S.Bad += A.Region < RuledBy.size() && RuledBy[A.Region] == A.Polity ? 0u : 1u;
+			// It stands somewhere real. Whose ground that is belongs to the march.
+			S.Bad += A.Region != 0 && A.Region < RuledBy.size() ? 0u : 1u;
 		}
 		for (const auto& [Region, Levy] : Levies)
 		{

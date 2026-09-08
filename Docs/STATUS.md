@@ -13,47 +13,47 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 08 — MILITARY
-TASK        : 08.01 — LEVIES AND ARMIES
+TASK        : 08.02 — MARCHING
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███████████████████░░░░░ 76%
+███████████████████░░░░░ 77%
 
 CURRENTLY
-→ 08.01 closed: the seventh kernel module VaelenMilitary. An army is not a thing a polity owns; it is
-  people taken out of regions. A levy is raised only where there is a reason - a war of 07.06 - and
-  only from ground the polity actually holds: a region held loosely gives few men and one held under
-  the floor gives none, because a levy is obedience and 07.03 already measures obedience. The men are
-  recorded on the regions they came from, so nothing is invented and nothing is lost - the invariant
-  the tests hold to every year is that the men the regions say are away are exactly the men under
-  arms. A host eats out of the treasury 07.02 fills; one that cannot be fed is not disbanded by an
-  order, it melts, and what melts walks home. ArmyOf, ArmiesOf, LevyOf, MeasureArmies
+→ 08.02 closed: a host raised at a seat is of no use at the seat. It walks the region graph the world
+  was partitioned into in 02.05, one hop a season - four hops a year, no faster, whatever the distance -
+  towards the nearest ground held by somebody its polity is at war with. Nearest by hops, not by miles,
+  because the graph is what an army can actually walk. Marching is not paid for by the treasury: a host
+  eats off the ground it ends the year on, out of the region's common stock, and a host standing on
+  somebody else's ground loosens their grip on it - it does not take the region, 08.04 does that, but
+  07.03 already knows what a grip that keeps loosening comes to. MarchOrder, RegionForage, OrderOf,
+  ForageOf, MeasureMarches
 
 COMPLETED
 ✓ Phases 00-07 (headless, Phase 07 closed) (CI 68)
-✓ 08.01 levies and armies (4 tests: Armies)
+✓ 08.01 levies and armies (4 tests: Armies) (CI 69)
+✓ 08.02 marching (4 tests: March)
 
 NEXT
-→ 08.02 Marching: an army moves on the region graph, one hop a season, and costs grain where it stands
-→ 08.03 Battle
+→ 08.03 Battle: two armies in one region resolve by strength, ground and a stream drawn from the world seed
+→ 08.04 Siege
 
 FILES
-+ Source/VaelenMilitary/ (VaelenMilitary.Build.cs, CMakeLists.txt, Public/Vaelen/Military/MilitaryApi.h,
-  Armies.h, Private/Armies.cpp, Private/VaelenMilitaryModule.cpp)
-+ Tests/Military/ (CMakeLists.txt, Test_Armies.cpp)
-~ CMakeLists.txt, Tests/CMakeLists.txt, Tools/kernel_modules.txt, Vaelen.uproject, Vaelen.Target.cs,
-  VaelenEditor.Target.cs
++ Source/VaelenMilitary/Public/Vaelen/Military/March.h, Private/March.cpp
++ Tests/Military/Test_March.cpp
+~ Source/VaelenMilitary/CMakeLists.txt, Public/Vaelen/Military/Armies.h, Private/Armies.cpp
+~ Source/Vaelen/Private/VaelenAtlasActor.cpp
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 160 + Population 36 + Society 27 + Economy 26
-  + Politics 28 + Military 4 (4 without asserts); ctest 80/80 in all six Linux presets;
+  + Politics 28 + Military 8 (8 without asserts); ctest 81/81 in all six Linux presets;
   every earlier frozen digest unchanged
-✓ AELVOR 128, two powers over 100 years: frozen armies digest 028ec9ea8f5092f7 (2 levies called, 254 men)
-✓ Purity: 124 files, 0 violations
+✓ AELVOR 128, two powers over 100 years: frozen marches digest ae71515bd66bae56 (16 hops walked, 9 marches),
+  frozen armies digest 028ec9ea8f5092f7 unchanged
+✓ Purity: 126 files, 0 violations
 
 BLOCKERS
-∅ (engine-side files of the new module stay UNVERIFIED until the next UE 5.6 build; the project
-  files must be regenerated for UBT to see VaelenMilitary)
+∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -218,7 +218,8 @@ Phase 07 against the exit criteria (`Docs/ROADMAP.md` section 2): (1) CI matrix 
 | Task | Content | Status |
 |---|---|---|
 | 08.01 | `VaelenMilitary` module; a levy raised from the regions a polity holds and fed out of its treasury; armies as entities of kind Army | VALIDATED: Armies 4 tests |
-| 08.02-08.08 | Marching, battle, siege, war as a thing with an end, what war costs the living, war in the chronicle, the gate | PLANNED |
+| 08.02 | Marching: a host walks the region graph towards the nearest enemy ground, one hop a season, eats off what it stands on and loosens an enemy ruler's grip | VALIDATED: March 4 tests |
+| 08.03-08.08 | Battle, siege, war as a thing with an end, what war costs the living, war in the chronicle, the gate | PLANNED |
 
 ## File status
 
@@ -314,6 +315,7 @@ the purity checker, applied to headers and sources).
 | `CMakeLists.txt` | VALIDATED (Phase 08) |
 | `Public/Vaelen/Military/MilitaryApi.h` | VALIDATED (Phase 08) |
 | `Public/Vaelen/Military/Armies.h`, `Private/Armies.cpp` | VALIDATED (Phase 08) — covered by `Tests/Military/Test_Armies.cpp` |
+| `Public/Vaelen/Military/March.h`, `Private/March.cpp` | VALIDATED (Phase 08) — covered by `Tests/Military/Test_March.cpp` |
 
 ### `Source/Vaelen` (engine bridge and presentation)
 
@@ -416,10 +418,11 @@ the purity checker, applied to headers and sources).
 | `Politics/Test_PoliticsHistory.cpp` (Phase 07) | VALIDATED | 3 |
 | `Politics/Test_PoliticsGate.cpp` (Phase 07) | VALIDATED | 1 |
 | `Military/Test_Armies.cpp` (Phase 08) | VALIDATED | 4 |
+| `Military/Test_March.cpp` (Phase 08) | VALIDATED | 4 |
 | `Politics/Test_Law.cpp` (Phase 07) | VALIDATED | 4 |
 | `Politics/Test_Law.cpp` (Phase 07) | VALIDATED | 4 |
 
-Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 5, Deposits 5, WorldPipeline 4, History 3, Population 5, Naming 5, Religion 5, Disasters 5, PreHistory 5, HistoryText 5, HistoryGate 2 (162 tests; 159 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.History`, `Sim.Population`, `Sim.Naming`, `Sim.Religion`, `Sim.Disasters`, `Sim.PreHistory`, `Sim.HistoryText`, `Sim.HistoryGate`, `Sim.Registry`, `Sim.Shuffled` (42 entries in total). Population suites: Persons 5, Lives 5, Families 5, Needs 6, Traits 5, Lod 5, PersonHistory 5, PopulationGate 1 (37 tests; 37 without assertions); CTest entries `Population.Persons`, `Population.Lives`, `Population.Families`, `Population.Needs`, `Population.Traits`, `Population.Lod`, `Population.PersonHistory`, `Population.PopulationGate`, `Population.Registry`, `Population.Shuffled` (10 entries). Society suites: Organizations 5, Standing 4, Norms 4, Bondage 4, Decisions 4, Strata 3, SocietyHistory 3, SocietyGate 1 (28 tests; 28 without assertions); CTest entries `Society.Organizations`, `Society.Standing`, `Society.Norms`, `Society.Bondage`, `Society.Decisions`, `Society.Strata`, `Society.SocietyHistory`, `Society.SocietyGate`, `Society.Registry`, `Society.Shuffled` (10 entries). Economy suites: Stocks 4, Production 4, Markets 4, Trade 4, Wealth 5, Grains 2, EconomyHistory 3, EconomyGate 1 (27 tests; 27 without assertions); CTest entries `Economy.Stocks`, `Economy.Production`, `Economy.Markets`, `Economy.Trade`, `Economy.Wealth`, `Economy.Grains`, `Economy.EconomyHistory`, `Economy.EconomyGate`, `Economy.Registry`, `Economy.Shuffled` (10 entries). Politics suites: Polities 4, Law 4, Reach 4, Succession 4, Factions 4, Diplomacy 4, PoliticsHistory 3, PoliticsGate 1 (28 tests; 28 without assertions); CTest entries `Politics.Diplomacy`, `Politics.Factions`, `Politics.Law`, `Politics.Polities`, `Politics.PoliticsGate`, `Politics.PoliticsHistory`, `Politics.Reach`, `Politics.Succession`, `Politics.Registry`, `Politics.Shuffled` (10 entries). Military suites: Armies 4 (4 tests; 4 without assertions); CTest entries `Military.Armies`, `Military.Registry`, `Military.Shuffled` (3 entries).
+Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 5, Deposits 5, WorldPipeline 4, History 3, Population 5, Naming 5, Religion 5, Disasters 5, PreHistory 5, HistoryText 5, HistoryGate 2 (162 tests; 159 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.History`, `Sim.Population`, `Sim.Naming`, `Sim.Religion`, `Sim.Disasters`, `Sim.PreHistory`, `Sim.HistoryText`, `Sim.HistoryGate`, `Sim.Registry`, `Sim.Shuffled` (42 entries in total). Population suites: Persons 5, Lives 5, Families 5, Needs 6, Traits 5, Lod 5, PersonHistory 5, PopulationGate 1 (37 tests; 37 without assertions); CTest entries `Population.Persons`, `Population.Lives`, `Population.Families`, `Population.Needs`, `Population.Traits`, `Population.Lod`, `Population.PersonHistory`, `Population.PopulationGate`, `Population.Registry`, `Population.Shuffled` (10 entries). Society suites: Organizations 5, Standing 4, Norms 4, Bondage 4, Decisions 4, Strata 3, SocietyHistory 3, SocietyGate 1 (28 tests; 28 without assertions); CTest entries `Society.Organizations`, `Society.Standing`, `Society.Norms`, `Society.Bondage`, `Society.Decisions`, `Society.Strata`, `Society.SocietyHistory`, `Society.SocietyGate`, `Society.Registry`, `Society.Shuffled` (10 entries). Economy suites: Stocks 4, Production 4, Markets 4, Trade 4, Wealth 5, Grains 2, EconomyHistory 3, EconomyGate 1 (27 tests; 27 without assertions); CTest entries `Economy.Stocks`, `Economy.Production`, `Economy.Markets`, `Economy.Trade`, `Economy.Wealth`, `Economy.Grains`, `Economy.EconomyHistory`, `Economy.EconomyGate`, `Economy.Registry`, `Economy.Shuffled` (10 entries). Politics suites: Polities 4, Law 4, Reach 4, Succession 4, Factions 4, Diplomacy 4, PoliticsHistory 3, PoliticsGate 1 (28 tests; 28 without assertions); CTest entries `Politics.Diplomacy`, `Politics.Factions`, `Politics.Law`, `Politics.Polities`, `Politics.PoliticsGate`, `Politics.PoliticsHistory`, `Politics.Reach`, `Politics.Succession`, `Politics.Registry`, `Politics.Shuffled` (10 entries). Military suites: Armies 4, March 4 (8 tests; 8 without assertions); CTest entries `Military.Armies`, `Military.March`, `Military.Registry`, `Military.Shuffled` (4 entries).
 
 ### Tools/ and CI
 
@@ -436,12 +439,12 @@ Toolchain: clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.1
 
 | Preset | Build | `ctest` | `VaelenCoreTests` | `VaelenSimTests` | `VaelenPopulationTests` | `VaelenSocietyTests` | `VaelenEconomyTests` | `VaelenPoliticsTests` | `VaelenMilitaryTests` |
 |---|---|---|---|---|---|---|---|---|---|
-| linux-clang-debug | 0 warnings | 80/80 passed | 133 run, 133 passed, 22316 checks | 160 run, 160 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed | 4 run, 4 passed |
-| linux-gcc-debug | 0 warnings | 80/80 passed | 133 run, 133 passed, 22316 checks | 160 run, 160 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed | 4 run, 4 passed |
-| linux-clang-release | 0 warnings | 80/80 passed | 133 run, 133 passed, 22316 checks | 160 run, 160 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed | 4 run, 4 passed |
-| linux-gcc-release | 0 warnings | 80/80 passed | 133 run, 133 passed, 22316 checks | 160 run, 160 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed | 4 run, 4 passed |
-| linux-clang-noasserts | 0 warnings | 80/80 passed | 108 run, 108 passed, 22103 checks | 157 run, 157 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed | 4 run, 4 passed |
-| linux-gcc-noasserts | 0 warnings | 80/80 passed | 108 run, 108 passed, 22103 checks | 157 run, 157 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed | 4 run, 4 passed |
+| linux-clang-debug | 0 warnings | 81/81 passed | 133 run, 133 passed, 22316 checks | 160 run, 160 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed | 8 run, 8 passed |
+| linux-gcc-debug | 0 warnings | 81/81 passed | 133 run, 133 passed, 22316 checks | 160 run, 160 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed | 8 run, 8 passed |
+| linux-clang-release | 0 warnings | 81/81 passed | 133 run, 133 passed, 22316 checks | 160 run, 160 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed | 8 run, 8 passed |
+| linux-gcc-release | 0 warnings | 81/81 passed | 133 run, 133 passed, 22316 checks | 160 run, 160 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed | 8 run, 8 passed |
+| linux-clang-noasserts | 0 warnings | 81/81 passed | 108 run, 108 passed, 22103 checks | 157 run, 157 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed | 8 run, 8 passed |
+| linux-gcc-noasserts | 0 warnings | 81/81 passed | 108 run, 108 passed, 22103 checks | 157 run, 157 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed | 8 run, 8 passed |
 
 Mini-world baseline (100 000 ticks, 41 entities, 305 027 events, 34 168 227-byte snapshot), logged by `Sim.MiniWorld`, not asserted: clang debug 0.39 s (255 k ticks/s), gcc debug 0.40 s, clang release 0.135 s (739 k ticks/s), gcc release without assertions 0.127 s (790 k ticks/s); snapshot 0.09-0.14 s.
 
