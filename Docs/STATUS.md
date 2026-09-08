@@ -12,56 +12,48 @@ refresh").
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 07 — POLITICS (CLOSED)
-TASK        : 07.08 — PHASE 07 GATE
+PHASE       : 08 — MILITARY
+TASK        : 08.01 — LEVIES AND ARMIES
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███████████████████░░░░░ 75%
+███████████████████░░░░░ 76%
 
 CURRENTLY
-→ Phase 07 closed. Five centuries of AELVOR at 256 with its two most peopled regions detailed and
-  every Phase 04, 05, 06 and 07 system running: 2 polities standing and 32 ended, 42 regions ruled,
-  4.28 million grain taken in dues, 284 rulers seated of whom 90 took a seat the custom named for
-  another, 40 provinces thrown off by their own people, 158 regions taken in war, 449 political
-  records. Every invariant of all four phases holds every decade; the snapshot of year 250 restored
-  into a fresh world runs to the same year 500, the same log and the same story.
-
-The gate found three real defects, none of which the task tests could have:
-  · a region freed by a slip or a revolt kept being taxed for a year, because the law system runs
-    before the systems that free ground - whoever takes the ground away now cancels the demand;
-  · a polity whose capital was annexed went on standing, ruling from ground that was no longer its
-    own - and the rule that resolves it makes the other three consistent: A SEAT CANNOT BE TAKEN.
-    It does not slip for want of hold (07.03), no faction rises in it (07.05), and no war puts it in
-    play (07.06). Taking a capital is a siege, and a siege is Phase 08;
-  · a polity that lost its seat during its founding grace was kept alive by that grace - losing a
-    capital is not a failure to grow, so it now ends at once.
+→ 08.01 closed: the seventh kernel module VaelenMilitary. An army is not a thing a polity owns; it is
+  people taken out of regions. A levy is raised only where there is a reason - a war of 07.06 - and
+  only from ground the polity actually holds: a region held loosely gives few men and one held under
+  the floor gives none, because a levy is obedience and 07.03 already measures obedience. The men are
+  recorded on the regions they came from, so nothing is invented and nothing is lost - the invariant
+  the tests hold to every year is that the men the regions say are away are exactly the men under
+  arms. A host eats out of the treasury 07.02 fills; one that cannot be fed is not disbanded by an
+  order, it melts, and what melts walks home. ArmyOf, ArmiesOf, LevyOf, MeasureArmies
 
 COMPLETED
-✓ Phases 00-06 (headless) (CI 67)
-✓ 07.01 polities · 07.02 law · 07.03 reach · 07.04 succession · 07.05 factions · 07.06 diplomacy
-✓ 07.07 politics in the chronicle · 07.08 Phase 07 gate (1 test: PoliticsGate)
-✓ PHASE 07 POLITICS: VALIDATED (headless)
+✓ Phases 00-07 (headless, Phase 07 closed) (CI 68)
+✓ 08.01 levies and armies (4 tests: Armies)
 
 NEXT
-→ Phase 08 MILITARY, broken down into 08.01-08.08 (ROADMAP section 12)
+→ 08.02 Marching: an army moves on the region graph, one hop a season, and costs grain where it stands
+→ 08.03 Battle
 
 FILES
-+ Tests/Politics/Test_PoliticsGate.cpp
-~ Source/VaelenPolitics/Private/Polities.cpp (a seat lost ends a polity at once),
-  Private/Reach.cpp and Private/Factions.cpp (freed ground is demanded nothing),
-  Private/Diplomacy.cpp (a seat is never put in play),
-  Public/Vaelen/Politics/Factions.h (ObserveDues), Tests/Politics/CMakeLists.txt
++ Source/VaelenMilitary/ (VaelenMilitary.Build.cs, CMakeLists.txt, Public/Vaelen/Military/MilitaryApi.h,
+  Armies.h, Private/Armies.cpp, Private/VaelenMilitaryModule.cpp)
++ Tests/Military/ (CMakeLists.txt, Test_Armies.cpp)
+~ CMakeLists.txt, Tests/CMakeLists.txt, Tools/kernel_modules.txt, Vaelen.uproject, Vaelen.Target.cs,
+  VaelenEditor.Target.cs
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 160 + Population 36 + Society 27 + Economy 26
-  + Politics 28 (28 without asserts); ctest 78/78 in all six Linux presets, every gate
-  included; every earlier frozen digest unchanged
-✓ Phase 07 gate: frozen 250=2ab8cc1ac3511587 500=3fa464fbbbad5fe6 log=9dee76991a6bc9c8 text=a4e5ee1fb64db8ab
-✓ Purity: 121 files, 0 violations
+  + Politics 28 + Military 4 (4 without asserts); ctest 80/80 in all six Linux presets;
+  every earlier frozen digest unchanged
+✓ AELVOR 128, two powers over 100 years: frozen armies digest 028ec9ea8f5092f7 (2 levies called, 254 men)
+✓ Purity: 124 files, 0 violations
 
 BLOCKERS
-∅ (the engine-side files stay UNVERIFIED until the next UE 5.6 build)
+∅ (engine-side files of the new module stay UNVERIFIED until the next UE 5.6 build; the project
+  files must be regenerated for UBT to see VaelenMilitary)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -221,6 +213,13 @@ side, UNVERIFIED on the engine side until the first UE 5.6 build.**
 
 Phase 07 against the exit criteria (`Docs/ROADMAP.md` section 2): (1) CI matrix green for 07.01 to 07.07 (runs 60 to 67; runs 60 and 65 were superseded on the same headless tree), 07.08 by its own run; (2) determinism tests for every system, frozen digests per task and for the gate at 250 and 500 years, reproduced by clang, gcc, MSVC and AppleClang; (3) no INCOMPLETE file, engine files UNVERIFIED; (4) unit, integration, deterministic, edge-case and long-duration categories present (500 years at 256 with two detailed regions); (5) ADR-0056 to ADR-0063, docs updated. Verdict: **Phase 07 VALIDATED on the headless side, UNVERIFIED on the engine side until the next UE 5.6 build.**
 
+## Phase 08 task breakdown (canonical numbering: `Docs/ROADMAP.md` section 12)
+
+| Task | Content | Status |
+|---|---|---|
+| 08.01 | `VaelenMilitary` module; a levy raised from the regions a polity holds and fed out of its treasury; armies as entities of kind Army | VALIDATED: Armies 4 tests |
+| 08.02-08.08 | Marching, battle, siege, war as a thing with an end, what war costs the living, war in the chronicle, the gate | PLANNED |
+
 ## File status
 
 Every file under `Source/`, `Tests/` and `Tools/` carries a `// STATUS:` line (rule R5 of
@@ -307,12 +306,21 @@ the purity checker, applied to headers and sources).
 | `Public/Vaelen/Economy/Wealth.h`, `Private/Wealth.cpp` | VALIDATED (Phase 06) — covered by `Tests/Economy/Test_Wealth.cpp` |
 | `Public/Vaelen/Economy/EconomyHistory.h`, `Private/EconomyHistory.cpp` | VALIDATED (Phase 06) — covered by `Tests/Economy/Test_EconomyHistory.cpp` |
 
+### `Source/VaelenMilitary` (Phase 08)
+
+| File | Status |
+|---|---|
+| `VaelenMilitary.Build.cs`, `Private/VaelenMilitaryModule.cpp` | UNVERIFIED — engine-side, not compiled headless, and newer than the first Unreal build |
+| `CMakeLists.txt` | VALIDATED (Phase 08) |
+| `Public/Vaelen/Military/MilitaryApi.h` | VALIDATED (Phase 08) |
+| `Public/Vaelen/Military/Armies.h`, `Private/Armies.cpp` | VALIDATED (Phase 08) — covered by `Tests/Military/Test_Armies.cpp` |
+
 ### `Source/Vaelen` (engine bridge and presentation)
 
 | File | Status |
 |---|---|
 | `Vaelen.Build.cs`, `Private/Vaelen.cpp`, `Private/VaelenLogSink.h/.cpp`, `Public/Vaelen.h` | VALIDATED under UBT (UE 5.6, 2026-09-07, editor) |
-| `Public/VaelenAtlasActor.h`, `Private/VaelenAtlasActor.cpp` | UNVERIFIED — engine-side, not compiled headless, and newer than the first Unreal build |
+| `Public/VaelenAtlasActor.h`, `Private/VaelenAtlasActor.cpp` | VALIDATED under UBT (UE 5.6, 2026-09-08) — compiled clean and run through the `Vaelen.Atlas` console command, which generated AELVOR 128 and reported it |
 
 ### `Source/Vaelen` (engine bridge and presentation)
 
@@ -407,10 +415,11 @@ the purity checker, applied to headers and sources).
 | `Politics/Test_Diplomacy.cpp` (Phase 07) | VALIDATED | 4 |
 | `Politics/Test_PoliticsHistory.cpp` (Phase 07) | VALIDATED | 3 |
 | `Politics/Test_PoliticsGate.cpp` (Phase 07) | VALIDATED | 1 |
+| `Military/Test_Armies.cpp` (Phase 08) | VALIDATED | 4 |
 | `Politics/Test_Law.cpp` (Phase 07) | VALIDATED | 4 |
 | `Politics/Test_Law.cpp` (Phase 07) | VALIDATED | 4 |
 
-Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 5, Deposits 5, WorldPipeline 4, History 3, Population 5, Naming 5, Religion 5, Disasters 5, PreHistory 5, HistoryText 5, HistoryGate 2 (162 tests; 159 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.History`, `Sim.Population`, `Sim.Naming`, `Sim.Religion`, `Sim.Disasters`, `Sim.PreHistory`, `Sim.HistoryText`, `Sim.HistoryGate`, `Sim.Registry`, `Sim.Shuffled` (42 entries in total). Population suites: Persons 5, Lives 5, Families 5, Needs 6, Traits 5, Lod 5, PersonHistory 5, PopulationGate 1 (37 tests; 37 without assertions); CTest entries `Population.Persons`, `Population.Lives`, `Population.Families`, `Population.Needs`, `Population.Traits`, `Population.Lod`, `Population.PersonHistory`, `Population.PopulationGate`, `Population.Registry`, `Population.Shuffled` (10 entries). Society suites: Organizations 5, Standing 4, Norms 4, Bondage 4, Decisions 4, Strata 3, SocietyHistory 3, SocietyGate 1 (28 tests; 28 without assertions); CTest entries `Society.Organizations`, `Society.Standing`, `Society.Norms`, `Society.Bondage`, `Society.Decisions`, `Society.Strata`, `Society.SocietyHistory`, `Society.SocietyGate`, `Society.Registry`, `Society.Shuffled` (10 entries). Economy suites: Stocks 4, Production 4, Markets 4, Trade 4, Wealth 5, Grains 2, EconomyHistory 3, EconomyGate 1 (27 tests; 27 without assertions); CTest entries `Economy.Stocks`, `Economy.Production`, `Economy.Markets`, `Economy.Trade`, `Economy.Wealth`, `Economy.Grains`, `Economy.EconomyHistory`, `Economy.EconomyGate`, `Economy.Registry`, `Economy.Shuffled` (10 entries). Politics suites: Polities 4, Law 4, Reach 4, Succession 4, Factions 4, Diplomacy 4, PoliticsHistory 3, PoliticsGate 1 (28 tests; 28 without assertions); CTest entries `Politics.Diplomacy`, `Politics.Factions`, `Politics.Law`, `Politics.Polities`, `Politics.PoliticsGate`, `Politics.PoliticsHistory`, `Politics.Reach`, `Politics.Succession`, `Politics.Registry`, `Politics.Shuffled` (10 entries).
+Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 5, Deposits 5, WorldPipeline 4, History 3, Population 5, Naming 5, Religion 5, Disasters 5, PreHistory 5, HistoryText 5, HistoryGate 2 (162 tests; 159 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.History`, `Sim.Population`, `Sim.Naming`, `Sim.Religion`, `Sim.Disasters`, `Sim.PreHistory`, `Sim.HistoryText`, `Sim.HistoryGate`, `Sim.Registry`, `Sim.Shuffled` (42 entries in total). Population suites: Persons 5, Lives 5, Families 5, Needs 6, Traits 5, Lod 5, PersonHistory 5, PopulationGate 1 (37 tests; 37 without assertions); CTest entries `Population.Persons`, `Population.Lives`, `Population.Families`, `Population.Needs`, `Population.Traits`, `Population.Lod`, `Population.PersonHistory`, `Population.PopulationGate`, `Population.Registry`, `Population.Shuffled` (10 entries). Society suites: Organizations 5, Standing 4, Norms 4, Bondage 4, Decisions 4, Strata 3, SocietyHistory 3, SocietyGate 1 (28 tests; 28 without assertions); CTest entries `Society.Organizations`, `Society.Standing`, `Society.Norms`, `Society.Bondage`, `Society.Decisions`, `Society.Strata`, `Society.SocietyHistory`, `Society.SocietyGate`, `Society.Registry`, `Society.Shuffled` (10 entries). Economy suites: Stocks 4, Production 4, Markets 4, Trade 4, Wealth 5, Grains 2, EconomyHistory 3, EconomyGate 1 (27 tests; 27 without assertions); CTest entries `Economy.Stocks`, `Economy.Production`, `Economy.Markets`, `Economy.Trade`, `Economy.Wealth`, `Economy.Grains`, `Economy.EconomyHistory`, `Economy.EconomyGate`, `Economy.Registry`, `Economy.Shuffled` (10 entries). Politics suites: Polities 4, Law 4, Reach 4, Succession 4, Factions 4, Diplomacy 4, PoliticsHistory 3, PoliticsGate 1 (28 tests; 28 without assertions); CTest entries `Politics.Diplomacy`, `Politics.Factions`, `Politics.Law`, `Politics.Polities`, `Politics.PoliticsGate`, `Politics.PoliticsHistory`, `Politics.Reach`, `Politics.Succession`, `Politics.Registry`, `Politics.Shuffled` (10 entries). Military suites: Armies 4 (4 tests; 4 without assertions); CTest entries `Military.Armies`, `Military.Registry`, `Military.Shuffled` (3 entries).
 
 ### Tools/ and CI
 
@@ -425,18 +434,18 @@ Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, Lo
 Toolchain: clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.15, clang-format 18.1.3, Linux x86_64. Every preset was configured, built and tested with
 `cmake --preset`, `cmake --build --preset`, `ctest --preset` into `out/build/<preset>`:
 
-| Preset | Build | `ctest` | `VaelenCoreTests` | `VaelenSimTests` | `VaelenPopulationTests` | `VaelenSocietyTests` | `VaelenEconomyTests` | `VaelenPoliticsTests` |
-|---|---|---|---|---|---|---|---|---|
-| linux-clang-debug | 0 warnings | 78/78 passed | 133 run, 133 passed, 22316 checks | 160 run, 160 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed |
-| linux-gcc-debug | 0 warnings | 78/78 passed | 133 run, 133 passed, 22316 checks | 160 run, 160 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed |
-| linux-clang-release | 0 warnings | 78/78 passed | 133 run, 133 passed, 22316 checks | 160 run, 160 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed |
-| linux-gcc-release | 0 warnings | 78/78 passed | 133 run, 133 passed, 22316 checks | 160 run, 160 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed |
-| linux-clang-noasserts | 0 warnings | 78/78 passed | 108 run, 108 passed, 22103 checks | 157 run, 157 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed |
-| linux-gcc-noasserts | 0 warnings | 78/78 passed | 108 run, 108 passed, 22103 checks | 157 run, 157 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed |
+| Preset | Build | `ctest` | `VaelenCoreTests` | `VaelenSimTests` | `VaelenPopulationTests` | `VaelenSocietyTests` | `VaelenEconomyTests` | `VaelenPoliticsTests` | `VaelenMilitaryTests` |
+|---|---|---|---|---|---|---|---|---|---|
+| linux-clang-debug | 0 warnings | 80/80 passed | 133 run, 133 passed, 22316 checks | 160 run, 160 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed | 4 run, 4 passed |
+| linux-gcc-debug | 0 warnings | 80/80 passed | 133 run, 133 passed, 22316 checks | 160 run, 160 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed | 4 run, 4 passed |
+| linux-clang-release | 0 warnings | 80/80 passed | 133 run, 133 passed, 22316 checks | 160 run, 160 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed | 4 run, 4 passed |
+| linux-gcc-release | 0 warnings | 80/80 passed | 133 run, 133 passed, 22316 checks | 160 run, 160 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed | 4 run, 4 passed |
+| linux-clang-noasserts | 0 warnings | 80/80 passed | 108 run, 108 passed, 22103 checks | 157 run, 157 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed | 4 run, 4 passed |
+| linux-gcc-noasserts | 0 warnings | 80/80 passed | 108 run, 108 passed, 22103 checks | 157 run, 157 passed | 36 run, 36 passed | 27 run, 27 passed | 26 run, 26 passed | 28 run, 28 passed | 4 run, 4 passed |
 
 Mini-world baseline (100 000 ticks, 41 entities, 305 027 events, 34 168 227-byte snapshot), logged by `Sim.MiniWorld`, not asserted: clang debug 0.39 s (255 k ticks/s), gcc debug 0.40 s, clang release 0.135 s (739 k ticks/s), gcc release without assertions 0.127 s (790 k ticks/s); snapshot 0.09-0.14 s.
 
-GitHub Actions runs 13 to 28 (01.06 through 03.03): all 9 jobs green each; run 29 (03.04) red on Windows MSVC only (a dangling pool pointer in the faith listener changed the religion digest, and `Sim.Shuffled` exceeded its 300 s CTest timeout), both fixed in the 03.05 commit and green again in runs 30 to 48 (03.05 to 05.07); run 49 (05.08) was cancelled by the job timeouts - the Phase 05 gate took the serial debug test runs past 30 minutes on Linux and 45 on Windows (every Linux release and no-assert job green) - so from 06.01 CTest runs 4 jobs in every preset (`execution.jobs` in `CMakePresets.json`, the stdio capture entries serialised by a resource lock), which brings a debug run under ten minutes - green again in runs 50 to 67 (06.01 to 07.07 and the atlas actor; the first Unreal build at run 54 included; runs 56 and 60 were superseded by 57 and 61 on the same headless tree); so the frozen replay, mini-world and snapshot values hold on Windows MSVC and macOS AppleClang as well. Phase 00 record - run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14).
+GitHub Actions runs 13 to 28 (01.06 through 03.03): all 9 jobs green each; run 29 (03.04) red on Windows MSVC only (a dangling pool pointer in the faith listener changed the religion digest, and `Sim.Shuffled` exceeded its 300 s CTest timeout), both fixed in the 03.05 commit and green again in runs 30 to 48 (03.05 to 05.07); run 49 (05.08) was cancelled by the job timeouts - the Phase 05 gate took the serial debug test runs past 30 minutes on Linux and 45 on Windows (every Linux release and no-assert job green) - so from 06.01 CTest runs 4 jobs in every preset (`execution.jobs` in `CMakePresets.json`, the stdio capture entries serialised by a resource lock), which brings a debug run under ten minutes - green again in runs 50 to 68 (06.01 to 07.08 and the atlas actor; the first Unreal build at run 54 included; runs 56 and 60 were superseded by 57 and 61 on the same headless tree); so the frozen replay, mini-world and snapshot values hold on Windows MSVC and macOS AppleClang as well. Phase 00 record - run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14).
 
 Also run locally: `python3 Tools/check_kernel_purity.py --self-test` (36 checks, 0 failed),
 `python3 Tools/check_kernel_purity.py --root . --verbose` (12 files, 0 violations),

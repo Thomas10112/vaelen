@@ -14,3 +14,4 @@ VaelenPopulation
 VaelenSociety
 VaelenEconomy
 VaelenPolitics
+VaelenMilitary

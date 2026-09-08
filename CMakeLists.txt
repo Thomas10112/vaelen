@@ -77,6 +77,7 @@ add_subdirectory(Source/VaelenPopulation)
 add_subdirectory(Source/VaelenSociety)
 add_subdirectory(Source/VaelenEconomy)
 add_subdirectory(Source/VaelenPolitics)
+add_subdirectory(Source/VaelenMilitary)
 
 # ── Tests ────────────────────────────────────────────────────────────────────
 if(VAELEN_BUILD_TESTS)

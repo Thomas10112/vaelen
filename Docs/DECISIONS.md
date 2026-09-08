@@ -86,6 +86,7 @@ Rules for this file:
 | [0061](#adr-0061-a-relation-is-a-fact-of-the-ground-and-a-war-is-a-permission-not-an-order) | A relation is a fact of the ground, and a war is a permission, not an order | Accepted; headless VALIDATED |
 | [0062](#adr-0062-history-is-narrower-than-the-log-and-the-topmost-describer-speaks-for-every-layer) | History is narrower than the log, and the topmost describer speaks for every layer | Accepted; headless VALIDATED |
 | [0063](#adr-0063-a-seat-cannot-be-taken) | A seat cannot be taken | Accepted; headless VALIDATED |
+| [0064](#adr-0064-an-army-is-people-taken-out-of-regions) | An army is people taken out of regions | Accepted; headless VALIDATED |
 
 ---
 
@@ -3769,6 +3770,63 @@ Accepted 2026-09-07. Files: `Source/VaelenPolitics/Private/Polities.cpp`,
 `Private/Reach.cpp`, `Private/Factions.cpp`, `Private/Diplomacy.cpp`,
 `Public/Vaelen/Politics/Factions.h`, `Tests/Politics/Test_PoliticsGate.cpp` (1 test).
 Headless VALIDATED on the six Linux presets with every gate run.
+
+---
+
+## ADR-0064: An army is people taken out of regions
+
+### Context
+
+Phase 08 opens with armies. The cheap version is a number on the polity: a
+strength that grows when it pays and shrinks when it fights. The world already
+has people, regions, hold and a treasury, and a number would be answerable to
+none of them.
+
+### Decision
+
+1. **An army is people taken out of regions.** Every man under arms is recorded
+   on the region he came from (`RegionLevy`), and the invariant the tests hold
+   to every year is that the men the regions say are away are **exactly** the
+   men under arms. Nothing is invented and nothing is lost - the same
+   conservation rule the economy holds for grain (06.06).
+2. **A levy is obedience.** A region gives men in proportion to its people and
+   to how firmly it is held, and one held under a floor gives none. 07.03
+   already measures obedience as a number on the region; a levy simply reads
+   it. A polity that overreached cannot call up the ground it barely holds.
+3. **A host is raised only where there is a reason** - a war of 07.06 - and one
+   at a time. When the war ends or the polity ends, the host goes home and the
+   men return to the regions that gave them.
+4. **What cannot be fed melts.** An army eats grain out of the treasury 07.02
+   fills. A polity that cannot pay does not receive an order to disband: the
+   host loses men year by year, and what it loses walks home. Three hungry
+   years, or a strength under the raising floor, and the rest go too.
+
+### Alternatives and decision rule
+
+- Strength as a number on the polity: rejected; nothing would connect it to the
+  people, and 08.06 has to be able to say which regions lost their men.
+- Men drawn from a polity's total population rather than region by region:
+  rejected; it would ignore hold, which is the whole point - and a polity's
+  population is not a number it owns either.
+- An army disbanded by decision when the treasury runs dry: rejected, for the
+  same reason a region slips rather than being released (ADR-0058). Losing an
+  army is what happens to a polity that overreaches, not a choice it makes.
+
+### Consequences
+
+- War is now paid for twice: in grain, out of the same treasury that carries
+  the polity's word (07.03), and in people, out of the regions that must still
+  bring in a harvest. 08.06 will make the second cost visible.
+- A polity at peace has no army at all. There is no standing force to maintain,
+  which is right for the scale the world is modelled at.
+- 08.02 marches the host: the region graph is already there, and the levy is
+  already accounted region by region.
+
+### Status
+
+Accepted 2026-09-08. Files: `Source/VaelenMilitary/*`,
+`Tests/Military/Test_Armies.cpp` (4 tests). Headless VALIDATED on the six Linux
+presets.
 
 ---
 

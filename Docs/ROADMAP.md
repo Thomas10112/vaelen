@@ -75,7 +75,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | VALIDATED (headless, 06.01-06.08); UNVERIFIED (engine) |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | VALIDATED headless (07.01-07.08, phase closed); UNVERIFIED under UBT |
-| 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | PLANNED (08.01-08.08 broken down, section 12) |
+| 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | IN PROGRESS (08.01 VALIDATED headless; 08.02-08.08 PLANNED) |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
 | 10 | PLAYER | The player as one simulated person: enslaved start, body, needs, skills, relationships; player intent as commands into the simulation. | PLANNED |
 | 11 | MINING COLONY | The starting place: a huge autonomous mining colony simulated by the same systems at full detail. | PLANNED |
@@ -2089,6 +2089,35 @@ phase closes.
 
 Every task ends with the usual report block, the docs refreshed and a commit.
 
+### 08.01 Levies and armies - VALIDATED (headless)
+
+- Delivered: `Source/VaelenMilitary` (seventh kernel module: `VaelenMilitary.Build.cs` depending on
+  Core and the six kernel modules; `CMakeLists.txt` with the explicit source list; `MilitaryApi.h`;
+  the Unreal-facing `VaelenMilitaryModule.cpp` excluded from the headless build; listed in
+  `Tools/kernel_modules.txt`, `Vaelen.uproject` and both targets), `Armies.h/.cpp` - `ArmyInfo`
+  (48 bytes: polity, where it stands, men, grain given last year, years gone hungry, the ticks of
+  raising and disbanding, identity from the world seed) on entities of kind Army, `RegionLevy`
+  (8 bytes: who called them up, men away) on the region, `ArmyTypes::Declare`, `ArmyRules` (20 men
+  per thousand living at a full hold, nothing from a region held under 300 per mille, 3 grain a man
+  a year, a levy under 60 men is not worth calling, 400 per mille lost in a year unfed, three years
+  hungry and what is left goes home, one host a polity), events ArmyRaised, ArmyDisbanded,
+  ArmyStarved, `ArmySystem` (LOD World, after Diplomacy: send home what has no polity or no war
+  left, feed what stands out of the treasury, let what cannot be fed melt, then raise a host where
+  there is a war and none stands), `ArmyOf`, `ArmiesOf`, `LevyOf`, `MeasureArmies` (armies standing
+  and gone, men under arms, men the regions say are away, regions levied, grain eaten, events by
+  kind, and the bad - an army of a polity that is gone, standing in ground it does not hold, with no
+  men, or a levy owed to nobody - with a digest of every army in index order then every levy in
+  region order).
+- Tests (4): a world at peace has nobody under arms however rich; war comes and with it a host that
+  stands at its polity's seat, and what the regions say is away is exactly what is under arms, with
+  no region giving men it does not have and none held under the floor giving any; a host whose
+  treasury is emptied is not disbanded by an order - it melts, its men walk home, and no region is
+  left owing men to nobody; a polity at peace never calls anybody up, a polity bears one host at a
+  time, the books balance every year for twenty years running, a host outlives neither its polity
+  nor its war, and two worlds of one seed call up the same men in the same years; determinism,
+  snapshot continuity, frozen armies digest `028ec9ea8f5092f7` after 100 years (2 levies called, 254 men).
+- Decision: ADR-0064.
+
 ## 12b. Phases 09-20: notes
 
  Fixed points already in the code: `IdKind` values for Region, Tile, River,
@@ -2105,56 +2134,48 @@ class and Enhanced Input mappings arrive in Phase 10.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 07 — POLITICS (CLOSED)
-TASK        : 07.08 — PHASE 07 GATE
+PHASE       : 08 — MILITARY
+TASK        : 08.01 — LEVIES AND ARMIES
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███████████████████░░░░░ 75%
+███████████████████░░░░░ 76%
 
 CURRENTLY
-→ Phase 07 closed. Five centuries of AELVOR at 256 with its two most peopled regions detailed and
-  every Phase 04, 05, 06 and 07 system running: 2 polities standing and 32 ended, 42 regions ruled,
-  4.28 million grain taken in dues, 284 rulers seated of whom 90 took a seat the custom named for
-  another, 40 provinces thrown off by their own people, 158 regions taken in war, 449 political
-  records. Every invariant of all four phases holds every decade; the snapshot of year 250 restored
-  into a fresh world runs to the same year 500, the same log and the same story.
-
-The gate found three real defects, none of which the task tests could have:
-  · a region freed by a slip or a revolt kept being taxed for a year, because the law system runs
-    before the systems that free ground - whoever takes the ground away now cancels the demand;
-  · a polity whose capital was annexed went on standing, ruling from ground that was no longer its
-    own - and the rule that resolves it makes the other three consistent: A SEAT CANNOT BE TAKEN.
-    It does not slip for want of hold (07.03), no faction rises in it (07.05), and no war puts it in
-    play (07.06). Taking a capital is a siege, and a siege is Phase 08;
-  · a polity that lost its seat during its founding grace was kept alive by that grace - losing a
-    capital is not a failure to grow, so it now ends at once.
+→ 08.01 closed: the seventh kernel module VaelenMilitary. An army is not a thing a polity owns; it is
+  people taken out of regions. A levy is raised only where there is a reason - a war of 07.06 - and
+  only from ground the polity actually holds: a region held loosely gives few men and one held under
+  the floor gives none, because a levy is obedience and 07.03 already measures obedience. The men are
+  recorded on the regions they came from, so nothing is invented and nothing is lost - the invariant
+  the tests hold to every year is that the men the regions say are away are exactly the men under
+  arms. A host eats out of the treasury 07.02 fills; one that cannot be fed is not disbanded by an
+  order, it melts, and what melts walks home. ArmyOf, ArmiesOf, LevyOf, MeasureArmies
 
 COMPLETED
-✓ Phases 00-06 (headless) (CI 67)
-✓ 07.01 polities · 07.02 law · 07.03 reach · 07.04 succession · 07.05 factions · 07.06 diplomacy
-✓ 07.07 politics in the chronicle · 07.08 Phase 07 gate (1 test: PoliticsGate)
-✓ PHASE 07 POLITICS: VALIDATED (headless)
+✓ Phases 00-07 (headless, Phase 07 closed) (CI 68)
+✓ 08.01 levies and armies (4 tests: Armies)
 
 NEXT
-→ Phase 08 MILITARY, broken down into 08.01-08.08 (ROADMAP section 12)
+→ 08.02 Marching: an army moves on the region graph, one hop a season, and costs grain where it stands
+→ 08.03 Battle
 
 FILES
-+ Tests/Politics/Test_PoliticsGate.cpp
-~ Source/VaelenPolitics/Private/Polities.cpp (a seat lost ends a polity at once),
-  Private/Reach.cpp and Private/Factions.cpp (freed ground is demanded nothing),
-  Private/Diplomacy.cpp (a seat is never put in play),
-  Public/Vaelen/Politics/Factions.h (ObserveDues), Tests/Politics/CMakeLists.txt
++ Source/VaelenMilitary/ (VaelenMilitary.Build.cs, CMakeLists.txt, Public/Vaelen/Military/MilitaryApi.h,
+  Armies.h, Private/Armies.cpp, Private/VaelenMilitaryModule.cpp)
++ Tests/Military/ (CMakeLists.txt, Test_Armies.cpp)
+~ CMakeLists.txt, Tests/CMakeLists.txt, Tools/kernel_modules.txt, Vaelen.uproject, Vaelen.Target.cs,
+  VaelenEditor.Target.cs
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 160 + Population 36 + Society 27 + Economy 26
-  + Politics 28 (28 without asserts); ctest 78/78 in all six Linux presets, every gate
-  included; every earlier frozen digest unchanged
-✓ Phase 07 gate: frozen 250=2ab8cc1ac3511587 500=3fa464fbbbad5fe6 log=9dee76991a6bc9c8 text=a4e5ee1fb64db8ab
-✓ Purity: 121 files, 0 violations
+  + Politics 28 + Military 4 (4 without asserts); ctest 80/80 in all six Linux presets;
+  every earlier frozen digest unchanged
+✓ AELVOR 128, two powers over 100 years: frozen armies digest 028ec9ea8f5092f7 (2 levies called, 254 men)
+✓ Purity: 124 files, 0 violations
 
 BLOCKERS
-∅ (the engine-side files stay UNVERIFIED until the next UE 5.6 build)
+∅ (engine-side files of the new module stay UNVERIFIED until the next UE 5.6 build; the project
+  files must be regenerated for UBT to see VaelenMilitary)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 

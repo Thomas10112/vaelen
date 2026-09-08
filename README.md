@@ -71,6 +71,7 @@ Source/
   VaelenSociety/                 KERNEL (Phase 05): organisations, standing, norms, bondage; Public/Vaelen/Society/*.h
   VaelenEconomy/                 KERNEL (Phase 06): goods, stocks, production, markets, trade, wealth; Public/Vaelen/Economy/*.h
   VaelenPolitics/                KERNEL (Phase 07): polities, law, authority, succession; Public/Vaelen/Politics/*.h
+  VaelenMilitary/                KERNEL (Phase 08): levies, armies, battle, siege; Public/Vaelen/Military/*.h
   Vaelen/                        Unreal primary game module (bridge to the kernel, UBT only)
 Tests/
   Harness/                       VaelenTest.h (macros, registry, ScopedAssertCapture), TestMain.cpp (runner)
