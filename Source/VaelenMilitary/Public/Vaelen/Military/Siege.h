@@ -56,6 +56,19 @@ namespace Vaelen::Military
 	};
 	static_assert(sizeof(SiegeInfo) == 32, "SiegeInfo must stay padding free");
 
+	/// What a region's walls add to what a siege must break, on the region
+	/// entity: written by a later module (Phase 09 infrastructure), read by the
+	/// siege system when told to observe the type. A built wall does not raise
+	/// the ceiling a wall stands at - it makes what stands harder to bring down,
+	/// so a seat behind a wall of stone holds out years longer against the same
+	/// host.
+	struct RegionWall
+	{
+		uint32 Extra = 0; ///< per mille; the men before it come down by 1000/(1000+Extra)
+		uint32 Reserved = 0;
+	};
+	static_assert(sizeof(RegionWall) == 8, "RegionWall must stay padding free");
+
 	struct SiegeTypes
 	{
 		ComponentType<SiegeInfo> Siege;
@@ -106,6 +119,13 @@ namespace Vaelen::Military
 			return Out;
 		}
 		void RunAfter(std::string_view Name) { After.emplace_back(Name); }
+		/// Optional: what a region has built (09.02). Walls of stone slow what a
+		/// host before them brings down; they never raise the wall past full.
+		void ObserveWalls(ComponentType<RegionWall> InWalls) noexcept
+		{
+			Built = InWalls;
+			HasBuilt = true;
+		}
 		void Tick(TickContext& Context) override;
 
 	private:
@@ -119,6 +139,8 @@ namespace Vaelen::Military
 		MarchTypes Marches;
 		SiegeTypes Sieges;
 		SiegeRules Rules;
+		ComponentType<RegionWall> Built;
+		bool HasBuilt = false;
 	};
 
 	/// What a region's walls know (nullptr when it has never been besieged).

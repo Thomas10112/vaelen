@@ -150,9 +150,11 @@ namespace Vaelen::Population
 						// The stores soften the cut (a council's grain, Phase 05).
 						uint32 Cut = Rules.DroughtCutPerMille[S];
 						const RegionStores* Grain = HasStores ? W.Components().GetPool(Stores).TryGet(RH) : nullptr;
-						if (Grain != nullptr && Grain->GrainPerMille > 0)
+						const uint64 Put =
+							Grain != nullptr ? uint64{Grain->GrainPerMille} + uint64{Grain->BuiltPerMille} : 0u;
+						if (Put > 0)
 						{
-							Cut = Cut * (1000u - std::min(1000u, Grain->GrainPerMille)) / 1000u;
+							Cut = static_cast<uint32>(uint64{Cut} * (1000u - std::min<uint64>(1000u, Put)) / 1000u);
 						}
 						RationPerMille = RationPerMille * (1000u - Cut) / 1000u;
 					}

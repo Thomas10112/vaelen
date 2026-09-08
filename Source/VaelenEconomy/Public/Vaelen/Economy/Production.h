@@ -41,6 +41,17 @@ namespace Vaelen
 
 namespace Vaelen::Economy
 {
+	/// What the works of a region add to what it makes, on the region entity:
+	/// written by a later module (Phase 09 infrastructure), read by the
+	/// production system when told to observe the type. A mill does not make
+	/// grain; it means the same fields and the same hands give more of it.
+	struct RegionWorkshops
+	{
+		uint32 FieldsPerMille = 0; ///< added to the harvest
+		uint32 CraftPerMille = 0;  ///< added to the cloth and the tools
+	};
+	static_assert(sizeof(RegionWorkshops) == 8, "RegionWorkshops must stay padding free");
+
 	struct ProductionTypes
 	{
 		ComponentType<Population::RegionRation> Ration; ///< the need system observes it
@@ -112,6 +123,13 @@ namespace Vaelen::Economy
 			Stores = InStores;
 			HasStores = true;
 		}
+		/// Optional: what a region has built (09.02). A mill lifts the harvest and
+		/// a smithy the craft, by what stands and how sound it is.
+		void ObserveWorkshops(ComponentType<RegionWorkshops> InShops) noexcept
+		{
+			Shops = InShops;
+			HasShops = true;
+		}
 		/// Optional: what a region owes away (07.02). The share is assessed on the
 		/// year's harvest, the grain stays in the stock until a collector takes it.
 		void ObserveDues(ComponentType<RegionDues> InDues) noexcept
@@ -136,6 +154,8 @@ namespace Vaelen::Economy
 		bool HasStores = false;
 		ComponentType<RegionDues> Dues;
 		bool HasDues = false;
+		ComponentType<RegionWorkshops> Shops;
+		bool HasShops = false;
 	};
 
 	/// The ration of a region (nullptr before the first harvest or for an unknown region).

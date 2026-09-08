@@ -164,7 +164,12 @@ namespace Vaelen::Military
 			{
 				continue; // the year it arrives, nothing comes down
 			}
-			const uint32 Down = Besieging->Strength * Rules.WallPerHundredMen / 100u;
+			// Walls of stone (09.02) slow what the men before them bring down;
+			// nothing built is a factor of one, to the unit.
+			const RegionWall* Stone = HasBuilt ? W.Components().GetPool(Built).TryGet(RegionHandles[R]) : nullptr;
+			const uint64 Hard = 1000u + (Stone != nullptr ? Stone->Extra : 0u);
+			const uint32 Down =
+				static_cast<uint32>(uint64{Besieging->Strength} * Rules.WallPerHundredMen / 100u * 1000u / Hard);
 			Walls->Wall = Walls->Wall > Down ? Walls->Wall - Down : 0u;
 			if (Walls->Wall != 0)
 			{

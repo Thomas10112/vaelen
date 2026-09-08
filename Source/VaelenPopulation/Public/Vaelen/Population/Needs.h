@@ -65,13 +65,16 @@ namespace Vaelen::Population
 		uint32 FamineMemoryYears = 3; ///< hunger this long after a drought is still that drought's famine
 	};
 
-	/// Stores of a region, on the region entity: written by a later module (Phase
-	/// 05 decisions), read by the need system when told to observe the type. The
-	/// grain share cuts what a drought takes from the ration.
+	/// Stores of a region, on the region entity: written by later modules, read
+	/// by the need system when told to observe the type. The two shares add, and
+	/// together they cut what a drought takes from the ration: what a council
+	/// decided to put by (Phase 05 decisions) and what the region has actually
+	/// built to put it in (Phase 09 infrastructure). Two writers, one field each,
+	/// so neither can undo the other.
 	struct RegionStores
 	{
-		uint32 GrainPerMille = 0;
-		uint32 Reserved = 0;
+		uint32 GrainPerMille = 0; ///< a council's decision (05.05)
+		uint32 BuiltPerMille = 0; ///< the granary standing there (09.02)
 	};
 	static_assert(sizeof(RegionStores) == 8, "RegionStores must stay padding free");
 

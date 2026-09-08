@@ -2356,58 +2356,63 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 09 — INFRASTRUCTURE — IN PROGRESS
-TASK        : 09.01 — BUILDINGS
+TASK        : 09.02 — WHAT A BUILDING DOES
 STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████████████████████░░ 86%
+███████████████████████░ 87%
 
 CURRENTLY
-→ Phase 09 broken down into 09.01 to 09.08, and 09.01 shipped: the VaelenInfrastructure module and
-  buildings as entities of kind Building.
+→ Four kinds of work, four things they do, and not one new rule about famine, harvest or siege.
+  Every kind is turned into the one number an earlier phase already reads, and that phase is not
+  touched:
 
-  A building is a thing standing in a region, not a number the simulation reads instead of the world.
-  It is raised out of what the region holds IN COMMON - never out of a house's own goods, because a
-  granary is not one family's - and out of the hands the fields can spare for a year. A region keeps
-  at most one work of each kind and makes it bigger as it grows, so a granary of three is one
-  building enlarged twice. The raising is published first and every unit of timber, tools and grain
-  is taken with that event as its cause, so "what did this granary cost" is a query and not a
-  comment.
+    granary → RegionStores::BuiltPerMille, and 04.04 softens the drought's cut
+    mill    → RegionWorkshops::FieldsPerMille, and 06.02 reaps more from the same fields
+    smithy  → RegionWorkshops::CraftPerMille, and 06.02 makes more cloth and tools
+    wall    → RegionWall::Extra, and 08.04 brings less of it down in a year
 
-  Nothing built does anything yet, and that is deliberate: 09.02 gives every kind its effect on the
-  layers below (the granary of 05.05, the harvest of 06.02, the wall of 08.04), and 09.05 lets what
-  is not kept fall down.
+  Two writers never share a field: a council's decision to store grain (05.05) and a region having
+  somewhere to put it now sit side by side on RegionStores, and 04.04 adds them. And every number is
+  recomputed from what stands each year rather than added to, so a work that falls in 09.05 will take
+  its effect with it without anybody remembering to subtract it.
+
+  A world with nothing built reads a factor of one, to the unit. That is why every frozen digest of
+  Phases 04 to 08 came through this task unchanged.
 
 WHAT PHASE 09 IS
-→ What already exists and what this phase is therefore not: 06.04 gave the world routes as artefacts
-  of trade, and 05.05 gave councils a granary as a number on a region. Phase 09 does not replace
-  either. It gives the world the things people actually build and keep - buildings that cost goods
-  and labour and decay when nobody minds them - and makes those routes and those granaries the first
-  two examples of it.
+→ 06.04 gave the world routes as artefacts of trade and 05.05 gave councils a granary as a number on
+  a region. Phase 09 does not replace either: it gives the world the things people actually build and
+  keep - buildings that cost goods and labour and decay when nobody minds them - and makes those
+  routes and those granaries the first two examples of it.
 
 COMPLETED
 ✓ Phases 00-07 (headless, Phase 07 closed) (CI 68)
 ✓ Phase 08 MILITARY closed: levies, marching, battle, siege, war, the toll, the chronicle, the gate
 ✓ Phase 09 broken down into 09.01-09.08 (roadmap section 13)
 ✓ 09.01 buildings — the module, BuildingInfo, RegionWorks, MeasureBuildings, 4 tests
+✓ 09.02 what a building does — four hooks, WorksSystem, MeasureWorks, 5 tests
 
 NEXT
-→ 09.02 — what a building does: the granary of 05.05, the harvest of 06.02, the wall of 08.04
+→ 09.03 — settlements as places rather than marks on a trade route
 
 TESTS (a task inside a phase runs two presets; six at the gate)
-✓ linux-clang-debug and linux-gcc-release green, ctest 88/88 each (gates and shuffled excluded)
-✓ VaelenInfrastructureTests 4 run, 4 passed, 90 checks, on both presets
-✓ AELVOR 128 at year 420, one region detailed: 93 buildings standing over 31 regions,
-  93 raisings and 48 enlargements, digest d7336afc0a7a3951
-✓ Every unit the raisings took out of the common stocks equals what the buildings say they cost
-✓ Purity: 139 files, 0 violations; clang-format: 0 files need formatting
+✓ linux-clang-debug and linux-gcc-release green, ctest 89/89 each (gates and shuffled excluded)
+✓ VaelenInfrastructureTests 9 run, 9 passed, on both presets
+✓ Two worlds of one seed, built the same and paid for the same, one with the works worth nothing:
+  27 221 041 grain reaped against 26 243 333
+✓ One seat's wall, the same tick played three times from one snapshot: 112 down behind a wall of
+  five, 148 behind a wall of one, 176 behind none
+✓ AELVOR 128 at year 420: 30 regions with a granary, 30 with a mill, worth digest efa42015d78f5894
+✓ Every frozen digest of Phases 04 to 08 unchanged
+✓ Purity: 141 files, 0 violations; clang-format: 0 files need formatting
 
 EXIT CRITERIA (roadmap section 2)
 ◻ 1. Six Linux presets with every gate — at the Phase 09 gate (09.08)
-✓ 2. Determinism tests for 09.01: same seed, snapshot round trip and replay, frozen digest
-◻ 3. Buildings.h/.cpp are PROTOTYPE until the Phase 09 gate; engine-facing files stay UNVERIFIED
-✓ 4. Unit, integration, deterministic and edge tests for the system; long-duration at 09.08
-✓ 5. ARCHITECTURE, DECISIONS, ROADMAP and STATUS updated; ADR-0074
+✓ 2. Determinism tests for 09.01 and 09.02: same seed, snapshot round trip and replay, frozen digests
+◻ 3. The files of the phase are PROTOTYPE until the Phase 09 gate; engine files stay UNVERIFIED
+✓ 4. Unit, integration, deterministic and edge tests for both systems; long-duration at 09.08
+✓ 5. ARCHITECTURE, DECISIONS, ROADMAP and STATUS updated; ADR-0074 and ADR-0075
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)

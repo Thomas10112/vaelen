@@ -4525,3 +4525,65 @@ Nothing built does anything yet. That is deliberate: 09.01 makes the thing exist
 and be paid for, 09.02 gives every kind its effect on the layers below, and 09.05
 lets what is not kept fall down.
 
+
+## ADR-0075: A building is the reason a number moves, and it owns its own field
+
+### Context
+
+ADR-0074 says a building is never a number the simulation reads instead of the
+world. 09.02 has to make good on that: four kinds of work, four things they do,
+and none of them a new rule about famine, harvest or siege.
+
+There is a second problem underneath it. A region's granary already has a
+number: 05.05 writes `RegionStores::GrainPerMille` when a council decides to put
+grain by after a drought. If 09.02 wrote the same field, two systems would take
+turns overwriting each other every year and the last one in the schedule would
+win.
+
+### Decision
+
+1. **Every kind of work is turned into the one number an earlier phase already
+   reads, and that phase is not touched.**
+
+   | work | number | who reads it |
+   |---|---|---|
+   | granary | `RegionStores::BuiltPerMille` | 04.04 softens the drought's cut |
+   | mill | `RegionWorkshops::FieldsPerMille` | 06.02 reaps more from the same fields |
+   | smithy | `RegionWorkshops::CraftPerMille` | 06.02 makes more cloth and tools |
+   | wall | `RegionWall::Extra` | 08.04 brings less of it down in a year |
+
+   Not one of those four systems learned anything about buildings. Each reads a
+   component it already knew how to read, and a world without infrastructure
+   reads a factor of one - to the unit, which is why every frozen digest of
+   Phases 04 to 08 survived this task unchanged.
+
+2. **Two writers never share a field.** `RegionStores` now carries a council's
+   share and a granary's share side by side, and 04.04 adds them. A council
+   deciding to store grain and a region having somewhere to put it are two
+   different facts about the same year, and the world should hold both.
+
+3. **The numbers are recomputed from what stands, every year, and never added
+   to.** A work that falls (09.05) takes its effect with it the same year,
+   because nothing anywhere remembers to subtract it - the value is a pure
+   function of the region's summary. That is also why `MeasureWorks` can check
+   every written number against the buildings that justify it and count any
+   disagreement as `Bad`.
+
+4. **A cap per kind, in the rules.** A region that builds granaries for four
+   centuries does not become immune to drought. The cap is the statement that
+   infrastructure changes the odds and never the rules.
+
+### Consequences
+
+The test that matters is not that the number is written but that the layer below
+behaves differently: two worlds of one seed that build the same things for the
+same price, with the works worth nothing in one of them, reap 27 221 041 grain
+against 26 243 333. And a seat's wall, played twice from the same snapshot in
+the same tick, comes down by 112 behind a wall of five, by 148 behind a wall of
+one, and by 176 behind none.
+
+The wall is the one whose exact factor a test does not assert, only its
+monotonicity and its direction: what a besieger brings down in a year depends on
+its strength at the moment the siege system runs, which a test cannot read back
+after the tick. The three-way comparison from one snapshot is the honest form of
+that claim.

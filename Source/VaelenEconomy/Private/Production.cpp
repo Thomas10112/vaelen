@@ -222,11 +222,16 @@ namespace Vaelen::Economy
 			}
 			const uint64 Kept = 1000u - Blows[Region].CutPerMille;
 			// 1. The harvest.
+			// What the region has built lifts what the same fields and the same
+			// hands give (09.02). Nothing built means a factor of one, to the unit.
+			const RegionWorkshops* Built = HasShops ? W.Components().GetPool(Shops).TryGet(RH) : nullptr;
+			const uint64 FieldsPerMille = 1000u + (Built != nullptr ? Built->FieldsPerMille : 0u);
 			uint64 Harvest = 0;
 			if (!Fine)
 			{
 				const uint64 OnLand = std::min<uint64>(People, Capacity);
-				Harvest = OnLand * Rules.WorkerSharePerMille / 1000u * Rules.HarvestPerWorker * Kept / 1000u;
+				Harvest = OnLand * Rules.WorkerSharePerMille / 1000u * Rules.HarvestPerWorker * Kept / 1000u *
+						  FieldsPerMille / 1000u;
 				Common->Amount[G_GRAIN] = Saturate(Common->Amount[G_GRAIN] + Harvest);
 			}
 			else
@@ -239,7 +244,10 @@ namespace Vaelen::Economy
 					HasStores ? W.Components().GetPool(Stores).TryGet(RH) : nullptr;
 				const uint64 ToCommon = Granary != nullptr ? std::min<uint32>(1000u, Granary->GrainPerMille) : 0u;
 				auto Reap = [&](uint64 YieldPerMille) -> uint64
-				{ return YieldPerMille * Rules.HarvestPerWorker / 1000u * ScalePerMille / 1000u * Kept / 1000u; };
+				{
+					return YieldPerMille * Rules.HarvestPerWorker / 1000u * ScalePerMille / 1000u * Kept / 1000u *
+						   FieldsPerMille / 1000u;
+				};
 				for (House& Hs : Houses)
 				{
 					HouseStock* Stock = W.Components().GetPool(Economy.House).TryGet(Hs.Handle);
@@ -333,6 +341,7 @@ namespace Vaelen::Economy
 				const uint64 Mean = Crafters[Region] > 0 ? CraftSum[Region] / Crafters[Region] : 0u;
 				CraftPerMille = Rules.CraftFloorPerMille + uint64{Rules.CraftSpanPerMille} * Mean / 255u;
 			}
+			CraftPerMille = CraftPerMille * (1000u + (Built != nullptr ? Built->CraftPerMille : 0u)) / 1000u;
 			const uint64 Cloth =
 				(Rules.ClothPerPersons > 0 ? People / Rules.ClothPerPersons : 0u) * CraftPerMille / 1000u;
 			Common->Amount[G_CLOTH] = Saturate(Common->Amount[G_CLOTH] + Cloth);
