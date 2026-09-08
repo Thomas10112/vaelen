@@ -9,6 +9,8 @@
 #include "Engine/Engine.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
+#include "HAL/IConsoleManager.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "UObject/ConstructorHelpers.h"
@@ -408,9 +410,9 @@ void AVaelenAtlasActor::BuildAelvor()
 	const WorldMap& Map = Run.Instance.Map();
 	const WorldGrid Grid = Map.Grid();
 	const Vaelen::History::PreHistoryTypes& T = Run.Ages.Types();
-	const auto& Biomes = Map.GetLayer(T.World.PaintLayers.Biome);
-	const auto& Terrain = Map.GetLayer(T.World.PaintLayers.Terrain);
-	const auto& Height = Map.GetLayer(T.World.PaintLayers.Elevation);
+	const auto& Biomes = Map.GetLayer(T.World.Layers.Biome);
+	const auto& Terrain = Map.GetLayer(T.World.Layers.Terrain);
+	const auto& Height = Map.GetLayer(T.World.Layers.Elevation);
 	const auto& Rivers = Map.GetLayer(T.World.Hydro.RiverIndex);
 	const auto& Lakes = Map.GetLayer(T.World.Hydro.LakeIndex);
 
@@ -582,3 +584,48 @@ void AVaelenAtlasActor::BuildAelvor()
 		GEngine->AddOnScreenDebugMessage(-1, 12.0f, FColor(232, 190, 92), Report);
 	}
 }
+
+namespace
+{
+	/// A console command, so that the atlas can be raised without touching the
+	/// editor's viewport: type "Vaelen.Atlas" (optionally with a size and a
+	/// number of years) and the world is generated and laid out in place. An
+	/// actor already in the level is reused; otherwise one is spawned.
+	void RaiseAtlas(const TArray<FString>& Args, UWorld* World_)
+	{
+		if (World_ == nullptr)
+		{
+			UE_LOG(LogVaelenAtlas, Error, TEXT("Vaelen.Atlas: no world"));
+			return;
+		}
+		AVaelenAtlasActor* Atlas = nullptr;
+		for (TActorIterator<AVaelenAtlasActor> It(World_); It; ++It)
+		{
+			Atlas = *It;
+			break;
+		}
+		if (Atlas == nullptr)
+		{
+			Atlas = World_->SpawnActor<AVaelenAtlasActor>();
+		}
+		if (Atlas == nullptr)
+		{
+			UE_LOG(LogVaelenAtlas, Error, TEXT("Vaelen.Atlas: could not spawn the actor"));
+			return;
+		}
+		if (Args.Num() > 0)
+		{
+			Atlas->WorldSize = FCString::Atoi(*Args[0]);
+		}
+		if (Args.Num() > 1)
+		{
+			Atlas->Years = FCString::Atoi(*Args[1]);
+		}
+		Atlas->BuildAelvor();
+	}
+
+	FAutoConsoleCommandWithWorldAndArgs
+		GRaiseAtlas(TEXT("Vaelen.Atlas"),
+					TEXT("Generate AELVOR and lay it out in the level. Vaelen.Atlas [size] [years]"),
+					FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&RaiseAtlas));
+} // namespace
