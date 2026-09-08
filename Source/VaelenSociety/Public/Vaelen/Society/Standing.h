@@ -72,9 +72,22 @@ namespace Vaelen::Society
 	};
 	static_assert(sizeof(HouseWealth) == 8, "HouseWealth must stay padding free");
 
+	/// Component on a person, declared here and written by a higher layer (the
+	/// military, Phase 08): the wars they have come home from. Standing is what
+	/// other people will grant you, and a man who marched and came back is granted
+	/// something a man who stayed is not. Nothing in society knows who called him
+	/// up or what he did there.
+	struct PersonService
+	{
+		uint32 Wars = 0; ///< wars marched in and come home from
+		uint32 Reserved = 0;
+	};
+	static_assert(sizeof(PersonService) == 8, "PersonService must stay padding free");
+
 	struct StandingTypes
 	{
 		ComponentType<PersonStanding> Standing;
+		ComponentType<PersonService> Service; ///< written by Phase 08, read here when observed
 		static VAELEN_SOCIETY_API StandingTypes Declare(World& W);
 	};
 
@@ -90,6 +103,8 @@ namespace Vaelen::Society
 		uint32 TraitPointsPerMille = 250;		   ///< of (charm + will) / 2
 		uint32 SkillPointsPerMille = 300;		   ///< of the best skill
 		uint32 WealthPointsPerMille = 400;		   ///< of the house's wealth rank (0 without an observer)
+		uint32 ServicePoints = 45;				   ///< per war come home from (0 without an observer)
+		uint32 ServiceWarsCap = 4;				   ///< beyond this, another war grants nothing more
 		uint32 ElitePerMille = 50;				   ///< top share of the ranked
 		uint32 NotablePerMille = 150;			   ///< next share
 	};
@@ -97,7 +112,7 @@ namespace Vaelen::Society
 	/// The score of one person under the rules (pure).
 	VAELEN_SOCIETY_API uint32 StandingScore(const Population::PersonInfo& P, const Population::PersonTraits* T,
 											uint32 HouseMembers, uint8 Offices, uint64 Tick, const StandingRules& Rules,
-											uint32 WealthRank = 0) noexcept;
+											uint32 WealthRank = 0, uint32 Wars = 0) noexcept;
 
 	/// Yearly, for every detailed region: scores, ranks and tiers of the living adults.
 	class VAELEN_SOCIETY_API StandingSystem final : public ISystem
@@ -122,6 +137,12 @@ namespace Vaelen::Society
 		{
 			Wealth = InWealth;
 			HasWealth = true;
+		}
+		/// Optional: the wars a person has come home from (Phase 08) weigh too.
+		void ObserveService(ComponentType<PersonService> InService) noexcept
+		{
+			Service = InService;
+			HasService = true;
 		}
 		SimLod GetLod() const noexcept override { return SimLod::World; }
 		std::vector<std::string_view> GetDependencies() const override
@@ -152,6 +173,8 @@ namespace Vaelen::Society
 		bool HasBonds = false;
 		ComponentType<HouseWealth> Wealth;
 		bool HasWealth = false;
+		ComponentType<PersonService> Service;
+		bool HasService = false;
 	};
 
 	/// The elite of a region: living adults by rank descending (then index), at most MaxCount (0 = all of the elite

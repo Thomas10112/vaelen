@@ -93,6 +93,7 @@ Rules for this file:
 | [0068](#adr-0068-the-war-is-the-thing-and-the-stance-follows-it) | The war is the thing, and the stance follows it | Accepted; headless VALIDATED |
 | [0069](#adr-0069-a-derived-cache-is-keyed-on-what-it-was-derived-from) | A derived cache is keyed on what it was derived from | Accepted; headless VALIDATED |
 | [0070](#adr-0070-a-person-index-is-never-handed-out-twice) | A person index is never handed out twice | Accepted; headless VALIDATED |
+| [0071](#adr-0071-the-numbers-land-on-people) | The numbers land on people | Accepted; headless VALIDATED |
 
 ---
 
@@ -4254,6 +4255,76 @@ Accepted 2026-09-08. Files: `Source/VaelenPopulation/Public/Vaelen/Population/Pe
 `Source/VaelenPopulation/Private/Persons.cpp`, `Private/Lives.cpp`,
 `Private/Lod.cpp`, `Tests/Population/Test_Persons.cpp`. Headless VALIDATED on
 the six Linux presets, with every phase gate re-run at 256 over 500 years.
+
+---
+
+## ADR-0071: The numbers land on people
+
+### Context
+
+Through 08.05 the phase moves numbers. A levy is men taken out of regions, a
+battle is men taken out of a levy, a siege is a wall coming down. At no point
+does anybody die: the count of men away comes back down, and the people of the
+region are exactly as many as they were before the war. That is the difference
+between a wargame and a world, and the world is the thing being built.
+
+### Decision
+
+1. **The levy says why men left it.** `ReleaseLevy` takes a `LevyEnd` - home,
+   melted, fallen - and publishes one record per region it touched. The levy
+   itself still does not care: it only knows the men are no longer under arms.
+   A higher layer reads the reason and decides what it meant.
+2. **The fallen are dead where they came from.** Where a region is simulated
+   person by person (04.06) they are persons, struck out in index order so the
+   same men die on every run of a seed. Where it is not, they are people taken
+   off the count. Either way the region that gave them is the region that loses
+   them: that is what makes a levy a cost rather than a number.
+3. **What men bring home is standing.** 05.02 grants standing for what other
+   people know about you, and a man who marched and came back is granted
+   something a man who stayed is not - a fixed amount per war, up to a cap,
+   because the fourth war buys nothing the third did not. `PersonService` is
+   declared in society, beside the standing it weighs, and written by the
+   military: the same pattern as a house's wealth.
+4. **People leave ground an army will not get off.** A region a host has stood
+   on for years loses a share of its people to a neighbour its own ruler still
+   holds - not to another region under a host. This is how a province empties
+   without a battle being fought on it. It is coarse only: moving a simulated
+   person between regions is migration, and migration is not this task.
+5. **Nothing here decides anything.** The system reads what the war did - the
+   levies released, the ground foraged - and writes what it cost. Every rule
+   about who fights whom, and where, lives upstream.
+
+### Alternatives and decision rule
+
+- Killing people inside `ReleaseLevy`: rejected. The military module would be
+  reaching into persons, standing and population counts from the middle of an
+  accounting routine, and the same call is made when men walk home unharmed.
+- Deaths as a share of the region's population rather than the men it gave:
+  rejected. The whole point of ADR-0064 is that an army is *these* people from
+  *these* regions; killing a proportion of the wrong region would throw that
+  away for nothing.
+- Standing computed from a war record rather than a component: rejected.
+  `StandingScore` is a pure function of what a person is, and service is
+  something a person is.
+
+### Consequences
+
+- A hundred years of two powers on AELVOR 128 kills 1847 men across 39 regions,
+  sends 884 home, moves 113 people off ground they would not stay on, and
+  leaves 90 people carrying a war on their standing. War is now visible in the
+  population, not only in the military's own books.
+- Declaring `PersonService` changes the type registry, which changes the state
+  digest of every world that declares the standing types - three phase gates
+  were refrozen for it, with every invariant they check unchanged.
+- 08.07 has what the chronicle needs: a death has a region and a number, a
+  flight has a where-from and a where-to.
+
+### Status
+
+Accepted 2026-09-08. Files: `Source/VaelenMilitary/Public/Vaelen/Military/Toll.h`,
+`Source/VaelenMilitary/Private/Toll.cpp`, `Source/VaelenMilitary/.../Armies.h`,
+`Source/VaelenSociety/.../Standing.h`, `Tests/Military/Test_Toll.cpp` (4 tests).
+Headless VALIDATED on the six Linux presets.
 
 ---
 

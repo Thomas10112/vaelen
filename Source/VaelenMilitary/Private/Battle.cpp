@@ -212,8 +212,10 @@ namespace Vaelen::Military
 			const uint32 WinnerFell =
 				std::min(Won->Strength, std::max<uint32>(1u, Won->Strength * Rules.WinnerLostPerMille / 1000u));
 			// The fallen leave the levies of the regions that gave them, all of them.
-			VAELEN_ENSURE(ReleaseLevy(W, Types, Armies, Lost->Polity, LoserFell) == LoserFell);
-			VAELEN_ENSURE(ReleaseLevy(W, Types, Armies, Won->Polity, WinnerFell) == WinnerFell);
+			VAELEN_ENSURE(ReleaseLevy(W, Types, Armies, Lost->Polity, LoserFell, LevyEnd::Fallen, Context) ==
+						  LoserFell);
+			VAELEN_ENSURE(ReleaseLevy(W, Types, Armies, Won->Polity, WinnerFell, LevyEnd::Fallen, Context) ==
+						  WinnerFell);
 			Lost->Strength -= LoserFell;
 			Won->Strength -= WinnerFell;
 
@@ -252,7 +254,8 @@ namespace Vaelen::Military
 			if (Shattered)
 			{
 				const uint32 Rest = Lost->Strength;
-				VAELEN_ENSURE(ReleaseLevy(W, Types, Armies, Lost->Polity, Rest) == Rest);
+				// What is left of a broken host scatters and walks home.
+				VAELEN_ENSURE(ReleaseLevy(W, Types, Armies, Lost->Polity, Rest, LevyEnd::Home, Context) == Rest);
 				Lost->Strength = 0;
 				Lost->Disbanded = Context.Tick;
 				Context.Events->Publish(Context.Tick, ArmyBrokenEvent,

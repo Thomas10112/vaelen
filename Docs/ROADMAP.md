@@ -75,7 +75,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | VALIDATED (headless, 06.01-06.08); UNVERIFIED (engine) |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | VALIDATED headless (07.01-07.08, phase closed); UNVERIFIED under UBT |
-| 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | IN PROGRESS (08.01-08.05 VALIDATED headless; 08.06-08.08 PLANNED) |
+| 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | IN PROGRESS (08.01-08.06 VALIDATED headless; 08.07-08.08 PLANNED) |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
 | 10 | PLAYER | The player as one simulated person: enslaved start, body, needs, skills, relationships; player intent as commands into the simulation. | PLANNED |
 | 11 | MINING COLONY | The starting place: a huge autonomous mining colony simulated by the same systems at full detail. | PLANNED |
@@ -2234,6 +2234,28 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   snapshot continuity, frozen wars digest `{WH}` after 100 years ({WO} wars over, {WF} fallen).
 - Decision: ADR-0068.
 
+### 08.06 What war costs the living - VALIDATED (headless)
+
+- Delivered: `LevyEnd` and the `LevyReleased` event on `ReleaseLevy`, one per region a release touched,
+  so that a higher layer can tell men who walked home from men who fell; `Toll.h/.cpp` - `RegionToll`
+  (16 bytes: men of the region who did not come back, men who did, people who left, years a war cost it
+  anything) on the region, `TollTypes::Declare`, `TollRules` (a host must sit two years before anybody
+  leaves, 30 per mille of the region a year after that, a region under forty people loses nobody),
+  events WarDead, PeopleFled, `TollSystem` (LOD World, after Wars: the fallen struck out where they
+  came from - real persons where the region is simulated person by person, people off the count where
+  it is not - the standing of those who came home, and the flight of people who will not live under a
+  host), `TollOf`, `MeasureToll`. In VaelenSociety, `PersonService` declared beside the standing it
+  weighs, `StandingSystem::ObserveService`, and `StandingScore` given the wars a person has come home
+  from - worth something, and only so far.
+- Tests (4): men fall, the regions that gave them bury them, every death recorded is a death in a
+  region and the sum of what the regions say they lost is what the world says it lost; service is
+  worth a fixed amount per war up to a cap and nobody carries more wars than the world has fought;
+  people who leave a region arrive in another one and every flight names where it went, a people that
+  will not be moved is not moved though it still loses its men, and the lookups refuse what does not
+  exist; determinism, snapshot continuity, frozen toll digest `bcb49ab4dbd74565` after 100 years
+  (1847 fallen over 39 regions).
+- Decision: ADR-0071.
+
 ## 12b. Phases 09-20: notes
 
  Fixed points already in the code: `IdKind` values for Region, Tile, River,
@@ -2251,59 +2273,54 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 08 — MILITARY
-TASK        : 08.05 CLOSED — the last two review defects closed with it
+TASK        : 08.06 — WHAT WAR COSTS THE LIVING
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████████████░░░░ 80%
+████████████████████░░░░ 81%
 
 CURRENTLY
-→ A person index must never be handed out twice in the life of a world, because things outside the
-  population remember one: a council's head (05.01), a polity's ruler (07.01), a line's claimant
-  (07.04), a faction's (07.05). Allocating one past the highest person alive looks equivalent to a
-  counter and is not - demoting a region destroys every person in it, which lowers that highest, and
-  the next promotion or birth hands the same indices out again to strangers who inherit every claim
-  the dead had. Reproduced by the adversarial review: a council of a demoted region kept a head
-  pointing at a destroyed person, and the moment the index was recycled 07.01 seated a live adult from
-  another region as the polity's ruler, with 07.04 then naming that stranger's children as claimants.
-  A PersonCounter now lives on one entity of the world, made with the first index ever taken, and it
-  only goes up. Every index a person has ever had is spent for good.
-
-  Held by a test: a region takes 1..1460, is demoted, and the region peopled after it begins at 1461
-  rather than at 1. Every invariant of every phase gate is unchanged; four state digests moved, because
-  the indices genuinely differ once a region has been demoted, and they are refrozen with the reason.
+→ 08.06 closed: everything the phase had built so far moved numbers. A levy is men taken out of regions
+  and a battle is men taken out of a levy, and at no point did anybody actually die - the count of men
+  away came back down and the people of the region were exactly as many as before. That is the
+  difference between a wargame and a world. So the levy now says why men left it, and the numbers land
+  on people: the fallen are dead where they came from, real persons struck out where a region is
+  simulated person by person and people off the count where it is not; the men who came home carry it,
+  because 05.02 grants standing for what other people know about you and a man who marched and came
+  back is granted something a man who stayed is not; and people leave ground an army will not get off,
+  which is how a province is emptied without a battle being fought on it. Nothing here decides
+  anything - it reads what the war did and writes what it cost. RegionToll, PersonService, TollOf,
+  MeasureToll
 
 COMPLETED
 ✓ Phases 00-07 (headless, Phase 07 closed) (CI 68)
 ✓ 08.01 levies and armies (4 tests: Armies) (CI 69)
-✓ 08.02 marching (4 tests: March)
-✓ 08.03 battle (4 tests: Battle)
-✓ 08.04 siege (4 tests: Siege)
-✓ 08.05 war with an end (4 tests: War)
+✓ 08.02 marching, 08.03 battle, 08.04 siege, 08.05 war with an end (16 tests)
 ✓ Every defect the adversarial review confirmed is closed (4 of 4)
+✓ 08.06 what war costs the living (4 tests: Toll)
 
 NEXT
-→ 08.06 What war costs the living: the dead, the displaced, the harvests taken, the standing of those who fought
-→ 08.07 War in the chronicle
+→ 08.07 War in the chronicle: levies, marches, battles, sieges, terms; the why of a lost province
+→ 08.08 Phase 08 gate
 
 FILES
-+ PersonCounter and TakePersonIndices (Source/VaelenPopulation/.../Persons.h, Private/Persons.cpp)
-~ Source/VaelenPopulation/Private/Lives.cpp, Private/Lod.cpp (the other two allocation sites)
-~ Source/VaelenPopulation/Public/Vaelen/Population/Lod.h (its own graph cache folded into the shared one)
-~ Tests/Population/Test_Persons.cpp, Test_Lod.cpp, Tests/Society/Test_Strata.cpp,
-  Tests/Economy/Test_Grains.cpp, the four phase gates (digests refrozen)
++ Source/VaelenMilitary/Public/Vaelen/Military/Toll.h, Private/Toll.cpp
++ Tests/Military/Test_Toll.cpp
+~ Source/VaelenMilitary/ (Armies.h, Armies.cpp, Battle.cpp: LevyEnd and the LevyReleased record)
+~ Source/VaelenSociety/ (Standing.h, Standing.cpp: PersonService and what it is worth)
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 161 + Population 37 + Society 27 + Economy 26
-  + Politics 29 + Military 20; ctest 84/84 in all six Linux presets
-✓ Every phase gate re-run at 256 over 500 years: History, Population, Society, Economy, Politics all
-  green, every invariant unchanged
-✓ Purity: 132 files, 0 violations
+  + Politics 29 + Military 24; ctest 85/85 in all six Linux presets
+✓ AELVOR 128, two powers over 100 years: frozen toll digest bcb49ab4dbd74565 (1847 fallen over 39
+  regions, 884 home, 113 fled, 90 people carrying a war on their standing)
+✓ Three phase gates re-run at 256 over 500 years and refrozen: declaring PersonService changes the type
+  registry and so the state digest, though nothing in those gates writes one. Every invariant unchanged.
+✓ Purity: 134 files, 0 violations
 
 BLOCKERS
-! CI has not completed a run since 68: every push since has cancelled the run before it
-  (concurrency: cancel-in-progress). The Windows MSVC and macOS legs are therefore unverified for
-  08.02 to 08.05. Nothing is pushed after this until one run finishes.
+! CI had not completed a run since 68 - every push cancelled the one before it. Run 78 is going on the
+  person-index commit; nothing is pushed until it finishes.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ```

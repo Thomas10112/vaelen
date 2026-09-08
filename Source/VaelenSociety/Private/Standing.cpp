@@ -37,12 +37,14 @@ namespace Vaelen::Society
 	{
 		StandingTypes T;
 		T.Standing = W.Types().Register<PersonStanding>("PersonStanding");
+		T.Service = W.Types().Register<PersonService>("PersonService");
 		W.Components().CreatePool(T.Standing);
+		W.Components().CreatePool(T.Service);
 		return T;
 	}
 
 	uint32 StandingScore(const PersonInfo& P, const Population::PersonTraits* T, uint32 HouseMembers, uint8 Offices,
-						 uint64 Tick, const StandingRules& Rules, uint32 WealthRank) noexcept
+						 uint64 Tick, const StandingRules& Rules, uint32 WealthRank, uint32 Wars) noexcept
 	{
 		uint32 Score = std::min(HouseMembers, Rules.HouseMembersCap) * Rules.HousePointsPerMember;
 		Score += (Offices & static_cast<uint8>(Office::HeadOfHouse)) != 0 ? Rules.HeadOfHousePoints : 0u;
@@ -64,6 +66,9 @@ namespace Vaelen::Society
 			Score += Best * Rules.SkillPointsPerMille / 1000u;
 		}
 		Score += WealthRank * Rules.WealthPointsPerMille / 1000u;
+		// A man who marched and came back is granted something a man who stayed
+		// is not - but only so far: the fourth war buys nothing the third did not.
+		Score += std::min(Wars, Rules.ServiceWarsCap) * Rules.ServicePoints;
 		return Score;
 	}
 
@@ -181,8 +186,9 @@ namespace Vaelen::Society
 												   !HouseHandle[R.Info.Family].IsNull()
 											   ? W.Components().GetPool(Wealth).TryGet(HouseHandle[R.Info.Family])
 											   : nullptr;
+				const PersonService* Served = HasService ? W.Components().GetPool(Service).TryGet(R.Handle) : nullptr;
 				R.Score = StandingScore(R.Info, T, Members, Offices, Context.Tick, Rules,
-										Purse != nullptr ? Purse->Rank : 0u);
+										Purse != nullptr ? Purse->Rank : 0u, Served != nullptr ? Served->Wars : 0u);
 			}
 			// Rank: position in the score order (ties by index), scaled to 0..255; tiers by share.
 			std::vector<usize> Order(Adults.size());

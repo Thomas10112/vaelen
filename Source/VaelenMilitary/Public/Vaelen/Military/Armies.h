@@ -92,6 +92,22 @@ namespace Vaelen::Military
 	inline constexpr EventType<Politics::PolityPayload> ArmyStarvedEvent =
 		MakeEventType<Politics::PolityPayload>("ArmyStarved");
 
+	/// Why men stopped being away from the region that gave them. The levy itself
+	/// does not care - it only knows they are no longer under arms - but 08.06 does:
+	/// men who walked home are not men who fell.
+	enum class LevyEnd : uint32
+	{
+		Home = 0,	///< the war ended, or the polity did
+		Melted = 1, ///< it could not be fed and they drifted away
+		Fallen = 2, ///< they were lost in a battle
+	};
+
+	/// Men left a region's levy (the polity, the region, the LevyEnd, men). One per
+	/// region a release touched, so that a higher layer can turn it into what it
+	/// cost the people who live there.
+	inline constexpr EventType<Politics::PolityPayload> LevyReleasedEvent =
+		MakeEventType<Politics::PolityPayload>("LevyReleased");
+
 	/// Yearly, after Diplomacy: raise a host where there is a war and none
 	/// stands, feed what stands out of the treasury, let what cannot be fed melt
 	/// away, and send home what has no war left to fight.
@@ -147,7 +163,7 @@ namespace Vaelen::Military
 	/// knows they are no longer under arms, which is what keeps the men the regions
 	/// say are away exactly equal to the men under arms.
 	VAELEN_MILITARY_API uint32 ReleaseLevy(World& W, const History::PreHistoryTypes& Types, const ArmyTypes& Armies,
-										   uint32 Polity, uint32 Men);
+										   uint32 Polity, uint32 Men, LevyEnd Why, TickContext& Context);
 	/// Every ordered pair of polities at war, sorted, so that a caller can ask
 	/// whether one is at war with another by binary search. Both (A, B) and (B, A)
 	/// are listed, because who declared what is 07.06's business and not the

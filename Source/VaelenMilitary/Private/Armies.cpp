@@ -130,8 +130,8 @@ namespace Vaelen::Military
 		/// Send an army home: the men return to the regions that gave them. Every
 		/// one of them must be found, or the count of men away stops matching the
 		/// count of men under arms and nobody notices until a digest moves.
-		auto SendHome = [&](ArmyInfo& A, uint32 Men)
-		{ VAELEN_ENSURE(ReleaseLevy(W, Types, Armies, A.Polity, Men) == Men); };
+		auto SendHome = [&](ArmyInfo& A, uint32 Men, LevyEnd Why)
+		{ VAELEN_ENSURE(ReleaseLevy(W, Types, Armies, A.Polity, Men, Why, Context) == Men); };
 
 		std::vector<uint32> Hosted; // polities with a host standing after this pass
 		for (const Standing& It : Order)
@@ -147,7 +147,7 @@ namespace Vaelen::Military
 			// A host whose polity is gone, or that has no war left, goes home.
 			if (Master == nullptr || !Master->Standing || !Fighting(A->Polity))
 			{
-				SendHome(*A, A->Strength);
+				SendHome(*A, A->Strength, LevyEnd::Home);
 				A->Disbanded = Context.Tick;
 				Context.Events->Publish(Context.Tick, ArmyDisbandedEvent,
 										Politics::PolityPayload{A->Polity, A->Region, A->Index, A->Strength},
@@ -174,14 +174,14 @@ namespace Vaelen::Military
 			++A->Hungry;
 			const uint32 Lost = std::max<uint32>(1u, A->Strength * Rules.MeltPerMille / 1000u);
 			const uint32 Melted = std::min(Lost, A->Strength);
-			SendHome(*A, Melted);
+			SendHome(*A, Melted, LevyEnd::Melted);
 			A->Strength -= Melted;
 			Context.Events->Publish(Context.Tick, ArmyStarvedEvent,
 									Politics::PolityPayload{A->Polity, A->Region, A->Index, Melted},
 									W.Entities().GetId(It.Handle));
 			if (A->Strength < Rules.RaiseAtStrength || A->Hungry >= Rules.HungryBeforeGone)
 			{
-				SendHome(*A, A->Strength);
+				SendHome(*A, A->Strength, LevyEnd::Home);
 				A->Disbanded = Context.Tick;
 				Context.Events->Publish(Context.Tick, ArmyDisbandedEvent,
 										Politics::PolityPayload{A->Polity, A->Region, A->Index, A->Strength},
@@ -326,7 +326,7 @@ namespace Vaelen::Military
 	}
 
 	uint32 ReleaseLevy(World& W, const History::PreHistoryTypes& Types, const ArmyTypes& Armies, uint32 Polity,
-					   uint32 Men)
+					   uint32 Men, LevyEnd Why, TickContext& Context)
 	{
 		if (Polity == 0 || Men == 0)
 		{
@@ -362,6 +362,15 @@ namespace Vaelen::Military
 			if (Given->Men == 0)
 			{
 				Given->Polity = 0;
+			}
+			// One record per region touched: the levy only knows the men are no
+			// longer under arms, and 08.06 needs to know which people that was.
+			if (Context.Events != nullptr)
+			{
+				Context.Events->Publish(
+					Context.Tick, LevyReleasedEvent,
+					Politics::PolityPayload{Polity, static_cast<uint32>(R), static_cast<uint32>(Why), Back},
+					W.Entities().GetId(RegionHandles[R]));
 			}
 		}
 		return Men - Left;

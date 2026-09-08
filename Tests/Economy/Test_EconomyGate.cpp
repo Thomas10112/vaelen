@@ -53,8 +53,12 @@ using namespace Vaelen::WorldGen;
 // goes up, so a demoted region no longer hands its indices out again to the
 // people made after it, and the world's one counter entity is state like any
 // other. Every invariant of the gate is unchanged; only the state digests are.
-#define VAELEN_ECOGATE_FROZEN_256_250 0xcad6a952bae452eaull
-#define VAELEN_ECOGATE_FROZEN_256_500 0x4ec7c07cf9b68d52ull
+// Refrozen 2026-09-08 (08.06): the standing types now declare PersonService, a
+// component the military writes and 05.02 reads. Declaring it changes the type
+// registry and so the state digest, though nothing here writes one. Every
+// invariant of the gate is unchanged.
+#define VAELEN_ECOGATE_FROZEN_256_250 0xeef569fe8096a964ull
+#define VAELEN_ECOGATE_FROZEN_256_500 0x3f5f63a0db9750b8ull
 #define VAELEN_ECOGATE_LOG_256_500 0xac48bb403c40fd73ull
 #define VAELEN_ECOGATE_TEXT_256_500 0xe5f20b503614f6ccull
 
