@@ -13,6 +13,7 @@
 #include "HAL/IConsoleManager.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
+#include "Materials/MaterialInstanceConstant.h"
 #include "UObject/ConstructorHelpers.h"
 
 // The kernel. Nothing above this line knows about it, nothing below it knows
@@ -312,8 +313,50 @@ void AVaelenAtlasActor::EnsurePaintLayers()
 	PaintLayers.Reset();
 
 	UStaticMesh* Cube = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
-	UMaterialInterface* Plain =
-		LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+
+	// Guessing a parameter name is how the plate came out unpainted the first
+	// time: BasicShapeMaterial's colour is not called what one would expect.
+	// Ask the engine instead. Take the first stock material that loads AND
+	// carries a vector parameter, and set every vector parameter it has to the
+	// layer's colour - whatever they are called.
+	static const TCHAR* const Candidates[] = {
+		TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"),
+		TEXT("/Engine/EngineMaterials/WorldGridMaterial.WorldGridMaterial"),
+		TEXT("/Engine/EngineDebugMaterials/VertexColorMaterial.VertexColorMaterial"),
+		TEXT("/Engine/EngineMaterials/DefaultMaterial.DefaultMaterial"),
+	};
+	UMaterialInterface* Plain = nullptr;
+	TArray<FMaterialParameterInfo> Colours;
+	for (const TCHAR* const Path : Candidates)
+	{
+		UMaterialInterface* Candidate = LoadObject<UMaterialInterface>(nullptr, Path);
+		if (Candidate == nullptr)
+		{
+			continue;
+		}
+		TArray<FMaterialParameterInfo> Infos;
+		TArray<FGuid> Ids;
+		Candidate->GetAllVectorParameterInfo(Infos, Ids);
+		FString Names;
+		for (const FMaterialParameterInfo& Info : Infos)
+		{
+			Names += (Names.IsEmpty() ? TEXT("") : TEXT(", "));
+			Names += Info.Name.ToString();
+		}
+		UE_LOG(LogVaelenAtlas, Display, TEXT("material %s: %d vector parameter(s)%s%s"), Path, Infos.Num(),
+			   Infos.Num() > 0 ? TEXT(" — ") : TEXT(""), Infos.Num() > 0 ? *Names : TEXT(""));
+		if (Plain == nullptr && Infos.Num() > 0)
+		{
+			Plain = Candidate;
+			Colours = MoveTemp(Infos);
+		}
+	}
+	if (Plain == nullptr)
+	{
+		UE_LOG(LogVaelenAtlas, Warning,
+			   TEXT("no stock material carries a colour parameter; the plate will be drawn in one tone"));
+		Plain = LoadObject<UMaterialInterface>(nullptr, Candidates[0]);
+	}
 
 	for (int32 Index = 0; Index < static_cast<int32>(Paint::Count); ++Index)
 	{
@@ -334,13 +377,11 @@ void AVaelenAtlasActor::EnsurePaintLayers()
 			UMaterialInstanceDynamic* Tint = UMaterialInstanceDynamic::Create(Plain, Layer);
 			if (Tint != nullptr)
 			{
-				// BasicShapeMaterial exposes its colour under one of these names
-				// depending on the engine version; setting a name it does not have
-				// is a no-op, so the plate is never left unpainted by a rename.
 				const FLinearColor C = FLinearColor(PaintColour(static_cast<Paint>(Index)));
-				Tint->SetVectorParameterValue(TEXT("Color"), C);
-				Tint->SetVectorParameterValue(TEXT("BaseColor"), C);
-				Tint->SetVectorParameterValue(TEXT("Tint"), C);
+				for (const FMaterialParameterInfo& Info : Colours)
+				{
+					Tint->SetVectorParameterValue(Info.Name, C);
+				}
 				Layer->SetMaterial(0, Tint);
 			}
 		}
