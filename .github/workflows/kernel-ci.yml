@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-24.04
     # The suite grows with every phase and the debug legs run every gate with
     # assertions on; 30 minutes was cutting it fine by Phase 08.
-    timeout-minutes: 50
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -80,7 +80,7 @@ jobs:
   macos:
     name: macOS (AppleClang)
     runs-on: macos-15
-    timeout-minutes: 50
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
