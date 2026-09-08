@@ -89,6 +89,7 @@ Rules for this file:
 | [0064](#adr-0064-an-army-is-people-taken-out-of-regions) | An army is people taken out of regions | Accepted; headless VALIDATED |
 | [0065](#adr-0065-a-host-walks-the-region-graph-and-eats-what-it-stands-on) | A host walks the region graph, and eats what it stands on | Accepted; headless VALIDATED |
 | [0066](#adr-0066-a-battle-is-settled-in-one-year-by-numbers-ground-and-a-stream) | A battle is settled in one year by numbers, ground and a stream | Accepted; headless VALIDATED |
+| [0067](#adr-0067-a-seat-is-taken-only-by-sitting-in-front-of-it) | A seat is taken only by sitting in front of it | Accepted; headless VALIDATED |
 
 ---
 
@@ -3975,6 +3976,73 @@ Accepted 2026-09-08. Files: `Source/VaelenMilitary/Public/Vaelen/Military/Battle
 `Source/VaelenMilitary/Private/Battle.cpp`, `Tests/Military/Test_Battle.cpp`
 (4 tests), `Source/VaelenCore/.../Ids.h` (`IdKind::Battle`). Headless VALIDATED
 on the six Linux presets.
+
+---
+
+## ADR-0067: A seat is taken only by sitting in front of it
+
+### Context
+
+By 08.03 the phase can raise armies, march them, and destroy them, and it has
+taken nothing. Ground does change hands already - a province slips to a
+neighbour when its ruler's grip fails (07.03), and a faction can carry one off
+(07.05) - but neither of those can end a polity, because 07.01 ends a polity
+only when it loses its seat. Conquest needs a way to take a seat.
+
+### Decision
+
+1. **A seat changes hands only under siege.** Not by battle, not by a grip that
+   failed, not by a claim. A host must stand on it, alone, for years.
+2. **A siege is a wall coming down at the rate of the men before it.** A whole
+   wall is a thousand per mille; a hundred men bring down two hundred and fifty
+   of them in a year; nothing at all comes down in the year the host arrives,
+   because a seat does not fall in a season. A host too small to shut a seat in
+   never invests one however long it stands there.
+3. **A seat nobody is sitting before is mended**, a little every year. A
+   besieger that is beaten off or marches away loses its work slowly rather
+   than at once, so a war fought in fits and starts can still take a capital -
+   but a besieger that is driven away for a decade begins again.
+4. **The wall belongs to the region, not to the siege.** It is written on the
+   seat and outlives both besieger and besieged: a wall that has been breached
+   stays breached, and the next army to come inherits the work.
+5. **Taking a seat writes belonging on the region and nothing else.** The
+   military layer does not reach into a polity to end it. It sets the region's
+   rule to the taker and its authority to nothing - a stormed seat obeys
+   nobody yet, and 07.03 makes the new holder earn its grip back - and the
+   polity that held it finds out next year from 07.01's own rule that a polity
+   without its seat is not a polity.
+
+### Alternatives and decision rule
+
+- A seat taken by winning a battle on it: rejected. It would make a capital
+  worth exactly one field engagement, and it would collapse 08.03 and 08.04
+  into one rule.
+- A siege as a component on the army rather than the region: rejected. Two
+  armies besiege the same seat over a century, and the wall is a property of
+  the place; putting it on the host would lose it the moment the host did.
+- The military layer dissolving the polity directly: rejected as a layering
+  violation in spirit if not in letter. 07.01 already owns what makes a polity
+  stand or fall, and it needs no help: writing the region's rule is enough.
+- A garrison strength defending the seat: rejected for now as a second army
+  with no levy behind it. The defender's own host is free to march back and
+  raise the siege, which is the same drama with the pieces that already exist.
+
+### Consequences
+
+- The phase now runs end to end. On AELVOR 128 a levy is called, marches on the
+  enemy host, fights it, the beaten one falls back or is destroyed, the winner
+  sits down before a capital, and in the eighty-first year of the war the
+  capital falls and a power ends - after which the world founds another, because
+  07.01 keeps founding polities on councils.
+- A seat that has changed hands starts at no authority at all, so 07.03 may let
+  it slip again before the taker has it firmly. Conquest is not settlement.
+- 08.05 has what it needs to give a war an end: something has actually been won.
+
+### Status
+
+Accepted 2026-09-08. Files: `Source/VaelenMilitary/Public/Vaelen/Military/Siege.h`,
+`Source/VaelenMilitary/Private/Siege.cpp`, `Tests/Military/Test_Siege.cpp`
+(4 tests). Headless VALIDATED on the six Linux presets.
 
 ---
 

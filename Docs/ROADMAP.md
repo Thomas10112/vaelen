@@ -75,7 +75,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | VALIDATED (headless, 06.01-06.08); UNVERIFIED (engine) |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | VALIDATED headless (07.01-07.08, phase closed); UNVERIFIED under UBT |
-| 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | IN PROGRESS (08.01-08.03 VALIDATED headless; 08.04-08.08 PLANNED) |
+| 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | IN PROGRESS (08.01-08.04 VALIDATED headless; 08.05-08.08 PLANNED) |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
 | 10 | PLAYER | The player as one simulated person: enslaved start, body, needs, skills, relationships; player intent as commands into the simulation. | PLANNED |
 | 11 | MINING COLONY | The starting place: a huge autonomous mining colony simulated by the same systems at full detail. | PLANNED |
@@ -2185,6 +2185,28 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   (75 fought, 2186 fallen).
 - Decision: ADR-0066.
 
+### 08.04 Siege - VALIDATED (headless)
+
+- Delivered: `Siege.h/.cpp` - `SiegeInfo` (32 bytes: the polity sitting before it and its host, the
+  polity whose seat it is, consecutive years pressed, the wall in per mille, times the seat has been
+  stormed, the tick the present siege was laid) on the seat's region, outliving the siege because a
+  wall that has been breached stays breached; `SiegeTypes::Declare`, `SiegeRules` (a whole wall is
+  1000 per mille, a host under 60 men cannot shut a seat in, a hundred men bring down 250 per mille a
+  year, nothing at all comes down the year the host arrives, 120 per mille mended a year when nobody
+  is sitting before it), events SiegeLaid, SiegeLifted, SeatTaken, `SiegeSystem` (LOD World, after
+  Battles: press every siege a host is sitting on, mend every seat nobody is sitting on, and hand over
+  the seats whose walls have gone - belonging written on the region itself, and the authority of
+  07.03 reset to nothing so the taker earns its grip back), `SiegeOf`, `MeasureSieges`.
+- Tests (4): sieges are laid and lifted, none is ever pressed by nobody, and a seat that falls changes
+  hands and its holder is dissolved the next year by 07.01, which is the whole phase joined up - a levy
+  called, marched onto the enemy host, a battle, a host destroyed, a capital invested and stormed, and
+  a power gone; a wall never rises while a host sits before it, never stands taller than whole, and is
+  mended by exactly the rule's amount in a year nobody is there; a host too small never invests
+  anything however long it stands, and a seat that can be invested but never breached keeps a whole
+  wall through sixty years of war; determinism, snapshot continuity, frozen sieges digest `{SH}`
+  after 100 years ({SS} seat stormed, {SL} sieges laid).
+- Decision: ADR-0067.
+
 ## 12b. Phases 09-20: notes
 
  Fixed points already in the code: `IdKind` values for Region, Tile, River,
@@ -2202,59 +2224,52 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 08 — MILITARY
-TASK        : 08.03 — BATTLE
+TASK        : 08.04 — SIEGE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███████████████████░░░░░ 78%
+████████████████████░░░░ 79%
 
 CURRENTLY
-→ 08.03 closed: two hosts of powers at war standing on one region settle it in a year - no manoeuvring,
-  no second round, no reinforcement. Three things decide it: how many men each side has, whose ground
-  it is (07.03 already measures how firmly a polity holds a region, and a host fighting where the
-  people obey its own ruler is not fighting the same battle as one deep in a stranger's province), and
-  a draw from a stream fixed by the world seed. The fallen leave the levies of the regions that gave
-  them, so the men away stay exactly the men under arms. A host left far weaker than the one that beat
-  it is gone; one that merely lost falls back on the nearest ground its own polity rules and loses its
-  marching orders. BattleInfo, BattleOf, BattlesIn, MeasureBattles
+→ 08.04 closed: everything else in the phase moves men about and kills them; nothing took anything. A
+  province can slip to a neighbour when its ruler's grip fails (07.03) and a faction can carry one off
+  (07.05), but a seat is what a polity is - 07.01 dissolves a polity that has lost its seat, whatever
+  else it still holds. So a seat is taken only by sitting in front of it. A host on an enemy seat
+  invests it; nothing comes down the year it arrives; after that the wall falls at the rate of the men
+  before it, and a seat nobody is sitting before is mended a little every year, so a besieger beaten
+  off has to begin again. When the wall is gone the seat changes hands, and the polity that held it
+  learns next year, from 07.01, that it is no longer a polity. SiegeInfo, SiegeOf, MeasureSieges
 
-  Two defects the battles exposed and this task closed. 08.02's aim rule sent every host to the nearest
-  enemy province - which is on its own side of the border - so two powers were at war for two hundred
-  and forty years without meeting once: a host now marches on an enemy host before it marches on enemy
-  ground. And 08.01 let a region whose men were already away be levied again by whoever took the
-  ground, writing over the first claim and leaving men no army accounted for when that first army was
-  destroyed; such a region now gives nobody, and every release of a levy is checked to the man.
+  The whole phase now runs end to end on AELVOR 128: a levy is called, it marches on the enemy host,
+  they fight, the beaten one falls back or is destroyed, the winner sits down before a capital, and in
+  the eighty-first year of the war the capital falls and a power ends.
 
 COMPLETED
 ✓ Phases 00-07 (headless, Phase 07 closed) (CI 68)
 ✓ 08.01 levies and armies (4 tests: Armies) (CI 69)
 ✓ 08.02 marching (4 tests: March)
 ✓ 08.03 battle (4 tests: Battle)
+✓ 08.04 siege (4 tests: Siege)
 
 NEXT
-→ 08.04 Siege: an army before a seat; a capital taken only here, and what that does to the polity of 07.01
-→ 08.05 War as a thing with a beginning and an end
+→ 08.05 War as a thing with a beginning and an end: aims, exhaustion, terms; the stance of 07.06 follows it
+→ 08.06 What war costs the living
 
 FILES
-+ Source/VaelenMilitary/Public/Vaelen/Military/Battle.h, Private/Battle.cpp
-+ Tests/Military/Test_Battle.cpp
-~ Source/VaelenMilitary/ (CMakeLists.txt, Armies.h, Armies.cpp, March.h, March.cpp)
-~ Source/VaelenCore/ (Public/Vaelen/Core/Ids.h, Private/Ids.cpp) — IdKind::Battle
-~ Tests/Core/Test_Ids.cpp, Tests/Military/Test_March.cpp
++ Source/VaelenMilitary/Public/Vaelen/Military/Siege.h, Private/Siege.cpp
++ Tests/Military/Test_Siege.cpp
+~ Source/VaelenMilitary/CMakeLists.txt
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 160 + Population 36 + Society 27 + Economy 26
-  + Politics 28 + Military 12 (12 without asserts); ctest 82/82 in all six Linux presets
-✓ AELVOR 128, two powers over 100 years: frozen battles digest 7a8c0c2222568ac7 (75 fought, 2186 fallen);
-  marches digest 2956e5ee3a48ec46 (6 hops, 2 marches); armies digest 028ec9ea8f5092f7 unchanged
-✓ Purity: 128 files, 0 violations
+  + Politics 28 + Military 16 (16 without asserts); ctest 83/83 in all six Linux presets
+✓ AELVOR 128, two powers over 100 years: frozen sieges digest 4717382dded354f2 (1 seat stormed, 14 laid);
+  battles digest 7a8c0c2222568ac7 (75 fought, 2186 fallen); marches and armies digests unchanged
+✓ Purity: 130 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)
-! CI 73 (08.02) lost its three slowest legs - linux-clang-debug, linux-gcc-debug and macOS - to the
-  30 minute job timeout, not to a failure: the suite grows with every phase and the debug legs run
-  every gate with assertions on. Raised to 50 minutes (70 on Windows) with this task.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 ```
 
 ## 14. Verification record

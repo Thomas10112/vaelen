@@ -6,12 +6,14 @@ set(VAELEN_MILITARY_PUBLIC_HEADERS
   Public/Vaelen/Military/Armies.h
   Public/Vaelen/Military/March.h
   Public/Vaelen/Military/Battle.h
+  Public/Vaelen/Military/Siege.h
 )
 
 set(VAELEN_MILITARY_SOURCES
   Private/Armies.cpp
   Private/March.cpp
   Private/Battle.cpp
+  Private/Siege.cpp
 )
 
 add_library(VaelenMilitary STATIC ${VAELEN_MILITARY_SOURCES} ${VAELEN_MILITARY_PUBLIC_HEADERS})
