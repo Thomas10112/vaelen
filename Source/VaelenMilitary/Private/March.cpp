@@ -18,25 +18,6 @@ namespace Vaelen::Military
 		constexpr uint32 G_GRAIN = static_cast<uint32>(Economy::Good::Grain);
 		constexpr uint32 Unreached = 0xffffffffu;
 
-		/// Every ordered pair of polities at war, sorted, for a binary search.
-		void GatherFoes(const World& W, const Politics::DiplomacyTypes& Relations,
-						std::vector<std::pair<uint32, uint32>>& Out)
-		{
-			Out.clear();
-			W.Components()
-				.GetPool(Relations.Relation_)
-				.ForEach(
-					[&](EntityHandle, const Politics::Relation& Bond)
-					{
-						if (Bond.Stance_ != static_cast<uint32>(Politics::Stance::War))
-						{
-							return;
-						}
-						Out.push_back({Bond.A, Bond.B});
-						Out.push_back({Bond.B, Bond.A});
-					});
-			std::sort(Out.begin(), Out.end());
-		}
 	} // namespace
 
 	MarchTypes MarchTypes::Declare(World& W)
@@ -93,7 +74,7 @@ namespace Vaelen::Military
 		}
 
 		std::vector<std::pair<uint32, uint32>> Foes;
-		GatherFoes(W, Relations, Foes);
+		WarPairs(W, Relations, Foes);
 		auto IsFoe = [&](uint32 Mine, uint32 Theirs)
 		{ return Mine != 0 && Theirs != 0 && std::binary_search(Foes.begin(), Foes.end(), std::pair{Mine, Theirs}); };
 
@@ -170,17 +151,47 @@ namespace Vaelen::Military
 				}
 			}
 
-			// The aim is the nearest enemy ground; ties go to the lower region.
+			// Where enemy hosts are standing, read live: an army that marched
+			// earlier this year has already moved, and a host marching on another
+			// host must march on where it is now, not where it was in the spring.
+			// Without this two hosts each take the nearest enemy ground, which is
+			// on their own side of the border, and they pass each other by.
+			std::vector<uint8> Enemy(N, 0u);
+			W.Components()
+				.GetPool(Armies.Army)
+				.ForEach(
+					[&](EntityHandle Other, const ArmyInfo& B)
+					{
+						if (Other == It.Handle || B.Disbanded != 0 || B.Strength == 0 || B.Region == 0 || B.Region >= N)
+						{
+							return;
+						}
+						if (IsFoe(A->Polity, B.Polity))
+						{
+							Enemy[B.Region] = 1u;
+						}
+					});
+
+			// The aim is the nearest ground an enemy host stands on; failing that,
+			// the nearest ground an enemy rules. Ties go to the lower region, so
+			// the road a host takes is the same on every run of the same seed.
 			uint32 Aim = 0;
 			uint32 Best = Unreached;
-			for (uint32 R = 1; R < N; ++R)
+			for (uint32 Pass = 0; Pass < 2 && Aim == 0; ++Pass)
 			{
-				if (Distance[R] == Unreached || Distance[R] >= Best || !IsFoe(A->Polity, RuledBy[R]))
+				for (uint32 R = 1; R < N; ++R)
 				{
-					continue;
+					if (Distance[R] == Unreached || Distance[R] >= Best)
+					{
+						continue;
+					}
+					if (Pass == 0 ? Enemy[R] == 0 : !IsFoe(A->Polity, RuledBy[R]))
+					{
+						continue;
+					}
+					Best = Distance[R];
+					Aim = R;
 				}
-				Best = Distance[R];
-				Aim = R;
 			}
 
 			uint32 Walked = 0;
@@ -363,7 +374,7 @@ namespace Vaelen::Military
 		std::sort(Eaten.begin(), Eaten.end(), [](const auto& A, const auto& B) { return A.first < B.first; });
 
 		std::vector<std::pair<uint32, uint32>> Foes;
-		GatherFoes(W, Relations, Foes);
+		WarPairs(W, Relations, Foes);
 		auto IsFoe = [&](uint32 Mine, uint32 Theirs)
 		{ return Mine != 0 && Theirs != 0 && std::binary_search(Foes.begin(), Foes.end(), std::pair{Mine, Theirs}); };
 
@@ -374,6 +385,10 @@ namespace Vaelen::Military
 			bool Sealed = false;
 		};
 		std::vector<Pair> All;
+		// Where standing hosts are, so that an aim can be checked against the two
+		// things a host may march on: ground an enemy rules, or ground an enemy
+		// host is standing on - which may well be the marcher's own province.
+		std::vector<std::pair<uint32, uint32>> HostAt;
 		W.Components()
 			.GetPool(Armies.Army)
 			.ForEach(
@@ -381,8 +396,25 @@ namespace Vaelen::Military
 				{
 					const MarchOrder* O = W.Components().GetPool(Marches.Order).TryGet(H);
 					All.push_back(Pair{A, O != nullptr ? *O : MarchOrder{}, O != nullptr});
+					if (A.Disbanded == 0 && A.Strength != 0)
+					{
+						HostAt.push_back({A.Region, A.Polity});
+					}
 				});
 		std::sort(All.begin(), All.end(), [](const Pair& A, const Pair& B) { return A.Host.Index < B.Host.Index; });
+		std::sort(HostAt.begin(), HostAt.end());
+		auto EnemyStandsOn = [&](uint32 Mine, uint32 Region)
+		{
+			for (auto It = std::lower_bound(HostAt.begin(), HostAt.end(), std::pair{Region, 0u});
+				 It != HostAt.end() && It->first == Region; ++It)
+			{
+				if (It->second != Mine && IsFoe(Mine, It->second))
+				{
+					return true;
+				}
+			}
+			return false;
+		};
 
 		Hash64 D = HashString("Marches");
 		for (const Pair& P : All)
@@ -413,8 +445,10 @@ namespace Vaelen::Military
 				continue;
 			}
 			++S.Marching;
-			// The aim is ground held by somebody this polity is at war with.
-			S.Bad += P.Under.Aim < RuledBy.size() && IsFoe(P.Host.Polity, RuledBy[P.Under.Aim]) ? 0u : 1u;
+			// The aim is ground an enemy rules, or ground an enemy host stands on.
+			const bool Reasonable = P.Under.Aim < RuledBy.size() && (IsFoe(P.Host.Polity, RuledBy[P.Under.Aim]) ||
+																	 EnemyStandsOn(P.Host.Polity, P.Under.Aim));
+			S.Bad += Reasonable ? 0u : 1u;
 			if (P.Under.Arrived != 0)
 			{
 				++S.Arrived;

@@ -1,6 +1,6 @@
 // VAELEN - Tests/Military
-// Phase 08.02: marching - a host walks the region graph towards the nearest
-// enemy ground, one hop a season, and eats off whatever it stands on.
+// Phase 08.03: battle - two hosts of polities at war standing on one region,
+// settled in a year by strength, whose ground it is, and the stream.
 //
 // STATUS: PROTOTYPE (Phase 08)
 
@@ -12,6 +12,7 @@
 #include "Vaelen/Politics/Law.h"
 #include "Vaelen/Politics/Reach.h"
 #include "Vaelen/Military/Armies.h"
+#include "Vaelen/Military/Battle.h"
 #include "Vaelen/Military/March.h"
 #include "Vaelen/Politics/Diplomacy.h"
 #include "Vaelen/Politics/Factions.h"
@@ -52,16 +53,14 @@ using namespace Vaelen::WorldGen;
 
 // Recorded on clang 18 / Linux x86_64 (08.03): AELVOR 128 at year 300, the two
 // most peopled regions detailed, 100 years with every Phase 04 to 08 system so
-// far, marching included. Refrozen when 08.03 changed what a host marches on:
-// an enemy host before enemy ground, because two hosts each taking the nearest
-// enemy province never meet.
-#define VAELEN_MARCH_FROZEN_128 0x2956e5ee3a48ec46ull
-#define VAELEN_MARCH_WALKED_128 6u
-#define VAELEN_MARCH_MARCHES_128 2u
+// far, battles included.
+#define VAELEN_BATTLE_FROZEN_128 0x7a8c0c2222568ac7ull
+#define VAELEN_BATTLE_FOUGHT_128 75u
+#define VAELEN_BATTLE_FALLEN_128 2186u
 
 namespace
 {
-	VAELEN_DEFINE_LOG_CATEGORY(LogColumn);
+	VAELEN_DEFINE_LOG_CATEGORY(LogField);
 
 	constexpr uint64 AelvorSeed = 0x41454c564f52ull;
 
@@ -70,7 +69,8 @@ namespace
 		explicit Run(uint64 Seed, ArmyRules InHosts = ArmyRules{}, DiplomacyRules InTreaties = DiplomacyRules{},
 					 FactionRules InFactions = FactionRules{}, SuccessionRules InLine = SuccessionRules{},
 					 ReachRules InReach = ReachRules{}, LawRules InLaws = LawRules{},
-					 PolityRules InRules = PolityRules{}, MarchRules InColumns = MarchRules{})
+					 PolityRules InRules = PolityRules{}, MarchRules InColumns = MarchRules{},
+					 BattleRules InFields = BattleRules{})
 			: Instance(Config(Seed)), Ages(Instance, PreHistoryRules{})
 		{
 			Persons = PersonTypes::Declare(Instance, Ages);
@@ -94,6 +94,7 @@ namespace
 			Treaties = DiplomacyTypes::Declare(Instance);
 			Hosts = ArmyTypes::Declare(Instance);
 			Orders = MarchTypes::Declare(Instance);
+			Fields = BattleTypes::Declare(Instance);
 			Stores = Instance.Types().Register<RegionStores>("RegionStores"); // a council's granary (05.05)
 			Instance.Components().CreatePool(Stores);
 			LifeRules Life;
@@ -141,6 +142,8 @@ namespace
 													Hosts, InHosts);
 			Columns = std::make_unique<MarchSystem>(Instance, Ages.Types(), Economy, Polities, Reaches, Treaties, Hosts,
 													Orders, InColumns);
+			Swords = std::make_unique<BattleSystem>(Instance, Ages.Types(), Polities, Reaches, Treaties, Hosts, Orders,
+													Fields, InFields);
 			Words->ObserveContest(Treaties.Contested);
 			Houses->RunAfter("Lod");
 			Stocks->RunAfter("Lod");
@@ -169,6 +172,7 @@ namespace
 			Instance.Systems().Add(Envoys.get());
 			Instance.Systems().Add(Marshals.get());
 			Instance.Systems().Add(Columns.get());
+			Instance.Systems().Add(Swords.get());
 			Instance.Build();
 		}
 		static WorldConfig Config(uint64 Seed)
@@ -267,6 +271,28 @@ namespace
 		}
 		const MarchOrder* Order(uint32 Army) const { return OrderOf(Instance, Hosts, Orders, Army); }
 		const RegionForage* Forage(uint32 Region) const { return ForageOf(Instance, Ages.Types(), Orders, Region); }
+		BattleStats Fields_(BattleRules R = BattleRules{}) const
+		{
+			return MeasureBattles(Instance, Ages.Types(), Fields, R);
+		}
+		const BattleInfo* Battle(uint32 Index) const { return BattleOf(Instance, Fields, Index); }
+		std::vector<uint32> BattlesOn(uint32 Region) const
+		{
+			std::vector<uint32> Out;
+			BattlesIn(Instance, Fields, Region, Out);
+			return Out;
+		}
+		/// Every battle on record, in index order.
+		std::vector<BattleInfo> AllBattles() const
+		{
+			std::vector<BattleInfo> Out;
+			Instance.Components()
+				.GetPool(Fields.Battle)
+				.ForEach([&](EntityHandle, const BattleInfo& B) { Out.push_back(B); });
+			std::sort(Out.begin(), Out.end(),
+					  [](const BattleInfo& A, const BattleInfo& B) { return A.Index < B.Index; });
+			return Out;
+		}
 		/// The index of the first host standing, 0 when none is.
 		uint32 FirstHost() const
 		{
@@ -570,6 +596,7 @@ namespace
 		DiplomacyTypes Treaties;
 		ArmyTypes Hosts;
 		MarchTypes Orders;
+		BattleTypes Fields;
 		ComponentType<RegionStores> Stores;
 		std::unique_ptr<LifeSystem> Lives;
 		std::unique_ptr<FamilySystem> Houses;
@@ -592,6 +619,7 @@ namespace
 		std::unique_ptr<DiplomacySystem> Envoys;
 		std::unique_ptr<ArmySystem> Marshals;
 		std::unique_ptr<MarchSystem> Columns;
+		std::unique_ptr<BattleSystem> Swords;
 	};
 } // namespace
 
@@ -638,256 +666,190 @@ namespace
 	}
 } // namespace
 
-VAELEN_TEST(March, AHostMarchesOnTheNearestEnemyGround)
+VAELEN_TEST(Battle, TwoHostsOnOneGroundSettleIt)
 {
 	Run W(AelvorSeed, ArmyRules{}, DiplomacyRules{}, FactionRules{}, SuccessionRules{}, WideReach());
 	VT_REQUIRE(UntilWar(W, 40) != 0);
-	uint32 Raised = 0;
-	for (uint32 Year = 0; Year < 20 && Raised == 0; ++Year)
+	uint32 Fought = 0;
+	for (uint32 Year = 0; Year < 40 && Fought < 3; ++Year)
 	{
 		for (const uint32 P : W.Powers())
 		{
 			W.Endow(P, 60000);
 		}
 		W.Ages.Run(1);
-		Raised = W.Hosts_().Raisings;
+		const BattleStats S = W.Fields_();
+		Fought = S.Fought;
+		// Nothing a battle does may break the books of 08.01 or the orders of 08.02.
+		VT_CHECK_EQ(S.Bad, 0u);
+		VT_CHECK_EQ(W.Hosts_().Bad, 0u);
+		VT_CHECK_EQ(W.Columns_().Bad, 0u);
+		VT_CHECK_EQ(W.Hosts_().Away, W.Hosts_().Men);
 	}
-	VT_REQUIRE(Raised > 0);
+	VT_REQUIRE(Fought > 0);
+	const BattleStats S = W.Fields_();
+	VAELEN_LOG_INFO(LogField, "battles: %u fought, %u won on their own ground, %llu fallen, %u broken, %u fell back",
+					S.Fought, S.Defended, static_cast<unsigned long long>(S.Fallen), S.Breakings, S.Retreats);
+	VT_CHECK(S.Fallen > 0);
+	// Every battle has a loser, and a loser either falls back or is gone.
+	VT_CHECK_EQ(S.Breakings + S.Retreats, S.Battles_);
+	VT_CHECK_EQ(S.Battles_, S.Fought);
 
-	// Nothing walks faster than a hop a season, and a host that keeps the same
-	// aim gets closer to it every year until it is standing on it.
-	uint64 Walked = W.Columns_().Walked;
-	uint32 LastHost = 0;
-	uint32 LastAim = 0;
-	uint32 LastHops = 0;
-	for (uint32 Year = 0; Year < 40; ++Year)
+	// Every record is a battle between two powers, on ground that exists, with
+	// a winner that was there, and neither side losing men it did not bring.
+	const std::vector<BattleInfo> All = W.AllBattles();
+	VT_REQUIRE(!All.empty());
+	uint32 Index = 0;
+	for (const BattleInfo& B : All)
 	{
-		for (const uint32 P : W.Powers())
-		{
-			W.Endow(P, 60000);
-		}
-		W.Ages.Run(1);
-		const MarchStats M = W.Columns_();
-		const ArmyStats H = W.Hosts_();
-		VT_CHECK_EQ(M.Bad, 0u);
-		VT_CHECK_EQ(H.Bad, 0u);
-		VT_CHECK(M.Walked - Walked <= uint64{MarchRules{}.HopsPerYear} * H.Standing);
-		Walked = M.Walked;
-
-		const uint32 Host = W.FirstHost();
-		const MarchOrder* O = Host != 0 ? W.Order(Host) : nullptr;
-		if (O == nullptr || O->Aim == 0)
-		{
-			LastHost = 0;
-			LastAim = 0;
-			LastHops = 0;
-			continue;
-		}
-		if (Host == LastHost && O->Aim == LastAim && LastHops != 0)
-		{
-			VT_CHECK_MSG(O->Hops < LastHops || O->Arrived != 0, "year %u: host %u stuck %u hops from region %u", Year,
-						 Host, O->Hops, O->Aim);
-		}
-		LastHost = Host;
-		LastAim = O->Aim;
-		LastHops = O->Hops;
-	}
-
-	const MarchStats M = W.Columns_();
-	VAELEN_LOG_INFO(LogColumn, "march: %u under order, %u arrived, %u idle, %u abroad, %llu hops, %u marches",
-					M.Marching, M.Arrived, M.Idle, M.Abroad, static_cast<unsigned long long>(M.Walked), M.Marches);
-	// A host under an order is either walking towards its aim or standing on it.
-	VT_CHECK(M.Marches > 0 || M.Arrived > 0);
-	// Every host that has walked has walked somewhere real.
-	VT_CHECK_EQ(M.Bad, 0u);
-	VT_CHECK(M.Arrivals <= M.Marches + M.Arrived);
-}
-
-VAELEN_TEST(March, AHostEatsOffTheGroundItStandsOn)
-{
-	Run W(AelvorSeed, ArmyRules{}, DiplomacyRules{}, FactionRules{}, SuccessionRules{}, WideReach());
-	VT_REQUIRE(UntilWar(W, 40) != 0);
-	uint32 Host = 0;
-	for (uint32 Year = 0; Year < 20 && Host == 0; ++Year)
-	{
-		for (const uint32 P : W.Powers())
-		{
-			W.Endow(P, 60000);
-		}
-		W.Ages.Run(1);
-		Host = W.FirstHost();
-	}
-	VT_REQUIRE(Host != 0);
-
-	W.FillEvery(5000); // something worth eating on every region
-	for (const uint32 P : W.Powers())
-	{
-		W.Endow(P, 60000);
-	}
-	W.Ages.Run(1);
-	const ArmyInfo* A = W.Army(Host);
-	VT_REQUIRE(A != nullptr);
-	if (A->Disbanded == 0)
-	{
-		const RegionForage* F = W.Forage(A->Region);
-		VT_REQUIRE(F != nullptr);
-		VT_CHECK(F->Taken > 0);
-		// No cap per host: since 08.03 two hosts of powers at war end the year
-		// on the same ground on purpose, and the region feeds both of them.
-		VT_CHECK(F->Years >= 1);
-	}
-	const MarchStats M = W.Columns_();
-	VT_CHECK_EQ(M.Bad, 0u);
-	VT_CHECK(M.Foraged > 0);
-	VT_CHECK(M.Taken > 0);
-	VT_CHECK(M.Forages > 0);
-	VAELEN_LOG_INFO(LogColumn, "forage: %u region(s) eaten off, %llu grain taken, %u forages", M.Foraged,
-					static_cast<unsigned long long>(M.Taken), M.Forages);
-
-	// Ground nobody stood on this year is not being eaten.
-	uint32 Quiet = 0;
-	for (uint32 R = 1; R <= 120; ++R)
-	{
-		const RegionForage* F = W.Forage(R);
-		if (F == nullptr || F->Years != 0)
-		{
-			continue;
-		}
-		++Quiet;
-		VT_CHECK_EQ(F->Taken, 0u);
-	}
-	VAELEN_LOG_INFO(LogColumn, "%u region(s) had nobody standing on them", Quiet);
-
-	// A ravenous host strips the ground it stands on bare: the grain really
-	// leaves the region's common stock, it is not counted twice.
-	MarchRules Ravenous;
-	Ravenous.ForagePerManPerYear = 100000;
-	Run V(AelvorSeed, ArmyRules{}, DiplomacyRules{}, FactionRules{}, SuccessionRules{}, WideReach(), LawRules{},
-		  PolityRules{}, Ravenous);
-	VT_REQUIRE(UntilWar(V, 40) != 0);
-	uint32 Starving = 0;
-	for (uint32 Year = 0; Year < 20 && Starving == 0; ++Year)
-	{
-		for (const uint32 P : V.Powers())
-		{
-			V.Endow(P, 60000);
-		}
-		V.Ages.Run(1);
-		Starving = V.FirstHost();
-	}
-	if (Starving != 0)
-	{
-		const ArmyInfo* B = V.Army(Starving);
-		VT_REQUIRE(B != nullptr);
-		const EntityHandle Ground = V.RegionHandle(B->Region);
-		VT_REQUIRE(!Ground.IsNull());
-		const RegionStock* Left = V.Instance.Components().GetPool(V.Economy.Region).TryGet(Ground);
-		VT_REQUIRE(Left != nullptr);
-		VT_CHECK_EQ(Left->Amount[static_cast<uint32>(Good::Grain)], 0u);
-		VT_CHECK_EQ(V.Columns_(Ravenous).Bad, 0u);
+		VT_CHECK_EQ(B.Index, ++Index);
+		VT_CHECK(B.Attacker != 0 && B.Defender != 0 && B.Attacker != B.Defender);
+		VT_CHECK(B.Winner == B.Attacker || B.Winner == B.Defender);
+		VT_CHECK(B.AttackerMen > 0 && B.DefenderMen > 0);
+		VT_CHECK(B.AttackerLost <= B.AttackerMen && B.DefenderLost <= B.DefenderMen);
+		VT_CHECK(B.AttackerArmy != B.DefenderArmy);
+		VT_CHECK(B.Identity != 0 && B.Fought != 0);
+		// The side that lost lost the greater share of what it brought.
+		const uint64 AttShare = uint64{B.AttackerLost} * 1000u / B.AttackerMen;
+		const uint64 DefShare = uint64{B.DefenderLost} * 1000u / B.DefenderMen;
+		VT_CHECK_MSG(B.Winner == B.Attacker ? AttShare <= DefShare : DefShare <= AttShare,
+					 "battle %u: winner %u lost %llu per mille against %llu", B.Index, B.Winner,
+					 static_cast<unsigned long long>(B.Winner == B.Attacker ? AttShare : DefShare),
+					 static_cast<unsigned long long>(B.Winner == B.Attacker ? DefShare : AttShare));
+		// The region remembers what was fought on it.
+		const std::vector<uint32> There = W.BattlesOn(B.Region);
+		VT_CHECK(std::find(There.begin(), There.end(), B.Index) != There.end());
 	}
 }
 
-VAELEN_TEST(March, RulesAndEdges)
+VAELEN_TEST(Battle, StrengthGroundAndTheStream)
 {
-	// A world with nothing in it has nothing marching, and the lookups refuse
+	// With no ground and no luck, the bigger host wins and a tie goes to the
+	// side that did not have to come.
+	BattleRules Bare;
+	Bare.GroundPerMille = 0;
+	Bare.LuckPerMille = 0;
+	Run F(AelvorSeed, ArmyRules{}, DiplomacyRules{}, FactionRules{}, SuccessionRules{}, WideReach(), LawRules{},
+		  PolityRules{}, MarchRules{}, Bare);
+	VT_REQUIRE(UntilWar(F, 40) != 0);
+	for (uint32 Year = 0; Year < 30 && F.Fields_(Bare).Fought < 3; ++Year)
+	{
+		for (const uint32 P : F.Powers())
+		{
+			F.Endow(P, 60000);
+		}
+		F.Ages.Run(1);
+	}
+	const std::vector<BattleInfo> Plain = F.AllBattles();
+	VT_REQUIRE(!Plain.empty());
+	for (const BattleInfo& B : Plain)
+	{
+		VT_CHECK_EQ(B.Ground, 0u);
+		VT_CHECK_EQ(B.Winner, B.AttackerMen > B.DefenderMen ? B.Attacker : B.Defender);
+	}
+	VT_CHECK_EQ(F.Fields_(Bare).Bad, 0u);
+	VAELEN_LOG_INFO(LogField, "bare: %u battle(s), decided on numbers alone", F.Fields_(Bare).Fought);
+
+	// Give the ground real weight and the side that holds it wins battles it
+	// would otherwise lose - and the bonus is the defender's alone.
+	BattleRules Home;
+	Home.GroundPerMille = 5000;
+	Home.LuckPerMille = 0;
+	Run H(AelvorSeed, ArmyRules{}, DiplomacyRules{}, FactionRules{}, SuccessionRules{}, WideReach(), LawRules{},
+		  PolityRules{}, MarchRules{}, Home);
+	VT_REQUIRE(UntilWar(H, 40) != 0);
+	for (uint32 Year = 0; Year < 30 && H.Fields_(Home).Fought < 3; ++Year)
+	{
+		for (const uint32 P : H.Powers())
+		{
+			H.Endow(P, 60000);
+		}
+		H.Ages.Run(1);
+	}
+	const std::vector<BattleInfo> Held = H.AllBattles();
+	VT_REQUIRE(!Held.empty());
+	uint32 OnOwnGround = 0;
+	for (const BattleInfo& B : Held)
+	{
+		VT_CHECK(B.Ground <= Home.GroundPerMille);
+		const uint64 Standing = uint64{B.DefenderMen} * (1000u + B.Ground) / 1000u;
+		VT_CHECK_MSG(B.Winner == (uint64{B.AttackerMen} > Standing ? B.Attacker : B.Defender),
+					 "battle %u: %u attackers against %u defenders worth %llu, won by %u", B.Index, B.AttackerMen,
+					 B.DefenderMen, static_cast<unsigned long long>(Standing), B.Winner);
+		OnOwnGround += B.Ground > 0 ? 1u : 0u;
+	}
+	VT_CHECK_EQ(H.Fields_(Home).Bad, 0u);
+	VAELEN_LOG_INFO(LogField, "ground: %u battle(s), %u fought on the defender's own ground",
+					static_cast<uint32>(Held.size()), OnOwnGround);
+}
+
+VAELEN_TEST(Battle, RulesAndEdges)
+{
+	// A world with nothing in it has fought nothing, and the lookups refuse
 	// what does not exist.
 	Run Empty(AelvorSeed);
-	const MarchStats Nothing = Empty.Columns_();
-	VT_CHECK_EQ(Nothing.Marching, 0u);
-	VT_CHECK_EQ(Nothing.Idle, 0u);
-	VT_CHECK_EQ(Nothing.Walked, 0u);
+	const BattleStats Nothing = Empty.Fields_();
+	VT_CHECK_EQ(Nothing.Fought, 0u);
+	VT_CHECK_EQ(Nothing.Fallen, 0u);
 	VT_CHECK_EQ(Nothing.Bad, 0u);
-	VT_CHECK(Empty.Order(0xfffffff0u) == nullptr);
-	VT_CHECK(Empty.Forage(0xfffffff0u) == nullptr);
+	VT_CHECK(Empty.Battle(0xfffffff0u) == nullptr);
+	VT_CHECK(Empty.BattlesOn(0).empty());
+	VT_CHECK(Empty.BattlesOn(0xfffffff0u).empty());
 
-	// A host under orders it cannot walk stays where it was raised, and one
-	// that takes nothing off the land takes nothing.
-	MarchRules Still;
-	Still.HopsPerYear = 0;
-	Still.ForagePerManPerYear = 0;
+	// A host that never breaks always falls back.
+	BattleRules Stubborn;
+	Stubborn.BreakUnderPerMille = 0;
 	Run S(AelvorSeed, ArmyRules{}, DiplomacyRules{}, FactionRules{}, SuccessionRules{}, WideReach(), LawRules{},
-		  PolityRules{}, Still);
+		  PolityRules{}, MarchRules{}, Stubborn);
 	VT_REQUIRE(UntilWar(S, 40) != 0);
-	uint32 Rooted = 0;
-	for (uint32 Year = 0; Year < 20 && Rooted == 0; ++Year)
+	for (uint32 Year = 0; Year < 30 && S.Fields_(Stubborn).Fought < 3; ++Year)
 	{
 		for (const uint32 P : S.Powers())
 		{
 			S.Endow(P, 60000);
 		}
 		S.Ages.Run(1);
-		Rooted = S.FirstHost();
 	}
-	VT_REQUIRE(Rooted != 0);
-	const uint32 Raised = S.Army(Rooted)->Region;
-	for (uint32 Year = 0; Year < 5; ++Year)
-	{
-		for (const uint32 P : S.Powers())
-		{
-			S.Endow(P, 60000);
-		}
-		S.Ages.Run(1);
-		const ArmyInfo* A = S.Army(Rooted);
-		VT_REQUIRE(A != nullptr);
-		if (A->Disbanded != 0)
-		{
-			break;
-		}
-		VT_CHECK_EQ(A->Region, Raised);
-	}
-	const MarchStats Stood = S.Columns_(Still);
-	VT_CHECK_EQ(Stood.Walked, 0u);
-	VT_CHECK_EQ(Stood.Marches, 0u);
-	VT_CHECK_EQ(Stood.Taken, 0u);
-	VT_CHECK_EQ(Stood.Forages, 0u);
-	VT_CHECK_EQ(Stood.Bad, 0u);
+	const BattleStats Held = S.Fields_(Stubborn);
+	VT_REQUIRE(Held.Fought > 0);
+	VT_CHECK_EQ(Held.Breakings, 0u);
+	VT_CHECK_EQ(Held.Retreats, Held.Battles_);
+	VT_CHECK_EQ(Held.Bad, 0u);
+	VT_CHECK_EQ(S.Hosts_().Away, S.Hosts_().Men);
 
-	// A host that cannot see past its own ground marches on nothing.
-	MarchRules Blind;
-	Blind.AimWithin = 0;
+	// A host that always breaks, and loses every man doing it, leaves nothing
+	// behind and no region owing men to nobody.
+	BattleRules Bloody;
+	Bloody.LoserLostPerMille = 1000;
+	Bloody.BreakUnderPerMille = 100000;
 	Run B(AelvorSeed, ArmyRules{}, DiplomacyRules{}, FactionRules{}, SuccessionRules{}, WideReach(), LawRules{},
-		  PolityRules{}, Blind);
+		  PolityRules{}, MarchRules{}, Bloody);
 	VT_REQUIRE(UntilWar(B, 40) != 0);
-	uint32 Sighted = 0;
-	for (uint32 Year = 0; Year < 20 && Sighted == 0; ++Year)
+	for (uint32 Year = 0; Year < 30 && B.Fields_(Bloody).Fought < 2; ++Year)
 	{
 		for (const uint32 P : B.Powers())
 		{
 			B.Endow(P, 60000);
 		}
 		B.Ages.Run(1);
-		Sighted = B.FirstHost();
 	}
-	VT_REQUIRE(Sighted != 0);
-	const MarchStats Near = B.Columns_(Blind);
-	VT_CHECK_EQ(Near.Marching, 0u);
-	VT_CHECK_EQ(Near.Walked, 0u);
-	VT_CHECK_EQ(Near.Arrivals, 0u);
-	VT_CHECK(Near.Idle > 0);
-	VT_CHECK_EQ(Near.Bad, 0u);
-
-	// A host that went home is under no order at all.
-	const MarchOrder* Gone = nullptr;
-	B.Instance.Components()
-		.GetPool(B.Hosts.Army)
-		.ForEach(
-			[&](EntityHandle H, const ArmyInfo& A)
-			{
-				if (A.Disbanded != 0 && Gone == nullptr)
-				{
-					Gone = B.Instance.Components().GetPool(B.Orders.Order).TryGet(H);
-				}
-			});
-	if (Gone != nullptr)
+	const BattleStats Slaughter = B.Fields_(Bloody);
+	VT_REQUIRE(Slaughter.Fought > 0);
+	VT_CHECK_EQ(Slaughter.Retreats, 0u);
+	VT_CHECK_EQ(Slaughter.Breakings, Slaughter.Battles_);
+	VT_CHECK_EQ(Slaughter.Bad, 0u);
+	for (const BattleInfo& Record : B.AllBattles())
 	{
-		VT_CHECK_EQ(Gone->Aim, 0u);
-		VT_CHECK_EQ(Gone->Hops, 0u);
-		VT_CHECK_EQ(Gone->Arrived, 0u);
+		const uint32 LoserMen = Record.Winner == Record.Attacker ? Record.DefenderMen : Record.AttackerMen;
+		const uint32 LoserLost = Record.Winner == Record.Attacker ? Record.DefenderLost : Record.AttackerLost;
+		VT_CHECK_EQ(LoserLost, LoserMen);
 	}
+	VT_CHECK_EQ(B.Hosts_().Away, B.Hosts_().Men);
+	VT_CHECK_EQ(B.Hosts_().Bad, 0u);
+	VAELEN_LOG_INFO(LogField, "edges: %u fell back, %u were wiped out", Held.Retreats, Slaughter.Breakings);
 }
 
-VAELEN_TEST(March, DeterministicSnapshotSafeAndFrozen)
+VAELEN_TEST(Battle, DeterministicSnapshotSafeAndFrozen)
 {
 	Run A(AelvorSeed, ArmyRules{}, DiplomacyRules{}, FactionRules{}, SuccessionRules{}, WideReach());
 	Run B(AelvorSeed, ArmyRules{}, DiplomacyRules{}, FactionRules{}, SuccessionRules{}, WideReach());
@@ -914,28 +876,26 @@ VAELEN_TEST(March, DeterministicSnapshotSafeAndFrozen)
 		{
 			continue;
 		}
-		const MarchStats S = A.Columns_();
-		if (S.Bad != 0 || A.Columns_().Digest != B.Columns_().Digest)
+		const BattleStats S = A.Fields_();
+		if (S.Bad != 0 || A.Fields_().Digest != B.Fields_().Digest)
 		{
 			++Failures;
-			VT_CHECK_MSG(false, "year %u: %u bad, marches %s", Year, S.Bad,
-						 A.Columns_().Digest == B.Columns_().Digest ? "same" : "differ");
+			VT_CHECK_MSG(false, "year %u: %u bad, battles %s", Year, S.Bad,
+						 A.Fields_().Digest == B.Fields_().Digest ? "same" : "differ");
 		}
 	}
 	VT_CHECK_EQ(Failures, 0u);
-	const MarchStats S = A.Columns_();
-	VAELEN_LOG_INFO(LogColumn,
-					"frozen: marches128=%016llx walked=%llu marches=%u (%u marching, %u arrived, %u idle, %u abroad, "
-					"%llu taken)",
-					static_cast<unsigned long long>(S.Digest), static_cast<unsigned long long>(S.Walked), S.Marches,
-					S.Marching, S.Arrived, S.Idle, S.Abroad, static_cast<unsigned long long>(S.Taken));
-	VT_CHECK_EQ(S.Digest, Hash64{VAELEN_MARCH_FROZEN_128});
-	VT_CHECK_EQ(S.Walked, uint64{VAELEN_MARCH_WALKED_128});
-	VT_CHECK_EQ(S.Marches, uint32{VAELEN_MARCH_MARCHES_128});
+	const BattleStats S = A.Fields_();
+	VAELEN_LOG_INFO(LogField, "frozen: battles128=%016llx fought=%u fallen=%llu (%u defended, %u broken, %u fell back)",
+					static_cast<unsigned long long>(S.Digest), S.Fought, static_cast<unsigned long long>(S.Fallen),
+					S.Defended, S.Breakings, S.Retreats);
+	VT_CHECK_EQ(S.Digest, Hash64{VAELEN_BATTLE_FROZEN_128});
+	VT_CHECK_EQ(S.Fought, uint32{VAELEN_BATTLE_FOUGHT_128});
+	VT_CHECK_EQ(S.Fallen, uint64{VAELEN_BATTLE_FALLEN_128});
 	VT_REQUIRE(!Image.empty());
 	Run R(AelvorSeed, ArmyRules{}, DiplomacyRules{}, FactionRules{}, SuccessionRules{}, WideReach());
 	VT_REQUIRE(LoadSnapshot(R.Instance, Image.data(), Image.size()) == SnapshotResult::Ok);
 	R.Ages.Run(50);
 	VT_CHECK_EQ(ComputeStateDigest(R.Instance), ComputeStateDigest(A.Instance));
-	VT_CHECK_EQ(R.Columns_().Digest, S.Digest);
+	VT_CHECK_EQ(R.Fields_().Digest, S.Digest);
 }

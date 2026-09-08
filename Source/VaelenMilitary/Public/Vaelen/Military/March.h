@@ -7,8 +7,12 @@
 // A host raised at a seat is of no use at the seat. It marches, and it marches
 // on the region graph the world was partitioned into (02.05), one hop a
 // season: four hops a year, no faster, whatever the distance. Its aim is the
-// nearest ground held by somebody its polity is at war with - nearest by hops,
-// not by miles, because the graph is what an army can actually walk.
+// nearest ground an enemy host is standing on, and failing that the nearest
+// ground an enemy rules - nearest by hops, not by miles, because the graph is
+// what an army can actually walk. Hosts before ground, because two hosts each
+// taking the nearest enemy province take the one on their own side of the
+// border and pass each other by; 08.03 found that out the hard way, with two
+// powers at war for two hundred and forty years and not one battle.
 //
 // Marching is not free and it is not paid for by the treasury. A host eats off
 // the ground it stands on, and the ground it stands on is a region with a
@@ -148,8 +152,8 @@ namespace Vaelen::Military
 		uint32 Marches = 0;	 ///< events, from the log
 		uint32 Forages = 0;
 		uint32 Arrivals = 0;
-		uint32 Bad = 0;	   ///< an order left on a host that went home, a host abroad under no order,
-						   ///< an aim that is not enemy ground, an arrival that is not where it stands
+		uint32 Bad = 0; ///< an order left on a host that went home, an aim that is neither enemy ground
+		///< nor ground an enemy host stands on, an arrival that is not where it stands
 		Hash64 Digest = 0; ///< every order in army index order, then every forage in region order
 	};
 	VAELEN_MILITARY_API MarchStats MeasureMarches(const World& W, const History::PreHistoryTypes& Types,

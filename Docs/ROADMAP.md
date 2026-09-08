@@ -75,7 +75,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 05 | SOCIETY | Organisations, social structure, status, bondage and slavery as institutions, norms. | VALIDATED (headless, 05.01-05.08); UNVERIFIED (engine) |
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | VALIDATED (headless, 06.01-06.08); UNVERIFIED (engine) |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | VALIDATED headless (07.01-07.08, phase closed); UNVERIFIED under UBT |
-| 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | IN PROGRESS (08.01-08.02 VALIDATED headless; 08.03-08.08 PLANNED) |
+| 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | IN PROGRESS (08.01-08.03 VALIDATED headless; 08.04-08.08 PLANNED) |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | PLANNED |
 | 10 | PLAYER | The player as one simulated person: enslaved start, body, needs, skills, relationships; player intent as commands into the simulation. | PLANNED |
 | 11 | MINING COLONY | The starting place: a huge autonomous mining colony simulated by the same systems at full detail. | PLANNED |
@@ -2145,13 +2145,52 @@ Every task ends with the usual report block, the docs refreshed and a commit.
   no order, and the lookups refuse what does not exist; determinism, snapshot continuity, frozen
   marches digest `ae71515bd66bae56` after 100 years (16 hops walked, 9 marches).
 - Decision: ADR-0065.
+- Amended by 08.03: the aim rule as first written sent every host to the nearest ground an enemy
+  ruled, which is the province on its own side of the border, so two powers were at war for two
+  hundred and forty years without their hosts meeting once. A host now marches on the nearest ground
+  an enemy host is standing on, read live so that a host that marched earlier the same year is
+  marched on where it is now, and falls back on nearest enemy ground only when no host is in reach.
+  `MeasureMarches` checks the aim against both. Marches digest refrozen to `2956e5ee3a48ec46`
+  (6 hops walked, 2 marches).
+
+### 08.03 Battle - VALIDATED (headless)
+
+- Delivered: `IdKind::Battle`, `Battle.h/.cpp` - `BattleInfo` (64 bytes: the ground, the two polities
+  and their two armies, the men each brought and each lost, the winner, what the ground was worth,
+  the tick, an identity from the world seed) on entities of kind Battle, written once and never
+  changed because a battle is a thing that happened; `BattleTypes::Declare`, `BattleRules` (300 per
+  mille at a full hold for fighting on your own ground, a swing of 150 per mille either way from the
+  stream, 350 per mille of the beaten host lost and 120 of the winner, a loser left under 350 per
+  mille of the winner is gone), events BattleFought, ArmyBroken, ArmyRetreated, `BattleSystem` (LOD
+  World, after Marching: in every region where two hosts of polities at war stand, the first pair in
+  army index order settles it - strength, the defender's hold, and two draws from a stream fixed by
+  the world seed and the tick; the fallen of both sides leave the levies of the regions that gave
+  them; a broken host is disbanded where it stands and a beaten one falls back on the nearest
+  neighbouring region its own polity rules and loses its marching orders), `BattleOf`, `BattlesIn`,
+  `MeasureBattles`. Two supporting changes: `ReleaseLevy` lifted out of `ArmySystem` as the single
+  way men ever leave an army - going home, drifting away unfed, or falling - and `WarPairs` lifted
+  out of the march, so who is at war with whom is read one way.
+- Defect closed in 08.01: a region whose men were already away for one polity could be levied again
+  by whoever next held the ground, which wrote over the first claim; when that first army was
+  destroyed its men could not be found, and the count of men away stopped matching the count of men
+  under arms. Such a region now gives nobody, and every release is checked to the man with an ensure.
+- Tests (4): two hosts on one ground settle it, every record is a battle between two powers on ground
+  that exists with a winner that was there and neither side losing men it did not bring, the loser
+  loses the greater share, every battle ends in a retreat or a breaking and nothing it does breaks the
+  books of 08.01 or the orders of 08.02; with no ground and no luck the bigger host wins and a tie
+  goes to the side that did not have to come, and with the ground made decisive the bonus is the
+  defender's alone; a host that never breaks always falls back, one that always breaks and loses every
+  man doing it leaves no region owing men to nobody, and the lookups refuse what does not exist;
+  determinism, snapshot continuity, frozen battles digest `7a8c0c2222568ac7` after 100 years
+  (75 fought, 2186 fallen).
+- Decision: ADR-0066.
 
 ## 12b. Phases 09-20: notes
 
  Fixed points already in the code: `IdKind` values for Region, Tile, River,
 ResourceDeposit (Phase 02), Culture, Language, Religion, Person, Family, Organization
 (Phases 03-05), Item, Building, Settlement, Market, Route (Phases 06, 09), Polity, Law,
-Army, War (Phases 07-08), Document, Map (Phase 12); `VAELEN_SAVE_FORMAT_VERSION`
+Army, War, Faction, Treaty, Battle (Phases 07-08), Document, Map (Phase 12); `VAELEN_SAVE_FORMAT_VERSION`
 (Phase 16); `Config/DefaultEngine.ini` and `DefaultInput.ini` note that the game engine
 class and Enhanced Input mappings arrive in Phase 10.
 
@@ -2163,47 +2202,58 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 08 — MILITARY
-TASK        : 08.02 — MARCHING
+TASK        : 08.03 — BATTLE
 STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███████████████████░░░░░ 77%
+███████████████████░░░░░ 78%
 
 CURRENTLY
-→ 08.02 closed: a host raised at a seat is of no use at the seat. It walks the region graph the world
-  was partitioned into in 02.05, one hop a season - four hops a year, no faster, whatever the distance -
-  towards the nearest ground held by somebody its polity is at war with. Nearest by hops, not by miles,
-  because the graph is what an army can actually walk. Marching is not paid for by the treasury: a host
-  eats off the ground it ends the year on, out of the region's common stock, and a host standing on
-  somebody else's ground loosens their grip on it - it does not take the region, 08.04 does that, but
-  07.03 already knows what a grip that keeps loosening comes to. MarchOrder, RegionForage, OrderOf,
-  ForageOf, MeasureMarches
+→ 08.03 closed: two hosts of powers at war standing on one region settle it in a year - no manoeuvring,
+  no second round, no reinforcement. Three things decide it: how many men each side has, whose ground
+  it is (07.03 already measures how firmly a polity holds a region, and a host fighting where the
+  people obey its own ruler is not fighting the same battle as one deep in a stranger's province), and
+  a draw from a stream fixed by the world seed. The fallen leave the levies of the regions that gave
+  them, so the men away stay exactly the men under arms. A host left far weaker than the one that beat
+  it is gone; one that merely lost falls back on the nearest ground its own polity rules and loses its
+  marching orders. BattleInfo, BattleOf, BattlesIn, MeasureBattles
+
+  Two defects the battles exposed and this task closed. 08.02's aim rule sent every host to the nearest
+  enemy province - which is on its own side of the border - so two powers were at war for two hundred
+  and forty years without meeting once: a host now marches on an enemy host before it marches on enemy
+  ground. And 08.01 let a region whose men were already away be levied again by whoever took the
+  ground, writing over the first claim and leaving men no army accounted for when that first army was
+  destroyed; such a region now gives nobody, and every release of a levy is checked to the man.
 
 COMPLETED
 ✓ Phases 00-07 (headless, Phase 07 closed) (CI 68)
 ✓ 08.01 levies and armies (4 tests: Armies) (CI 69)
 ✓ 08.02 marching (4 tests: March)
+✓ 08.03 battle (4 tests: Battle)
 
 NEXT
-→ 08.03 Battle: two armies in one region resolve by strength, ground and a stream drawn from the world seed
-→ 08.04 Siege
+→ 08.04 Siege: an army before a seat; a capital taken only here, and what that does to the polity of 07.01
+→ 08.05 War as a thing with a beginning and an end
 
 FILES
-+ Source/VaelenMilitary/Public/Vaelen/Military/March.h, Private/March.cpp
-+ Tests/Military/Test_March.cpp
-~ Source/VaelenMilitary/CMakeLists.txt, Public/Vaelen/Military/Armies.h, Private/Armies.cpp
-~ Source/Vaelen/Private/VaelenAtlasActor.cpp
++ Source/VaelenMilitary/Public/Vaelen/Military/Battle.h, Private/Battle.cpp
++ Tests/Military/Test_Battle.cpp
+~ Source/VaelenMilitary/ (CMakeLists.txt, Armies.h, Armies.cpp, March.h, March.cpp)
+~ Source/VaelenCore/ (Public/Vaelen/Core/Ids.h, Private/Ids.cpp) — IdKind::Battle
+~ Tests/Core/Test_Ids.cpp, Tests/Military/Test_March.cpp
 
 TESTS
 ✓ Core 133 (108 without asserts) + Sim 160 + Population 36 + Society 27 + Economy 26
-  + Politics 28 + Military 8 (8 without asserts); ctest 81/81 in all six Linux presets;
-  every earlier frozen digest unchanged
-✓ AELVOR 128, two powers over 100 years: frozen marches digest ae71515bd66bae56 (16 hops walked, 9 marches),
-  frozen armies digest 028ec9ea8f5092f7 unchanged
-✓ Purity: 126 files, 0 violations
+  + Politics 28 + Military 12 (12 without asserts); ctest 82/82 in all six Linux presets
+✓ AELVOR 128, two powers over 100 years: frozen battles digest 7a8c0c2222568ac7 (75 fought, 2186 fallen);
+  marches digest 2956e5ee3a48ec46 (6 hops, 2 marches); armies digest 028ec9ea8f5092f7 unchanged
+✓ Purity: 128 files, 0 violations
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)
+! CI 73 (08.02) lost its three slowest legs - linux-clang-debug, linux-gcc-debug and macOS - to the
+  30 minute job timeout, not to a failure: the suite grows with every phase and the debug legs run
+  every gate with assertions on. Raised to 50 minutes (70 on Windows) with this task.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 

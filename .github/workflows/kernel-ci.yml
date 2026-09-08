@@ -21,7 +21,9 @@ jobs:
   linux:
     name: Linux (${{ matrix.preset }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # The suite grows with every phase and the debug legs run every gate with
+    # assertions on; 30 minutes was cutting it fine by Phase 08.
+    timeout-minutes: 50
     strategy:
       fail-fast: false
       matrix:
@@ -57,7 +59,7 @@ jobs:
   windows:
     name: Windows (MSVC)
     runs-on: windows-2022
-    timeout-minutes: 45
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -73,7 +75,7 @@ jobs:
   macos:
     name: macOS (AppleClang)
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6

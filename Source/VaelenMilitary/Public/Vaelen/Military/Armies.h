@@ -30,6 +30,7 @@
 
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace Vaelen
@@ -138,6 +139,21 @@ namespace Vaelen::Military
 	/// What a region has given (nullptr when it has never been called upon).
 	VAELEN_MILITARY_API const RegionLevy* LevyOf(const World& W, const History::PreHistoryTypes& Types,
 												 const ArmyTypes& Armies, uint32 Region);
+	/// Take Men off a polity's levies, in region order, and return how many were
+	/// accounted for. Men leave an army in three ways - they go home when it is
+	/// disbanded, they drift away when it is not fed, they fall in a battle - and
+	/// all three end here, because in every one of them the region stops having men
+	/// away. Whether they walked home or died is 08.06's business; the levy only
+	/// knows they are no longer under arms, which is what keeps the men the regions
+	/// say are away exactly equal to the men under arms.
+	VAELEN_MILITARY_API uint32 ReleaseLevy(World& W, const History::PreHistoryTypes& Types, const ArmyTypes& Armies,
+										   uint32 Polity, uint32 Men);
+	/// Every ordered pair of polities at war, sorted, so that a caller can ask
+	/// whether one is at war with another by binary search. Both (A, B) and (B, A)
+	/// are listed, because who declared what is 07.06's business and not the
+	/// army's.
+	VAELEN_MILITARY_API void WarPairs(const World& W, const Politics::DiplomacyTypes& Relations,
+									  std::vector<std::pair<uint32, uint32>>& Out);
 
 	struct ArmyStats
 	{

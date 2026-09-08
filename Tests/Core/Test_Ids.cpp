@@ -51,6 +51,7 @@ namespace
 		IdKind::War,
 		IdKind::Faction,
 		IdKind::Treaty,
+		IdKind::Battle,
 		IdKind::Document,
 		IdKind::Map,
 		IdKind::MaxValue,
@@ -59,11 +60,15 @@ namespace
 
 	// Kinds that may be handed to IdAllocator::Allocate (everything but None).
 	constexpr IdKind AllocatableKinds[] = {
-		IdKind::Entity,	 IdKind::Event,	   IdKind::Region,	   IdKind::Tile,	IdKind::River,	IdKind::ResourceDeposit,
-		IdKind::Culture, IdKind::Language, IdKind::Religion,   IdKind::Person,	IdKind::Family, IdKind::Organization,
-		IdKind::Item,	 IdKind::Building, IdKind::Settlement, IdKind::Market,	IdKind::Route,	IdKind::Polity,
-		IdKind::Law,	 IdKind::Army,	   IdKind::War,		   IdKind::Faction, IdKind::Treaty, IdKind::Document,
-		IdKind::Map,	 IdKind::MaxValue,
+		IdKind::Entity,	  IdKind::Event,	IdKind::Region,
+		IdKind::Tile,	  IdKind::River,	IdKind::ResourceDeposit,
+		IdKind::Culture,  IdKind::Language, IdKind::Religion,
+		IdKind::Person,	  IdKind::Family,	IdKind::Organization,
+		IdKind::Item,	  IdKind::Building, IdKind::Settlement,
+		IdKind::Market,	  IdKind::Route,	IdKind::Polity,
+		IdKind::Law,	  IdKind::Army,		IdKind::War,
+		IdKind::Faction,  IdKind::Treaty,	IdKind::Battle,
+		IdKind::Document, IdKind::Map,		IdKind::MaxValue,
 	};
 	constexpr usize AllocatableKindCount = ArrayCount(AllocatableKinds);
 

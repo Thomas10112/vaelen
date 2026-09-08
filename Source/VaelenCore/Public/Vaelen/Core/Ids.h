@@ -72,6 +72,7 @@ namespace Vaelen
 		War = 43,
 		Faction = 44,
 		Treaty = 45,
+		Battle = 46,
 
 		// -- Knowledge (Phase 12) --
 		Document = 50,

@@ -88,6 +88,7 @@ Rules for this file:
 | [0063](#adr-0063-a-seat-cannot-be-taken) | A seat cannot be taken | Accepted; headless VALIDATED |
 | [0064](#adr-0064-an-army-is-people-taken-out-of-regions) | An army is people taken out of regions | Accepted; headless VALIDATED |
 | [0065](#adr-0065-a-host-walks-the-region-graph-and-eats-what-it-stands-on) | A host walks the region graph, and eats what it stands on | Accepted; headless VALIDATED |
+| [0066](#adr-0066-a-battle-is-settled-in-one-year-by-numbers-ground-and-a-stream) | A battle is settled in one year by numbers, ground and a stream | Accepted; headless VALIDATED |
 
 ---
 
@@ -3890,9 +3891,90 @@ is how the world is partitioned into places with names, rulers and people.
 
 ### Status
 
-Accepted 2026-09-08. Files: `Source/VaelenMilitary/Public/Vaelen/Military/March.h`,
+Accepted 2026-09-08, amended the same day by ADR-0066: point 3 as first written
+sent every host to the nearest ground an enemy ruled, which is the province on
+its own side of the border, and two powers were at war for two hundred and forty
+years without their hosts meeting once. A host now marches on the nearest ground
+an enemy host is standing on and falls back on nearest enemy ground only when no
+host is in reach. Files: `Source/VaelenMilitary/Public/Vaelen/Military/March.h`,
 `Source/VaelenMilitary/Private/March.cpp`, `Tests/Military/Test_March.cpp`
 (4 tests). Headless VALIDATED on the six Linux presets.
+
+---
+
+## ADR-0066: A battle is settled in one year by numbers, ground and a stream
+
+### Context
+
+08.02 puts hosts in motion, and sooner or later two of them, of polities at
+war, end a year on the same region. Something has to settle that, and the range
+of possible answers is wide: a tactical model with terrain, formations and
+rounds at one end, a coin flip at the other.
+
+### Decision
+
+1. **A battle is settled in one year, once.** No manoeuvring, no second round,
+   no reinforcement. The simulation's finest step at this LOD is the year, and
+   a model with rounds inside a year would be inventing detail the rest of the
+   world cannot answer.
+2. **Three things decide it and nothing else**: how many men each side has,
+   whose ground it is, and a draw from a stream fixed by the world seed and the
+   tick. The ground counts because 07.03 already measures how firmly a polity
+   holds a region: a host fighting where the people obey its own ruler is not
+   fighting the same battle as one deep in a stranger's province. The stream is
+   what keeps the bigger host from always winning without making the outcome
+   arbitrary - the swing is bounded, and the same seed always fights the same
+   battle.
+3. **The defender is the side whose ground it is**, and on nobody's ground the
+   host raised first. A tie goes to the defender, because the side that did not
+   have to come is the side that keeps the field.
+4. **The fallen leave the levies of the regions that gave them.** Whether they
+   died or scattered is 08.06's to say; the levy only knows they are no longer
+   under arms, which is what keeps the men the regions say are away exactly
+   equal to the men under arms (ADR-0064).
+5. **A host left far weaker than the one that beat it is gone**; one that merely
+   lost falls back on the nearest neighbouring region its own polity rules, and
+   loses its marching orders, because a beaten army is under no orders until it
+   is given new ones.
+6. **A battle does not take ground.** Standing somewhere and holding it are
+   different things; ground changes hands at a seat, before walls, in 08.04.
+
+### Alternatives and decision rule
+
+- Rounds within a year, with morale and formations: rejected. Robust over
+  performant and evolvable over detailed - none of the inputs such a model
+  wants (supply lines, doctrine, terrain within a region) exist, and inventing
+  them would put weight on numbers nothing else in the world produces.
+- Losses as a fraction of the difference in strength: rejected as a second
+  free parameter doing the work of the first; a flat share of each side, with
+  the loser's share the greater, is legible and gives 08.06 a clean number.
+- A battle taking the region: rejected. It would collapse 08.03 and 08.04 into
+  one and leave a capital falling to a single field engagement.
+
+### Consequences
+
+- Two defects surfaced the moment battles could happen, and both are closed
+  here. 08.02's aim rule sent every host to the nearest ground an enemy ruled,
+  which is the province on its own side of the border: two powers were at war
+  for two hundred and forty years and never met. A host now marches on an enemy
+  host before it marches on enemy ground. And 08.01 let a region whose men were
+  already away be levied again by whoever next took the ground, which wrote over
+  the first claim and left men no army accounted for once that first army was
+  destroyed; such a region now gives nobody, and every release of a levy is
+  checked to the man.
+- War now costs men where it is fought as well as grain where it stands. AELVOR
+  128 over a hundred years fights seventy-five battles and loses two thousand
+  men to them, out of hosts of a few hundred: hosts are destroyed and raised
+  again rather than grinding on.
+- 08.04 has what it needs: a host can now stand before a seat having beaten
+  what was defending it.
+
+### Status
+
+Accepted 2026-09-08. Files: `Source/VaelenMilitary/Public/Vaelen/Military/Battle.h`,
+`Source/VaelenMilitary/Private/Battle.cpp`, `Tests/Military/Test_Battle.cpp`
+(4 tests), `Source/VaelenCore/.../Ids.h` (`IdKind::Battle`). Headless VALIDATED
+on the six Linux presets.
 
 ---
 

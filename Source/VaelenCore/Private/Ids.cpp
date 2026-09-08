@@ -63,6 +63,8 @@ namespace Vaelen
 			return "Faction";
 		case IdKind::Treaty:
 			return "Treaty";
+		case IdKind::Battle:
+			return "Battle";
 		case IdKind::Document:
 			return "Document";
 		case IdKind::Map:

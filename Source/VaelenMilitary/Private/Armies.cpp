@@ -5,6 +5,7 @@
 
 #include "Vaelen/Military/Armies.h"
 
+#include "Vaelen/Core/Assert.h"
 #include "Vaelen/Core/Hash.h"
 #include "Vaelen/Sim/Noise.h"
 #include "Vaelen/Sim/Population.h"
@@ -126,30 +127,11 @@ namespace Vaelen::Military
 				});
 		std::sort(Order.begin(), Order.end(), [](const Standing& A, const Standing& B) { return A.Index < B.Index; });
 
-		/// Send an army home: the men return to the regions that gave them.
+		/// Send an army home: the men return to the regions that gave them. Every
+		/// one of them must be found, or the count of men away stops matching the
+		/// count of men under arms and nobody notices until a digest moves.
 		auto SendHome = [&](ArmyInfo& A, uint32 Men)
-		{
-			uint32 Left = Men;
-			for (uint32 R = 1; R < N && Left != 0; ++R)
-			{
-				if (RegionHandles[R].IsNull())
-				{
-					continue;
-				}
-				RegionLevy* Given = W.Components().GetPool(Armies.Levy).TryGet(RegionHandles[R]);
-				if (Given == nullptr || Given->Polity != A.Polity || Given->Men == 0)
-				{
-					continue;
-				}
-				const uint32 Back = std::min(Given->Men, Left);
-				Given->Men -= Back;
-				Left -= Back;
-				if (Given->Men == 0)
-				{
-					Given->Polity = 0;
-				}
-			}
-		};
+		{ VAELEN_ENSURE(ReleaseLevy(W, Types, Armies, A.Polity, Men) == Men); };
 
 		std::vector<uint32> Hosted; // polities with a host standing after this pass
 		for (const Standing& It : Order)
@@ -239,6 +221,15 @@ namespace Vaelen::Military
 				{
 					continue;
 				}
+				// A region whose men are already away for somebody else gives none.
+				// Ground changes hands (07.03, 07.05) while its men are under arms
+				// elsewhere, and taking them again would write over the first claim -
+				// leaving men no army accounts for when that first army is destroyed.
+				const RegionLevy* Owed = W.Components().GetPool(Armies.Levy).TryGet(RegionHandles[R]);
+				if (Owed != nullptr && Owed->Men != 0 && Owed->Polity != S.Index)
+				{
+					continue;
+				}
 				const uint64 Men = People[R] * Rules.MenPerThousand / 1000u * HoldOf[R] / 1000u;
 				if (Men == 0)
 				{
@@ -313,6 +304,67 @@ namespace Vaelen::Military
 					}
 				});
 		std::sort(Out.begin(), Out.end());
+	}
+
+	void WarPairs(const World& W, const Politics::DiplomacyTypes& Relations,
+				  std::vector<std::pair<uint32, uint32>>& Out)
+	{
+		Out.clear();
+		W.Components()
+			.GetPool(Relations.Relation_)
+			.ForEach(
+				[&](EntityHandle, const Politics::Relation& Bond)
+				{
+					if (Bond.Stance_ != static_cast<uint32>(Politics::Stance::War))
+					{
+						return;
+					}
+					Out.push_back({Bond.A, Bond.B});
+					Out.push_back({Bond.B, Bond.A});
+				});
+		std::sort(Out.begin(), Out.end());
+	}
+
+	uint32 ReleaseLevy(World& W, const History::PreHistoryTypes& Types, const ArmyTypes& Armies, uint32 Polity,
+					   uint32 Men)
+	{
+		if (Polity == 0 || Men == 0)
+		{
+			return 0;
+		}
+		std::vector<EntityHandle> RegionHandles;
+		W.Components()
+			.GetPool(Types.World.RegionTypes_.Region)
+			.ForEach(
+				[&](EntityHandle H, const WorldGen::RegionInfo& R)
+				{
+					if (R.Index >= RegionHandles.size())
+					{
+						RegionHandles.resize(usize{R.Index} + 1u);
+					}
+					RegionHandles[R.Index] = H;
+				});
+		uint32 Left = Men;
+		for (usize R = 1; R < RegionHandles.size() && Left != 0; ++R)
+		{
+			if (RegionHandles[R].IsNull())
+			{
+				continue;
+			}
+			RegionLevy* Given = W.Components().GetPool(Armies.Levy).TryGet(RegionHandles[R]);
+			if (Given == nullptr || Given->Polity != Polity || Given->Men == 0)
+			{
+				continue;
+			}
+			const uint32 Back = std::min(Given->Men, Left);
+			Given->Men -= Back;
+			Left -= Back;
+			if (Given->Men == 0)
+			{
+				Given->Polity = 0;
+			}
+		}
+		return Men - Left;
 	}
 
 	const RegionLevy* LevyOf(const World& W, const History::PreHistoryTypes& Types, const ArmyTypes& Armies,
