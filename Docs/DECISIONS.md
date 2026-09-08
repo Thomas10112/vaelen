@@ -4587,3 +4587,57 @@ monotonicity and its direction: what a besieger brings down in a year depends on
 its strength at the moment the siege system runs, which a test cannot read back
 after the tick. The three-way comparison from one snapshot is the honest form of
 that claim.
+
+
+## ADR-0076: A settlement is a fact about trade; a place is a thing on the map
+
+### Context
+
+06.04 already founds settlements, and they are not places. A settlement of 06.04
+is a fact about trade: goods changed hands on this region often enough and long
+enough that somebody stayed. It has a region, a traffic and a count of routes -
+and no position, no size and nothing standing in it. That is exactly right for
+what it was for, and not enough to build in, draw, or stand in.
+
+The obvious move is to add a position field to `SettlementInfo` and be done. It
+is the wrong one: the economy would then carry a fact it has no use for and no
+way to check, and 06.04's frozen digests would move every time 09.03 changed its
+mind about where towns go.
+
+### Decision
+
+1. **A place is a second component on the same settlement entity**, not a wider
+   `SettlementInfo`. Trade knows why the town is there; infrastructure knows
+   where it is and how big. Neither can corrupt the other's answer, and 06.04's
+   digests did not move.
+2. **A place stands on ONE TILE, chosen once and never moved.** It is the first
+   thing on this map smaller than a region, which is what everything after it
+   needs: 09.04 to run a road to it, Phase 13 to draw it, a player to stand in
+   it. Moving it later would invalidate all three, so it is fixed at founding.
+3. **Where it goes is a rule about the world, not a draw.** On water where the
+   region has water, at the region's heart where it has none, taking the tile
+   nearest the centroid in both cases, and never a tile another place already
+   holds - a ruin included, because a ruin holds its ground.
+4. **A size from the people around it and the goods through it**, capped, with a
+   `Grown` that never falls. A town is not a settlement's traffic under another
+   name: it is how many live in it rather than on the land around it, plus what
+   passes through, and the cap is the statement that this world does not make
+   cities.
+5. **A region's works stand in its town where it has one**, on the same tile, and
+   in the countryside where it has not. `BuildingPlace` is the building's own
+   component so that 09.01 need not know towns exist.
+
+### Consequences
+
+A region holds several places over the centuries and most of them are ruins:
+120 places over 120 years at 128, of which 32 stand and 88 emptied. So "the
+place in this region" has to mean the one still standing, and only fall back to
+the oldest ruin when nothing stands. Getting that wrong is what the first run of
+the test caught: buildings were being placed in towns that had been abandoned
+two centuries earlier.
+
+A place's size is zero exactly when its settlement is abandoned, which is the
+invariant that keeps the two components honest with each other, and
+`MeasurePlaces` checks it along with the tile being inside its own region, one
+place to a tile, and the town's own count of works agreeing with the buildings
+placed there.

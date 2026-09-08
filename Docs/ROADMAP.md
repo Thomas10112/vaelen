@@ -2356,29 +2356,28 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 09 — INFRASTRUCTURE — IN PROGRESS
-TASK        : 09.02 — WHAT A BUILDING DOES
+TASK        : 09.03 — SETTLEMENTS AS PLACES
 STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███████████████████████░ 87%
+███████████████████████░ 88%
 
 CURRENTLY
-→ Four kinds of work, four things they do, and not one new rule about famine, harvest or siege.
-  Every kind is turned into the one number an earlier phase already reads, and that phase is not
-  touched:
+→ 06.04 already founds settlements, and they are not places. A settlement of 06.04 is a fact about
+  trade: goods changed hands here often enough and long enough that somebody stayed. It has a region,
+  a traffic and a count of routes - and no position, no size and nothing standing in it.
 
-    granary → RegionStores::BuiltPerMille, and 04.04 softens the drought's cut
-    mill    → RegionWorkshops::FieldsPerMille, and 06.02 reaps more from the same fields
-    smithy  → RegionWorkshops::CraftPerMille, and 06.02 makes more cloth and tools
-    wall    → RegionWall::Extra, and 08.04 brings less of it down in a year
+  09.03 gives it a body, as a second component on the same entity rather than a wider SettlementInfo:
+  trade knows why the town is there, infrastructure knows where it is and how big. A place stands on
+  ONE TILE of its region, chosen once and never moved - on water where the region has water, at its
+  heart where it has none, and never on ground another place already holds, a ruin included. It is
+  the first thing on this map smaller than a region, which is what 09.04 needs to run a road to it,
+  Phase 13 to draw it, and a player to stand in it.
 
-  Two writers never share a field: a council's decision to store grain (05.05) and a region having
-  somewhere to put it now sit side by side on RegionStores, and 04.04 adds them. And every number is
-  recomputed from what stands each year rather than added to, so a work that falls in 09.05 will take
-  its effect with it without anybody remembering to subtract it.
-
-  A world with nothing built reads a factor of one, to the unit. That is why every frozen digest of
-  Phases 04 to 08 came through this task unchanged.
+  A region holds several places over the centuries and most of them are ruins: 120 places in 120
+  years at 128, of which 32 stand and 88 emptied. So "the place in this region" has to mean the one
+  still standing, and only fall back to the oldest ruin when nothing stands. Getting that wrong is
+  what the first run of the test caught - buildings placed in towns abandoned two centuries earlier.
 
 WHAT PHASE 09 IS
 → 06.04 gave the world routes as artefacts of trade and 05.05 gave councils a granary as a number on
@@ -2387,32 +2386,31 @@ WHAT PHASE 09 IS
   routes and those granaries the first two examples of it.
 
 COMPLETED
-✓ Phases 00-07 (headless, Phase 07 closed) (CI 68)
+✓ Phases 00-07 (headless, Phase 07 closed)
 ✓ Phase 08 MILITARY closed: levies, marching, battle, siege, war, the toll, the chronicle, the gate
-✓ Phase 09 broken down into 09.01-09.08 (roadmap section 13)
+✓ CI run 82 green on all nine jobs — six Linux presets with every gate, clang-format, Windows MSVC,
+  macOS AppleClang — on the tree carrying 09.01 and 09.02
 ✓ 09.01 buildings — the module, BuildingInfo, RegionWorks, MeasureBuildings, 4 tests
 ✓ 09.02 what a building does — four hooks, WorksSystem, MeasureWorks, 5 tests
+✓ 09.03 settlements as places — PlaceInfo, BuildingPlace, PlaceSystem, MeasurePlaces, 4 tests
 
 NEXT
-→ 09.03 — settlements as places rather than marks on a trade route
+→ 09.04 — roads: a route of 06.04 built and kept, cheapening what crosses it, falling back to a track
 
 TESTS (a task inside a phase runs two presets; six at the gate)
-✓ linux-clang-debug and linux-gcc-release green, ctest 89/89 each (gates and shuffled excluded)
-✓ VaelenInfrastructureTests 9 run, 9 passed, on both presets
-✓ Two worlds of one seed, built the same and paid for the same, one with the works worth nothing:
-  27 221 041 grain reaped against 26 243 333
-✓ One seat's wall, the same tick played three times from one snapshot: 112 down behind a wall of
-  five, 148 behind a wall of one, 176 behind none
-✓ AELVOR 128 at year 420: 30 regions with a granary, 30 with a mill, worth digest efa42015d78f5894
-✓ Every frozen digest of Phases 04 to 08 unchanged
-✓ Purity: 141 files, 0 violations; clang-format: 0 files need formatting
+✓ linux-clang-debug and linux-gcc-release green, ctest 90/90 each (gates and shuffled excluded)
+✓ VaelenInfrastructureTests 13 run, 13 passed, on both presets
+✓ AELVOR 128 at year 420: 120 places, 32 standing, 88 emptied, 2394 townsfolk, largest 6,
+  42 works inside towns and 50 in the countryside, digest c61d14222c153d7b
+✓ Every standing place on a tile of its own region, one place to a tile
+✓ Purity: 143 files, 0 violations; clang-format: 0 files need formatting
 
 EXIT CRITERIA (roadmap section 2)
 ◻ 1. Six Linux presets with every gate — at the Phase 09 gate (09.08)
-✓ 2. Determinism tests for 09.01 and 09.02: same seed, snapshot round trip and replay, frozen digests
+✓ 2. Determinism tests for 09.01 to 09.03: same seed, snapshot round trip and replay, frozen digests
 ◻ 3. The files of the phase are PROTOTYPE until the Phase 09 gate; engine files stay UNVERIFIED
-✓ 4. Unit, integration, deterministic and edge tests for both systems; long-duration at 09.08
-✓ 5. ARCHITECTURE, DECISIONS, ROADMAP and STATUS updated; ADR-0074 and ADR-0075
+✓ 4. Unit, integration, deterministic and edge tests for all three systems; long-duration at 09.08
+✓ 5. ARCHITECTURE, DECISIONS, ROADMAP and STATUS updated; ADR-0074 to ADR-0076
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)

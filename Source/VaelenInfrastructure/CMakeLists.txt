@@ -5,11 +5,13 @@ set(VAELEN_INFRASTRUCTURE_PUBLIC_HEADERS
   Public/Vaelen/Infrastructure/InfrastructureApi.h
   Public/Vaelen/Infrastructure/Buildings.h
   Public/Vaelen/Infrastructure/Works.h
+  Public/Vaelen/Infrastructure/Places.h
 )
 
 set(VAELEN_INFRASTRUCTURE_SOURCES
   Private/Buildings.cpp
   Private/Works.cpp
+  Private/Places.cpp
 )
 
 add_library(VaelenInfrastructure STATIC ${VAELEN_INFRASTRUCTURE_SOURCES} ${VAELEN_INFRASTRUCTURE_PUBLIC_HEADERS})
