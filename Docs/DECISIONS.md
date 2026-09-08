@@ -4688,3 +4688,59 @@ The effect on trade is real and small: 321 307 units carried with roads against
 321 110 with roads worth nothing, over the same century of the same world,
 built the same way and paid for the same. Small is correct here. A road that
 doubled trade would be a road that created it.
+
+
+## ADR-0078: What is not kept falls, and what falls stays on the ground
+
+### Context
+
+09.01 raises things and 09.02 makes them matter. Neither takes anything away,
+which means a world that runs long enough is a world where every region has
+every work at its cap and nothing has ever been lost. That is not a living
+world; it is an inventory. And the first two hundred and fifty year run said so
+plainly: 129 works standing, none of them ever lost.
+
+### Decision
+
+1. **A work wears at a rate set by what it is.** A granary of wood goes at 70
+   per mille a year, a wall of stone at 25. Against that the region pays a
+   little timber out of its common stock every year to mend what it has. What it
+   cannot pay for wears; what wears to nothing falls.
+2. **The year takes its toll before the region mends.** A work kept every year
+   reaches full repair and stays there; one that is not falls at the rate of
+   what it is. The other order gives a world where nothing is ever quite sound
+   and nothing ever quite falls.
+3. **The weather and the war are extra wear on the same number**, never a
+   separate rule: a flood or an eruption of 03.05 (never a drought or a plague -
+   those kill people, not walls), a foreign host standing on the region, a siege
+   before its seat. The system runs after `Disasters` so that a flood is felt by
+   the walls in the year it struck rather than a year late.
+4. **It runs BEFORE Buildings**, so the region sees what it actually has before
+   it decides what to raise or enlarge. A world where the decision is made on
+   last year's stock is a world that builds what it already lost.
+5. **A fallen work is not deleted.** It stays on the ground as a ruin, and
+   raising that kind again on ground that already holds its ruin costs less -
+   the stone is there. That is the whole of what a ruin does, and it is enough
+   to make where a world has already been matter to where it goes next.
+
+### Consequences
+
+The world stops being an inventory. Two hundred and fifty years at 128: 58 works
+standing of which 49 sound and 9 worn, 40 fallen, 3 raised back on their own
+ruins. And the gift of goods the other tests hand every region every year had to
+go from this one - a region handed timber every year keeps everything it has
+ever built, which is exactly the world this task exists to prevent.
+
+The count of falls is a poor instrument for the weather: a storm knocks a work
+down but the region mends it next year, so over centuries the same set of works
+falls either way. The honest proof is to play one year twice from a single
+snapshot, as 09.02 did for the wall - region 31's granary, in the year a flood
+struck it, went 1000 to 1000 with the storm worth nothing and 1000 to 650 with
+it worth five hundred per mille: the 500 of the storm and the 70 of the year
+taken off, and the 220 of the mending put back.
+
+**A disclosed gap:** the war side of the same rule (a foreign host, a siege) is
+wired identically and is not proven by a test of its own here, because the world
+this suite runs did not put a host on ground with works in the years it was
+watched. It is exercised at the Phase 09 gate (09.08), which runs the military
+systems at 256 for five centuries.

@@ -2356,63 +2356,58 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 09 — INFRASTRUCTURE — IN PROGRESS
-TASK        : 09.04 — ROADS
+TASK        : 09.05 — DECAY AND RUINS
 STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███████████████████████░ 89%
+███████████████████████░ 90%
 
 CURRENTLY
-→ A route of 06.04 is not a road. It is a fact about prices: grain was dearer there than here, often
-  enough and long enough that somebody carried it. It opens because a gap opened and closes because
-  nothing crossed it, and nobody ever built it.
+→ 09.01 raises things and 09.02 makes them matter. Neither takes anything away, which means a world
+  that runs long enough is a world where every region has every work at its cap and nothing has ever
+  been lost. That is not a living world; it is an inventory. The first 250-year run said so plainly:
+  129 works standing, none of them ever lost.
 
-  09.04 lets the regions at its two ends make something of it. A road is cut out of both common
-  stocks, half each, and out of the hands both can spare - a road is never one region's - and only
-  where enough already crosses to be worth the timber. What it does is let more of the trade that
-  already wanted to happen get across: one number, RouteEase::CarryPerMille, where trade already
-  reads, and no road is a factor of one to the unit.
+  A work now wears at the rate of what it is - a granary of wood at 70 per mille a year, a wall of
+  stone at 25 - and the region pays a little timber out of its common stock to mend what it has. The
+  year takes its toll BEFORE the region mends, so a work kept every year is sound and one that is not
+  falls at its own rate. The weather and the war are extra wear on the same number, never a separate
+  rule: a flood or an eruption, a foreign host on the ground, a siege before the seat.
 
-  And it has to be kept. Unkept it wears; with nothing left to wear it loses a grade; at grade zero
-  it is a track again - which is what a route was before anybody touched it. Nothing is destroyed and
-  no entity dies: it falls back to what the economy always had, and can be cut again.
+  It runs BEFORE Buildings, so a region sees what it actually has before deciding what to raise.
+  And a fallen work is not deleted: it stays as a ruin, and raising that kind again on ground that
+  holds its ruin costs less, because the stone is there.
 
-  Most roads outlive the trade that made them and then go: 22 cut over a century, 3 still made, 19
-  back to tracks. A road on a route trade has closed cannot be kept, because keeping is a thing the
-  two ends do for a route that is still carrying. That is the behaviour wanted, not a defect.
-
-WHAT PHASE 09 IS
-→ 06.04 gave the world routes as artefacts of trade and 05.05 gave councils a granary as a number on
-  a region. Phase 09 does not replace either: it gives the world the things people actually build and
-  keep - buildings that cost goods and labour and decay when nobody minds them - and makes those
-  routes and those granaries the first two examples of it.
+  The gift of goods the other tests hand every region every year had to go from this one. A region
+  handed timber every year keeps everything it has ever built, which is exactly the world this task
+  exists to prevent.
 
 COMPLETED
-✓ Phases 00-07 (headless, Phase 07 closed)
-✓ Phase 08 MILITARY closed
-✓ CI run 82 green on all nine jobs, on the tree carrying 09.01 and 09.02
-✓ 09.01 buildings · 09.02 what a building does · 09.03 settlements as places
-✓ 09.04 roads — RoadInfo, RouteEase, RoadSystem, MeasureRoads, 5 tests
+✓ Phases 00-07 (headless, Phase 07 closed) · Phase 08 MILITARY closed
+✓ CI run 82 green on all nine jobs
+✓ 09.01 buildings · 09.02 what a building does · 09.03 places · 09.04 roads
+✓ 09.05 decay and ruins — DecaySystem, RuinsIn, HasRuin, MeasureDecay, 5 tests
 
 NEXT
-→ 09.05 — decay and ruins: everything built falls down unless it is kept
+→ 09.06 — logistics: what a road is worth to the marching of 08.02 and the reach of 07.03
 
 TESTS (a task inside a phase runs two presets; six at the gate)
-✓ linux-clang-debug and linux-gcc-release green, ctest 91/91 each (gates and shuffled excluded)
-✓ VaelenInfrastructureTests 18 run, 18 passed, on both presets
-✓ AELVOR 128 at year 420: 22 roads cut, 3 still made, 19 tracks, 4320 timber, digest 7ede5ba455016378
-✓ Two worlds of one seed, roads cut and paid for the same, worth nothing in one: 321 307 units
-  carried against 321 110
-✓ A road nobody can ever keep loses every grade and ends a track, and every road left standing was
-  cut too recently to have fallen
-✓ Purity: 145 files, 0 violations; clang-format: 0 files need formatting
+✓ VaelenInfrastructureTests 23 run, 23 passed
+✓ AELVOR 128, 250 years on what the land gives: 58 works standing (49 sound, 9 worn), 40 fallen,
+  3 raised back on their own ruins, digest 46f5a3e428260bc2
+✓ A world where nothing wears loses nothing in 250 years — wear is what fells them
+✓ One year played twice from one snapshot: region 31's granary went 1000 to 1000 with the storm worth
+  nothing and 1000 to 650 with it worth 500 per mille
+✓ Building back on a ruin costs less timber than starting from nothing, to the unit
 
 EXIT CRITERIA (roadmap section 2)
 ◻ 1. Six Linux presets with every gate — at the Phase 09 gate (09.08)
-✓ 2. Determinism tests for 09.01 to 09.04: same seed, snapshot round trip and replay, frozen digests
+✓ 2. Determinism tests for 09.01 to 09.05: same seed, snapshot round trip and replay, frozen digests
 ◻ 3. The files of the phase are PROTOTYPE until the Phase 09 gate; engine files stay UNVERIFIED
-✓ 4. Unit, integration, deterministic and edge tests for all four systems; long-duration at 09.08
-✓ 5. ARCHITECTURE, DECISIONS, ROADMAP and STATUS updated; ADR-0074 to ADR-0077
+◻ 4. Unit, integration, deterministic, edge and long-duration tests: the war side of 09.05's extra
+     wear (a foreign host, a siege) is wired but not proven by a test of its own — it is exercised at
+     the Phase 09 gate (09.08). Disclosed, not claimed.
+✓ 5. ARCHITECTURE, DECISIONS, ROADMAP and STATUS updated; ADR-0074 to ADR-0078
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)

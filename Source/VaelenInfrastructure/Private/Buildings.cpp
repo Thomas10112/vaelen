@@ -112,6 +112,7 @@ namespace Vaelen::Infrastructure
 		// 3. What already stands, by region and by kind. A region keeps at most
 		//    one work of a kind, so this is a plain table.
 		std::vector<EntityHandle> Standing(N * WorkCount);
+		std::vector<uint8> Ruined(N * WorkCount, 0u); // ground that already holds a ruin of the kind
 		uint32 Highest = 0;
 		{
 			std::vector<std::pair<uint32, EntityHandle>> All;
@@ -123,8 +124,13 @@ namespace Vaelen::Infrastructure
 			{
 				Highest = std::max(Highest, Entry.first);
 				const BuildingInfo* B = W.Components().GetPool(Works.Building).TryGet(Entry.second);
-				if (B == nullptr || B->Fell != 0 || B->Region == 0 || B->Region >= N || B->Kind >= WorkCount)
+				if (B == nullptr || B->Region == 0 || B->Region >= N || B->Kind >= WorkCount)
 				{
+					continue;
+				}
+				if (B->Fell != 0)
+				{
+					Ruined[usize{B->Region} * WorkCount + B->Kind] = 1u;
 					continue;
 				}
 				EntityHandle& Slot = Standing[usize{B->Region} * WorkCount + B->Kind];
@@ -182,8 +188,18 @@ namespace Vaelen::Infrastructure
 				{
 					continue;
 				}
-				if (Stock->Amount[G_TIMBER] < Rules.TimberPerSize || Stock->Amount[G_TOOLS] < Rules.ToolsPerSize ||
-					Stock->Amount[G_GRAIN] < Rules.GrainPerSize)
+				// Ground that already holds a ruin of the kind is cheaper to build
+				// on: the stone is there (09.05). Only for raising a work anew -
+				// enlarging a standing one has no ruin to stand on.
+				const bool OnARuin =
+					Held == nullptr && Rules.RebuildPerMille > 0 && Ruined[usize{R} * WorkCount + K] != 0;
+				const uint32 Spared = OnARuin ? std::min<uint32>(1000u, Rules.RebuildPerMille) : 0u;
+				auto Cost = [&](uint32 Full) { return Full - Full * Spared / 1000u; };
+				const uint32 NeedTimber = Cost(Rules.TimberPerSize);
+				const uint32 NeedTools = Cost(Rules.ToolsPerSize);
+				const uint32 NeedGrain = Cost(Rules.GrainPerSize);
+				if (Stock->Amount[G_TIMBER] < NeedTimber || Stock->Amount[G_TOOLS] < NeedTools ||
+					Stock->Amount[G_GRAIN] < NeedGrain)
 				{
 					continue; // it cannot pay for this one; it may afford a cheaper year
 				}
@@ -200,9 +216,9 @@ namespace Vaelen::Infrastructure
 					Fresh.Polity = RuledBy[R];
 					Fresh.Size = 1;
 					Fresh.Repair = 1000;
-					Fresh.Timber = Rules.TimberPerSize;
-					Fresh.Tools = Rules.ToolsPerSize;
-					Fresh.Grain = Rules.GrainPerSize;
+					Fresh.Timber = NeedTimber;
+					Fresh.Tools = NeedTools;
+					Fresh.Grain = NeedGrain;
 					Fresh.Hands = Rules.HandsPerSize;
 					Fresh.Raised = Context.Tick;
 					Fresh.Identity = Noise::LatticeHash(W.Config().Seed ^ WorksSalt, static_cast<int32>(Fresh.Index),
@@ -222,24 +238,24 @@ namespace Vaelen::Infrastructure
 						continue; // it was standing a moment ago; there is nothing to enlarge
 					}
 					Grown->Size += 1;
-					Grown->Timber += Rules.TimberPerSize;
-					Grown->Tools += Rules.ToolsPerSize;
-					Grown->Grain += Rules.GrainPerSize;
+					Grown->Timber += NeedTimber;
+					Grown->Tools += NeedTools;
+					Grown->Grain += NeedGrain;
 					Grown->Hands += Rules.HandsPerSize;
 					Cause = Context.Events->Publish(Context.Tick, BuildingEnlargedEvent,
 													WorksPayload{R, Grown->Index, K, Grown->Size},
 													W.Entities().GetId(Have));
 				}
 
-				const int32 Timber = -static_cast<int32>(Rules.TimberPerSize);
-				const int32 Tools = -static_cast<int32>(Rules.ToolsPerSize);
-				const int32 Grain = -static_cast<int32>(Rules.GrainPerSize);
+				const int32 Timber = -static_cast<int32>(NeedTimber);
+				const int32 Tools = -static_cast<int32>(NeedTools);
+				const int32 Grain = -static_cast<int32>(NeedGrain);
 				VAELEN_ENSURE(Economy::AddStock(W, Types, Families, Economy, R, 0, Economy::Good::Timber, Timber,
-												Context.Tick, Cause) == Rules.TimberPerSize);
+												Context.Tick, Cause) == NeedTimber);
 				VAELEN_ENSURE(Economy::AddStock(W, Types, Families, Economy, R, 0, Economy::Good::Tools, Tools,
-												Context.Tick, Cause) == Rules.ToolsPerSize);
+												Context.Tick, Cause) == NeedTools);
 				VAELEN_ENSURE(Economy::AddStock(W, Types, Families, Economy, R, 0, Economy::Good::Grain, Grain,
-												Context.Tick, Cause) == Rules.GrainPerSize);
+												Context.Tick, Cause) == NeedGrain);
 				// AddStock may have moved the pool; ask for the stock again.
 				Stock = W.Components().GetPool(Economy.Region).TryGet(RegionHandles[R]);
 				VAELEN_ENSURE(Stock != nullptr);

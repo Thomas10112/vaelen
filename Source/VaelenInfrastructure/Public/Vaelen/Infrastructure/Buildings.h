@@ -103,6 +103,10 @@ namespace Vaelen::Infrastructure
 		uint32 SparePerMille = 100;		  ///< of the workers, who can leave the fields for a year
 		uint32 WallsAtSeatsOnly = 1;	  ///< a wall is raised where a polity sits, nowhere else
 		uint32 RaisedPerRegionPerYear = 1;
+		/// Per mille of the cost spared by raising a kind on ground that already
+		/// holds its ruin (09.05): the stone is there, and the world remembers where
+		/// it has already been.
+		uint32 RebuildPerMille = 400;
 	};
 
 	struct WorksPayload
