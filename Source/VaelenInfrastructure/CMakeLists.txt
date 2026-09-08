@@ -8,6 +8,7 @@ set(VAELEN_INFRASTRUCTURE_PUBLIC_HEADERS
   Public/Vaelen/Infrastructure/Places.h
   Public/Vaelen/Infrastructure/Roads.h
   Public/Vaelen/Infrastructure/Decay.h
+  Public/Vaelen/Infrastructure/Logistics.h
 )
 
 set(VAELEN_INFRASTRUCTURE_SOURCES
@@ -16,6 +17,7 @@ set(VAELEN_INFRASTRUCTURE_SOURCES
   Private/Places.cpp
   Private/Roads.cpp
   Private/Decay.cpp
+  Private/Logistics.cpp
 )
 
 add_library(VaelenInfrastructure STATIC ${VAELEN_INFRASTRUCTURE_SOURCES} ${VAELEN_INFRASTRUCTURE_PUBLIC_HEADERS})

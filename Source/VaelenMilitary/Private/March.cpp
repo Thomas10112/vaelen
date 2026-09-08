@@ -54,6 +54,23 @@ namespace Vaelen::Military
 		{
 			return;
 		}
+		// How well every region is served by made roads (09.06), the same number
+		// the reach of 07.03 reads. A thousand is a factor of one: a world with
+		// no infrastructure marches exactly as it always did.
+		std::vector<uint64> Ease(N, 1000u);
+		if (HasWays)
+		{
+			for (uint32 R = 1; R < N; ++R)
+			{
+				if (RegionHandles[R].IsNull())
+				{
+					continue;
+				}
+				const Politics::RegionWays* Made_ = W.Components().GetPool(Ways).TryGet(RegionHandles[R]);
+				Ease[R] = 1000u + (Made_ != nullptr ? Made_->EasePerMille : 0u);
+			}
+		}
+		auto Made = [&](uint32 R) { return R < N ? Ease[R] : uint64{1000u}; };
 		// The graph is derived from the map, so the cache is keyed on the map
 		// and not on the count of regions: two different maps can share a count,
 		// and a snapshot loaded over a world that has already ticked would
@@ -225,7 +242,10 @@ namespace Vaelen::Military
 				}
 				if (!Back.empty())
 				{
-					const usize Steps = std::min<usize>(Rules.HopsPerYear, Back.size() - 1u);
+					// Made ground (09.06) carries a host further in a year; bare
+					// ground is a factor of one, to the unit.
+					const uint64 Hops = uint64{Rules.HopsPerYear} * Made(A->Region) / 1000u;
+					const usize Steps = std::min<usize>(static_cast<usize>(Hops), Back.size() - 1u);
 					To = Back[Back.size() - 1u - Steps];
 					Walked = static_cast<uint32>(Steps);
 				}
@@ -256,7 +276,9 @@ namespace Vaelen::Military
 			Economy::RegionStock* Stock = W.Components().GetPool(Economy.Region).TryGet(Ground);
 			if (Stock != nullptr)
 			{
-				const uint64 Want = uint64{A->Strength} * Rules.ForagePerManPerYear;
+				// And it eats less beside a road: what it needs comes up the way
+				// rather than off the field it is standing in.
+				const uint64 Want = uint64{A->Strength} * Rules.ForagePerManPerYear * 1000u / Made(To);
 				Took = static_cast<uint32>(std::min<uint64>(Want, Stock->Amount[G_GRAIN]));
 				Stock->Amount[G_GRAIN] -= Took;
 			}

@@ -53,6 +53,23 @@ namespace Vaelen::Politics
 		{
 			return;
 		}
+		// How well every region is served by made roads (09.06). Bare ground and
+		// a world with no infrastructure at all both give a thousand, which is a
+		// factor of one to the unit: nothing below changes without a road.
+		std::vector<uint64> Ease(N, 1000u);
+		if (HasWays)
+		{
+			for (uint32 R = 1; R < N; ++R)
+			{
+				if (RegionHandles[R].IsNull())
+				{
+					continue;
+				}
+				const RegionWays* Made_ = W.Components().GetPool(Ways).TryGet(RegionHandles[R]);
+				Ease[R] = 1000u + (Made_ != nullptr ? Made_->EasePerMille : 0u);
+			}
+		}
+		auto Made = [&](uint32 R) { return R < N ? Ease[R] : uint64{1000u}; };
 		// The graph is derived from the map, so the cache is keyed on the map
 		// and not on the count of regions: two different maps can share a count,
 		// and a snapshot loaded over a world that has already ticked would
@@ -137,10 +154,12 @@ namespace Vaelen::Politics
 			std::sort(Mine.begin(), Mine.end());
 
 			// 2. What it costs to carry a word that far, paid out of the treasury.
+			//    Made ground (09.06) carries it cheaper; bare ground is a factor
+			//    of one, to the unit.
 			uint64 Upkeep = 0;
 			for (const uint32 R : Mine)
 			{
-				Upkeep += uint64{Distance[R]} * Rules.UpkeepPerHop;
+				Upkeep += uint64{Distance[R]} * Rules.UpkeepPerHop * 1000u / Made(R);
 			}
 			Treasury* Hoard = W.Components().GetPool(Laws.Hoard).TryGet(S.Handle);
 			uint64 Short = Upkeep;
@@ -177,7 +196,7 @@ namespace Vaelen::Politics
 				uint32 Hold = 0;
 				if (Hops != Unreached)
 				{
-					const uint64 Fall = uint64{Hops} * Rules.HoldLostPerHop + Loss;
+					const uint64 Fall = uint64{Hops} * Rules.HoldLostPerHop * 1000u / Made(R) + Loss;
 					Hold = Fall >= Rules.HoldAtSeat ? 0u : Rules.HoldAtSeat - static_cast<uint32>(Fall);
 				}
 				RegionAuthority Now;
@@ -311,7 +330,7 @@ namespace Vaelen::Politics
 				// Held from this tick, and the region says so from its own side:
 				// a region that is ruled always carries the authority of whoever
 				// rules it, with no year in between.
-				const uint64 Fall = uint64{Distance[R]} * Rules.HoldLostPerHop;
+				const uint64 Fall = uint64{Distance[R]} * Rules.HoldLostPerHop * 1000u / Made(R);
 				RegionAuthority Taken;
 				Taken.Polity = S.Index;
 				Taken.Distance = Distance[R];

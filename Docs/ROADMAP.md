@@ -2356,58 +2356,56 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 09 — INFRASTRUCTURE — IN PROGRESS
-TASK        : 09.05 — DECAY AND RUINS
+TASK        : 09.06 — LOGISTICS
 STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███████████████████████░ 90%
+████████████████████████ 91%
 
 CURRENTLY
-→ 09.01 raises things and 09.02 makes them matter. Neither takes anything away, which means a world
-  that runs long enough is a world where every region has every work at its cap and nothing has ever
-  been lost. That is not a living world; it is an inventory. The first 250-year run said so plainly:
-  129 works standing, none of them ever lost.
+→ 09.04 made roads and gave them one job: more of the trade that already wanted to happen gets
+  across. That is the economy's side of a road, and it is not what a road was ever mainly for. An
+  army marches on it; a courier, a tax collector and a garrison go up it.
 
-  A work now wears at the rate of what it is - a granary of wood at 70 per mille a year, a wall of
-  stone at 25 - and the region pays a little timber out of its common stock to mend what it has. The
-  year takes its toll BEFORE the region mends, so a work kept every year is sound and one that is not
-  falls at its own rate. The weather and the war are extra wear on the same number, never a separate
-  rule: a flood or an eruption, a foreign host on the ground, a siege before the seat.
+  So the roads touching a region become ONE number on that region, and the two systems that already
+  walk the ground hop by hop read it: 08.02's host gets further along it in a year and eats less
+  beside it, because what it needs comes up the way rather than off the field it stands in; 07.03's
+  word carries further before the hold falls away, and costs less to carry that far.
 
-  It runs BEFORE Buildings, so a region sees what it actually has before deciding what to raise.
-  And a fallen work is not deleted: it stays as a ruin, and raising that kind again on ground that
-  holds its ruin costs less, because the stone is there.
+  A region is served by its BEST road, never by the sum of them. Four tracks meeting at a village do
+  not make a highway, and adding them up would make the busiest crossroads unconquerable by
+  arithmetic rather than by anything anybody did.
 
-  The gift of goods the other tests hand every region every year had to go from this one. A region
-  handed timber every year keeps everything it has ever built, which is exactly the world this task
-  exists to prevent.
+  Neither system learned what a road is. Both read a component they were told to observe, and bare
+  ground is a factor of one to the unit - which is why every frozen digest of Phases 07 and 08 came
+  through this task unchanged.
 
 COMPLETED
 ✓ Phases 00-07 (headless, Phase 07 closed) · Phase 08 MILITARY closed
 ✓ CI run 82 green on all nine jobs
-✓ 09.01 buildings · 09.02 what a building does · 09.03 places · 09.04 roads
-✓ 09.05 decay and ruins — DecaySystem, RuinsIn, HasRuin, MeasureDecay, 5 tests
+✓ 09.01 buildings · 09.02 what a building does · 09.03 places · 09.04 roads · 09.05 decay and ruins
+✓ 09.06 logistics — RegionWays, LogisticsSystem, EaseOf, MeasureLogistics, 5 tests
 
 NEXT
-→ 09.06 — logistics: what a road is worth to the marching of 08.02 and the reach of 07.03
+→ 09.07 — infrastructure in the chronicle: a granary raised, a road cut, a mill fallen in, and the
+  why of a famine a granary would have stopped
 
 TESTS (a task inside a phase runs two presets; six at the gate)
-✓ VaelenInfrastructureTests 23 run, 23 passed
-✓ AELVOR 128, 250 years on what the land gives: 58 works standing (49 sound, 9 worn), 40 fallen,
-  3 raised back on their own ruins, digest 46f5a3e428260bc2
-✓ A world where nothing wears loses nothing in 250 years — wear is what fells them
-✓ One year played twice from one snapshot: region 31's granary went 1000 to 1000 with the storm worth
-  nothing and 1000 to 650 with it worth 500 per mille
-✓ Building back on a ruin costs less timber than starting from nothing, to the unit
+✓ VaelenInfrastructureTests 28 run, 28 passed
+✓ AELVOR 128 at year 450: 4 made roads serving 8 regions, best ease 200, digest 0d2760dcc43a63f2
+✓ Two years played twice from one snapshot: region 19, two hops from its seat, was held at 274 with
+  its road and had slipped free entirely without it
+✓ One year played twice from one snapshot: a host on region 52 took 410 grain off the field with no
+  road beside it and 256 with one — the same appetite over 1600/1000, to the unit
+✓ Every frozen digest of Phases 07 and 08 unchanged
 
 EXIT CRITERIA (roadmap section 2)
 ◻ 1. Six Linux presets with every gate — at the Phase 09 gate (09.08)
-✓ 2. Determinism tests for 09.01 to 09.05: same seed, snapshot round trip and replay, frozen digests
+✓ 2. Determinism tests for 09.01 to 09.06: same seed, snapshot round trip and replay, frozen digests
 ◻ 3. The files of the phase are PROTOTYPE until the Phase 09 gate; engine files stay UNVERIFIED
 ◻ 4. Unit, integration, deterministic, edge and long-duration tests: the war side of 09.05's extra
-     wear (a foreign host, a siege) is wired but not proven by a test of its own — it is exercised at
-     the Phase 09 gate (09.08). Disclosed, not claimed.
-✓ 5. ARCHITECTURE, DECISIONS, ROADMAP and STATUS updated; ADR-0074 to ADR-0078
+     wear is still wired-but-unproven and waits on the Phase 09 gate. Disclosed, not claimed.
+✓ 5. ARCHITECTURE, DECISIONS, ROADMAP and STATUS updated; ADR-0074 to ADR-0079
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)

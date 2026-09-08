@@ -70,6 +70,20 @@ namespace Vaelen::Politics
 		static VAELEN_POLITICS_API ReachTypes Declare(World& W);
 	};
 
+	/// How well a region is served by made roads, on the region entity: written
+	/// by a later module (Phase 09 infrastructure), read by whoever is told to
+	/// observe it. A road does not extend a polity and does not raise an army:
+	/// it means the word a polity already sends carries further and costs less
+	/// along that ground, and a host that already marches gets further on it and
+	/// eats less beside it. One number, two readers, and a factor of one where
+	/// nothing has been built.
+	struct RegionWays
+	{
+		uint32 EasePerMille = 0;
+		uint32 Reserved = 0;
+	};
+	static_assert(sizeof(RegionWays) == 8, "RegionWays must stay padding free");
+
 	struct ReachRules
 	{
 		uint32 HoldAtSeat = 1000;	 ///< per mille, at the seat itself
@@ -142,6 +156,13 @@ namespace Vaelen::Politics
 			InPlay_ = InPlay;
 			HasPlay = true;
 		}
+		/// Optional: the roads made on the ground (09.06). A word carries further
+		/// and costs less along made ground; without this every region is bare.
+		void ObserveWays(ComponentType<RegionWays> InWays) noexcept
+		{
+			Ways = InWays;
+			HasWays = true;
+		}
 		void Tick(TickContext& Context) override;
 
 	private:
@@ -155,6 +176,8 @@ namespace Vaelen::Politics
 		ReachRules Rules;
 		ComponentType<PolityLine> Line;
 		bool HasLine = false;
+		ComponentType<RegionWays> Ways;
+		bool HasWays = false;
 		ComponentType<RegionInPlay> InPlay_;
 		bool HasPlay = false;
 		WorldGen::RegionGraphCache Roads; ///< rebuilt when the map it was built from is replaced

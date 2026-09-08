@@ -116,6 +116,14 @@ namespace Vaelen::Military
 			return Out;
 		}
 		void RunAfter(std::string_view Name) { After.emplace_back(Name); }
+		/// Optional: the roads made on the ground (09.06). A host gets further
+		/// along made ground in a year and eats less beside it. The same number
+		/// the reach of 07.03 reads, and a factor of one where nothing is built.
+		void ObserveWays(ComponentType<Politics::RegionWays> InWays) noexcept
+		{
+			Ways = InWays;
+			HasWays = true;
+		}
 		void Tick(TickContext& Context) override;
 
 	private:
@@ -129,6 +137,8 @@ namespace Vaelen::Military
 		ArmyTypes Armies;
 		MarchTypes Marches;
 		MarchRules Rules;
+		ComponentType<Politics::RegionWays> Ways;
+		bool HasWays = false;
 		WorldGen::RegionGraphCache Roads; ///< rebuilt when the map it was built from is replaced
 	};
 

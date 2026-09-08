@@ -4744,3 +4744,50 @@ wired identically and is not proven by a test of its own here, because the world
 this suite runs did not put a host on ground with works in the years it was
 watched. It is exercised at the Phase 09 gate (09.08), which runs the military
 systems at 256 for five centuries.
+
+
+## ADR-0079: One number on the ground, two systems that walk it
+
+### Context
+
+09.04 made roads and gave them one job: more of the trade that already wanted to
+happen gets across. That is the economy's side of a road, and it is not what a
+road was ever mainly for. An army marches on it. A courier, a tax collector and
+a garrison go up it. Both of those already exist - 08.02 walks the region graph
+hop by hop, 07.03 lets a polity's hold fall away with the hops from its seat -
+and neither has any idea what a road is.
+
+### Decision
+
+1. **One number on the region, two readers.** `Politics::RegionWays::EasePerMille`
+   is declared in the lowest module that needs it (Politics), and both the reach
+   of 07.03 and the marching of 08.02 observe the same component. Two parallel
+   structs saying the same thing would drift the first time one of them was
+   tuned.
+2. **Four uses, all of the same shape as ADR-0075's hooks.** A host gets further
+   in a year along made ground and eats less beside it; a polity's hold falls
+   away more slowly along it and the upkeep of carrying a word that far costs
+   less. Every one of them is an existing number multiplied by a factor that is
+   exactly one where nothing has been built - which is why every frozen digest
+   of Phases 07 and 08 came through this task unchanged.
+3. **A region is served by its BEST road, never by the sum of them.** Four
+   tracks meeting at a village do not make a highway. Adding them up would make
+   the busiest crossroads unconquerable by arithmetic rather than by anything
+   anybody did.
+4. **Written every year from what stands, never added to.** A road falling back
+   to a track (09.04) takes its worth off the ground the same year, and
+   `MeasureLogistics` recomputes the whole table and counts any disagreement as
+   `Bad`.
+
+### Consequences
+
+The effect on a polity is large and that is right: at 128, region 19 sat two
+hops from its seat on ground its best road made 200 per mille easier, and after
+two years it was held at 274 with the road and had **slipped free entirely**
+without it. A road is how an empire holds ground it could not otherwise reach,
+and this is the first thing in the project that says so.
+
+The effect on a host is exact: on the same tick from one snapshot, a host on
+region 52 took 410 grain off the field with no road beside it and 256 with one -
+the same appetite divided by 1600 over 1000, which is what the rule says. What
+it needs comes up the way rather than off the ground it is standing in.
