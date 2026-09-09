@@ -2504,19 +2504,29 @@ So this phase does not add a second way to act. It adds the two things a player
 has that a simulated person has never needed: a head that holds less than the
 world does, and a name that travels further than they do.
 
-The surface of the first of those is already known, and it is small.
-`grep -rn "Log().All()" Source/` gives thirty-one files, and the criterion that
-sorts them is: reading the log to work out WHAT THE WORLD DOES is legitimate,
-because a system is the world's own machinery; reading it to work out WHAT A
-PERSON OR AN INSTITUTION BELIEVES is not. By that test all but two fall away -
-`Regard.cpp:95`, the opinion one person holds of another, and
-`Decisions.cpp:91`, what an organisation decides over a memory window. Every
-person in AELVOR is currently omniscient about anything that touched them.
+A first reading of this said the world was full of omniscience: thirty-one files
+read `Log().All()`, and two of them - `Regard.cpp:95` and `Decisions.cpp:91` -
+decide what somebody believes. Reading FURTHER, past the line that opens the
+loop, says the opposite, and the correction is the more useful finding.
+
+`Regard.cpp` walks back only to the current tick and stops, takes only acts
+AIMED at somebody (work and eating are "nobody else's business" in its own
+words), and records the opinion on the person who was acted upon. That is
+already exactly "what reached them". `Decisions.cpp` reads droughts within a
+memory window - a council knowing the weather in its own region.
+
+So nobody in AELVOR is omniscient. The gap is the other way round, and it is
+narrower and more interesting: **an opinion exists only about the played person**
+(`PlayerRegard` lives on the played person, and 12.01 has just given unplayed
+people acts of their own), and **nothing travels**. An opinion moves only between
+the two people involved; nobody has ever heard anything second-hand. A
+reputation is exactly what a world gets when what happened to one person reaches
+a third, and this world has no way at all for that to happen.
 
 | Task | Content | Test kind |
 |---|---|---|
 | 12.01 | `VaelenGameplay` module; a way for a person nobody is playing to act, using the verbs of 10.05 unchanged - what decides an unplayed person's intent is the phase's real question; `MeasureVerbs` | unit, deterministic |
-| 12.02 | Knowledge as a filter over the world's log: what a person was present for, was told, or has read, always smaller than the truth. The two call sites above read it instead of `Log().All()` | unit, edge, integration with 10.06 and 05.05 |
+| 12.02 | An opinion between any two people, and hearsay: what one person tells another about a third. 10.06 gives an opinion only about the played person and only to whoever was acted upon; this is the same idea for everybody, plus the one thing no layer has - something heard rather than suffered | unit, edge, integration with 10.06 |
 | 12.03 | Documents: a thing that carries knowledge between people, outlives them, is copied, is lost, and is wrong when its writer was | integration with 03.07, 12.02 |
 | 12.04 | Maps as the one document the world can check: what a person believes about ground they have not walked, and how it is wrong | integration with 02.x, 12.03 |
 | 12.05 | Reputation beyond the region: 10.06 gives what the people around somebody make of them; this carries it on the roads of 09.04 and decays with distance and time | integration with 10.06, 09.04 |
