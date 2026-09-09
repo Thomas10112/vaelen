@@ -167,24 +167,43 @@ namespace Vaelen::Population
 		std::sort(Current.begin(), Current.end());
 		for (const uint32 R : Current)
 		{
-			if (IsWanted(W, Lod, R))
+			if (IsWanted(W, Lod, R) || (Rules.Held != 0 && R == Rules.Held))
 			{
-				continue;
+				continue; // a held region is not something the bridge may give up
 			}
 			const uint32 Folded = DemoteRegion(W, Types, Persons, R);
 			++State.Demotions;
 			Context.Events->Publish(Context.Tick, RegionDemotedEvent, LodPayload{R, Folded, State.Demotions, 0},
 									W.Entities().GetId(Regions[R]));
 		}
-		// 2. Promotions: wanted regions, in request order, up to the limit.
+		// 2. Promotions: the held region first if it has one, then the wanted in
+		// request order, up to the limit. A colony that lost its detail because
+		// four other regions were asked for first would be a colony the game
+		// could not be played in.
 		uint32 DetailedCount = 0;
 		W.Components().GetPool(Persons.Detail).ForEach([&](EntityHandle, const RegionDetail&) { ++DetailedCount; });
+		if (Rules.Held != 0 && Rules.Held < Regions.size() && !Regions[Rules.Held].IsNull() && !Detailed(Rules.Held))
+		{
+			const uint32 Made = PromoteRegion(W, Types, Persons, Rules.Materialise, Rules.Held, Context.Tick);
+			if (Made != 0)
+			{
+				++State.Promotions;
+				++DetailedCount;
+				Context.Events->Publish(Context.Tick, RegionPromotedEvent,
+										LodPayload{Rules.Held, Made, State.Promotions, 0},
+										W.Entities().GetId(Regions[Rules.Held]));
+			}
+			else
+			{
+				++State.Refused;
+			}
+		}
 		for (uint32 i = 0; i < State.WantedCount && DetailedCount < Rules.MaxDetailed; ++i)
 		{
 			const uint32 R = State.Wanted[i];
 			if (R >= Regions.size() || Regions[R].IsNull() || Detailed(R))
 			{
-				continue;
+				continue; // the held one was promoted above, and is detailed now
 			}
 			const uint32 Made = PromoteRegion(W, Types, Persons, Rules.Materialise, R, Context.Tick);
 			if (Made == 0)

@@ -85,6 +85,19 @@ namespace Vaelen::Population
 		uint32 MoverFrom = 16;			  ///< movers are unmarried adults of these ages
 		uint32 MoverTo = 40;
 		uint32 FemalePerMille = 500;
+		/// A region the world keeps at the fine grain whatever else it wants:
+		/// promoted before anything and never demoted while the rules say so.
+		/// 0 is none, which is every world before Phase 11.
+		///
+		/// A colony is not a region that happens to be interesting this decade;
+		/// it is the place the game is played, and it has to be detailed on the
+		/// first tick and the hundred-thousandth alike. Wanting is a request the
+		/// bridge weighs against MaxDetailed and against what else is wanted -
+		/// holding is not. It lives in the RULES rather than in LodState because
+		/// LodState is a component and every world that has one puts it in its
+		/// state digest: adding a field there would move the frozen digest of
+		/// every phase that ever declared 04.06, which is what ADR-0090 is about.
+		uint32 Held = 0;
 	};
 
 	struct LodPayload

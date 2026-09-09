@@ -18,6 +18,7 @@
 #include "VaelenTest.h"
 
 #include <algorithm>
+#include <chrono>
 #include <memory>
 #include <vector>
 
@@ -568,4 +569,114 @@ VAELEN_TEST(Lod, APersonWalksToTheNextRegionAndBothGrainsStillAgree)
 				 "a coarse region has no persons to walk into, only a count of them");
 	VT_CHECK_EQ(FindPerson(W.Instance, W.Persons, Who)->Region, To);
 	VT_CHECK(IsConsistent(W.Instance, W.Ages.Types(), W.Persons, To));
+}
+
+VAELEN_TEST(Lod, AHeldRegionStaysDetailedWhateverElseTheWorldWants)
+{
+	// Phase 11's colony is not a region that happens to be interesting this
+	// decade: it is the place the game is played, and it has to be at the fine
+	// grain on the first tick and the hundred-thousandth alike. Wanting is a
+	// request weighed against MaxDetailed and against everything else wanted;
+	// holding is not.
+	Run Scout(AelvorSeed);
+	VT_REQUIRE(Scout.Ages.Generate(Run::Square(128), 300));
+	const uint32 Colony = Scout.Ranked()[0];
+	VT_REQUIRE(Colony != 0);
+
+	LodRules Rules;
+	Rules.MaxDetailed = 2;
+	Rules.Held = Colony;
+	Run W(AelvorSeed, Rules);
+	VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
+
+	// Nobody asked for it. It is detailed anyway, on the first year the bridge
+	// runs, because the rules hold it there.
+	VT_CHECK(!IsWanted(W.Instance, W.Lod, Colony));
+	W.Ages.Run(1);
+	VT_CHECK_MSG(W.Detailed(Colony), "a held region is detailed without being asked for");
+	const uint32 People = W.Counts(Colony)->Total;
+	VAELEN_LOG_INFO(LogLod, "the colony is region %u with %u people, held with MaxDetailed=%u", Colony, People,
+					Rules.MaxDetailed);
+	VT_CHECK(People > 0);
+
+	// Now ask for as many others as the world will take, more than the limit
+	// allows. The held one is not what gives way.
+	const std::vector<uint32> Ranked = W.Ranked();
+	uint32 Asked = 0;
+	for (const uint32 R : Ranked)
+	{
+		if (R != Colony && Asked < 4)
+		{
+			VT_CHECK(RequestDetail(W.Instance, W.Lod, R));
+			++Asked;
+		}
+	}
+	W.Ages.Run(3);
+	uint32 Fine = 0;
+	W.Instance.Components().GetPool(W.Persons.Detail).ForEach([&](EntityHandle, const RegionDetail&) { ++Fine; });
+	VAELEN_LOG_INFO(LogLod, "%u region(s) asked for beyond the colony, %u detailed under a limit of %u", Asked, Fine,
+					Rules.MaxDetailed);
+	VT_CHECK_MSG(W.Detailed(Colony), "the held region is still detailed after four others were asked for");
+	VT_CHECK_MSG(IsConsistent(W.Instance, W.Ages.Types(), W.Persons, Colony), "and both grains still agree about it");
+
+	// And releasing everything else does not release it either.
+	for (const uint32 R : Ranked)
+	{
+		ReleaseDetail(W.Instance, W.Lod, R);
+	}
+	W.Ages.Run(2);
+	VT_CHECK_MSG(W.Detailed(Colony), "nor does letting every other region go");
+	VT_CHECK_MSG(IsConsistent(W.Instance, W.Ages.Types(), W.Persons, Colony), "and it is still coherent");
+
+	// A world that holds nothing is the world every phase before this one had.
+	{
+		Run Plain(AelvorSeed);
+		VT_REQUIRE(Plain.Ages.Generate(Run::Square(128), 300));
+		Plain.Ages.Run(1);
+		VT_CHECK_MSG(!Plain.Detailed(Colony), "with Held = 0 nothing is detailed unasked");
+	}
+}
+
+VAELEN_TEST(Lod, WhatHoldingARegionCostsPerTick)
+{
+	// Measured rather than asserted, in the manner of the mini-world baseline:
+	// the number that matters to Phase 11 is what the fine grain costs when it
+	// is never given up, against the same world at the coarse grain, and it is
+	// worth having on the record before anything is built on top of it.
+	const auto Elapsed = [](const std::chrono::steady_clock::time_point Start) {
+		return std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - Start)
+			.count();
+	};
+	Run Coarse(AelvorSeed);
+	VT_REQUIRE(Coarse.Ages.Generate(Run::Square(128), 300));
+	const uint32 Colony = Coarse.Ranked()[0];
+	VT_REQUIRE(Colony != 0);
+	const auto ColdStart = std::chrono::steady_clock::now();
+	Coarse.Ages.Run(20);
+	const double Without = Elapsed(ColdStart);
+
+	LodRules Rules;
+	Rules.Held = Colony;
+	Run Fine(AelvorSeed, Rules);
+	VT_REQUIRE(Fine.Ages.Generate(Run::Square(128), 300));
+	Fine.Ages.Run(1); // the hold takes effect on the first yearly tick
+	VT_REQUIRE(Fine.Detailed(Colony));
+	const uint32 People = Fine.Counts(Colony)->Total;
+	const auto WarmStart = std::chrono::steady_clock::now();
+	Fine.Ages.Run(20);
+	const double With = Elapsed(WarmStart);
+
+	const double Years = 20.0;
+	VAELEN_LOG_INFO(LogLod,
+					"twenty years at 128: %.2f s coarse, %.2f s holding region %u at the fine grain with %u people "
+					"(%.0f%% more, %.1f ms a year, %.1f us a tick)",
+					Without, With, Colony, People, Without > 0.0 ? (With / Without - 1.0) * 100.0 : 0.0,
+					With / Years * 1000.0, With / (Years * 8640.0) * 1e6);
+	VT_CHECK_MSG(With > 0.0 && Without > 0.0, "both worlds actually ran");
+	VT_CHECK_MSG(Fine.Detailed(Colony), "and the held region was detailed for all of it");
+	VT_CHECK_MSG(IsConsistent(Fine.Instance, Fine.Ages.Types(), Fine.Persons, Colony), "and stayed coherent");
+	// The people of the held region are simulated one by one for twenty years,
+	// so the world with it must do more work than the world without. Anything
+	// else would mean the hold was not doing anything.
+	VT_CHECK_MSG(With > Without * 1.05, "holding a region at the fine grain costs something real");
 }
