@@ -228,7 +228,7 @@ namespace Vaelen::Gameplay
 			Out += "a page nobody has";
 			return;
 		}
-		char Buffer[64];
+		char Buffer[128];
 		std::snprintf(Buffer, sizeof(Buffer), "%s %llu, written in year %llu",
 					  D->From == 0 ? "the account" : "a copy of the account", static_cast<unsigned long long>(D->Index),
 					  static_cast<unsigned long long>(D->Written / History::TicksPerYear));
