@@ -242,10 +242,18 @@ namespace Vaelen::Economy
 			// fact, three consequences below: nothing reaped here, no ore extracted
 			// here, and the people still eat out of the common stock - which is
 			// what makes a colony a place that eats what it does not grow.
-			const bool OnTheRock = HasMined && W.Components().GetPool(Mined).TryGet(RH) != nullptr;
 			const History::RegionPopulation* Counts = W.Components().GetPool(Types.Population.Population).TryGet(RH);
 			const uint64 Capacity = Counts != nullptr ? Counts->Capacity : 0u;
 			const bool Fine = Detailed[Region] != 0;
+			// Only where the colony is actually simulated person by person. A coarse
+			// region has no bonds to read, so there is no telling who is on the rock
+			// and who is in the fields - and the colony's own daily mining cannot run
+			// there either, because it counts hands and a coarse region has none. So a
+			// mined region that goes coarse behaves exactly as it did before Phase 11:
+			// it reaps, and the yearly pass extracts its ore. Leaving the harvest
+			// zeroed here would have starved it for the very reason 11.06 fixed in the
+			// fine branch, and no gate would have shown it - a colony is held detailed.
+			const bool OnTheRock = Fine && HasMined && W.Components().GetPool(Mined).TryGet(RH) != nullptr;
 			const uint64 People = Fine ? Alive[Region] : (Counts != nullptr ? Counts->Total : 0u);
 			if (People == 0)
 			{
@@ -260,7 +268,9 @@ namespace Vaelen::Economy
 			uint64 Harvest = 0;
 			if (!Fine)
 			{
-				const uint64 OnLand = OnTheRock ? 0u : std::min<uint64>(People, Capacity);
+				// OnTheRock is false here by construction (it is gated on Fine), so a
+				// coarse region reaps as it always did, mined or not.
+				const uint64 OnLand = std::min<uint64>(People, Capacity);
 				Harvest = OnLand * Rules.WorkerSharePerMille / 1000u * Rules.HarvestPerWorker * Kept / 1000u *
 						  FieldsPerMille / 1000u;
 				Common->Amount[G_GRAIN] = Saturate(Common->Amount[G_GRAIN] + Harvest);
