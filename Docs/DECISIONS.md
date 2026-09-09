@@ -5523,3 +5523,80 @@ said so. It had never shown because no test had ever filled the elite.
 - The overseers outlive the people in them, because the yearly system re-seats
   them as it re-seats a guild. That is what makes them an institution rather
   than a list of owners.
+
+## ADR-0092: The bond does not shorten a life; the ground does
+
+### Context
+
+Phase 10's gate read that a bound person dies young, and 11.05 asks whether that
+is the world being harsh or the model being wrong.
+
+Reading the code before measuring anything said there is no mechanism: `LifeRules`
+has no bondage term and mortality is by age band alone; death by health has a
+single path (`Needs.cpp`, health reaching zero) and health falls only from hunger
+and plague; and being fed last is a question of family (`HouseAt`) rather than of
+the bond. So the expected answer was "the ground, not the bond".
+
+Getting a measurement that could say otherwise took three attempts, and each
+wrong one passed:
+
+1. Everybody who died bound against everybody who died free: the free died at
+   twenty-three and the bound at sixty-five. Not about bondage at all - the free
+   group was full of children born over the sixty years and the bound were the
+   founding adults.
+2. Restricted to the founding cohort: sixty-five against forty-seven, still
+   confounded, because `BindColony` spares the under-twelves and the free were
+   again the young.
+3. Restricted to one age band as well: **the free group was empty.** In a colony
+   there is no free control of working age, by construction - every adult but
+   the elite is bound. The control had to come from an ordinary region.
+
+### Decision
+
+1. **The comparison is made in an ordinary region, one cohort, one age band.**
+   AELVOR's busiest region settles near a twelfth of its people bound by 05.04's
+   own rates, which gives both groups on one ground. Twenty to forty at the
+   taking, followed for seventy years:
+
+       61 of the bound died at a mean age of 66, 396 of the free at 65
+
+   One year. **The bond itself does not shorten a life**, and the Phase 10
+   reading was about the region. The test says so and refuses a wider tolerance:
+   if it ever fails there is a mechanism nobody documented, and finding it is
+   the task.
+
+2. **What a colony costs is measured against the same ground left to farm.** One
+   seed, one region, the founding the only difference, sixty years, both fed the
+   same endowment far past what they can eat:
+
+       farming: 1460 people became 1497 (natural 1355, famine 0, starved 0)
+       mining:  1460 people became   39 (natural 1007, famine 0, starved 1941)
+
+   Not famine, which needs a drought, and not plague. Starvation, with a full
+   granary behind them until the year there is not one.
+
+3. **A colony does not weaken; it holds and then falls.** Both worlds drain the
+   endowment at the same rate. The farm lives because it REAPS when the pile
+   runs out. The colony reaps nothing (11.03), so it is fine while the store
+   covers the year's need and collapses inside a decade of the year it stops:
+
+       year 10   20     30     40     50    60
+       farm    1430  1432   1447   1481   1488  1497
+       mine    1430  1432   1447   1481    333    39
+
+   An endowment only moves the date. That is the number 11.06's road has to
+   beat, and it is why the answer is a continuous inflow rather than a bigger
+   pile.
+
+### Consequences
+
+- 11.05 changes no kernel file. It is measurement, and the finding is that the
+  model was right: nothing needed fixing in 04.04, 05.04 or 06.02.
+- A method note that belongs to 11.01 and cost this task an hour:
+  `LodRules::Held` is a rule fixed when the system is built, so it holds a region
+  through the whole of `Generate`'s pre-history. With the full economy running,
+  three hundred years of that EMPTIES the region - 1460 people in a world without
+  the hold, none in the world with it. The dated way is `RequestDetail` (04.06),
+  which protects a region from demotion exactly as the rule does
+  (`Lod.cpp:170`) but from the tick it is asked. This is ADR-0090's lesson again:
+  a colony is a fact with a date, and so is the grain it is simulated at.

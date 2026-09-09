@@ -2434,55 +2434,50 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 11 — MINING COLONY — IN PROGRESS
-TASK        : 11.04 — WHO HOLDS IT
+TASK        : 11.05 — WHAT A COLONY DOES TO THE PEOPLE IN IT
 STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████ 50%
+███████████████ 62%
 
 CURRENTLY
-→ The task began with a measurement rather than a design, and the measurement contradicted the
-  design twice. Thirty years on the busiest region of AELVOR 128: 1484 alive, 114 bound (7.7%), 114
-  held by a person, none by the region, 48 elites with a capacity of 576 between them, the fullest
-  of them holding three.
+→ The roadmap asks whether the Phase 10 finding - a bound person dies young - is the world being
+  harsh or the model being wrong. Reading the code first said there is no mechanism at all: LifeRules
+  has no bondage term, death by health has one path and health falls only from hunger and plague, and
+  being fed last is a question of family rather than of the bond.
 
-  So bondage cannot GROW into a colony. Debt at fifteen per mille a year against manumission at
-  twenty-five and flight at eight settles a region near a twelfth of its people bound, and that is
-  an equilibrium rather than a ramp. A colony has to be FOUNDED bound, which is what the fiction
-  always said - the people are sent there. And the holders were never the limit until then: they
-  become one the moment a colony exists, because a thousand hands want eighty-four holders at twelve
-  each and the region has forty-eight.
+  The measurement agrees, once it is made properly. One cohort, one age band, in an ordinary region
+  where 05.04's own rates give both groups: 61 of the bound died at a mean age of 66, 396 of the free
+  at 65. One year. The bond does not shorten a life, and Phase 10 was reading the region.
 
-  Reading how that shortfall was handled found a defect of Phase 05. Bondage.cpp took a holder from
-  NextHolder(), which returns 0 when every elite is full, and then broke out of the loop. People the
-  region's strata said were bound were silently left free, and nothing said so. BondState::Holder
-  has meant "the region itself" since 05.04 and the enslaved whose holder dies already land there;
-  the promotion path now uses it too, which fixes every world and not only colonies.
+  Getting there took three attempts and every wrong one PASSED. Birth cohorts mixed (free at 23,
+  bound at 65 - an artefact); then the under-twelves the founding spares; then the discovery that a
+  colony has no free control of working age at all, because every adult but the elite is bound. The
+  control had to come from an ordinary region.
 
-  Standing turned out not to flatten in a colony but to VANISH: 05.02 takes the rank off anybody
-  bound, so 935 ranked people became 82 with nobody dead, and among the free few nothing moved at
-  all (198 per mille stood above the common run before, 195 after). The first version of that test
-  passed for the wrong reason.
+  What the ground costs is the other half, and it is severe. One seed, one region, the founding the
+  only difference, both fed the same endowment far past what they can eat: 1460 people became 1497
+  farming and 39 mining, by 1941 deaths from starvation with no famine and no plague. And the shape
+  matters as much as the number - both worlds drain the endowment at the same rate, but the farm
+  reaps when the pile runs out and the colony does not. It is fine while the store covers the year's
+  need and collapses inside a decade of the year it stops. An endowment only moves the date.
 
 COMPLETED
 ✓ Phases 00-09 closed · Phase 10 PLAYER closed
 ✓ 11.01 a region kept detailed · 11.02 a colony's people at the day · 11.03 the work of a colony
-✓ 11.04 who holds it — Society::BindPerson and FoundOrganization (two verbs that existed only as
-  private lambdas), OrganizationKind::Overseers, OrganizationSystem::ObserveBonds, the region as
-  holder of last resort, Colony::BindColony / RaiseOverseers / MeasureHolding, 6 tests
+✓ 11.04 who holds it · 11.05 what a colony does to the people in it — measurement only, no kernel
+  file changed, because the finding is that the model was right
 
 NEXT
-→ 11.05 — what a colony does to the people in it: the ration of 04.04 at that density, sickness, and
-  whether the Phase 10 finding (a bound person dies young) is the world being harsh or the model
-  being wrong
+→ 11.06 — the colony and the world: what it sends out, what it needs in, and the roads of 09.04 that
+  carry both. The number to beat is above: a continuous inflow, not a bigger pile
 
 TESTS
-✓ VaelenColonyTests Holders 6 run, 6 passed, 65 checks
-✓ Thirty years of debt bound 114 of 1484; the founding bound 1047 more in a tick
-✓ All 1047 held by the colony itself, against a person-holding capacity of only 576
-✓ Once founded it is no special case: 1115 bound became 911 over five years of 05.04
-✓ Overseers: 12 seated with none held at the first seating, 24 with two held three years on
-✓ Two worlds of one seed bind the same people in the same order to the same condition
+✓ VaelenColonyTests Toll 2 run, 2 passed, 18 checks
+✓ The bound and the free of one cohort and one age band die a year apart (66 against 65)
+✓ 1460 people became 1497 farming and 39 mining on the same ground from one seed
+✓ Starvation, not famine and not plague: 1941 against 0 and 0
+✓ The collapse is late and sudden: 1481 alive at year 40, 333 at 50, 39 at 60
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)
