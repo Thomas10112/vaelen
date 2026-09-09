@@ -5030,3 +5030,68 @@ The rule to hold to: anything the fine grain writes must be the player's own
 record. The moment it writes something the world owns, the log digests diverge
 and the test in `Test_Hours.cpp` fails - which is the intended alarm, not an
 inconvenience.
+
+## ADR-0085: What arrives from outside the simulation is a struct in a queue
+
+### Context
+
+The rule of Phase 10 is that the player is a person the world already had. It is
+easy to write down and easy to break: the shortest path from a keypress to a
+changed world is to reach into a component and set a field, and every project
+that does that loses replay in the same afternoon.
+
+The world of nine phases is already fully determined by its seed. A played
+person adds a second source of input - what that person decided to do - and the
+whole question of the task is what shape that input has, because the answer
+decides whether a life can be replayed at all.
+
+### Decision
+
+Intent is data, and only the simulation acts on it.
+
+1. **What arrives from outside is a `PlayerCommand`.** A flat 24-byte struct: a
+   kind, a target, an amount, an hour cost, and the tick it was meant on.
+   `Submit` puts it in a ring on the played person and does NOTHING else - no
+   store moves, no standing changes, no hour is spent, no event is published.
+   The test that keeps that honest compares the event log digest and the hours
+   left across a submission: both unchanged.
+2. **`PlayerOrderSystem` is the only thing that acts on one.** It runs inside
+   the simulation at the day, after `PlayerDay`, and it does the deciding: what
+   the world refuses, what the day can pay for, what waits for tomorrow.
+3. **A refusal is an answer, not a silence.** `Refusal` names why - nobody
+   played, the person dead, an intent with no name, longer than any day, a queue
+   already full, an intent that waited past the month it was meant in - it is
+   kept on the command, counted on the queue and published as an event, because
+   "nothing happened" is not something a player can act on and not something
+   10.07 can put in a chronicle.
+4. **The day is the budget, and the queue carries the rest.** Intents are taken
+   in the order they were meant until the hours run out; what is left waits. A
+   person who means eight things at dawn does not do all eight at dawn.
+5. **What no day can pay for is refused rather than left in.** An intent costing
+   more than a whole day would otherwise sit at the head of the queue forever
+   and block everything meant after it.
+6. **The queue is world state.** It is a component, it is in the state digest
+   and it is in the snapshot: what a person means is part of the world, not of
+   the program that ran it.
+
+### Consequences
+
+Replay is now a test rather than an argument. A recording keeps every submission
+with the tick it was made on - including the ones the door turned away, because
+a stream that keeps only what was accepted is a summary of the input and not the
+input. Replayed blind into a fresh world of the same seed, all 1200 intents got
+the same verdict at the door, 789 were taken and 21 refused as in the first life,
+the queue held the same intents in the same slots, and the event log was the same
+log.
+
+The cost is that nothing can take a shortcut. 10.05 hangs the effect of each kind
+inside this system's loop, and every one of them has to go through the system
+that already owns that part of the world - work through 06.01, eating through
+04.04, moving through the region graph - rather than writing what it wants
+directly. That is more work per verb and it is the whole reason the phase can
+promise a replayable life.
+
+The rule to hold to: if a thing the player does cannot be expressed as a command
+applied by the system that owns that change, it does not belong in this project.
+A player who can write to the world from outside it cannot be replayed, and a
+world that cannot be replayed is not this project.
