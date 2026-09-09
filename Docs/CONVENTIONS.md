@@ -811,3 +811,22 @@ colony; there is no chosen one, no main quest and no canonical ending
 6. Determinism: streams derived by name, no wall-clock, no order-dependent
    iteration, no undocumented float accumulation.
 7. Progress report with the BUILD STATUS block, files, tests, problems, next.
+
+## Verifying a change that touches a module below the one being built
+
+Building and running a module's own suites covers a task inside that module. It
+does not cover a change made BENEATH it, and one class of those is invisible to
+every fast check: anything that alters a world's component type registry moves
+the state digest of every world that declares the module, which is every phase
+gate above it. Registering a component type inside a lower module's `Declare` is
+the way to do it by accident, and it moved the frozen digests of six closed
+phases in Phase 10 without a single fast test noticing - the local loop excludes
+the gates, and every affected test was a gate.
+
+So: a change to a lower module runs `Tools/run_gates.sh` before it is committed.
+It runs every gate fastest-first, so a moved digest shows in about a minute
+rather than after the long ones. And a hook a higher module needs from a lower
+one is an OBSERVED type declared by the module that needs it (`ObserveHeld`,
+`ObserveStores`, `ObserveRoads`), never a new registration in the lower module's
+`Declare`: a world that does not use the hook then holds exactly what it held
+before the hook existed.
