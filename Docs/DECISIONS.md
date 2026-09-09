@@ -5227,3 +5227,58 @@ player a way to earn it rather than to set the number.
 The rule to hold to: nothing writes an opinion except a reading of what is in
 the log. The moment something sets one directly, the number stops being a fact
 about the world and the whole of 10.06 becomes decoration.
+
+## ADR-0088: The chronicle of a life is the chronicle of a world with one person in it
+
+### Context
+
+Six phases have each ended with a chronicle task, and each of them said the same
+thing one layer higher: the event log holds everything, which is exactly what
+nobody remembers, so a chronicle is the small part a century keeps. 10.07 is the
+seventh and the last one before the gate, and the layer it sits on is a person
+rather than a region, a polity or a war.
+
+That difference is the whole question. A player's log is denser than a
+century's - a life at the day rather than a world at the year - and the
+temptation is to keep all of it, because it is the player's and the player is
+interested. That way lies a ledger of every meal.
+
+### Decision
+
+1. **What is kept is what touched somebody else.** Giving, taking and walking
+   are records; working, eating, resting and waiting are not, by default. It is
+   the same line 10.06 draws for opinions and it is drawn for the same reason:
+   those are the acts the world has any view about. `RecordSmallDoings` turns
+   the rest on for a session that wants every hour, and the default is off.
+2. **A refusal is not history.** What the world would not let somebody do is
+   worth having while playing and is not what a life was, so `RecordRefusals` is
+   off by default too. It is still an event, and it still has a sentence.
+3. **Every event has a sentence whether it was kept or not**, stamped with the
+   year in the same hand as every layer below, falling through to the works text
+   (and so to the military, and so to the person) or, in a lighter world, to the
+   economy text. The describer of the topmost layer speaks for every layer under
+   it - ADR-0080's rule, one layer further up.
+4. **The why runs the other way and leaves the player behind.** 10.05 passes the
+   act's own event as the cause of everything a doing moves, so the grain that
+   left a house points at the giving. Walk further and the chain is the world's:
+   a famine that took their family is the drought of 03.05 through the stores of
+   04.04 through the granary of 09.02 that fell in and was never rebuilt.
+5. **`ExportLife` is the whole of it in one call**: who they are in the world's
+   own naming, what they did in order, who knows them and what those people make
+   of them, and the why of the last thing that happened because of them.
+
+### Consequences
+
+A life can be read without the program that ran it, which is what a chronicle is
+for, and the text is frozen like every other text in the project: twenty days of
+this life are 12 records and the digest 3727cebce1fc782c on every compiler that
+runs it.
+
+The deeper consequence is the one worth stating plainly. The player's chronicle
+is not a special document; it is the world's chronicle with one person's acts in
+it, written by the same describer, kept in the same records, walked by the same
+why. Phase 12's dialogue and Phase 17's causal graph both read this, and neither
+needs to know that a player exists.
+
+The rule to hold to: if the player's chronicle ever needs a mechanism the other
+six do not have, the thing to suspect is the mechanism, not the six.
