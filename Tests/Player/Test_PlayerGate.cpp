@@ -1329,9 +1329,12 @@ namespace
 			++Failures;
 			VT_CHECK_MSG(false, "year %u: %u intent(s) waiting in a ring of %zu", Year, Q->Held, MostOrders);
 		}
-		// The chronicle of a life is of the person being played and nobody else.
+		// Every record of a life has a line of its own layer. They are not all
+		// of the person being played NOW: a world with mortality in it is
+		// played across several lives, and what the earlier ones did stays in
+		// the chronicle, which is the whole reason for keeping one.
 		const LifeChronicleStats Kept = W.Kept_();
-		if (Kept.Records != Kept.OfThePlayer || Kept.Described != Kept.Records)
+		if (Kept.Described != Kept.Records || Kept.OfThePlayer > Kept.Records)
 		{
 			++Failures;
 			VT_CHECK_MSG(false, "year %u: %u record(s), %u of the player, %u described", Year, Kept.Records,
@@ -1446,6 +1449,13 @@ VAELEN_TEST(PlayerGate, ALifetimeAt256HoldsEveryInvariantAndFreezes)
 	uint32 Ended = 0;
 	uint32 Lives = 1;
 	uint32 Playing = Who;
+	// A life owns its records and they end with it, so the day-count and the
+	// tallies of the queue describe the life being lived and not the forty
+	// years. What spans the forty years is the sum of them, taken as each life
+	// closes and once more at the end.
+	uint32 DaysLived = 0;
+	uint32 ActsTaken = 0;
+	uint32 ActsRefused = 0;
 	Hash64 AtHalf = 0;
 	for (uint32 Year = 1; Year <= LifeYears; ++Year)
 	{
@@ -1472,7 +1482,11 @@ VAELEN_TEST(PlayerGate, ALifetimeAt256HoldsEveryInvariantAndFreezes)
 																					 : "no longer a person at all"));
 				// Everything that was of that life ends with it: the mark, the
 				// queue, the day, the start, and what people made of them. What
-				// they did stays in the world's history, which is the point.
+				// they did stays in the world's history, which is the point -
+				// so the counts of it are taken before they go.
+				DaysLived += W.Hours_().Days;
+				ActsTaken += W.Acts().Taken;
+				ActsRefused += W.Acts().Refused;
 				ReleasePlayer(W.Instance, W.One, &W.Persons, &W.Lod);
 				EndOrders(W.Instance, W.Queue);
 				EndStart(W.Instance, W.First);
@@ -1541,11 +1555,14 @@ VAELEN_TEST(PlayerGate, ALifetimeAt256HoldsEveryInvariantAndFreezes)
 	// forty years, and a gate that pretended otherwise would be measuring a
 	// world that does not exist. What must hold is that somebody was being
 	// played on nearly every one of those days.
-	VT_CHECK_MSG(Hours.Days > LifeYears * 250u, "the day turned through the whole of the forty years");
+	DaysLived += Hours.Days;
+	ActsTaken += Orders_.Taken;
+	ActsRefused += Orders_.Refused;
+	VT_CHECK_MSG(DaysLived > LifeYears * 250u, "the day turned through the whole of the forty years");
 	VT_CHECK_MSG(Lives > 1, "and the world's mortality really did end a life and start another");
 	VT_CHECK_MSG(Ended != static_cast<uint32>(LifeState::Gone), "the crossings left the played person alone");
-	VT_CHECK(Orders_.Taken > 5000);
-	VT_CHECK_MSG(Orders_.Taken > Orders_.Refused, "and most of what was meant was done rather than refused");
+	VT_CHECK(ActsTaken > 5000);
+	VT_CHECK_MSG(ActsTaken > ActsRefused, "and most of what was meant was done rather than refused");
 	VT_CHECK_MSG(Done.Worked > 0 && Done.Ate > 0, "they worked and they ate");
 	VT_CHECK_MSG(Done.Caused > 0, "and the world moved because of it");
 	VT_CHECK_MSG(Regard_.Known > 0, "and somebody came to think something of them");
