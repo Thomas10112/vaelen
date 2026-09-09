@@ -2,7 +2,7 @@
 // Phase 09.01: buildings - things raised out of a region's common stock and
 // the hands it can spare, counted, and paid for to the unit.
 //
-// STATUS: PROTOTYPE (Phase 09)
+// STATUS: VALIDATED (Phase 09)
 
 #include "Vaelen/Economy/Production.h"
 #include "Vaelen/Economy/Stocks.h"

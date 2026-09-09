@@ -2,7 +2,7 @@
 // Phase 09.01: buildings - the things people raise out of goods and labour,
 // what they cost, and how sound they still are.
 //
-// STATUS: PROTOTYPE (Phase 09) - unit/integration/deterministic/edge tests in Tests/Infrastructure
+// STATUS: VALIDATED (Phase 09) - unit/integration/deterministic/edge tests in Tests/Infrastructure
 //
 // A building is an entity of kind Building standing in a region. It is raised
 // out of what the region holds IN COMMON, never out of a house's own goods: a

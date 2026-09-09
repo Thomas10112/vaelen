@@ -2,7 +2,7 @@
 // Phase 09.02: what a building does - the granary of 05.05, the harvest of
 // 06.02, the wall of 08.04.
 //
-// STATUS: PROTOTYPE (Phase 09) - unit/integration/deterministic/edge tests in Tests/Infrastructure
+// STATUS: VALIDATED (Phase 09) - unit/integration/deterministic/edge tests in Tests/Infrastructure
 //
 // A building is never a number the simulation reads instead of the world
 // (ADR-0074). So nothing here computes anything about famine, harvest or siege:

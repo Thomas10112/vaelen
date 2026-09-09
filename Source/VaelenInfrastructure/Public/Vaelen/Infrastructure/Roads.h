@@ -1,7 +1,7 @@
 // VAELEN - VaelenInfrastructure
 // Phase 09.04: roads - a route of 06.04 made into something, kept, and let go.
 //
-// STATUS: PROTOTYPE (Phase 09) - unit/integration/deterministic/edge tests in Tests/Infrastructure
+// STATUS: VALIDATED (Phase 09) - unit/integration/deterministic/edge tests in Tests/Infrastructure
 //
 // A route of 06.04 is not a road. It is a fact about prices: grain was dearer
 // there than here, often enough and long enough that somebody carried it. It

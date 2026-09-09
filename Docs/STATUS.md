@@ -12,54 +12,67 @@ refresh").
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 09 — INFRASTRUCTURE — IN PROGRESS
-TASK        : 09.07 — INFRASTRUCTURE IN THE CHRONICLE
-STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
+PHASE       : 09 — INFRASTRUCTURE — CLOSED
+TASK        : 09.08 — THE PHASE GATE
+STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████████████████ 92%
+█████████████████████████ 94%
 
 CURRENTLY
-→ Six tasks of building and none of it saying so. The event log holds every unit of timber taken and
-  every year a road was mended, which is exactly what nobody remembers. A chronicle is the small part
-  a century keeps: a granary raised, a mill fallen in, a road cut, a town settled.
+→ Phase 09 closed. Five centuries at 256 with every Phase 04 to 09 system running, the two most
+  peopled regions simulated person by person, every invariant of all six Phase 09 measures checked
+  each decade along with the Phase 07 and 08 ones under them, a snapshot of year 250 reloaded and
+  replayed to exactly the same year 500, and four frozen digests.
 
-  The same shape as 08.07 one layer up, and the describer of the topmost layer speaks for every layer
-  under it - so an infrastructure chronicle can tell you about a harvest. A road is filed at the end
-  it runs from, the way 08.07 files a war at a seat. And a fall now names the blow that finished it,
-  which is what makes the why a chain rather than a line:
+  The gate passed on its first run, which after Phase 08 is a claim that needs saying out loud rather
+  than enjoying quietly. Three habits came out of ADR-0073 and were applied from 09.01: every
+  cross-layer effect is one number an earlier phase already reads and is exactly one where nothing is
+  built; every derived number is recomputed from what stands rather than added to; every measure
+  recomputes what it checks and counts disagreement as Bad. Seven hooks were added to five systems
+  across Phases 04, 06, 07 and 08 and not one frozen digest of those phases moved.
 
-    Year 431, age of Ekut: the granary of Osvin fell in.
-      because a flood struck Osvin and 23 died.
-      because omens of flood were seen over Osvin.
+  And the gate settled the one thing no task suite could: 09.05's war wear, disclosed in that commit
+  as wired-but-unproven. Region 26's granary, in the year a foreign host stood on it: 1000 to 1000
+  with the host worth nothing, 1000 to 550 with it worth six hundred per mille.
 
-  The why of a fall the years alone brought about is one line, and that is the truth of it: nothing
-  caused it but time, and a chronicle that invented a cause there would be worse than one that says so.
+WHAT PHASE 09 IS
+→ 06.04 gave the world routes as artefacts of trade and 05.05 gave councils a granary as a number on
+  a region. Phase 09 does not replace either. A building is a thing standing in a region, raised out
+  of what the region holds in common and the hands its fields can spare, never a number the
+  simulation reads instead of the world. It does one thing, and that thing is the single number an
+  earlier phase already reads: the granary softens the drought of 04.04, the mill and the smithy lift
+  the harvest and the craft of 06.02, the wall slows what the siege of 08.04 brings down, the road
+  lets more of the trade of 06.04 across and carries the word of 07.03 and the host of 08.02 further.
+  Settlements got a body on one tile of the map. Everything wears, and what is not kept falls and
+  stays on the ground as a ruin the next century builds back on. And a chronicle keeps the small part
+  of all that a century would remember.
 
 COMPLETED
 ✓ Phases 00-07 (headless, Phase 07 closed) · Phase 08 MILITARY closed
-✓ CI run 86: the Windows MSVC build is green again after the narrowing fix
-✓ 09.01 buildings · 09.02 what they do · 09.03 places · 09.04 roads · 09.05 decay · 09.06 logistics
-✓ 09.07 infrastructure in the chronicle — WorksChronicle, DescribeWorksEvent, the two exports, 5 tests
+✓ 09.01 buildings · 09.02 what a building does · 09.03 settlements as places · 09.04 roads
+✓ 09.05 decay and ruins · 09.06 logistics · 09.07 the chronicle · 09.08 the gate — Phase 09 CLOSED
 
 NEXT
-→ 09.08 — the Phase 09 gate: five centuries at 256 with every Phase 04 to 09 system, every invariant
-  each decade, a snapshot replayed, frozen digests — then Phase 09 closed against section 2
+→ Phase 10 breakdown, then 10.01
 
-TESTS (a task inside a phase runs two presets; six at the gate)
-✓ VaelenInfrastructureTests 33 run, 33 passed
-✓ AELVOR 128, 250 years: 737 records kept of 1613 infrastructure events — 98 raisings, 41 falls,
-  74 roads, 524 towns — every one with a sentence, a region and its age
-✓ Two worlds of one seed write all 1138 lines word for word: text aa12c3d978c63373
-✓ An infrastructure chronicle tells you about a harvest, through the military and politics text
+TESTS (the phase-closing run)
+✓ AELVOR 256, five centuries in 506 s with assertions on:
+  250=8b4cb819fd43509d 500=eaa38e2280e675df log=d092f23ea58a33d6 text=ee1a4c61f999a397
+✓ The snapshot of year 250 reloaded and replayed reaches exactly the same year 500
+✓ 200 works raised, 389 enlarged, 112 fallen, 10 raised back on their own ruins, 67 towns standing,
+  210 roads cut and 165 lost, 23 regions served, 5537 chronicle records
+✓ The world builds up and wears down to an equilibrium: 89 works standing at year 100 and 88 at year
+  500, with the ruins growing from 15 to 112 underneath; roads peak at 51 around year 200 and fall
+  to 18 by year 500
 
 EXIT CRITERIA (roadmap section 2)
-◻ 1. Six Linux presets with every gate — at the Phase 09 gate (09.08)
-✓ 2. Determinism tests for 09.01 to 09.07: same seed, snapshot round trip and replay, frozen digests
-◻ 3. The files of the phase are PROTOTYPE until the Phase 09 gate; engine files stay UNVERIFIED
-◻ 4. Unit, integration, deterministic, edge, text and long-duration tests: the war side of 09.05's
-     extra wear is still wired-but-unproven and waits on the gate. Disclosed, not claimed.
-✓ 5. ARCHITECTURE, DECISIONS, ROADMAP and STATUS updated; ADR-0074 to ADR-0080
+✓ 1. Six Linux presets green with every gate; Windows MSVC and macOS run in CI
+✓ 2. Determinism tests for every system of the phase: same seed, snapshot round trip, frozen values
+✓ 3. No file of the phase carries PROTOTYPE or INCOMPLETE; the engine-facing files stay UNVERIFIED
+✓ 4. Unit, integration, deterministic, edge, text and long-duration tests for every system, and the
+     one gap 09.05 disclosed is now closed by the gate
+✓ 5. ARCHITECTURE, CONVENTIONS, DECISIONS and ROADMAP updated; ADR-0074 to ADR-0081
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)
@@ -247,7 +260,7 @@ Phase 07 against the exit criteria (`Docs/ROADMAP.md` section 2): (1) CI matrix 
 | 09.05 | Decay and ruins: everything built falls unless it is kept, faster where the weather or a war struck, and a ruin makes the next one cheaper | PROTOTYPE: Decay 5 tests |
 | 09.06 | Logistics: one number on the ground from the best road touching it, read by the marching of 08.02 and the reach of 07.03 | PROTOTYPE: Logistics 5 tests |
 | 09.07 | Infrastructure in the chronicle: a granary raised, a mill fallen in, a road cut, a town settled, and the why of a fall walked back to the flood | PROTOTYPE: WorksHistory 5 tests |
-| 09.08 | Phase 09 gate | PLANNED |
+| 09.08 | Phase 09 gate: five centuries at 256 with every Phase 04 to 09 system, every invariant each decade, a snapshot replayed, four frozen digests | VALIDATED: InfrastructureGate 2 tests |
 
 ## File status
 
@@ -458,15 +471,16 @@ the purity checker, applied to headers and sources).
 | `Military/Test_Toll.cpp` (Phase 08) | VALIDATED | 4 |
 | `Military/Test_MilitaryHistory.cpp` (Phase 08) | VALIDATED | 4 |
 | `Military/Test_MilitaryGate.cpp` (Phase 08) | VALIDATED | 1 |
-| `Infrastructure/Test_Buildings.cpp` (Phase 09) | PROTOTYPE | 4 |
-| `Infrastructure/Test_Works.cpp` (Phase 09) | PROTOTYPE | 5 |
-| `Infrastructure/Test_Places.cpp` (Phase 09) | PROTOTYPE | 4 |
-| `Infrastructure/Test_Roads.cpp` (Phase 09) | PROTOTYPE | 5 |
-| `Infrastructure/Test_Decay.cpp` (Phase 09) | PROTOTYPE | 5 |
-| `Infrastructure/Test_Logistics.cpp` (Phase 09) | PROTOTYPE | 5 |
-| `Infrastructure/Test_WorksHistory.cpp` (Phase 09) | PROTOTYPE | 5 |
+| `Infrastructure/Test_Buildings.cpp` (Phase 09) | VALIDATED | 4 |
+| `Infrastructure/Test_Works.cpp` (Phase 09) | VALIDATED | 5 |
+| `Infrastructure/Test_Places.cpp` (Phase 09) | VALIDATED | 4 |
+| `Infrastructure/Test_Roads.cpp` (Phase 09) | VALIDATED | 5 |
+| `Infrastructure/Test_Decay.cpp` (Phase 09) | VALIDATED | 5 |
+| `Infrastructure/Test_Logistics.cpp` (Phase 09) | VALIDATED | 5 |
+| `Infrastructure/Test_WorksHistory.cpp` (Phase 09) | VALIDATED | 5 |
+| `Infrastructure/Test_InfrastructureGate.cpp` (Phase 09) | VALIDATED | 2 |
 
-Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 6, Deposits 5, WorldPipeline 4, History 3, Population 5, Naming 5, Religion 5, Disasters 5, PreHistory 5, HistoryText 5, HistoryGate 2 (161 tests; 158 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.History`, `Sim.Population`, `Sim.Naming`, `Sim.Religion`, `Sim.Disasters`, `Sim.PreHistory`, `Sim.HistoryText`, `Sim.HistoryGate`, `Sim.Registry`, `Sim.Shuffled` (42 entries in total). Population suites: Persons 6, Lives 5, Families 5, Needs 6, Traits 5, Lod 5, PersonHistory 5, PopulationGate 1 (38 tests; 38 without assertions); CTest entries `Population.Persons`, `Population.Lives`, `Population.Families`, `Population.Needs`, `Population.Traits`, `Population.Lod`, `Population.PersonHistory`, `Population.PopulationGate`, `Population.Registry`, `Population.Shuffled` (10 entries). Society suites: Organizations 5, Standing 4, Norms 4, Bondage 4, Decisions 4, Strata 3, SocietyHistory 3, SocietyGate 1 (28 tests; 28 without assertions); CTest entries `Society.Organizations`, `Society.Standing`, `Society.Norms`, `Society.Bondage`, `Society.Decisions`, `Society.Strata`, `Society.SocietyHistory`, `Society.SocietyGate`, `Society.Registry`, `Society.Shuffled` (10 entries). Economy suites: Stocks 4, Production 4, Markets 4, Trade 4, Wealth 5, Grains 2, EconomyHistory 3, EconomyGate 1 (27 tests; 27 without assertions); CTest entries `Economy.Stocks`, `Economy.Production`, `Economy.Markets`, `Economy.Trade`, `Economy.Wealth`, `Economy.Grains`, `Economy.EconomyHistory`, `Economy.EconomyGate`, `Economy.Registry`, `Economy.Shuffled` (10 entries). Politics suites: Polities 4, Law 4, Reach 5, Succession 4, Factions 4, Diplomacy 4, PoliticsHistory 3, PoliticsGate 1 (29 tests; 29 without assertions); CTest entries `Politics.Diplomacy`, `Politics.Factions`, `Politics.Law`, `Politics.Polities`, `Politics.PoliticsGate`, `Politics.PoliticsHistory`, `Politics.Reach`, `Politics.Succession`, `Politics.Registry`, `Politics.Shuffled` (10 entries). Military suites: Armies 4, Battle 4, March 4, MilitaryGate 1, MilitaryHistory 4, Siege 4, Toll 4, War 4 (29 tests; 29 without assertions); CTest entries `Military.Armies`, `Military.Battle`, `Military.March`, `Military.MilitaryGate`, `Military.MilitaryHistory`, `Military.Siege`, `Military.Toll`, `Military.War`, `Military.Registry`, `Military.Shuffled` (10 entries). Infrastructure suites: Buildings 4, Works 5, Places 4, Roads 5, Decay 5, Logistics 5, WorksHistory 5 (33 tests; 33 without assertions); CTest entries `Infrastructure.Buildings`, `Infrastructure.Works`, `Infrastructure.Places`, `Infrastructure.Roads`, `Infrastructure.Decay`, `Infrastructure.Logistics`, `Infrastructure.WorksHistory`, `Infrastructure.Registry`, `Infrastructure.Shuffled` (9 entries).
+Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 6, Deposits 5, WorldPipeline 4, History 3, Population 5, Naming 5, Religion 5, Disasters 5, PreHistory 5, HistoryText 5, HistoryGate 2 (161 tests; 158 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.History`, `Sim.Population`, `Sim.Naming`, `Sim.Religion`, `Sim.Disasters`, `Sim.PreHistory`, `Sim.HistoryText`, `Sim.HistoryGate`, `Sim.Registry`, `Sim.Shuffled` (42 entries in total). Population suites: Persons 6, Lives 5, Families 5, Needs 6, Traits 5, Lod 5, PersonHistory 5, PopulationGate 1 (38 tests; 38 without assertions); CTest entries `Population.Persons`, `Population.Lives`, `Population.Families`, `Population.Needs`, `Population.Traits`, `Population.Lod`, `Population.PersonHistory`, `Population.PopulationGate`, `Population.Registry`, `Population.Shuffled` (10 entries). Society suites: Organizations 5, Standing 4, Norms 4, Bondage 4, Decisions 4, Strata 3, SocietyHistory 3, SocietyGate 1 (28 tests; 28 without assertions); CTest entries `Society.Organizations`, `Society.Standing`, `Society.Norms`, `Society.Bondage`, `Society.Decisions`, `Society.Strata`, `Society.SocietyHistory`, `Society.SocietyGate`, `Society.Registry`, `Society.Shuffled` (10 entries). Economy suites: Stocks 4, Production 4, Markets 4, Trade 4, Wealth 5, Grains 2, EconomyHistory 3, EconomyGate 1 (27 tests; 27 without assertions); CTest entries `Economy.Stocks`, `Economy.Production`, `Economy.Markets`, `Economy.Trade`, `Economy.Wealth`, `Economy.Grains`, `Economy.EconomyHistory`, `Economy.EconomyGate`, `Economy.Registry`, `Economy.Shuffled` (10 entries). Politics suites: Polities 4, Law 4, Reach 5, Succession 4, Factions 4, Diplomacy 4, PoliticsHistory 3, PoliticsGate 1 (29 tests; 29 without assertions); CTest entries `Politics.Diplomacy`, `Politics.Factions`, `Politics.Law`, `Politics.Polities`, `Politics.PoliticsGate`, `Politics.PoliticsHistory`, `Politics.Reach`, `Politics.Succession`, `Politics.Registry`, `Politics.Shuffled` (10 entries). Military suites: Armies 4, Battle 4, March 4, MilitaryGate 1, MilitaryHistory 4, Siege 4, Toll 4, War 4 (29 tests; 29 without assertions); CTest entries `Military.Armies`, `Military.Battle`, `Military.March`, `Military.MilitaryGate`, `Military.MilitaryHistory`, `Military.Siege`, `Military.Toll`, `Military.War`, `Military.Registry`, `Military.Shuffled` (10 entries). Infrastructure suites: Buildings 4, Works 5, Places 4, Roads 5, Decay 5, Logistics 5, WorksHistory 5, InfrastructureGate 2 (35 tests; 35 without assertions); CTest entries `Infrastructure.Buildings`, `Infrastructure.Works`, `Infrastructure.Places`, `Infrastructure.Roads`, `Infrastructure.Decay`, `Infrastructure.Logistics`, `Infrastructure.WorksHistory`, `Infrastructure.InfrastructureGate`, `Infrastructure.Registry`, `Infrastructure.Shuffled` (10 entries).
 
 ### Tools/ and CI
 
@@ -481,31 +495,32 @@ Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, Lo
 | File | Status |
 |---|---|
 | `VaelenInfrastructure.Build.cs`, `Private/VaelenInfrastructureModule.cpp` | UNVERIFIED — engine-side, not compiled headless, and newer than the first Unreal build |
-| `CMakeLists.txt` | PROTOTYPE (Phase 09) |
-| `Public/Vaelen/Infrastructure/InfrastructureApi.h` | PROTOTYPE (Phase 09) |
-| `Public/Vaelen/Infrastructure/Buildings.h`, `Private/Buildings.cpp` | PROTOTYPE (Phase 09) — covered by `Tests/Infrastructure/Test_Buildings.cpp` |
-| `Public/Vaelen/Infrastructure/Works.h`, `Private/Works.cpp` | PROTOTYPE (Phase 09) — covered by `Tests/Infrastructure/Test_Works.cpp` |
-| `Public/Vaelen/Infrastructure/Places.h`, `Private/Places.cpp` | PROTOTYPE (Phase 09) — covered by `Tests/Infrastructure/Test_Places.cpp` |
-| `Public/Vaelen/Infrastructure/Roads.h`, `Private/Roads.cpp` | PROTOTYPE (Phase 09) — covered by `Tests/Infrastructure/Test_Roads.cpp` |
-| `Public/Vaelen/Infrastructure/Decay.h`, `Private/Decay.cpp` | PROTOTYPE (Phase 09) — covered by `Tests/Infrastructure/Test_Decay.cpp` |
-| `Public/Vaelen/Infrastructure/Logistics.h`, `Private/Logistics.cpp` | PROTOTYPE (Phase 09) — covered by `Tests/Infrastructure/Test_Logistics.cpp` |
-| `Public/Vaelen/Infrastructure/InfrastructureHistory.h`, `Private/InfrastructureHistory.cpp` | PROTOTYPE (Phase 09) — covered by `Tests/Infrastructure/Test_WorksHistory.cpp` |
+| `CMakeLists.txt` | VALIDATED (Phase 09) |
+| `Public/Vaelen/Infrastructure/InfrastructureApi.h` | VALIDATED (Phase 09) |
+| `Public/Vaelen/Infrastructure/Buildings.h`, `Private/Buildings.cpp` | VALIDATED (Phase 09) — covered by `Tests/Infrastructure/Test_Buildings.cpp` |
+| `Public/Vaelen/Infrastructure/Works.h`, `Private/Works.cpp` | VALIDATED (Phase 09) — covered by `Tests/Infrastructure/Test_Works.cpp` |
+| `Public/Vaelen/Infrastructure/Places.h`, `Private/Places.cpp` | VALIDATED (Phase 09) — covered by `Tests/Infrastructure/Test_Places.cpp` |
+| `Public/Vaelen/Infrastructure/Roads.h`, `Private/Roads.cpp` | VALIDATED (Phase 09) — covered by `Tests/Infrastructure/Test_Roads.cpp` |
+| `Public/Vaelen/Infrastructure/Decay.h`, `Private/Decay.cpp` | VALIDATED (Phase 09) — covered by `Tests/Infrastructure/Test_Decay.cpp` |
+| `Public/Vaelen/Infrastructure/Logistics.h`, `Private/Logistics.cpp` | VALIDATED (Phase 09) — covered by `Tests/Infrastructure/Test_Logistics.cpp` |
+| `Public/Vaelen/Infrastructure/InfrastructureHistory.h`, `Private/InfrastructureHistory.cpp` | VALIDATED (Phase 09) — covered by `Tests/Infrastructure/Test_WorksHistory.cpp` |
+| The whole module together | VALIDATED (Phase 09) — covered by `Tests/Infrastructure/Test_InfrastructureGate.cpp` |
 
 ## Verified here
 
 Toolchain: clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.15, clang-format 18.1.3, Linux x86_64. Every preset was configured, built and tested with
 `cmake --preset`, `cmake --build --preset`, `ctest --preset` into `out/build/<preset>`:
 
-| Preset | Build | `ctest` | `VaelenCoreTests` | `VaelenSimTests` | `VaelenPopulationTests` | `VaelenSocietyTests` | `VaelenEconomyTests` | `VaelenPoliticsTests` | `VaelenMilitaryTests` |
-|---|---|---|---|---|---|---|---|---|---|
-| linux-clang-debug | 0 warnings | 92/92 passed | 133 run, 133 passed, 22427 checks | 161 run, 161 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 29 run, 29 passed |
-| linux-gcc-debug | 0 warnings | 92/92 passed | 133 run, 133 passed, 22427 checks | 161 run, 161 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 29 run, 29 passed |
-| linux-clang-release | 0 warnings | 92/92 passed | 133 run, 133 passed, 22427 checks | 161 run, 161 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 29 run, 29 passed |
-| linux-gcc-release | 0 warnings | 92/92 passed | 133 run, 133 passed, 22427 checks | 161 run, 161 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 29 run, 29 passed |
-| linux-clang-noasserts | 0 warnings | 92/92 passed | 108 run, 108 passed, 22214 checks | 158 run, 158 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 29 run, 29 passed |
-| linux-gcc-noasserts | 0 warnings | 92/92 passed | 108 run, 108 passed, 22214 checks | 158 run, 158 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 29 run, 29 passed |
+| Preset | Build | `ctest` | `VaelenCoreTests` | `VaelenSimTests` | `VaelenPopulationTests` | `VaelenSocietyTests` | `VaelenEconomyTests` | `VaelenPoliticsTests` | `VaelenMilitaryTests` | `VaelenInfrastructureTests` |
+|---|---|---|---|---|---|---|---|---|---|---|
+| linux-clang-debug | 0 warnings | 109/109 passed | 133 run, 133 passed, 22427 checks | 161 run, 161 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 29 run, 29 passed | 35 run, 35 passed |
+| linux-gcc-debug | 0 warnings | 109/109 passed | 133 run, 133 passed, 22427 checks | 161 run, 161 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 29 run, 29 passed | 35 run, 35 passed |
+| linux-clang-release | 0 warnings | 109/109 passed | 133 run, 133 passed, 22427 checks | 161 run, 161 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 29 run, 29 passed | 35 run, 35 passed |
+| linux-gcc-release | 0 warnings | 109/109 passed | 133 run, 133 passed, 22427 checks | 161 run, 161 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 29 run, 29 passed | 35 run, 35 passed |
+| linux-clang-noasserts | 0 warnings | 109/109 passed | 108 run, 108 passed, 22214 checks | 158 run, 158 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 29 run, 29 passed | 35 run, 35 passed |
+| linux-gcc-noasserts | 0 warnings | 109/109 passed | 108 run, 108 passed, 22214 checks | 158 run, 158 passed | 37 run, 37 passed | 27 run, 27 passed | 26 run, 26 passed | 29 run, 29 passed | 29 run, 29 passed | 35 run, 35 passed |
 
-Since Phase 08 closed, a task inside a phase is verified on the two presets that actually find things - `linux-clang-debug` (assertions on) and `linux-gcc-release` (optimised, `-Werror`) - plus the purity checker and clang-format; the six-preset matrix above is re-run in full at the phase gate. **09.01**: both presets green, 88/88 CTest entries each (gates and shuffled re-runs excluded), `VaelenInfrastructureTests` 4 run / 4 passed / 90 checks on both, purity 139 files 0 violations, 0 formatting drift. **09.02**: both presets green, 89/89 each, `VaelenInfrastructureTests` 9 run / 9 passed, purity 141 files 0 violations, 0 formatting drift - and every frozen digest of Phases 04 to 08 unchanged, which is the point: the four hooks read a factor of one where nothing is built. **09.03**: both presets green, 90/90 each, `VaelenInfrastructureTests` 13 run / 13 passed, purity 143 files 0 violations, 0 formatting drift. **09.04**: both presets green, 91/91 each, `VaelenInfrastructureTests` 18 run / 18 passed, purity 145 files 0 violations, 0 formatting drift. **09.05**: both presets green, 92/92 each, `VaelenInfrastructureTests` 23 run / 23 passed, purity 147 files 0 violations, 0 formatting drift. **09.06**: both presets green, 93/93 each, `VaelenInfrastructureTests` 28 run / 28 passed, purity 149 files 0 violations, 0 formatting drift - and every frozen digest of Phases 07 and 08 unchanged, the hooks reading a factor of one on bare ground. **09.07**: both presets green, 94/94 each, `VaelenInfrastructureTests` 33 run / 33 passed, purity 151 files 0 violations, 0 formatting drift.
+Run on 2026-09-09 for the closing of Phase 09, with every gate included. The debug presets take about an hour each now: `Infrastructure.InfrastructureGate` alone is 779 s inside a four-job CTest run, and `linux-clang-debug` totals 3414 s against `linux-gcc-debug`'s 3847 s; the optimised presets are about 717 s and the no-assert ones about 296 s.
 
 Mini-world baseline (100 000 ticks, 41 entities, 305 027 events, 34 168 227-byte snapshot), logged by `Sim.MiniWorld`, not asserted: clang debug 0.39 s (255 k ticks/s), gcc debug 0.40 s, clang release 0.135 s (739 k ticks/s), gcc release without assertions 0.127 s (790 k ticks/s); snapshot 0.09-0.14 s.
 

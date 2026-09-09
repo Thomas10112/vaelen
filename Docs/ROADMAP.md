@@ -76,8 +76,8 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 06 | ECONOMY | Items, production, markets, prices, trade, wealth and its transmission. | VALIDATED (headless, 06.01-06.08); UNVERIFIED (engine) |
 | 07 | POLITICS | Polities, laws, authority, succession, factions, diplomacy. | VALIDATED headless (07.01-07.08, phase closed); UNVERIFIED under UBT |
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | CLOSED (08.01-08.08 VALIDATED headless; UNVERIFIED under UBT) |
-| 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | BROKEN DOWN (09.01-09.08, section 13) |
-| 10 | PLAYER | The player as one simulated person: enslaved start, body, needs, skills, relationships; player intent as commands into the simulation. | PLANNED |
+| 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | CLOSED (09.01-09.08 VALIDATED headless; UNVERIFIED under UBT) |
+| 10 | PLAYER | The player as one simulated person: enslaved start, body, needs, skills, relationships; player intent as commands into the simulation. | BROKEN DOWN (10.01-10.08, section 14) |
 | 11 | MINING COLONY | The starting place: a huge autonomous mining colony simulated by the same systems at full detail. | PLANNED |
 | 12 | GAMEPLAY | Interaction verbs, knowledge (documents, maps), reputation and consequences without main quest or canonical ending. | PLANNED |
 | 13 | PRESENTATION | Unreal rendering, animation and audio of the world state, strictly read-only. | PLANNED |
@@ -2348,61 +2348,111 @@ the cost of a hop that 08.02 already walks. Anything that cannot be expressed as
 that holds, lowers or raises something an earlier phase already computes does not belong
 in this phase.
 
-## 14. Current BUILD STATUS
+## 14. Phase 10 - PLAYER: task breakdown
+
+Broken down on the closing of Phase 09. Phases 11-20 are broken down as each previous
+phase closes.
+
+What this phase is not. The player is not a new kind of thing. Nine phases have built a
+world of people who are born, eat, work, are bound and freed, marry, hold office, march
+and die, and the player is ONE OF THEM - a marker on an existing person of a detailed
+region, not an entity with its own rules. Everything the player does goes through a
+system that already owns that part of the world; nothing is written into the world from
+outside the simulation. That is what makes a replay of a played life possible at all, and
+it is the whole architectural content of the phase.
+
+| Task | Content | Test kind |
+|---|---|---|
+| 10.01 | `VaelenPlayer` module; the player as a marker on one existing person (04.01) of a detailed region, with the rule that removing the marker leaves a world that runs on unchanged; `MeasurePlayer` | unit, deterministic |
+| 10.02 | The enslaved start: the player begins bound (05.04), on the ground of the mining colony, with the standing 05.02 gives someone in that condition and the family 04.03 gives them - a place in a world, not a character sheet | integration with 04.03, 05.02, 05.04 |
+| 10.03 | The player's grain: the person the player is runs at the finest LOD the scheduler has, while the world around them runs at the year; what that costs and what it must not change | unit, deterministic, edge |
+| 10.04 | Intent as commands: a queue the player submits to, validated against the world and applied by a system INSIDE the simulation. Nothing is ever written into the world from outside, so a recorded command stream replays to the same life | unit, edge, deterministic, replay |
+| 10.05 | What the player can do: work, rest, eat, move, speak, give, take - each a command that costs time and changes the world only through the system that already owns that change | integration with 04.04, 06.01, 05.04 |
+| 10.06 | What the people around the player make of them, built from what the player actually did (the event log) and from the standing of 05.02 - never from a dialogue tree | integration with 05.02, 04.03 |
+| 10.07 | The player in the chronicle: a life as records, and the why of anything that happened to them walked back through every layer below | text, deterministic |
+| 10.08 | Phase 10 gate: a world at 256 with the player placed and driven by a recorded command stream for a lifetime, every invariant of every phase each decade, frozen digests, and the command stream replayed to exactly the same life | long-duration, replay |
+
+Every task ends with the usual report block, the docs refreshed and a commit.
+
+The rule the phase is written to: **the player is a person the world already had.** Any
+command that cannot be expressed as something a person in that world could do, applied by
+the system that already owns it, does not belong in this phase. And the test that keeps
+it honest is the replay: a recorded stream of commands, applied to the same seed, gives
+the same life. A player who can write to the world from outside it cannot be replayed,
+and a world that cannot be replayed is not this project.
+
+The engine-facing part (the game engine class and the Enhanced Input mappings the
+`Config/` files already note for this phase) stays UNVERIFIED until the Phase 13
+presentation work, as every engine-facing file in the project has since Phase 00.
+
+## 15. Current BUILD STATUS
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 09 — INFRASTRUCTURE — IN PROGRESS
-TASK        : 09.07 — INFRASTRUCTURE IN THE CHRONICLE
-STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
+PHASE       : 09 — INFRASTRUCTURE — CLOSED
+TASK        : 09.08 — THE PHASE GATE
+STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████████████████ 92%
+█████████████████████████ 94%
 
 CURRENTLY
-→ Six tasks of building and none of it saying so. The event log holds every unit of timber taken and
-  every year a road was mended, which is exactly what nobody remembers. A chronicle is the small part
-  a century keeps: a granary raised, a mill fallen in, a road cut, a town settled.
+→ Phase 09 closed. Five centuries at 256 with every Phase 04 to 09 system running, the two most
+  peopled regions simulated person by person, every invariant of all six Phase 09 measures checked
+  each decade along with the Phase 07 and 08 ones under them, a snapshot of year 250 reloaded and
+  replayed to exactly the same year 500, and four frozen digests.
 
-  The same shape as 08.07 one layer up, and the describer of the topmost layer speaks for every layer
-  under it - so an infrastructure chronicle can tell you about a harvest. A road is filed at the end
-  it runs from, the way 08.07 files a war at a seat. And a fall now names the blow that finished it,
-  which is what makes the why a chain rather than a line:
+  The gate passed on its first run, which after Phase 08 is a claim that needs saying out loud rather
+  than enjoying quietly. Three habits came out of ADR-0073 and were applied from 09.01: every
+  cross-layer effect is one number an earlier phase already reads and is exactly one where nothing is
+  built; every derived number is recomputed from what stands rather than added to; every measure
+  recomputes what it checks and counts disagreement as Bad. Seven hooks were added to five systems
+  across Phases 04, 06, 07 and 08 and not one frozen digest of those phases moved.
 
-    Year 431, age of Ekut: the granary of Osvin fell in.
-      because a flood struck Osvin and 23 died.
-      because omens of flood were seen over Osvin.
+  And the gate settled the one thing no task suite could: 09.05's war wear, disclosed in that commit
+  as wired-but-unproven. Region 26's granary, in the year a foreign host stood on it: 1000 to 1000
+  with the host worth nothing, 1000 to 550 with it worth six hundred per mille.
 
-  The why of a fall the years alone brought about is one line, and that is the truth of it: nothing
-  caused it but time, and a chronicle that invented a cause there would be worse than one that says so.
+WHAT PHASE 09 IS
+→ 06.04 gave the world routes as artefacts of trade and 05.05 gave councils a granary as a number on
+  a region. Phase 09 does not replace either. A building is a thing standing in a region, raised out
+  of what the region holds in common and the hands its fields can spare, never a number the
+  simulation reads instead of the world. It does one thing, and that thing is the single number an
+  earlier phase already reads: the granary softens the drought of 04.04, the mill and the smithy lift
+  the harvest and the craft of 06.02, the wall slows what the siege of 08.04 brings down, the road
+  lets more of the trade of 06.04 across and carries the word of 07.03 and the host of 08.02 further.
+  Settlements got a body on one tile of the map. Everything wears, and what is not kept falls and
+  stays on the ground as a ruin the next century builds back on. And a chronicle keeps the small part
+  of all that a century would remember.
 
 COMPLETED
 ✓ Phases 00-07 (headless, Phase 07 closed) · Phase 08 MILITARY closed
-✓ CI run 86: the Windows MSVC build is green again after the narrowing fix
-✓ 09.01 buildings · 09.02 what they do · 09.03 places · 09.04 roads · 09.05 decay · 09.06 logistics
-✓ 09.07 infrastructure in the chronicle — WorksChronicle, DescribeWorksEvent, the two exports, 5 tests
+✓ 09.01 buildings · 09.02 what a building does · 09.03 settlements as places · 09.04 roads
+✓ 09.05 decay and ruins · 09.06 logistics · 09.07 the chronicle · 09.08 the gate — Phase 09 CLOSED
 
 NEXT
-→ 09.08 — the Phase 09 gate: five centuries at 256 with every Phase 04 to 09 system, every invariant
-  each decade, a snapshot replayed, frozen digests — then Phase 09 closed against section 2
+→ Phase 10 breakdown, then 10.01
 
-TESTS (a task inside a phase runs two presets; six at the gate)
-✓ VaelenInfrastructureTests 33 run, 33 passed
-✓ AELVOR 128, 250 years: 737 records kept of 1613 infrastructure events — 98 raisings, 41 falls,
-  74 roads, 524 towns — every one with a sentence, a region and its age
-✓ Two worlds of one seed write all 1138 lines word for word: text aa12c3d978c63373
-✓ An infrastructure chronicle tells you about a harvest, through the military and politics text
+TESTS (the phase-closing run)
+✓ AELVOR 256, five centuries in 506 s with assertions on:
+  250=8b4cb819fd43509d 500=eaa38e2280e675df log=d092f23ea58a33d6 text=ee1a4c61f999a397
+✓ The snapshot of year 250 reloaded and replayed reaches exactly the same year 500
+✓ 200 works raised, 389 enlarged, 112 fallen, 10 raised back on their own ruins, 67 towns standing,
+  210 roads cut and 165 lost, 23 regions served, 5537 chronicle records
+✓ The world builds up and wears down to an equilibrium: 89 works standing at year 100 and 88 at year
+  500, with the ruins growing from 15 to 112 underneath; roads peak at 51 around year 200 and fall
+  to 18 by year 500
 
 EXIT CRITERIA (roadmap section 2)
-◻ 1. Six Linux presets with every gate — at the Phase 09 gate (09.08)
-✓ 2. Determinism tests for 09.01 to 09.07: same seed, snapshot round trip and replay, frozen digests
-◻ 3. The files of the phase are PROTOTYPE until the Phase 09 gate; engine files stay UNVERIFIED
-◻ 4. Unit, integration, deterministic, edge, text and long-duration tests: the war side of 09.05's
-     extra wear is still wired-but-unproven and waits on the gate. Disclosed, not claimed.
-✓ 5. ARCHITECTURE, DECISIONS, ROADMAP and STATUS updated; ADR-0074 to ADR-0080
+✓ 1. Six Linux presets green with every gate; Windows MSVC and macOS run in CI
+✓ 2. Determinism tests for every system of the phase: same seed, snapshot round trip, frozen values
+✓ 3. No file of the phase carries PROTOTYPE or INCOMPLETE; the engine-facing files stay UNVERIFIED
+✓ 4. Unit, integration, deterministic, edge, text and long-duration tests for every system, and the
+     one gap 09.05 disclosed is now closed by the gate
+✓ 5. ARCHITECTURE, CONVENTIONS, DECISIONS and ROADMAP updated; ADR-0074 to ADR-0081
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)
@@ -2410,7 +2460,7 @@ BLOCKERS
 
 ```
 
-## 15. Verification record
+## 16. Verification record
 
 Commands run on 2026-09-05 (clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.15, clang-format 18.1.3, Linux x86_64) with the checked-in presets, each into
 `out/build/<preset>`:

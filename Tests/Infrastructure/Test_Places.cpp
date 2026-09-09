@@ -3,7 +3,7 @@
 // trade with no position and no size; a place is a thing standing on one tile
 // of the map, which is what everything after this needs.
 //
-// STATUS: PROTOTYPE (Phase 09)
+// STATUS: VALIDATED (Phase 09)
 
 #include "Vaelen/Economy/Markets.h"
 #include "Vaelen/Economy/Production.h"

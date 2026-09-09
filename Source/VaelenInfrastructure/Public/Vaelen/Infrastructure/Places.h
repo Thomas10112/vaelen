@@ -2,7 +2,7 @@
 // Phase 09.03: settlements as places - a thing standing on a tile of the map,
 // with a size that grows with the people around it and the goods through it.
 //
-// STATUS: PROTOTYPE (Phase 09) - unit/integration/deterministic/edge tests in Tests/Infrastructure
+// STATUS: VALIDATED (Phase 09) - unit/integration/deterministic/edge tests in Tests/Infrastructure
 //
 // 06.04 already founds settlements, and they are not places. A settlement of
 // 06.04 is a fact about trade: goods changed hands here often enough and long

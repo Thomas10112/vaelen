@@ -4,7 +4,7 @@
 // work is turned into a number an earlier phase already reads, and the test is
 // that the earlier phase behaves differently because of it.
 //
-// STATUS: PROTOTYPE (Phase 09)
+// STATUS: VALIDATED (Phase 09)
 
 #include "Vaelen/Economy/Markets.h"
 #include "Vaelen/Economy/Production.h"

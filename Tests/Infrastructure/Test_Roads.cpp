@@ -3,7 +3,7 @@
 // built; a road is what the regions at its two ends made of it, keep, and let
 // go.
 //
-// STATUS: PROTOTYPE (Phase 09)
+// STATUS: VALIDATED (Phase 09)
 
 #include "Vaelen/Economy/Markets.h"
 #include "Vaelen/Economy/Production.h"

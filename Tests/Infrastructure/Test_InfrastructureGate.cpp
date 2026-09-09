@@ -1,9 +1,9 @@
 // VAELEN - Tests/Infrastructure
 // Phase 09.08: the phase gate - five centuries at 256 with every Phase 04 to 09
-// system running, every invariant of every one of them checked each decade, and
+// 04 to 09 system running (506 s with assertions on). every invariant of every one of them checked each decade, and
 // the whole thing frozen.
 //
-// STATUS: PROTOTYPE (Phase 09)
+// STATUS: VALIDATED (Phase 09)
 
 #include "Vaelen/Economy/Markets.h"
 #include "Vaelen/Economy/Production.h"
@@ -68,13 +68,13 @@ using namespace Vaelen::Population;
 using namespace Vaelen::Society;
 using namespace Vaelen::WorldGen;
 
-// Recorded on clang 18 / Linux x86_64 (09.08): AELVOR 256 at year 300, the two
-// most peopled regions detailed, five centuries with every Phase 04 to 09
-// system running.
-#define VAELEN_WORKSGATE_FROZEN_256_250 0x0ull
-#define VAELEN_WORKSGATE_FROZEN_256_500 0x0ull
-#define VAELEN_WORKSGATE_LOG_256_500 0x0ull
-#define VAELEN_WORKSGATE_TEXT_256_500 0x0ull
+// Recorded on clang 18 / Linux x86_64 on 2026-09-08 (09.08): AELVOR 256 at year
+// 300, the two most peopled regions detailed, five centuries with every Phase
+// 04 to 09 system running (506 s with assertions on).
+#define VAELEN_WORKSGATE_FROZEN_256_250 0x8b4cb819fd43509dull
+#define VAELEN_WORKSGATE_FROZEN_256_500 0xeaa38e2280e675dfull
+#define VAELEN_WORKSGATE_LOG_256_500 0xd092f23ea58a33d6ull
+#define VAELEN_WORKSGATE_TEXT_256_500 0xee1a4c61f999a397ull
 
 namespace
 {

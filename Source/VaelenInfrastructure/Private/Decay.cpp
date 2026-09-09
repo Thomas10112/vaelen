@@ -1,7 +1,7 @@
 // VAELEN - VaelenInfrastructure
 // Phase 09.05: decay and ruins.
 //
-// STATUS: PROTOTYPE (Phase 09) - unit/long-duration/edge tests in Tests/Infrastructure
+// STATUS: VALIDATED (Phase 09) - unit/long-duration/edge tests in Tests/Infrastructure
 
 #include "Vaelen/Infrastructure/Decay.h"
 

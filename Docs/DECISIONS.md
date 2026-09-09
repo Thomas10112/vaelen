@@ -4842,3 +4842,58 @@ seed write all 1138 lines of it word for word.
 The why of a fall the years alone brought about is one line, and that is the
 truth of it: nothing caused it but time, and a chronicle that invented a cause
 there would be worse than one that says so.
+
+
+## ADR-0081: A gate that passes first time is a claim about the seven tasks before it
+
+### Context
+
+The Phase 08 gate failed immediately, four different ways, and ADR-0073 records
+what that taught: a system tested against its own module behaves; the same
+system tested against every module it stands on does not. The Phase 09 gate
+passed on its first run - fifty decades, every invariant of all six Phase 09
+measures and of the Phase 07 and 08 ones under them, a snapshot of year 250
+replayed to exactly the year 500 the first world reached.
+
+That is a good outcome and a suspicious one, and it is worth writing down which
+of the two it is.
+
+### Decision
+
+Record it as earned, and say what earned it. Three habits came out of Phase 08
+and were applied to every task of Phase 09 from 09.01:
+
+1. **Every cross-layer effect is one number an earlier phase already reads, and
+   is exactly one where nothing is built** (ADR-0075, ADR-0077, ADR-0079). Seven
+   hooks were added to five systems across Phases 04, 06, 07 and 08, and not one
+   frozen digest of those phases moved. The gate could not find an interaction
+   defect in code that provably does nothing when it is not used.
+2. **Every derived number is recomputed from what stands, never added to**
+   (ADR-0075, ADR-0078, ADR-0079). The class of defect the Phase 08 gate found -
+   a stale order left behind by a change somewhere else - cannot occur in a value
+   that is a pure function of the current world.
+3. **Every measure recomputes what it checks and counts disagreement as `Bad`**,
+   so a cache that drifts is a test failure in the task that introduced it rather
+   than a mystery at the gate.
+
+And one thing the gate did settle that no task suite could: 09.05's war wear.
+That was disclosed in the 09.05 commit as wired-but-unproven, because the world
+that suite runs never put a host on ground anybody had built on. The gate does,
+and the arithmetic is exact.
+
+### Consequences
+
+Five centuries at 256 in 506 seconds with assertions on: 200 works raised, 389
+enlarged, 112 fallen, 10 raised back on their own ruins, 67 towns standing, 210
+roads cut and 165 lost, 23 regions still served by a made road, 5537 chronicle
+records.
+
+Read across the decades, the world builds up and then wears down to a working
+equilibrium rather than to either extreme: 89 works standing at year 100 and 88
+at year 500, with the ruins growing from 15 to 112 underneath. Roads peak at 51
+made around year 200 and fall to 18 by year 500 - most roads outlive the trade
+that made them and then go, which is what ADR-0077 said would happen and is the
+first time it has been seen over five centuries.
+
+A gate that passes first time is not a reason to trust the next one less. Phase
+10 gets the same gate.

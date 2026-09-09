@@ -3,7 +3,7 @@
 // keeps it, faster where the weather struck or a war stood, and what falls
 // stays on the ground as something the next century can build back on.
 //
-// STATUS: PROTOTYPE (Phase 09)
+// STATUS: VALIDATED (Phase 09)
 
 #include "Vaelen/Economy/Markets.h"
 #include "Vaelen/Economy/Production.h"

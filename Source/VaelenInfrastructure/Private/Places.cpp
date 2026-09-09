@@ -1,7 +1,7 @@
 // VAELEN - VaelenInfrastructure
 // Phase 09.03: settlements as places.
 //
-// STATUS: PROTOTYPE (Phase 09) - unit/integration/deterministic/edge tests in Tests/Infrastructure
+// STATUS: VALIDATED (Phase 09) - unit/integration/deterministic/edge tests in Tests/Infrastructure
 
 #include "Vaelen/Infrastructure/Places.h"
 

@@ -1,7 +1,7 @@
 // VAELEN - VaelenInfrastructure
 // Export macro of the VaelenInfrastructure module (same scheme as VAELEN_MILITARY_API).
 //
-// STATUS: PROTOTYPE (Phase 09)
+// STATUS: VALIDATED (Phase 09)
 #pragma once
 
 #if defined(VAELEN_INFRASTRUCTURE_EXPORTS)

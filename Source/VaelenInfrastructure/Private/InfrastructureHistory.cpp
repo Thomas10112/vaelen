@@ -1,7 +1,7 @@
 // VAELEN - VaelenInfrastructure
 // Phase 09.07: infrastructure in the chronicle.
 //
-// STATUS: PROTOTYPE (Phase 09) - integration/text/deterministic tests in Tests/Infrastructure
+// STATUS: VALIDATED (Phase 09) - integration/text/deterministic tests in Tests/Infrastructure
 
 #include "Vaelen/Infrastructure/InfrastructureHistory.h"
 

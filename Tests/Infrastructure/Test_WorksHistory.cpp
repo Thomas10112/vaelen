@@ -3,7 +3,7 @@
 // fallen in, a road cut, a town settled; the small part of six tasks of
 // building that a century would keep.
 //
-// STATUS: PROTOTYPE (Phase 09)
+// STATUS: VALIDATED (Phase 09)
 
 #include "Vaelen/Economy/Markets.h"
 #include "Vaelen/Economy/Production.h"

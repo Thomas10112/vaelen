@@ -1,7 +1,7 @@
 // VAELEN - VaelenInfrastructure
 // Phase 09.06: logistics - what a road is worth to an army and to a polity.
 //
-// STATUS: PROTOTYPE (Phase 09) - unit/integration/deterministic/edge tests in Tests/Infrastructure
+// STATUS: VALIDATED (Phase 09) - unit/integration/deterministic/edge tests in Tests/Infrastructure
 //
 // 09.04 made roads and gave them one job: more of the trade that already wanted
 // to happen gets across. That is the economy's side of a road, and it is not

@@ -1,7 +1,7 @@
 // VAELEN - VaelenInfrastructure
 // Phase 09.07: infrastructure in the chronicle.
 //
-// STATUS: PROTOTYPE (Phase 09) - integration/text/deterministic tests in Tests/Infrastructure
+// STATUS: VALIDATED (Phase 09) - integration/text/deterministic tests in Tests/Infrastructure
 //
 // The phase has spent six tasks building things and none of it saying so. The
 // event log holds every unit of timber taken and every year a road was mended,

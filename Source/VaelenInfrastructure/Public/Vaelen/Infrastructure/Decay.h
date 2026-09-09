@@ -2,7 +2,7 @@
 // Phase 09.05: decay and ruins - everything built falls down unless somebody
 // keeps it, and what falls stays on the ground.
 //
-// STATUS: PROTOTYPE (Phase 09) - unit/long-duration/edge tests in Tests/Infrastructure
+// STATUS: VALIDATED (Phase 09) - unit/long-duration/edge tests in Tests/Infrastructure
 //
 // 09.01 raises things and 09.02 makes them matter. Neither takes anything away,
 // which means a world that runs long enough is a world where every region has

@@ -3,7 +3,7 @@
 // and to a polity whose word travels up it. One number on the ground, read by
 // two systems that never learned what a road is.
 //
-// STATUS: PROTOTYPE (Phase 09)
+// STATUS: VALIDATED (Phase 09)
 
 #include "Vaelen/Economy/Markets.h"
 #include "Vaelen/Economy/Production.h"
