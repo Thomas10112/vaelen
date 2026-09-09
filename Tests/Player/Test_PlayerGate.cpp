@@ -92,8 +92,14 @@ using namespace Vaelen::WorldGen;
 // hundred years of pre-history, two regions detailed, sixty years more, then
 // forty years played a day at a time across three lives - 14400 intents and 3
 // takings - in 106.4 s with assertions on.
-#define VAELEN_PLAYERGATE_FROZEN_HALF 0x4b861672a7e5f857ull
-#define VAELEN_PLAYERGATE_FROZEN_END 0x8c16c294502ee784ull
+// The two state digests were re-recorded when the hold of 04.06 moved from
+// LodTypes to PlayerTypes: the Player world registers one component type more
+// than it did, and a state digest counts type ids. The LOG and the LIFE below
+// did NOT move by that change and were not re-recorded - the history this world
+// wrote and the life that was lived in it are the same ones, which is the
+// evidence that the change was to the bookkeeping and not to the world.
+#define VAELEN_PLAYERGATE_FROZEN_HALF 0x1346aac980b8c6b7ull
+#define VAELEN_PLAYERGATE_FROZEN_END 0xd51dc2a7d4a468e8ull
 #define VAELEN_PLAYERGATE_LOG 0x4a86e3f3bc62df03ull
 #define VAELEN_PLAYERGATE_LIFE 0x7105a2243db1481eull
 
