@@ -12,53 +12,50 @@ refresh").
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 10 — PLAYER — HEADLESS COMPLETE, NOT YET CLOSED
-TASK        : 10.08 — THE PHASE 10 GATE
-STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine, Windows, macOS)
+PHASE       : 10 — PLAYER — CLOSED
+TASK        : 10.08 — THE PHASE 10 GATE, AND THE PHASE CLOSED
+STATUS      : VALIDATED (headless) / UNVERIFIED (engine, until the next UE 5.6 build)
 
 PROGRESS
-██████████████████████████ 100% of the tasks · the phase stays OPEN until the CI matrix runs
+██████████████████████████ 100%
 
 CURRENTLY
-→ The gate passes, and it is the whole of what Phase 10 claimed:
+→ CI run 108 on 494aa30: all nine jobs green - six Linux presets, clang-format 18, Windows MSVC and
+  macOS AppleClang. That is exit criterion 1, and the first complete green matrix Phase 10 has had.
 
-    gate: 40 year(s) at 256 played across 3 life/lives from person 21640 of region 42 in 106.4 s
-          [asserts on]; 14400 intent(s) and 3 taking(s) recorded, 8639 taken, 0 refused, 0 dropped
-    replay: 14400 of 14400 intent(s) and 3 of 3 taking(s), 0 answered differently
+  The phase claimed that a played life is a life of this world and not a second simulation beside
+  it, and the gate is the evidence: forty years at 256 with every system of Phases 04 to 10 running,
+  played across three lives out of 14400 intents and 3 takings, every invariant of every phase
+  checked each decade - then the same seed, the same takings and the same intents into a fresh
+  world, giving the same state digest, the same event log and the same life word for word.
 
-  A world of 256 regions with every system of Phases 04 to 10 running, three hundred years of
-  pre-history, two regions detailed, sixty years more so 05.04 had bound somebody to be, then forty
-  years lived a day at a time out of intents decided from the world. Every invariant of every phase
-  each decade. Then the same seed, the same takings and the same intents into a fresh world: the
-  same state digest, the same event log, the same life word for word.
-
-  It took six runs, and five of them found something. A first run that passed while spending three
-  quarters of itself refusing intents at a corpse. A younger person dying SOONER than an older one,
-  which is backwards for mortality and turned out to be 04.06's crossings emigrating the played
-  person - a life ending with nobody dead. This world's mortality, which means forty years is played
-  across several lives, which in turn sharpened what a replay's input is: the seed, the takings AND
-  the intents. And two measures of mine that had not caught up with the rule a life owns its records.
+  What the phase cost in corrections is the honest measure of it. The gate took six runs and five
+  found something. Then the first CI run allowed to finish found that my fix for one of those had
+  moved the frozen digests of six CLOSED phases, because a component type registered inside a lower
+  module's Declare joins the registry of every world that declares it. Then the next run found that
+  the same fix had quietly broken 10.01's promise that carrying the mark changes nothing. Both were
+  mine, and both were invisible to a local loop that excludes the gates.
 
 COMPLETED
-✓ Phases 00-08 closed · Phase 09 INFRASTRUCTURE closed
+✓ Phases 00-09 closed · Phase 10 PLAYER closed
 ✓ 10.01 the mark · 10.02 the enslaved start · 10.03 the grain · 10.04 intent as commands
 ✓ 10.05 the seven verbs · 10.06 what the people make of them · 10.07 the player in the chronicle
-✓ 10.08 the gate — frozen half=4b861672a7e5f857 end=8c16c294502ee784 log=4a86e3f3bc62df03
+✓ 10.08 the gate — frozen half=1346aac980b8c6b7 end=d51dc2a7d4a468e8 log=4a86e3f3bc62df03
   life=7105a2243db1481e
-✓ ADR-0082 to ADR-0089 · Phase 11 breakdown written (Docs/ROADMAP.md section 15)
+✓ ADR-0082 to ADR-0089 · Phase 11 breakdown (ROADMAP section 15)
 
 NEXT
-→ The CI matrix, which is exit criterion 1 and the one thing Phase 10 has never had: no Phase 10
-  file has yet been compiled by MSVC or AppleClang, because runs 89 to 96 were each cancelled by the
-  next push. THIS is the run that must be allowed to finish, and the phase is not closed until it
-  does. Then Phase 11 — the mining colony, which is the same systems at a different setting.
+→ Phase 11 — MINING COLONY. The starting place: one huge colony simulated at full detail while the
+  rest of AELVOR keeps its yearly grain, on the rule that it is the same systems at a different
+  setting. 11.01 is the LOD policy that holds it detailed, and what that costs per tick.
 
 TESTS
-✓ VaelenPlayerTests 38 run, 38 passed (Player 4, Start 4, Hours 5, Commands 6, Doings 6, Regard 6,
-  LifeHistory 6, PlayerGate 1)
-✓ VaelenPopulationTests 39 run, 39 passed — the frozen bridge digest of 04.06 unmoved at
-  25340bd6f788726a, so the hold added for the player disturbed nothing already walking through it
-✓ Two presets 102/102 each at 10.07; the gate is new since and goes into the matrix now
+✓ CI run 108, all nine jobs: six Linux presets, clang-format, Windows MSVC 19.44, macOS 15 AppleClang
+✓ VaelenPlayerTests 38 run, 38 passed · VaelenPopulationTests 39 run, 39 passed
+✓ linux-clang-debug locally: 119/119 CTest entries, 0 warnings, every gate of ten phases
+✓ Every closed phase's gate passes with the digest it was closed on
+✓ The gate's frozen digests reproduce across runs; its log and life digests never moved through the
+  whole repair, which is what says the fixes were to bookkeeping and not to the world
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)
@@ -249,6 +246,23 @@ Phase 07 against the exit criteria (`Docs/ROADMAP.md` section 2): (1) CI matrix 
 | 09.08 | Phase 09 gate: five centuries at 256 with every Phase 04 to 09 system, every invariant each decade, a snapshot replayed, four frozen digests | VALIDATED: InfrastructureGate 2 tests |
 
 Phase 09 against the exit criteria (`Docs/ROADMAP.md` section 2): (1) six Linux presets green with every gate, 109 CTest entries each and 0 warnings; (2) determinism tests for every system, frozen digests per task and for the gate at 250 and 500 years with the log and the text; (3) no PROTOTYPE or INCOMPLETE file in the module, the two engine-facing files UNVERIFIED; (4) unit, integration, deterministic, edge, text and long-duration categories present, and the one gap 09.05 disclosed closed by the gate; (5) ADR-0074 to ADR-0081, docs updated. Verdict: **Phase 09 VALIDATED on the headless side, UNVERIFIED on the engine side until the next UE 5.6 build.**
+
+Phase 10 against the exit criteria (`Docs/ROADMAP.md` section 2): (1) CI run 108 on `494aa30`, all
+nine jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44, macOS 15 AppleClang -
+including `Kernel.Purity` and `Kernel.PuritySelfTest`; (2) determinism tests for every system of the
+phase, frozen digests per task and for the gate at the half and the end with the log and the life,
+and a replay that reproduces a life from seed, takings and intents; (3) no INCOMPLETE file in the
+module - every file is PROTOTYPE and listed below with its limits, the two engine-facing files
+UNVERIFIED until the next UE 5.6 build; (4) unit, integration, deterministic, edge, text, replay and
+long-duration categories all present; (5) ADR-0082 to ADR-0089 written, docs updated, and the
+verification record below carries what the matrix found rather than a summary of it. Verdict:
+**Phase 10 VALIDATED on the headless side, UNVERIFIED on the engine side until the next UE 5.6
+build.**
+
+One limit stated plainly, because it is a property of the world and not of the module: at AELVOR 256
+a bound person of a crowded region does not live forty years. The gate plays its forty across three
+lives, and whether that mortality is this world being harsh or the ration of 04.04 being wrong at
+that density is 11.05's question.
 
 ## Phase 10 task breakdown (canonical numbering: `Docs/ROADMAP.md` section 14)
 
