@@ -135,6 +135,18 @@ namespace Vaelen::Society
 									   uint32 Person, BondKind Kind, BondEntry Entry, uint32 Holder, SimTick Tick,
 									   PersistentId Cause = {});
 
+	/// Frees a bound person, the way the system frees one itself. Returns false
+	/// for an unknown or dead person, or one who was not bound.
+	///
+	/// The mirror of BindPerson and here for the same reason: nothing may write
+	/// a bond from outside the layer that owns one. 05.04 lets people out at its
+	/// own rates - manumission, flight, a holder's death - and those are right
+	/// for a world that nobody is judging. 12.06 needs the other kind of exit,
+	/// the one somebody DECIDES, and the decision belongs to the caller while
+	/// the writing belongs here.
+	VAELEN_SOCIETY_API bool FreePerson(World& W, const Population::PersonTypes& Persons, const BondageTypes& Types,
+									   uint32 Person, BondExit Exit, SimTick Tick, PersistentId Cause = {});
+
 	/// The bond of a person (nullptr when free or unknown).
 	VAELEN_SOCIETY_API const BondState* BondOf(const World& W, const Population::PersonTypes& Persons,
 											   const BondageTypes& Types, uint32 Person);
@@ -148,7 +160,7 @@ namespace Vaelen::Society
 		uint32 Enslaved = 0;
 		uint32 Stale = 0;		///< bonds on the dead or the gone
 		uint32 HolderLost = 0;	///< bonds whose holder is dead, gone or not of the region
-		uint32 Entered[5] = {}; ///< by BondEntry, from the log
+		uint32 Entered[6] = {}; ///< by BondEntry, from the log
 		uint32 Left[6] = {};	///< by BondExit, from the log
 		uint32 Caused = 0;		///< entries and exits with a cause id
 		Hash64 Digest = 0;		///< every bond in person index order, then every strata in region order

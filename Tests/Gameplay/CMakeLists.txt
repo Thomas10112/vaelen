@@ -27,4 +27,6 @@ set_tests_properties(${VAELEN_GAMEPLAY_TEST_NAMES} PROPERTIES TIMEOUT 1800)
 # then runs a dozen years of a lively region in every one of them: 331 s here, and
 # the Windows and macOS legs are slower.
 set_tests_properties(Gameplay.Fame PROPERTIES TIMEOUT 5400)
+# Judgement builds eight such worlds and lives six years in each: 325 s here.
+set_tests_properties(Gameplay.Judgement PROPERTIES TIMEOUT 5400)
 set_tests_properties(Gameplay.Shuffled PROPERTIES TIMEOUT 5400)

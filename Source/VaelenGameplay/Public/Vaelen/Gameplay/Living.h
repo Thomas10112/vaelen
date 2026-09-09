@@ -32,6 +32,7 @@
 #include "Vaelen/Player/Commands.h"
 #include "Vaelen/Player/Doings.h"
 #include "Vaelen/Population/Persons.h"
+#include "Vaelen/Population/Traits.h"
 #include "Vaelen/Sim/ComponentType.h"
 #include "Vaelen/Sim/System.h"
 
@@ -71,6 +72,35 @@ namespace Vaelen::Gameplay
 		uint32 ActPerMille = 200;		 ///< of them do something on a given day
 		uint32 GiveMost = 2;			 ///< units a person parts with at once
 		uint32 SpeakSharePerMille = 700; ///< of the acts that are only words
+
+		/// A person bolder than this takes what they want instead of asking.
+		///
+		/// 12.01 shipped with Speak and Give and nothing else, and ADR-0096 gave
+		/// the reason: the verbs that CREATE or DESTROY are already done in
+		/// aggregate, and the ones that only MOVE or SAY were done by nobody. But
+		/// Take only moves, and leaving it out cost the phase its whole negative
+		/// half - 12.02's `worst` was 0 because nobody had ever wronged anybody.
+		///
+		/// Why character and not want, which was tried first and measured. Want
+		/// in AELVOR is not individual: 06.02 works out ONE ration for a whole
+		/// region and 04.04 moves every person's Food by it, so everybody in a
+		/// place is exactly as fed as everybody else. Measured, all 1428 people
+		/// of the world's best-fed region sit at 255 of 255; a land lean enough
+		/// to push them under the hunger line at all leaves 5 alive out of 1428.
+		/// There is no window in which some people are hungry and others are not,
+		/// so hunger cannot decide who steals.
+		///
+		/// Boldness can. It is 04.05's, it is 0..255 with 128 ordinary, and it is
+		/// heritable at half - so a bold line stays bold, and who is thought ill
+		/// of in this world is a thing that runs in families rather than a thing
+		/// the dice decide each morning.
+		uint32 TakeWhenBolderThan = 200;
+		/// Of a bold person's acts that are a taking. Character raises the odds;
+		/// it does not replace the person. A first version had them take on EVERY
+		/// act, which turned most acts into two stock movements and an event
+		/// each, and cost the acting about nine times what it had.
+		uint32 TakePerMille = 250;
+		uint32 TakeMost = 2; ///< units taken at once
 	};
 
 	/// Daily: the people of a lively region do something conservative - they
@@ -89,6 +119,14 @@ namespace Vaelen::Gameplay
 					 LivingTypes InLiving, LivingRules InRules) noexcept
 			: Owner(&InWorld), Types(InTypes), Persons(InPersons), Living(InLiving), Rules(InRules)
 		{
+		}
+		/// Optional: what 04.05 knows about a person's character. Without it
+		/// nobody is ever bold enough to take, and this system is exactly what
+		/// it was when 12.01 shipped.
+		void ObserveTraits(ComponentType<Population::PersonTraits> InTraits) noexcept
+		{
+			Traits = InTraits;
+			HasTraits = true;
 		}
 		const char* GetName() const noexcept override { return "Living"; }
 		SimLod GetLod() const noexcept override { return SimLod::Aggregate; }
@@ -116,6 +154,8 @@ namespace Vaelen::Gameplay
 		LivingTypes Living;
 		LivingRules Rules;
 		Player::IDoing* Doing = nullptr;
+		ComponentType<Population::PersonTraits> Traits;
+		bool HasTraits = false;
 	};
 
 	/// Marks a region's people as living their own lives. False for an unknown

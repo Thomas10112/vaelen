@@ -251,20 +251,21 @@ namespace Vaelen::Player
 		}
 		// What the world moved because of an act: the causal edge of 01.05, which
 		// is what 10.07 will walk back through every layer under the player.
+		//
+		// Sorted and searched rather than scanned. This was a linear search over
+		// every act for every event in the log, which is fine when the acts are
+		// one played person's - a few hundred - and quadratic when they are a
+		// whole region's. 12.06 made a region of 1428 people act daily for six
+		// years and this one loop took the measurement from forty seconds to
+		// more than ten minutes.
+		std::sort(Acts.begin(), Acts.end());
 		for (const Event& E : W.Log().All())
 		{
 			if (!E.Cause.IsValid())
 			{
 				continue;
 			}
-			for (const PersistentId& Act : Acts)
-			{
-				if (E.Cause == Act)
-				{
-					++S.Caused;
-					break;
-				}
-			}
+			S.Caused += std::binary_search(Acts.begin(), Acts.end(), E.Cause) ? 1u : 0u;
 		}
 		return S;
 	}

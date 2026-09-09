@@ -57,6 +57,8 @@ namespace Vaelen::Society
 			return "birth";
 		case BondEntry::Capture:
 			return "capture";
+		case BondEntry::Judgement:
+			return "judgement";
 		case BondEntry::Promotion:
 			return "the region's strata";
 		default:
@@ -482,6 +484,42 @@ namespace Vaelen::Society
 		return true;
 	}
 
+	bool FreePerson(World& W, const Population::PersonTypes& Persons, const BondageTypes& Types, uint32 Person,
+					BondExit Exit, SimTick Tick, PersistentId Cause)
+	{
+		if (Person == 0)
+		{
+			return false;
+		}
+		EntityHandle Found;
+		uint32 Region = 0;
+		W.Components()
+			.GetPool(Persons.Person)
+			.ForEach(
+				[&](EntityHandle H, const PersonInfo& P)
+				{
+					if (P.Index == Person && Found.IsNull() && P.State == static_cast<uint8>(LifeState::Alive))
+					{
+						Found = H;
+						Region = P.Region;
+					}
+				});
+		if (Found.IsNull())
+		{
+			return false;
+		}
+		const BondState* B = W.Components().GetPool(Types.Bond).TryGet(Found);
+		if (B == nullptr)
+		{
+			return false; // already free, which is not an error and is not a freeing
+		}
+		const uint8 Kind = B->Kind;
+		W.Components().GetPool(Types.Bond).Remove(Found);
+		W.Events().Publish(Tick, BondLeftEvent, BondPayload{Person, Region, Kind, static_cast<uint32>(Exit)},
+						   W.Entities().GetId(Found), Cause);
+		return true;
+	}
+
 	const BondState* BondOf(const World& W, const Population::PersonTypes& Persons, const BondageTypes& Types,
 							uint32 Person)
 	{
@@ -574,7 +612,7 @@ namespace Vaelen::Society
 				const BondPayload P = E.Get<BondPayload>();
 				if (Region == 0 || P.Region == Region)
 				{
-					++S.Entered[P.Reason < 5 ? P.Reason : 0];
+					++S.Entered[P.Reason < 6 ? P.Reason : 0];
 					S.Caused += E.Cause.IsValid() ? 1u : 0u;
 				}
 			}

@@ -83,24 +83,61 @@ namespace Vaelen::Gameplay
 		for (const uint32 Region : Lively)
 		{
 			// Everybody of the region who is old enough to act for themselves,
-			// in person-index order so the same seed picks the same people.
+			// in person-index order so the same seed picks the same people - and
+			// how bold they are, taken in the SAME pass.
+			//
+			// The same pass matters. A second walk of the person pool with a
+			// component lookup on every entry costs a day of a lively region
+			// hundreds of thousands of scattered reads, and the pool holds every
+			// person the world has ever made rather than the ones alive in one
+			// region. Written as its own loop first, it made this test nine
+			// times slower than the one before it.
 			std::vector<uint32> Here;
+			std::vector<uint8> Bold;
 			W.Components()
 				.GetPool(Persons.Person)
 				.ForEach(
-					[&](EntityHandle, const Population::PersonInfo& P)
+					[&](EntityHandle H, const Population::PersonInfo& P)
 					{
 						if (P.Region != Region || !IsAlive(P) || Population::AgeYears(P, Context.Tick) < Rules.FromAge)
 						{
 							return;
 						}
 						Here.push_back(P.Index);
+						uint8 Nerve = 0;
+						if (HasTraits)
+						{
+							const Population::PersonTraits* T = W.Components().GetPool(Traits).TryGet(H);
+							Nerve =
+								T != nullptr && uint32{T->Traits[static_cast<uint32>(Population::Trait::Boldness)]} >
+													Rules.TakeWhenBolderThan
+									? 1u
+									: 0u;
+						}
+						Bold.push_back(Nerve);
 					});
 			if (Here.size() < 2)
 			{
 				continue; // speaking and giving both want somebody to aim at
 			}
-			std::sort(Here.begin(), Here.end());
+			// Sorted together, so a person's nerve stays attached to them.
+			{
+				std::vector<usize> Order(Here.size());
+				for (usize k = 0; k < Order.size(); ++k)
+				{
+					Order[k] = k;
+				}
+				std::sort(Order.begin(), Order.end(), [&](usize A, usize B) { return Here[A] < Here[B]; });
+				std::vector<uint32> SortedHere(Here.size());
+				std::vector<uint8> SortedBold(Here.size());
+				for (usize k = 0; k < Order.size(); ++k)
+				{
+					SortedHere[k] = Here[Order[k]];
+					SortedBold[k] = Bold[Order[k]];
+				}
+				Here.swap(SortedHere);
+				Bold.swap(SortedBold);
+			}
 			for (usize i = 0; i < Here.size(); ++i)
 			{
 				if (Random.Below(1000) >= Rules.ActPerMille)
@@ -118,12 +155,22 @@ namespace Vaelen::Gameplay
 				Player::PlayerCommand C;
 				C.Issued = Context.Tick;
 				C.Target = Here[At];
-				C.Amount = Rules.GiveMost;
 				// Only the conservative verbs. Work, Eat and Rest are already
 				// done for everybody by 06.02 and 04.04, and doing them again
-				// here would count a life's labour and food twice.
-				C.Kind = static_cast<uint8>(Random.Below(1000) < Rules.SpeakSharePerMille ? Player::Intent::Speak
-																						  : Player::Intent::Give);
+				// here would count a life's labour and food twice. Take moves
+				// and creates nothing, so it belongs with the other two - and
+				// character is what decides who reaches for it (12.06).
+				if (Bold[i] != 0 && Random.Below(1000) < Rules.TakePerMille)
+				{
+					C.Kind = static_cast<uint8>(Player::Intent::Take);
+					C.Amount = Rules.TakeMost;
+				}
+				else
+				{
+					C.Amount = Rules.GiveMost;
+					C.Kind = static_cast<uint8>(Random.Below(1000) < Rules.SpeakSharePerMille ? Player::Intent::Speak
+																							  : Player::Intent::Give);
+				}
 				if (Doing->Allows(W, Here[i], C) != Player::Refusal::None)
 				{
 					continue; // the world would not have it, and it costs nothing

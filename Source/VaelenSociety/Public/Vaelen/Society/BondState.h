@@ -22,6 +22,7 @@ namespace Vaelen::Society
 		Birth = 2,
 		Capture = 3,   ///< Phase 08
 		Promotion = 4, ///< bound again from the region's strata when it is detailed (05.06)
+		Judgement = 5, ///< bound for a name the place would not carry any longer (12.06)
 	};
 	enum class BondExit : uint8
 	{

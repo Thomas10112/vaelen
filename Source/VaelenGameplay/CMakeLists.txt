@@ -8,6 +8,7 @@ set(VAELEN_GAMEPLAY_PUBLIC_HEADERS
   Public/Vaelen/Gameplay/Documents.h
   Public/Vaelen/Gameplay/Maps.h
   Public/Vaelen/Gameplay/Fame.h
+  Public/Vaelen/Gameplay/Judgement.h
 )
 
 set(VAELEN_GAMEPLAY_SOURCES
@@ -16,6 +17,7 @@ set(VAELEN_GAMEPLAY_SOURCES
   Private/Documents.cpp
   Private/Maps.cpp
   Private/Fame.cpp
+  Private/Judgement.cpp
 )
 
 add_library(VaelenGameplay STATIC ${VAELEN_GAMEPLAY_SOURCES} ${VAELEN_GAMEPLAY_PUBLIC_HEADERS})

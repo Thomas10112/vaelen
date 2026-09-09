@@ -6068,3 +6068,77 @@ village's reputation and not a polity's.
 - `MostNames` is eight per place and it saturates: a region trading with four
   neighbours hears up to thirty-two names and may say eight. Which is why
   dropping, not fading, is what removes a name.
+
+## ADR-0101: A repute costs somebody something, and character is what makes it unequal
+
+### Context
+
+Twelve phases had produced a reputation that changed nobody's life. 12.02 gave
+people opinions of each other, 12.03 wrote them down, 12.05 sent them along the
+roads - and at the end of it the worst-named man in the world ate the same
+dinner as the best. ADR-0100 also named the reason it could not be otherwise:
+every person in 12.01 acts at the same rate under the same rules, so the
+cumulative record is one tight cluster and nobody is famous for anything.
+
+### Decision
+
+1. **Take is restored to the verbs an unplayed person may use.** 12.01 shipped
+   with Speak and Give, and ADR-0096's rule was that the verbs which CREATE or
+   DESTROY are already done in aggregate while the ones that only MOVE or SAY
+   are done by nobody. Take only moves. Leaving it out cost the phase its whole
+   negative half: 12.02's `worst` was 0 because nobody in AELVOR had ever
+   wronged anybody.
+
+2. **Character decides who takes, not want - and this was measured, not
+   preferred.** Want was tried first and does not work, for a reason worth
+   writing down: **hunger in AELVOR is not individual.** 06.02 works out ONE
+   ration for a whole region and 04.04 moves every person's Food by it, so
+   everybody in a place is exactly as fed as everybody else. Measured: all 1428
+   people of the world's best-fed region sit at 255 of 255, and a land lean
+   enough to push anybody under the hunger line (HarvestPerWorker 3 instead of
+   7) leaves **5 of the 1428 alive**. There is no window in which some people
+   are hungry and others are not.
+   `Trait::Boldness` has one. It is 04.05's, 0..255 with 128 ordinary, and
+   heritable at half - 59 of the 1428 are over 200. So who is thought ill of in
+   this world runs in families rather than being redrawn by the dice each
+   morning.
+
+3. **The consequence is bondage, and only bondage.** The bodies that act on an
+   INDIVIDUAL in this project are few: 05.04 binds and frees. 07.02's dues are
+   laid on a REGION and not on a person, so a polity cannot charge a thief more
+   without inventing an axis this world does not have; that is left alone
+   deliberately rather than invented. `Society::FreePerson` is added as the
+   mirror of `BindPerson` for the same reason that one exists: nothing may write
+   a bond from outside the layer that owns one. `BondEntry::Judgement` is a new
+   reason, and `BondageStats::Entered` grew from five to six so it is counted as
+   itself rather than folded into None.
+
+4. **A place judges on what IT says, never on the person's own record.** This is
+   the part worth reading twice. A place carries eight names (12.05); somebody
+   whose name is not among them is not judged at all. Measured: 56 people had
+   wronged somebody and **42 of them were never answered for it** - not spared
+   by a clause, simply never spoken of. That is a consequence of 12.05's shape
+   rather than a rule invented here, and it is what makes a reputation worth
+   having or worth hiding.
+
+5. **A name travels; a body does not.** Judgement acts only on people standing
+   in the place that carries the name. Seven of the eight places in the measured
+   world carry names and hold nobody at all, and they passed **0** judgements.
+
+### Consequences
+
+- Measured, over six years of one lively region: blind to character, 478682 acts
+  and 0 takings and a worst repute of 0; seeing it, 472864 acts, 5467 takings
+  and a worst repute of **-82**. With no line to cross, 0 condemned; with one,
+  **15 condemned and 14 still bound**, every one of them on a name their place
+  was carrying.
+- **Two defects this task exposed in closed phases, both fixed where they
+  live.** `Player::MeasureDoings` (10.05) searched every act linearly for every
+  event in the log - fine for one played person's few hundred acts, quadratic
+  for a region's half million. Sorted and binary-searched, the suite went from
+  over fifty minutes to five and a half. And a first version of the hunger read
+  walked the whole person pool a second time every day with a component lookup
+  per entry; folded into the walk that was already there.
+- A limit: bondage is the only consequence, so the world can punish and cannot
+  reward beyond letting somebody out of a bond it imposed. A good name buys
+  freedom and nothing else.
