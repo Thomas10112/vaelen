@@ -170,7 +170,7 @@ namespace
 														Organizations, OrganizationRules{});
 			Customs = std::make_unique<NormSystem>(Instance, Ages.Types(), Norms, NormRules{});
 			Bonds = std::make_unique<BondageSystem>(Instance, Ages.Types(), Persons, Norms, Standing, Bondage,
-												   BondageRules{});
+													BondageRules{});
 			Purses = std::make_unique<WealthSystem>(Instance, Ages.Types(), Persons, Families, Economy, Markets, Norms,
 													Wealth, WealthRules{});
 			Ranks = std::make_unique<StandingSystem>(Instance, Ages.Types(), Persons, Families, Traits, Organizations,
@@ -281,12 +281,11 @@ namespace
 			// they mean to do, what they do, and what the world makes of it.
 			Bonds->RunAfter("Lod");
 			Days_ = std::make_unique<PlayerDaySystem>(Instance, Ages.Types(), Persons, One, Clock, HourRules{});
-			Acts_ = std::make_unique<PlayerOrderSystem>(Instance, Ages.Types(), Persons, One, Clock, Queue,
-													   OrderRules{});
+			Acts_ =
+				std::make_unique<PlayerOrderSystem>(Instance, Ages.Types(), Persons, One, Clock, Queue, OrderRules{});
 			Hands = std::make_unique<Doings>(Ages.Types(), Persons, Families, Needs, Economy, DoingRules{});
 			Acts_->ObserveDoing(Hands.get());
-			Talk = std::make_unique<RegardSystem>(Instance, Ages.Types(), Persons, One, Standing, Known,
-												  RegardRules{});
+			Talk = std::make_unique<RegardSystem>(Instance, Ages.Types(), Persons, One, Standing, Known, RegardRules{});
 			Instance.Systems().Add(Bonds.get());
 			Instance.Systems().Add(Days_.get());
 			Instance.Systems().Add(Acts_.get());
@@ -1447,8 +1446,8 @@ VAELEN_TEST(PlayerGate, ALifetimeAt256HoldsEveryInvariantAndFreezes)
 			VAELEN_LOG_INFO(LogPlayerGate,
 							"year %u: %u day(s) lived (%u missed), %u act(s) taken, %u refused, %u worked, %u ate, "
 							"%u known, repute %d, %u record(s)",
-							BeforeYears + Year, W.Hours_().Days, W.Hours_().Missed, O.Taken, O.Refused, D.Worked,
-							D.Ate, R.Known, R.Repute, W.Kept_().Records);
+							BeforeYears + Year, W.Hours_().Days, W.Hours_().Missed, O.Taken, O.Refused, D.Worked, D.Ate,
+							R.Known, R.Repute, W.Kept_().Records);
 			if (Failures > 20)
 			{
 				break;
@@ -1472,9 +1471,9 @@ VAELEN_TEST(PlayerGate, ALifetimeAt256HoldsEveryInvariantAndFreezes)
 					"recorded, %u taken, %u refused, %u dropped; died in year %u; frozen: half=%016llx end=%016llx "
 					"log=%016llx life=%016llx",
 					Who, First_, LifeYears, Elapsed, VAELEN_ASSERTS_ENABLED ? "on" : "off", Stream.size(),
-					Orders_.Taken, Orders_.Refused, Orders_.Dropped, Died,
-					static_cast<unsigned long long>(AtHalf), static_cast<unsigned long long>(AtEnd),
-					static_cast<unsigned long long>(Log), static_cast<unsigned long long>(LifeDigest));
+					Orders_.Taken, Orders_.Refused, Orders_.Dropped, Died, static_cast<unsigned long long>(AtHalf),
+					static_cast<unsigned long long>(AtEnd), static_cast<unsigned long long>(Log),
+					static_cast<unsigned long long>(LifeDigest));
 	VAELEN_LOG_INFO(LogPlayerGate, "the life:\n%s", Story.c_str());
 
 	// A life really was lived: days turned, things were done, the world moved
