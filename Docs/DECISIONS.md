@@ -5851,3 +5851,58 @@ region of unplayed people the economy would roughly double.
   before 12.08 freezes anything.
 - A world with no lively ground writes a history of its own, and two such worlds
   of one seed are identical - the 10.03 claim, one layer up.
+
+## ADR-0097: A reputation is what a world gets when something reaches a third person
+
+### Context
+
+12.02 was planned as "knowledge as a filter over the world's log", on the
+finding that thirty-one files read `Log().All()` and two of them decide what
+somebody believes. That premise was wrong, and correcting it is most of this
+decision.
+
+`Regard.cpp` does open its loop on `W.Log().All()`, and reading only that line is
+what produced the claim. Reading the lines under it says the opposite: it walks
+back to the CURRENT TICK and stops - its own comment is "it never reads the
+life" - takes only acts AIMED at somebody, skipping work and eating as "nobody
+else's business", and records the opinion on the person who was acted upon. That
+is already exactly what reached them. `Decisions.cpp` reads droughts inside a
+memory window, which is a council knowing the weather in its own region.
+
+So nobody in AELVOR was ever omniscient. Two other things were true instead, and
+neither had been noticed:
+
+- An opinion exists only ABOUT THE PLAYED PERSON. `PlayerRegard` is a component
+  on the played person, so in a world with nobody played, nobody thinks anything
+  of anybody. 12.01 had just given unplayed people acts of their own.
+- Nothing TRAVELS. An opinion moves only between the two people involved.
+  Nobody in twelve phases has ever learned anything they did not suffer.
+
+### Decision
+
+1. **`PersonRepute` on any person, the mirror of 10.06's `PlayerRegard`.** The
+   same 224 bytes, the same handful of slots, the same weights, so one world has
+   one scale. What 10.06 does for the one played person, this does for everybody.
+
+2. **Hearsay, and it is the whole of the task.** A speaking may carry the
+   speaker's opinion of a THIRD person to whoever they spoke to, at
+   `HeardPerMille` (300) of its weight. A story is worth less than a scar, and
+   it is worth something. `HeardOfEvent` puts it in the log, so the chronicle of
+   12.07 can say who told whom what.
+
+3. **The same rule 10.06 set is kept, not relaxed.** This system reads the
+   current tick's acts and stops. Nothing here reads a history, and nobody
+   learns anything except by being there or being told.
+
+### Consequences
+
+- Sixty days of one lively region: 1137 people thought of, 9063 opinions, of
+  which 7343 are first hand and **1720 reached somebody it never happened to**.
+  2821 tellings. Two worlds of one seed think exactly the same things of exactly
+  the same people.
+- The measured repute has no negative side yet - `worst 0` - because 12.01's
+  unplayed people only speak and give. Taking is the verb that makes an enemy
+  and nobody does it. That is a limit of 12.01 and not of this task, and 12.06
+  is where a repute has to cost somebody something.
+- Reading one line and not the ten under it cost a wrong premise in a pushed
+  roadmap. The correction is its own commit, because the premise was public.

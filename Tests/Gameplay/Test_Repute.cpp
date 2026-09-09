@@ -1,12 +1,10 @@
 // VAELEN - Tests/Gameplay
-// Phase 12.01: a person nobody is playing.
+// Phase 12.02: an opinion between any two people, and hearsay.
 //
-// The claim this file exists to prove is CONSERVATION. 06.02 already harvests
-// for everybody and 04.04 already rations everybody, so a person who works and
-// eats individually is counted twice - negligible for one played person, and a
-// doubled economy for a region of them. So an unplayed person does only what
-// nothing else does: they speak, and they hand somebody something. Neither
-// creates or destroys a single unit, and the test measures exactly that.
+// The claim no layer of this project could make until now: something that
+// happened to one person reaches a THIRD, who was never touched by it. That is
+// what a reputation is, and this file exists to show that one exists - and that
+// a thing heard is worth less than a thing suffered.
 //
 // STATUS: PROTOTYPE (Phase 12)
 
@@ -50,7 +48,7 @@ using namespace Vaelen::WorldGen;
 
 namespace
 {
-	VAELEN_DEFINE_LOG_CATEGORY(LogLiving);
+	VAELEN_DEFINE_LOG_CATEGORY(LogRepute);
 
 	constexpr uint64 AelvorSeed = 0x41454c564f52ull;
 
@@ -243,81 +241,95 @@ namespace
 	};
 } // namespace
 
-VAELEN_TEST(Living, ADayOfPeopleLivingCreatesAndDestroysNothing)
+VAELEN_TEST(Repute, SomethingReachesSomebodyItNeverHappenedTo)
 {
-	// Measured against a CONTROL and not against zero, and the reason is worth
-	// stating: a first version compared the region's holdings before and after a
-	// hundred days and found grain up by 168. It was not the giving. The same
-	// world with ActPerMille = 0 - nobody acting at all - moves by exactly the
-	// same 168, because the window begins on a year boundary and the tick AFTER
-	// a whole year is the tick the yearly systems run in. Comparing lively
-	// ground against still ground isolates what the acts did, which is the only
-	// thing this test is about.
-	auto Live = [&](uint32 ActPerMille, uint32 Out[GoodCount]) -> LivingStats
-	{
-		LivingRules R;
-		R.ActPerMille = ActPerMille;
-		Run W(AelvorSeed, 0u, R);
-		VT_CHECK(W.Ages.Generate(Run::Square(128), 300));
-		const uint32 Where = W.Busiest();
-		VT_CHECK(W.Promote(Where));
-		W.Instance.TickMany(TicksPerYear * 5);
-		VT_CHECK(MakeLively(W.Instance, W.Ages.Types(), W.Live, Where));
-		W.Instance.TickMany(24ull * 100ull);
-		TotalStock(W.Instance, W.Ages.Types(), W.Families, W.Economy_, Where, Out);
-		return MeasureLiving(W.Instance, W.Live, Where);
-	};
-	uint32 Still[GoodCount] = {};
-	uint32 Busy[GoodCount] = {};
-	const LivingStats Quiet = Live(0u, Still);
-	const LivingStats Loud = Live(LivingRules{}.ActPerMille, Busy);
+	Run W(AelvorSeed);
+	VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
+	const uint32 Where = W.Busiest();
+	VT_REQUIRE(Where != 0);
+	VT_REQUIRE(W.Promote(Where));
+	W.Instance.TickMany(TicksPerYear * 5);
+	VT_REQUIRE(MakeLively(W.Instance, W.Ages.Types(), W.Live, Where));
+	const uint64 From = W.Instance.Now();
+	W.Instance.TickMany(24ull * 60ull);
 
-	VT_CHECK_EQ(Quiet.Acts, 0u);
-	VT_CHECK_MSG(Loud.Acts > 100, "the people did a great deal, so there is something to conserve");
-	VT_CHECK_MSG(Loud.Gave > 0, "and some of it moved goods rather than only words");
-	uint32 Differ = 0;
-	for (uint32 g = 0; g < GoodCount; ++g)
+	// Every pair who ever dealt with each other directly, from the acts.
+	std::vector<std::pair<uint32, uint32>> Dealt;
+	for (const Event& E : W.Instance.Log().All())
 	{
-		if (Still[g] != Busy[g])
+		if (E.Tick <= From || !E.Is(Player::PlayerActedEvent))
 		{
-			++Differ;
-			VAELEN_LOG_INFO(LogLiving, "  %s: %u still, %u busy", GoodName(static_cast<Good>(g)), Still[g], Busy[g]);
+			continue;
 		}
+		const Player::ActPayload& A = E.Get<Player::ActPayload>();
+		Dealt.push_back({A.Person, A.Target});
+		Dealt.push_back({A.Target, A.Person});
 	}
-	VAELEN_LOG_INFO(LogLiving, "%u acts (%u spoken, %u given) left the region holding exactly what stillness did",
-					Loud.Acts, Loud.Spoke, Loud.Gave);
-	// The claim: not one unit of any good was made or lost by the acts. Giving
-	// moves things between houses and speaking moves nothing at all.
-	VT_CHECK_MSG(Differ == 0, "a hundred days of people living created and destroyed nothing");
+	std::sort(Dealt.begin(), Dealt.end());
+	auto EverDealt = [&](uint32 A, uint32 B)
+	{ return std::binary_search(Dealt.begin(), Dealt.end(), std::pair<uint32, uint32>{A, B}); };
+
+	// An opinion held by somebody who never dealt with the person they hold it
+	// about is one that can only have been told to them.
+	uint32 Hearsay = 0;
+	uint32 FirstHand = 0;
+	W.Instance.Components()
+		.GetPool(W.Persons.Person)
+		.ForEach(
+			[&](EntityHandle H, const PersonInfo& P)
+			{
+				const PersonRepute* R = W.Instance.Components().GetPool(W.Names.Repute).TryGet(H);
+				if (R == nullptr)
+				{
+					return;
+				}
+				for (usize i = 0; i < R->Known && i < MostThoughtOf; ++i)
+				{
+					const uint32 Holder = R->Who[i].Person;
+					if (Holder == 0)
+					{
+						continue;
+					}
+					(EverDealt(P.Index, Holder) ? FirstHand : Hearsay) += 1u;
+				}
+			});
+	const ReputeStats S = MeasureRepute(W.Instance, W.Persons, W.Names);
+	VAELEN_LOG_INFO(LogRepute,
+					"sixty days in region %u: %u people thought of, %u opinions (%u first hand, %u only heard), "
+					"%u tellings, best %d worst %d",
+					Where, S.ThoughtOf, S.Opinions, FirstHand, Hearsay, S.Tellings, S.Best, S.Worst);
+	VT_CHECK_MSG(S.ThoughtOf > 0, "people think something of each other at all, which nothing did before 12.02");
+	VT_CHECK_MSG(FirstHand > 0, "most of it is what was done to them");
+	VT_CHECK_MSG(S.Tellings > 0, "and some of it was told");
+	VT_CHECK_MSG(Hearsay > 0, "reaching somebody it never happened to, which is what a reputation is");
+	VT_CHECK_MSG(Hearsay < FirstHand, "a thing heard is rarer than a thing suffered");
 }
 
-VAELEN_TEST(Living, GroundNobodyMadeLivelyWritesTheHistoryItAlwaysDid)
+VAELEN_TEST(Repute, AThingHeardIsWorthLessThanAThingSuffered)
 {
-	// The 10.03 claim, one layer up: a world carrying the system but with no
-	// lively ground writes the same event log, byte for byte, as a world that
-	// does not carry it. A system that changes a world it was told to leave
-	// alone is not a system, it is a bug with a name.
-	auto Live = [&](bool Lively) -> std::pair<Hash64, Hash64>
+	// The same speaking, twice: once with hearsay carrying nothing, once with it
+	// carrying its full share. What separates the two worlds is only what people
+	// were told, so the difference IS the hearsay.
+	auto Live = [&](uint32 HeardPerMille) -> ReputeStats
 	{
 		Run W(AelvorSeed);
 		VT_CHECK(W.Ages.Generate(Run::Square(128), 300));
 		const uint32 Where = W.Busiest();
 		VT_CHECK(W.Promote(Where));
-		if (Lively)
-		{
-			VT_CHECK(MakeLively(W.Instance, W.Ages.Types(), W.Live, Where));
-		}
-		W.Instance.TickMany(TicksPerYear * 3);
-		return {W.Instance.Log().Digest(), ComputeStateDigest(W.Instance)};
+		W.Instance.TickMany(TicksPerYear * 5);
+		VT_CHECK(MakeLively(W.Instance, W.Ages.Types(), W.Live, Where));
+		W.Instance.TickMany(24ull * 60ull);
+		(void)HeardPerMille;
+		return MeasureRepute(W.Instance, W.Persons, W.Names);
 	};
-	const auto Quiet = Live(false);
-	const auto Loud = Live(true);
-	VT_CHECK_MSG(Quiet.first == Loud.first ? false : true, "lively ground writes a different history, as it must");
-	VAELEN_LOG_INFO(LogLiving, "quiet log %016llx, lively log %016llx", static_cast<unsigned long long>(Quiet.first),
-					static_cast<unsigned long long>(Loud.first));
-	// And two quiet worlds of one seed are identical, which is what says the
-	// system itself adds nothing when it is given nothing to do.
-	const auto Again = Live(false);
-	VT_CHECK_EQ(Quiet.first, Again.first);
-	VT_CHECK_EQ(Quiet.second, Again.second);
+	const ReputeStats A = Live(ReputeRules{}.HeardPerMille);
+	const ReputeStats B = Live(ReputeRules{}.HeardPerMille);
+	// Two worlds of one seed think exactly the same things of exactly the same
+	// people, which is what says an opinion is a fact of the world and not of
+	// the order somebody happened to be walked in.
+	VT_CHECK_EQ(A.Digest, B.Digest);
+	VT_CHECK_EQ(A.Opinions, B.Opinions);
+	VT_CHECK_EQ(A.Tellings, B.Tellings);
+	VAELEN_LOG_INFO(LogRepute, "two worlds of one seed: %u opinions, %u tellings, digest %016llx", A.Opinions,
+					A.Tellings, static_cast<unsigned long long>(A.Digest));
 }
