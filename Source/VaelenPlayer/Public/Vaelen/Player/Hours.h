@@ -106,6 +106,10 @@ namespace Vaelen::Player
 	/// The day the played person is in (nullptr when nobody is played, or before
 	/// their first day has turned).
 	VAELEN_PLAYER_API const PlayerHours* HoursOf(const World& W, const HourTypes& Hours);
+	/// Closes the day, so another life may be lived. False when there was none.
+	/// The record is of the life that was living it and goes when that life
+	/// does; the days it lived stay in the world's history.
+	VAELEN_PLAYER_API bool EndHours(World& W, const HourTypes& Hours);
 	/// Hours of this day the player has not spent yet, 0 when nobody is played.
 	VAELEN_PLAYER_API uint32 HoursLeft(const World& W, const HourTypes& Hours);
 	/// Spends hours out of this day. Returns what was actually spent, which is

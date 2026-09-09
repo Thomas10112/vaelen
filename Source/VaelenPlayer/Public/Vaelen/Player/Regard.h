@@ -140,6 +140,10 @@ namespace Vaelen::Player
 	/// What the world holds about the played person (nullptr when nobody has an
 	/// opinion yet).
 	VAELEN_PLAYER_API const PlayerRegard* RegardOf(const World& W, const RegardTypes& Regard);
+	/// Forgets what people made of a life that has ended, so another may be
+	/// lived. False when there was nothing to forget. What the people of the
+	/// world did about it stays in the world's history.
+	VAELEN_PLAYER_API bool EndRegard(World& W, const RegardTypes& Regard);
 	/// What one person makes of them, 0 when they have never dealt with them.
 	VAELEN_PLAYER_API int32 RegardFrom(const World& W, const RegardTypes& Regard, uint32 Person);
 	/// What the place at large makes of them: the opinions, weighted by the

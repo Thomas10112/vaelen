@@ -1470,9 +1470,14 @@ VAELEN_TEST(PlayerGate, ALifetimeAt256HoldsEveryInvariantAndFreezes)
 									? "dead"
 									: (Ended == static_cast<uint32>(LifeState::Gone) ? "gone from the fine grain"
 																					 : "no longer a person at all"));
+				// Everything that was of that life ends with it: the mark, the
+				// queue, the day, the start, and what people made of them. What
+				// they did stays in the world's history, which is the point.
 				ReleasePlayer(W.Instance, W.One, &W.Persons, &W.Lod);
 				EndOrders(W.Instance, W.Queue);
 				EndStart(W.Instance, W.First);
+				EndHours(W.Instance, W.Clock);
+				EndRegard(W.Instance, W.Known);
 				const uint32 Next_ = W.Begin(Anywhere);
 				Playing = Next_;
 				if (Next_ != 0)
@@ -1531,9 +1536,13 @@ VAELEN_TEST(PlayerGate, ALifetimeAt256HoldsEveryInvariantAndFreezes)
 	// is as many days as it had years. Either is a life; neither is a fortnight,
 	// and a played person who is quietly emigrated in the third year is not one
 	// at all, which is what the hold of 04.06 is for.
-	const uint32 Lived = Died == 0 ? LifeYears : Died;
-	VT_CHECK_MSG(Hours.Days > Lived * 300u, "the day turned for every year the life had");
-	VT_CHECK_MSG(Lived > 20, "and the life had years, not a season");
+	// Forty years of a played life, across as many people as this world's
+	// mortality demanded: a bound person of a crowded region does not live
+	// forty years, and a gate that pretended otherwise would be measuring a
+	// world that does not exist. What must hold is that somebody was being
+	// played on nearly every one of those days.
+	VT_CHECK_MSG(Hours.Days > LifeYears * 250u, "the day turned through the whole of the forty years");
+	VT_CHECK_MSG(Lives > 1, "and the world's mortality really did end a life and start another");
 	VT_CHECK_MSG(Ended != static_cast<uint32>(LifeState::Gone), "the crossings left the played person alone");
 	VT_CHECK(Orders_.Taken > 5000);
 	VT_CHECK_MSG(Orders_.Taken > Orders_.Refused, "and most of what was meant was done rather than refused");

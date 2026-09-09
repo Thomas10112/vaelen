@@ -201,6 +201,17 @@ namespace Vaelen::Player
 		return Found;
 	}
 
+	bool EndRegard(World& W, const RegardTypes& Regard)
+	{
+		std::vector<EntityHandle> Held;
+		W.Components().GetPool(Regard.Regard).ForEach([&](EntityHandle H, const PlayerRegard&) { Held.push_back(H); });
+		for (const EntityHandle H : Held)
+		{
+			W.Components().GetPool(Regard.Regard).Remove(H);
+		}
+		return !Held.empty();
+	}
+
 	int32 RegardFrom(const World& W, const RegardTypes& Regard, uint32 Person)
 	{
 		const PlayerRegard* R = RegardOf(W, Regard);

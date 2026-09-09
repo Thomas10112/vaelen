@@ -110,6 +110,17 @@ namespace Vaelen::Player
 		return Found;
 	}
 
+	bool EndHours(World& W, const HourTypes& Hours)
+	{
+		std::vector<EntityHandle> Held;
+		W.Components().GetPool(Hours.Hours).ForEach([&](EntityHandle H, const PlayerHours&) { Held.push_back(H); });
+		for (const EntityHandle H : Held)
+		{
+			W.Components().GetPool(Hours.Hours).Remove(H);
+		}
+		return !Held.empty();
+	}
+
 	uint32 HoursLeft(const World& W, const HourTypes& Hours)
 	{
 		const PlayerHours* Day = HoursOf(W, Hours);
