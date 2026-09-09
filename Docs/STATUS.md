@@ -548,15 +548,35 @@ Run on 2026-09-09 for the closing of Phase 09, with every gate included. The deb
 
 Mini-world baseline (100 000 ticks, 41 entities, 305 027 events, 34 168 227-byte snapshot), logged by `Sim.MiniWorld`, not asserted: clang debug 0.39 s (255 k ticks/s), gcc debug 0.40 s, clang release 0.135 s (739 k ticks/s), gcc release without assertions 0.127 s (790 k ticks/s); snapshot 0.09-0.14 s.
 
-Phase 10 CI note, recorded honestly: runs 89 to 92 (10.01 through 10.04) were each cancelled by the
-next push, because `cancel-in-progress` is on and a task takes less time than a full matrix does -
-the debug legs carry every gate of nine phases. The Linux presets that had finished were green each
-time (run 91: clang-format, both release and both no-assert presets green before the cancel), and
-the headless verification for every task was run locally on two presets. The consequence to know
-about is that **no Phase 10 file has yet been compiled by MSVC or AppleClang**, which is exactly the
-leg that caught the one real portability bug of Phase 09 (the narrowing at `Places.cpp:424`). The
-phase-close run of 10.08 is the one that must be allowed to finish, and until it does the Phase 10
-module is UNVERIFIED on Windows and macOS rather than merely UNVERIFIED under UBT.
+Phase 10 CI record, and the most useful thing the matrix has done in ten phases. Runs 89 to 96
+(10.01 through the gate) were each cancelled by the next push, because `cancel-in-progress` is on and
+a task takes less time than a full matrix does. Run 104 was the first Phase 10 run allowed to finish,
+and it came back with eight failures - none of them in Phase 10, all of them mine:
+
+    93% tests passed, 8 tests failed out of 110
+      54 - Population.PopulationGate       87 - Military.MilitaryGate
+      61 - Society.SocietyGate             94 - Infrastructure.Decay (Timeout)
+      66 - Economy.EconomyGate             95 - Infrastructure.InfrastructureGate
+      78 - Politics.PoliticsGate          100 - Infrastructure.WorksHistory (Timeout)
+
+Every Phase 10 test passed, `Player.PlayerGate` included at 454 s with its frozen digests, and the
+Windows MSVC and macOS AppleClang BUILDS were clean - so the module is portable and the phase's own
+work is sound. What failed was the frozen state digest of six CLOSED phases, because `PersonHeld` had
+been registered inside `LodTypes::Declare`: that puts a component type into the type registry of
+every world declaring 04.06, which is every gate from Phase 04 up, and a state digest counts type
+ids. The two timeouts are the same tests at the 300 s default on a slower runner, now 1800 s.
+
+The hole in the local loop is worth more than the bug. `quick.sh` runs `ctest -E "(Gate|Shuffled)"`,
+and every affected test is a gate: ten commits of "both presets green" were true and blind to exactly
+this class of regression. A change that touches a module below the one being built has to run the
+gates, and from here it does.
+
+Fixed by making the hold an observed type (`Population::DeclareHold`, `LodSystem::ObserveHeld`), so a
+world with no player registers nothing new. Verified: `ctest -R Gate` on `linux-clang-debug` -
+History 44 s, Military 770 s, Politics 1155 s, Infrastructure 779 s and the rest all pass with the
+digests they were closed on. Phase 10's own two STATE digests were re-recorded because the Player
+world now registers one type more; its LOG and LIFE digests did not move, which is the evidence that
+the change was to the bookkeeping and not to the world.
 
 GitHub Actions runs 13 to 28 (01.06 through 03.03): all 9 jobs green each; run 29 (03.04) red on Windows MSVC only (a dangling pool pointer in the faith listener changed the religion digest, and `Sim.Shuffled` exceeded its 300 s CTest timeout), both fixed in the 03.05 commit and green again in runs 30 to 48 (03.05 to 05.07); run 49 (05.08) was cancelled by the job timeouts - the Phase 05 gate took the serial debug test runs past 30 minutes on Linux and 45 on Windows (every Linux release and no-assert job green) - so from 06.01 CTest runs 4 jobs in every preset (`execution.jobs` in `CMakePresets.json`, the stdio capture entries serialised by a resource lock), which brings a debug run under ten minutes - green again in runs 50 to 68 (06.01 to 07.08 and the atlas actor; the first Unreal build at run 54 included; runs 56 and 60 were superseded by 57 and 61 on the same headless tree); so the frozen replay, mini-world and snapshot values hold on Windows MSVC and macOS AppleClang as well. Phase 00 record - run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14).
 
