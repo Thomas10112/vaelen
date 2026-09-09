@@ -1564,29 +1564,50 @@ VAELEN_TEST(PlayerGate, ALifetimeAt256HoldsEveryInvariantAndFreezes)
 	VT_CHECK(RequestDetail(R.Instance, R.Lod, First_));
 	VT_CHECK(RequestDetail(R.Instance, R.Lod, Second));
 	R.Ages.Run(BeforeYears);
-	VT_REQUIRE(R.Begin(Anywhere) == Who); // the same world offers the same person to be
-	VT_REQUIRE(R.Open());
 	usize Next = 0;
+	usize Took = 0;
 	uint32 Wrong = 0;
+	// The replay knows nothing about the world. It takes up whoever the
+	// recording says was taken up, on the tick it says, and submits the intents
+	// on the ticks they were submitted. Nothing else - and if the world it is
+	// rebuilding is not the same world, it will not have the same person to
+	// take up, which is a stronger claim than the intents alone ever made.
+	auto TakeUp = [&](Run& In)
+	{
+		while (Took < Takings.size() && Takings[Took].Tick <= In.Instance.Now())
+		{
+			if (Took > 0)
+			{
+				ReleasePlayer(In.Instance, In.One, &In.Persons, &In.Lod);
+				EndOrders(In.Instance, In.Queue);
+				EndStart(In.Instance, In.First);
+				EndHours(In.Instance, In.Clock);
+				EndRegard(In.Instance, In.Known);
+			}
+			Wrong += In.Begin(Anywhere) == Takings[Took].Person ? 0u : 1u;
+			VT_CHECK(In.Open());
+			++Took;
+		}
+	};
+	TakeUp(R);
 	for (uint32 Year = 1; Year <= LifeYears; ++Year)
 	{
 		for (uint32 Day = 0; Day < DaysPerYear; ++Day)
 		{
-			// The replay knows nothing about the world: it submits what was
-			// recorded on the tick it was recorded on, and stops when the
-			// recording does, exactly as the life did.
 			while (Next < Stream.size() && Stream[Next].Tick <= R.Instance.Now())
 			{
 				Wrong += R.Mean(Stream[Next].Command) == Stream[Next].Verdict ? 0u : 1u;
 				++Next;
 			}
 			R.Day();
+			TakeUp(R);
 		}
 	}
 	const std::string Again = R.Life();
-	VAELEN_LOG_INFO(LogPlayerGate, "replay: %zu of %zu intent(s) submitted, %u answered differently", Next,
-					Stream.size(), Wrong);
+	VAELEN_LOG_INFO(LogPlayerGate, "replay: %zu of %zu intent(s) and %zu of %zu taking(s), %u answered differently",
+					Next, Stream.size(), Took, Takings.size(), Wrong);
 	VT_CHECK_EQ(Next, Stream.size());
+	VT_CHECK_EQ(Took, Takings.size());
 	VT_CHECK_MSG(Wrong == 0, "the door gave the same answer to every intent");
 	VT_CHECK_MSG(ComputeStateDigest(R.Instance) == AtEnd, "and the world came out the same, down to the last grain");
 	VT_CHECK_MSG(R.Instance.Log().Digest() == Log, "with the same history in it");
