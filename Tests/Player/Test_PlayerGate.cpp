@@ -1414,6 +1414,10 @@ VAELEN_TEST(PlayerGate, ALifetimeAt256HoldsEveryInvariantAndFreezes)
 	W.Ages.Run(BeforeYears);
 	StartRules Anywhere;
 	Anywhere.PreferOre = 0;
+	// Young, so that the forty years are mostly lived rather than mostly spent
+	// dead: the first run of this gate took somebody of forty who died in year
+	// ten, and three quarters of it was the refusal path for a corpse.
+	Anywhere.ToAge = 25;
 	const uint32 Who = W.Begin(Anywhere);
 	VT_REQUIRE(Who != 0); // the world offered nobody bound to be
 	VT_REQUIRE(W.Open());
@@ -1427,14 +1431,20 @@ VAELEN_TEST(PlayerGate, ALifetimeAt256HoldsEveryInvariantAndFreezes)
 	{
 		for (uint32 Day = 0; Day < DaysPerYear; ++Day)
 		{
-			const PlayerCommand C = Decide(W, Who, Year, Day);
-			Stream.push_back(Recorded{C.Issued, C, W.Mean(C)});
+			// Nothing is meant by somebody who is not there. The stream stops at
+			// the death and the world runs on without them, which is 10.01's
+			// claim and is checked by the decades that follow.
+			if (Died == 0)
+			{
+				const PlayerCommand C = Decide(W, Who, Year, Day);
+				Stream.push_back(Recorded{C.Issued, C, W.Mean(C)});
+			}
 			W.Day();
 		}
 		const PersonInfo* P = W.Person_(Who);
 		if (Died == 0 && (P == nullptr || P->State != static_cast<uint8>(LifeState::Alive)))
 		{
-			Died = Year; // a life that ends is a life; the world runs on
+			Died = Year; // a life that ends is a life
 		}
 		if (Year % 10 == 0)
 		{
@@ -1480,8 +1490,9 @@ VAELEN_TEST(PlayerGate, ALifetimeAt256HoldsEveryInvariantAndFreezes)
 	// because of them, and people came to think something of them.
 	const HourStats Hours = W.Hours_();
 	const RegardStats Regard_ = W.Regard();
-	VT_CHECK_MSG(Hours.Days > 3000, "the day turned for years, not for a week");
-	VT_CHECK(Orders_.Taken > 500);
+	VT_CHECK_MSG(Hours.Days > 7000, "the day turned for a life, not for a year or two");
+	VT_CHECK(Orders_.Taken > 5000);
+	VT_CHECK_MSG(Orders_.Taken > Orders_.Refused, "and most of what was meant was done rather than refused");
 	VT_CHECK_MSG(Done.Worked > 0 && Done.Ate > 0, "they worked and they ate");
 	VT_CHECK_MSG(Done.Caused > 0, "and the world moved because of it");
 	VT_CHECK_MSG(Regard_.Known > 0, "and somebody came to think something of them");
@@ -1508,6 +1519,9 @@ VAELEN_TEST(PlayerGate, ALifetimeAt256HoldsEveryInvariantAndFreezes)
 	{
 		for (uint32 Day = 0; Day < DaysPerYear; ++Day)
 		{
+			// The replay knows nothing about the world: it submits what was
+			// recorded on the tick it was recorded on, and stops when the
+			// recording does, exactly as the life did.
 			while (Next < Stream.size() && Stream[Next].Tick <= R.Instance.Now())
 			{
 				Wrong += R.Mean(Stream[Next].Command) == Stream[Next].Verdict ? 0u : 1u;
