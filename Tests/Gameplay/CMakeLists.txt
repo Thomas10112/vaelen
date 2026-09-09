@@ -22,5 +22,9 @@ add_test(NAME Gameplay.Registry COMMAND VaelenGameplayTests --check-registry)
 add_test(NAME Gameplay.Shuffled COMMAND VaelenGameplayTests --shuffle 1)
 list(APPEND VAELEN_GAMEPLAY_TEST_NAMES Gameplay.Registry Gameplay.Shuffled)
 
-set_tests_properties(${VAELEN_GAMEPLAY_TEST_NAMES} PROPERTIES TIMEOUT 600)
+set_tests_properties(${VAELEN_GAMEPLAY_TEST_NAMES} PROPERTIES TIMEOUT 1800)
+# Fame builds five worlds of 128x128 with three centuries of pre-history each and
+# then runs a dozen years of a lively region in every one of them: 331 s here, and
+# the Windows and macOS legs are slower.
+set_tests_properties(Gameplay.Fame PROPERTIES TIMEOUT 5400)
 set_tests_properties(Gameplay.Shuffled PROPERTIES TIMEOUT 5400)

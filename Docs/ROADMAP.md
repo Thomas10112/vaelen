@@ -2550,14 +2550,32 @@ simulation and somebody's picture of it are allowed to differ at all.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 11 — MINING COLONY — CLOSED
-TASK        : next is 12.01 — A PERSON NOBODY IS PLAYING
-STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
+PHASE       : 12 — GAMEPLAY — 5 of 8
+TASK        : 12.05 — A NAME THAT TRAVELS — done
+STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████████████████████ 12 of 21 phases closed (00-11)
+████████████████████████████ 12 of 21 phases closed (00-11) · Phase 12 at 5/8
 
 CURRENTLY
+→ 12.05 answered the limit ADR-0098 set for it, and the answer was not a bigger number. A name that
+  has travelled is held by the PLACE, not by eight people: `RegionNames` carries a handful of names
+  to a region, and it moves on the routes of 06.04 rather than across the map. Measured: with roads,
+  eight places carry sixty-four names, fifty-six of them from abroad, three roads out, and not one
+  person left the region. With the identical world and the trade system left out: one place, eight
+  names, nothing abroad. All fifty-six names held both at home and away are thinner away; none is
+  louder.
+
+  Two things had to be measured before they could be decided, and both went against the first
+  design. Fame cannot be built on 12.02's `Repute`: it is the average of the at most eight opinions
+  of whoever last dealt with somebody, and in a region of 1428 people 1163 of them sit between 80
+  and 93 on a scale to a thousand - so the eight names it picks out are COMPLETELY DIFFERENT every
+  year. Deeds do persist, so a name is built on `Kindnesses` and `Wrongs`, cumulative and never
+  evicted. And a per-year fading rule was written and then removed: three settings of it (0, 120,
+  400) gave byte-identical name lists and loudness, and neither shutting all sixty-eight roads nor
+  killing every person in the source region could reach it. ADR-0100 records both, with the numbers.
+
+WAS
 → Phase 11 closed against section 2 on CI run 113: nine jobs green at 6be319f, the eight phase gates
   green locally in one run, purity 173 files and 0 violations, no file carrying INCOMPLETE, and
   ADR-0090 to ADR-0095 for every decision. Section 15b lists the thirteen PROTOTYPE files with their
@@ -2576,13 +2594,20 @@ COMPLETED
 ✓ 11.01 a region kept detailed · 11.02 a colony's people at the day · 11.03 the work of a colony
 ✓ 11.04 who holds it · 11.05 what it does to them · 11.06 the colony and the world
 ✓ 11.07 the colony in the chronicle · 11.08 the phase gate
+✓ 12.01 a person nobody is playing · 12.02 an opinion between two people, and hearsay
+✓ 12.03 the documents · 12.04 the maps · 12.05 a name that travels
 
 NEXT
-→ 12.01 — a way for a person nobody is playing to act, using the verbs of 10.05 unchanged
+→ 12.06 — consequences: what a polity, an organisation or a family does about somebody whose repute
+  has reached them. It is also where AELVOR's real gap is: every person in 12.01 acts at the same
+  rate under the same rules, so nobody is famous for anything - fame is persistent but not yet
+  EARNED, and only a repute that costs or gains somebody something will spread the distribution
 
 TESTS
 ✓ CI run 113: nine jobs green (six Linux presets, clang-format, Windows MSVC, macOS AppleClang)
 ✓ Eight phase gates green in one local run: GATES-DONE 0 failing
+✓ VaelenGameplayTests: Living, Repute, Documents, Maps and Fame — 5 Fame tests, 34 checks, gcc and
+  clang, purity 184 files and 0 violations
 ✓ VaelenColonyTests 17 run, 17 passed across six suites, 1817 checks, CTest 8/8 with Shuffled
 ✓ The Phase 11 gate: a century at 256, a colony of 4007 bound on 4463 of seam, 5 lives and 14400
   intents, replayed blind to the same state digest, event log and mining digest

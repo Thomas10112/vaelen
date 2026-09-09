@@ -5997,3 +5997,74 @@ for anybody.
 - Maps do not decay and nothing forges them by itself. Both are for whoever
   needs a forger - 12.06's consequences, or a scenario - and this task gives the
   verb rather than the motive.
+
+## ADR-0100: A name is held by a place, and it is built on deeds rather than on opinions
+
+### Context
+
+ADR-0098 named the limit 12.05 was to face rather than raise quietly:
+`MostThoughtOf` is eight, so a person is thought of by eight people at a time
+and the ninth evicts the oldest. A reputation bounded at eight holders is a
+village's reputation and not a polity's.
+
+### Decision
+
+1. **The bound was the wrong SHAPE, not the wrong number.** Nobody in the next
+   valley has a private opinion of a man they will never meet; the place has
+   one. So fame lives on the region - `RegionNames`, a handful of names to a
+   region - and not on the person. Raising eight to eighty would have been the
+   same model with a bigger cache.
+
+2. **A name travels on the routes of 06.04 and not across the map.** A place
+   with no road to you has never heard of you, however close it stands. That is
+   the whole of why this task waits for trade rather than reading the region
+   graph, and it is measured: with roads, eight places carry sixty-four names,
+   fifty-six of them from abroad, reaching three roads out; with the identical
+   world and the trade system left out, one place carries eight names and
+   nothing is abroad at all.
+
+3. **A name is built on what somebody has DONE, counted over a whole life.**
+   Not on 12.02's `Repute`, and this is the part that had to be measured before
+   it could be decided. `PersonRepute::Repute` is the average of the opinions of
+   the at most eight people who last dealt with them - and in a region of 1428
+   people, 1163 of them sit between 80 and 93 on a scale to a thousand, the
+   loudest three tied exactly. The eight names that average picks out are
+   COMPLETELY DIFFERENT every year (p715, p1100 → p168, p321 → p782, p965 →
+   p514, p1175): a lottery, carried perfectly. `Kindnesses` and `Wrongs` are
+   cumulative and never evicted, and they persist - the same two people led the
+   region in four consecutive years. Fame is `Kindnesses * PerDeed +
+   Wrongs * PerWrong`, clamped to a life's worth.
+
+4. **There is no gradual fading, and the omission is measured rather than
+   assumed.** A `ForgetPerYear` decay was written and could not be reached.
+   While the people who earned a name are alive it is re-told across every road
+   every year at a value that only grows, so no place is ever a year out of
+   date. Shutting all sixty-eight roads by hand left MORE names abroad two years
+   later, not fewer, because 06.04 re-opens a route the year the prices warrant
+   it. Killing every person in the source region did not do it either: the
+   level-of-detail bridge materialises the region's people again from the
+   aggregate, and the loudness recovered from 13191 to 31851. Set to 0, 120 and
+   400 a year, the rule gave byte-identical name lists and byte-identical
+   loudness, differing only in a timestamp. **A rule that changes nothing is not
+   shipped.** What a place does is keep the loudest handful it is told about;
+   a name it is no longer told, it stops saying, that year.
+
+5. **What a place keeps across years is `Since` - the year it first heard the
+   name.** That is what its memory amounts to, and unlike the decay it is live
+   data.
+
+### Consequences
+
+- The eight-holder bound of 12.02 is unchanged and no longer binding on
+  reputation: an opinion is still held by the eight people who last dealt with
+  somebody, and a name is now held by every place that has heard it.
+- **A limit worth naming, and it is not this task's to fix: AELVOR has no
+  famous people.** Every person in 12.01 acts at the same rate under the same
+  rules, so the cumulative record is a tight cluster - a thousand people within
+  a factor of two of each other - and which eight a place names is decided at
+  the margin. Fame here is persistent and it is not yet EARNED. 12.06 is where
+  a repute costs or gains somebody something, and that is what would spread the
+  distribution.
+- `MostNames` is eight per place and it saturates: a region trading with four
+  neighbours hears up to thirty-two names and may say eight. Which is why
+  dropping, not fading, is what removes a name.
