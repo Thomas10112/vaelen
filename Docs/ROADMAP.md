@@ -2550,33 +2550,34 @@ simulation and somebody's picture of it are allowed to differ at all.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 12 — GAMEPLAY — 6 of 8
-TASK        : 12.06 — WHAT THE WORLD DOES ABOUT A NAME — done
+PHASE       : 12 — GAMEPLAY — 7 of 8
+TASK        : 12.07 — GAMEPLAY IN THE CHRONICLE — done
 STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████████████████████ 12 of 21 phases closed (00-11) · Phase 12 at 6/8
+████████████████████████████ 12 of 21 phases closed (00-11) · Phase 12 at 7/8
 
 CURRENTLY
-→ 12.06 gave a repute its first cost. Twelve phases had built one that changed
-  nobody's life; now the worst-named people a place still speaks of are bound to
-  it, and the best-named among the bound are let go. Measured over six years of
-  one lively region: with no line to cross, 0 condemned; with one, 15 condemned
-  and 14 still bound, every one on a name their place was carrying.
+→ 12.07 made the chronicle say what was BELIEVED. 03.07 has walked cause chains
+  since Phase 03, but every link was a fact; a bondage whose chain says nothing
+  is a punishment with no recorded reason. A name now remembers the telling that
+  brought it (Fame grew to 32 bytes for it), and every judgement is published
+  with that telling as its cause - so History::CauseChain walks belief without a
+  second mechanism.
 
-  Two things were measured before they were decided. Take is back among the
-  verbs an unplayed person may use - it only MOVES, so ADR-0096's rule always
-  allowed it, and leaving it out had cost the phase its whole negative half
-  (12.02's `worst` was 0 because nobody had ever wronged anybody; it is -82 now).
-  And WANT cannot decide who takes: 06.02 works out one ration for a whole
-  region and 04.04 moves every person's Food by it, so all 1428 people of the
-  best-fed region sit at 255 of 255, and a land lean enough to starve anybody
-  leaves 5 of them alive. Character can - Trait::Boldness is heritable and 59 of
-  the 1428 are over the line. ADR-0101 has the numbers.
+    Imhugundild was bound by Edavaken for a name it spoke ill of (-707)
+    Edavaken came to speak ill of (-707) Imhugundild
+    Ekdu speaks ill of (-600) Assinek, 1 road away, and has since year 304
 
-  The part worth reading twice: a place judges on what IT says, never on a
-  person's own record. 56 people had wronged somebody and 42 were never answered
-  for it - not spared by a clause, simply never spoken of.
+  116675 events of belief, every one with a sentence, none falling through to a
+  generic line; identical digest across two runs of one seed.
+
+  The limit, named rather than implied: every chain is two steps and every
+  judgement says WHERE IT WAS EARNED, because 12.06 binds only people standing
+  in the place that carries the name and nobody in AELVOR ever moves.
+  Player::Intent::Move exists and 12.01 does not use it. The machinery for
+  judging somebody on a rumour is built, wired and chronicled; the world gives
+  it nothing to carry. ADR-0102.
 
 WAS
 → Phase 11 closed against section 2 on CI run 113: nine jobs green at 6be319f, the eight phase gates
@@ -2599,7 +2600,7 @@ COMPLETED
 ✓ 11.07 the colony in the chronicle · 11.08 the phase gate
 ✓ 12.01 a person nobody is playing · 12.02 an opinion between two people, and hearsay
 ✓ 12.03 the documents · 12.04 the maps · 12.05 a name that travels
-✓ 12.06 what the world does about a name
+✓ 12.06 what the world does about a name · 12.07 gameplay in the chronicle
 
 NEXT
 → 12.06 — consequences: what a polity, an organisation or a family does about somebody whose repute
@@ -2610,8 +2611,8 @@ NEXT
 TESTS
 ✓ CI run 113: nine jobs green (six Linux presets, clang-format, Windows MSVC, macOS AppleClang)
 ✓ Eight phase gates green in one local run: GATES-DONE 0 failing
-✓ VaelenGameplayTests: Living, Repute, Documents, Maps, Fame and Judgement — 5 Judgement tests,
-  37 checks, gcc-debug/gcc-release/clang-release, purity 186 files and 0 violations
+✓ VaelenGameplayTests: Living, Repute, Documents, Maps, Fame, Judgement and Chronicle — 22 tests,
+  209 checks, gcc-debug/gcc-release/clang-release, purity 188 files and 0 violations
 ✓ VaelenColonyTests 17 run, 17 passed across six suites, 1817 checks, CTest 8/8 with Shuffled
 ✓ The Phase 11 gate: a century at 256, a colony of 4007 bound on 4463 of seam, 5 lives and 14400
   intents, replayed blind to the same state digest, event log and mining digest

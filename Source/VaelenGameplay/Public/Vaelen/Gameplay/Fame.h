@@ -44,13 +44,17 @@ namespace Vaelen::Gameplay
 	/// What a place says about somebody who is not there.
 	struct Fame
 	{
-		uint64 Since = 0;	 ///< tick this place first heard it, kept while it keeps saying it
+		uint64 Since = 0; ///< tick this place first heard it, kept while it keeps saying it
+		/// The event that brought the name here, so that anything done about it
+		/// can be walked back to what the place was TOLD rather than to what was
+		/// true. 12.07 is the whole reason this is state and not a local.
+		PersistentId First;
 		uint32 Person = 0;	 ///< who is spoken of
 		int32 Said = 0;		 ///< what is said of them here, on 12.02's scale
 		uint32 Hops = 0;	 ///< roads between here and where it started
 		uint32 Reserved = 0; //
 	};
-	static_assert(sizeof(Fame) == 24, "Fame must stay padding free");
+	static_assert(sizeof(Fame) == 32, "Fame must stay padding free");
 
 	/// Component on a region entity: the names this place carries.
 	struct RegionNames
@@ -59,7 +63,7 @@ namespace Vaelen::Gameplay
 		uint32 Reserved = 0;
 		Fame Who[MostNames];
 	};
-	static_assert(sizeof(RegionNames) == 200, "RegionNames must stay padding free");
+	static_assert(sizeof(RegionNames) == 264, "RegionNames must stay padding free");
 
 	struct FameTypes
 	{

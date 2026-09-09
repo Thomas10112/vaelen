@@ -6142,3 +6142,55 @@ cumulative record is one tight cluster and nobody is famous for anything.
 - A limit: bondage is the only consequence, so the world can punish and cannot
   reward beyond letting somebody out of a bond it imposed. A good name buys
   freedom and nothing else.
+
+## ADR-0102: A chronicle of what was believed, not of what was true
+
+### Context
+
+Phase 12's rule is that a person acts on what they believe and the world acts
+on what it has heard. 03.07 has answered "why did this happen" since Phase 03
+by walking a cause chain - but every link in that chain was a FACT. 12.06 began
+binding people for their names, and a bondage whose cause chain says nothing is
+a punishment with no recorded reason.
+
+### Decision
+
+1. **A name remembers the event that brought it.** `Fame` grew from 24 bytes to
+   32 to carry a `PersistentId First` - the telling that put this name in this
+   place. It is state and not a local because everything a place DOES about a
+   name is caused by it: `NameTravelled` is published with the previous
+   telling as its cause, and `Condemned`, `Pardoned` and the bond itself are
+   published with the local telling as theirs. So `History::CauseChain` - the
+   same one 03.07 has always used - now walks belief rather than fact, without
+   a second mechanism.
+
+2. **`WhyBelieved` is 03.07's `Why` with the sentences of this layer.** A chain
+   of length one is a place acting on what it saw; a chain of length four is a
+   place acting on a rumour four valleys old. Nothing new is invented to make
+   that readable - the chain is the chain.
+
+3. **`WhatWasKnown` answers for a PLACE, not for the world.** After ADR-0100
+   that is where knowing lives, so "what was known, by whom, and when" is a
+   question a region answers: what it says of somebody, how many roads the
+   saying crossed, and the year it first heard it.
+
+### Consequences
+
+- Measured: 116675 events of belief in a six-year world, every one of them with
+  a sentence and none falling through to a generic line; the chronicle digest is
+  identical across two runs of one seed. All 64 names any place carries can be
+  asked about and answered; a person nobody has heard of returns nothing rather
+  than an empty sentence.
+- The chronicle reads: *"Imhugundild was bound by Edavaken for a name it spoke
+  ill of (-707) where it was earned"*, and behind it *"Edavaken came to speak
+  ill of (-707) Imhugundild"*. And of a name that travelled: *"Ekdu speaks ill
+  of (-600) Assinek, 1 road away, and has since year 304."*
+- **A limit, and it is the phase's own thesis only half proved.** Every chain
+  measured is two steps long and every judgement says *where it was earned*,
+  because 12.06 binds only people standing in the place that carries the name
+  and **nobody in AELVOR ever moves**. `Player::Intent::Move` exists and 12.01
+  does not use it. Until somebody can earn a name in one place and be standing
+  in another, no one is ever judged on a rumour - the machinery for it is built,
+  wired and chronicled, and the world gives it nothing to carry. That is the
+  next real question this phase asks, and it is named here rather than implied
+  by a passing test.

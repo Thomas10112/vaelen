@@ -194,7 +194,8 @@ namespace Vaelen::Gameplay
 						{
 							return;
 						}
-						Seeds.emplace_back(P.Region, Fame{static_cast<uint64>(Context.Tick), P.Index, Said, 0u, 0u});
+						Seeds.emplace_back(
+							P.Region, Fame{static_cast<uint64>(Context.Tick), PersistentId{}, P.Index, Said, 0u, 0u});
 					});
 			std::sort(Seeds.begin(), Seeds.end(), [](const std::pair<uint32, Fame>& A, const std::pair<uint32, Fame>& B)
 					  { return A.second.Person < B.second.Person; });
@@ -266,7 +267,9 @@ namespace Vaelen::Gameplay
 					{
 						continue; // too thin to be worth repeating
 					}
-					Renew(Reached[B], Fame{static_cast<uint64>(Context.Tick), F.Person, Said, Hop, 0u});
+					// The name a place is told carries the event that brought it to the
+					// place telling it, so a chain of tellings can be walked back (12.07).
+					Renew(Reached[B], Fame{static_cast<uint64>(Context.Tick), F.First, F.Person, Said, Hop, 0u});
 				}
 			};
 			for (const Economy::RouteInfo& R : Routes)
@@ -299,10 +302,15 @@ namespace Vaelen::Gameplay
 				if (Old != nullptr)
 				{
 					F.Since = Old->Since;
+					F.First = Old->First;
 					continue;
 				}
-				Context.Events->Publish(Context.Tick, NameTravelledEvent,
-										FamePayload{F.Person, Index[i], F.Said, F.Hops});
+				// Caused by the telling that carried it, which is empty only for
+				// a name in the place that earned it. Everything a place does
+				// about a name it only heard can be walked back from here.
+				F.First =
+					Context.Events->Publish(Context.Tick, NameTravelledEvent,
+											FamePayload{F.Person, Index[i], F.Said, F.Hops}, PersistentId{}, F.First);
 			}
 			for (const Fame& F : Was[i])
 			{

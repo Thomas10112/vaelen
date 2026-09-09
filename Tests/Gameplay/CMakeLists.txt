@@ -29,4 +29,6 @@ set_tests_properties(${VAELEN_GAMEPLAY_TEST_NAMES} PROPERTIES TIMEOUT 1800)
 set_tests_properties(Gameplay.Fame PROPERTIES TIMEOUT 5400)
 # Judgement builds eight such worlds and lives six years in each: 325 s here.
 set_tests_properties(Gameplay.Judgement PROPERTIES TIMEOUT 5400)
+# Chronicle builds five such worlds: 212 s here.
+set_tests_properties(Gameplay.Chronicle PROPERTIES TIMEOUT 5400)
 set_tests_properties(Gameplay.Shuffled PROPERTIES TIMEOUT 5400)

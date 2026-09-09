@@ -120,29 +120,33 @@ namespace Vaelen::Gameplay
 				}
 				if (Bad && !At->Bound)
 				{
+					// Caused by the telling that brought the name here, so 12.07
+					// can walk a bondage back to what the place was TOLD.
 					if (Society::BindPerson(W, Persons, Bondage, F.Person, Society::BondKind::Bonded,
-											Society::BondEntry::Judgement, 0u, Context.Tick))
+											Society::BondEntry::Judgement, 0u, Context.Tick, F.First))
 					{
 						At->Bound = true;
 						++Done;
 						if (Context.Events != nullptr)
 						{
 							Context.Events->Publish(Context.Tick, CondemnedEvent,
-													FamePayload{F.Person, Region, F.Said, F.Hops});
+													FamePayload{F.Person, Region, F.Said, F.Hops}, PersistentId{},
+													F.First);
 						}
 					}
 				}
 				else if (Good && At->Bound)
 				{
-					if (Society::FreePerson(W, Persons, Bondage, F.Person, Society::BondExit::Manumission,
-											Context.Tick))
+					if (Society::FreePerson(W, Persons, Bondage, F.Person, Society::BondExit::Manumission, Context.Tick,
+											F.First))
 					{
 						At->Bound = false;
 						++Done;
 						if (Context.Events != nullptr)
 						{
 							Context.Events->Publish(Context.Tick, PardonedEvent,
-													FamePayload{F.Person, Region, F.Said, F.Hops});
+													FamePayload{F.Person, Region, F.Said, F.Hops}, PersistentId{},
+													F.First);
 						}
 					}
 				}
