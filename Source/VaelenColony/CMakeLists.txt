@@ -5,11 +5,13 @@ set(VAELEN_COLONY_PUBLIC_HEADERS
   Public/Vaelen/Colony/ColonyApi.h
   Public/Vaelen/Colony/Mining.h
   Public/Vaelen/Colony/Holders.h
+  Public/Vaelen/Colony/ColonyHistory.h
 )
 
 set(VAELEN_COLONY_SOURCES
   Private/Mining.cpp
   Private/Holders.cpp
+  Private/ColonyHistory.cpp
 )
 
 add_library(VaelenColony STATIC ${VAELEN_COLONY_SOURCES} ${VAELEN_COLONY_PUBLIC_HEADERS})

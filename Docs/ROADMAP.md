@@ -2434,51 +2434,51 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 11 — MINING COLONY — IN PROGRESS
-TASK        : 11.06 — THE COLONY AND THE WORLD
+TASK        : 11.07 — THE COLONY IN THE CHRONICLE
 STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
-██████████████████ 75%
+█████████████████████ 87%
 
 CURRENTLY
-→ The task set out to find how much a road can carry a colony and found that the question was wrong.
-  The arithmetic said it could just about be done: a route carries CarryMax (1000) a year times the
-  road's ease, 09.04's best road is grade 3 at 200 per grade, and a region holds four routes - 6400 a
-  year against the 5924 a colony of 1481 eats.
+→ Every layer of this project has the same shape for a chronicle - a listener that turns the events
+  which matter into records, and a sentence for each - so this looked like filling in a template. It
+  was not, because FoundColony published nothing at all. A colony began, the mined mark went on the
+  region, a thousand people were bound, and the world's history said nothing had happened. There was
+  no record to write because there was no event to write it from.
 
-  The measurement said the arithmetic was irrelevant. Post-founding, over sixty years, the roads
-  brought 115 units a year to a colony of 1432 that eats 5728, and 32 a year to one of 421 that eats
-  1684. Two per cent, and the small colony died as surely as the big one. Trade.cpp says why: a carry
-  is bounded by a quarter of the seller's surplus ABOVE ITS OWN WANT, and AELVOR lives at
-  subsistence - 06.02 has every region eat what it reaps and spoil a tenth of the rest. There is no
-  spare food anywhere in this world to send anybody.
+  Writing the text then found a second thing, and it is the third time in one phase. MiningRules
+  named the colony's region as a rule fixed when the system is built - and a harness cannot know that
+  region before it builds its systems, because the colony is founded afterwards. The chronicle test
+  mined nothing, and the reason was a zero in a rule. ADR-0090 removed ProductionRules::MinedRegion
+  for exactly this; 11.05 found LodRules::Held applies through the whole of Generate's pre-history
+  and empties the region. So the rule is now written down once, for the phase: a rule is fixed when
+  the system is built and a fact has a date, so anything that BEGINS during a world's life must be a
+  component and the system must find it by looking. MiningSystem reads the colony pool now.
 
-  So the fault was in 11.03, which zeroed a mined region's harvest ENTIRELY. 11.04 had already
-  established that the elite are spared and the founding binds only those twelve and over, so a
-  colony HAS free people who are not on the rock. ProductionSystem::ObserveBonds now takes the bound
-  out of the fields and leaves everybody else in them, and a colony feeds itself: the same experiment
-  that gave 1460 people becoming 39 now gives 1497, with no deaths from starvation on either ground.
-
-  Nothing in 06.04 or 09.04 was touched. Raising CarryMax or the road ease would have made a colony
-  live by changing every world since Phase 06 to paper over a rule of Phase 11.
+  The sentences read as the rest of the chronicle does: "the ground of Einzu was given over to what
+  lay under it", "464 people were bound to the colony of Einzu", "a seam under Einzu gave up the last
+  of itself". A colony's binding is one record and not a thousand - a thousand records saying the
+  same thing on the same day is a ledger, not a chronicle.
 
 COMPLETED
 ✓ Phases 00-09 closed · Phase 10 PLAYER closed
 ✓ 11.01 a region kept detailed · 11.02 a colony's people at the day · 11.03 the work of a colony
-✓ 11.04 who holds it · 11.05 what a colony does to the people in it
-✓ 11.06 the colony and the world — ProductionSystem::ObserveBonds, the harvest rule of 11.03
-  corrected, 2 tests; ADR-0093 supersedes the collapse figures of ADR-0092
+✓ 11.04 who holds it · 11.05 what a colony does to the people in it · 11.06 the colony and the world
+✓ 11.07 the colony in the chronicle — ColonyFoundedEvent, ColonyHistory, MiningSystem reading the
+  colony pool rather than a rule; ADR-0094
 
 NEXT
-→ 11.07 — the colony in the chronicle, and the player's place in it: the start of 10.02 on the ground
-  it was always meant for
+→ 11.08 — Phase 11 gate: the colony at full detail for a century with the world around it at the
+  year, every invariant of every phase each decade, frozen digests, and a played life inside it
+  replayed
 
 TESTS
-✓ VaelenColonyTests Supply 2 run, 2 passed, 21 checks · Toll 2 run, 2 passed, 18 checks
-✓ The roads bring a fiftieth of what a colony eats, at either size
-✓ A colony of 1432 and one of 421 both live sixty years on ten years of food and their own fields
-✓ 1460 people become 1497 on mined ground and on farmed ground alike, nobody starving on either
-✓ A colony founded bound does not stay bound: 1116 become 247 over sixty years of 05.04
+✓ VaelenColonyTests 16 run, 16 passed across five suites, 1757 checks
+✓ Chronicle: 1 founding, 1571 lifts and 4 seams spent over twenty years, every one with a sentence
+✓ Mining 5/5 with the digest re-frozen at e737ebcd1c65e709 and its provenance written in place
+✓ Holders 6/6 · Toll 2/2 · Supply 2/2
+✓ Purity 173 files, 0 violations; the task touches no module outside VaelenColony
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)

@@ -32,10 +32,18 @@ using namespace Vaelen::History;
 using namespace Vaelen::Population;
 using namespace Vaelen::WorldGen;
 
-// Recorded on clang 18 / Linux x86_64 on 2026-09-09 (11.03): AELVOR 128 at year
+// Recorded on gcc 13 / Linux x86_64 on 2026-09-09 (11.07): AELVOR 128 at year
 // 300, the ore-richest peopled region founded as a colony and lived three years
 // at the day, with lives, families, traits, needs, lod, stocks and production.
-#define VAELEN_MINING_FROZEN_128 0xa7b00a23e7072fbbull
+//
+// Re-frozen from 0xa7b00a23e7072fbb, and the two reasons are worth naming.
+// 11.06 stopped a mined region reaping nothing, so its people are fed
+// differently; and 11.07 replaced LodRules::Held with RequestDetail, which holds
+// the region from the tick it is asked rather than through the whole of
+// Generate's pre-history. Both change the world this measures, and neither is a
+// determinism failure: the same seed still gives the same colony twice over,
+// which is what the checks above this one prove.
+#define VAELEN_MINING_FROZEN_128 0xe737ebcd1c65e709ull
 
 namespace
 {
@@ -65,8 +73,10 @@ namespace
 			// 11.01: the colony is a region the world KEEPS detailed. Without the
 			// hold the bridge demotes it on the first crowded year and the hands
 			// vanish with it - which is what this test saw before the hold was set.
+			// The hold is asked for at a tick by Promote (RequestDetail), not fixed
+			// as a rule here: LodRules::Held would apply through the whole of
+			// Generate's pre-history, which 11.05 found empties the region.
 			LodRules Grain;
-			Grain.Held = InMine.Region;
 			Bridge = std::make_unique<LodSystem>(Instance, Ages.Types(), Persons, Lod, Grain);
 			Stocks = std::make_unique<StockSystem>(Instance, Ages.Types(), Persons, Families, Economy, EconomyRules{});
 			Harvest = std::make_unique<ProductionSystem>(Instance, Ages.Types(), Persons, Families, Economy, Production,
@@ -191,6 +201,7 @@ namespace
 		/// people is already where this wants it - asking twice is not a failure.
 		bool Promote(uint32 Region)
 		{
+			RequestDetail(Instance, Lod, Region);
 			return PromoteRegion(Instance, Ages.Types(), Persons, MaterialiseRules{}, Region, Instance.Now()) > 0 ||
 				   Alive(Region) > 0;
 		}
@@ -254,7 +265,6 @@ VAELEN_TEST(Mining, AColonyLiftsOreAndTheStockHasExactlyWhatWasLifted)
 	VT_CHECK_MSG(Where != 0, "AELVOR 128 has a peopled region with ore under it");
 
 	MiningRules Mine;
-	Mine.Region = Where;
 	Run W(AelvorSeed, Mine);
 	VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
 	VT_REQUIRE(W.Promote(Where));
@@ -283,7 +293,10 @@ VAELEN_TEST(Mining, AColonyLiftsOreAndTheStockHasExactlyWhatWasLifted)
 	// not the measure: 06.02 goes on spending ore on tools, and an earlier
 	// version of this test read that spending as ore that never arrived.
 	VT_CHECK_EQ(W.OreAdded(Where), uint64{S.Taken});
-	VT_CHECK_MSG(W.Ore(Where) > Before, "and the region is richer in ore than before the colony");
+	// Not "richer in ore than before": since 11.06 the colony farms as well as
+	// mines, so it has more people, makes more tools, and spends ore faster than
+	// two years of a young colony lifts it. What is exact is the log, above.
+	(void)Before;
 	// And what was taken came out of the seam, unit for unit.
 	VT_CHECK_EQ(SeamLeft(W.Instance, W.Ages.Types(), W.Colony, Where), Seam - S.Taken);
 	VAELEN_LOG_INFO(LogMining, "colony in region %u: %u hands, %u units lifted of %u in the seam", Where, S.Hands,
@@ -300,7 +313,6 @@ VAELEN_TEST(Mining, ASeamGivesWhatItHeldAndNotOneUnitMore)
 	// Hands that lift hard, so the seam runs out inside the test rather than
 	// inside a century nobody will sit through.
 	MiningRules Mine;
-	Mine.Region = Where;
 	Mine.PerHandPerYear = 4000;
 	Run W(AelvorSeed, Mine);
 	VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
@@ -336,7 +348,6 @@ VAELEN_TEST(Mining, TwoWorldsOfOneSeedLiftTheSameOreOnTheSameDays)
 	auto Live = [&](std::vector<uint64>& Days, std::vector<uint32>& Units) -> MiningStats
 	{
 		MiningRules Mine;
-		Mine.Region = Where;
 		Run W(AelvorSeed, Mine);
 		VT_CHECK(W.Ages.Generate(Run::Square(128), 300));
 		VT_CHECK(W.Promote(Where));
@@ -386,7 +397,6 @@ VAELEN_TEST(Mining, AColonyEatsWhatItDoesNotGrow)
 	// The same world twice: once left to farm, once founded as a colony. Only
 	// the founding differs, so what separates them is what a colony costs.
 	MiningRules Mine;
-	Mine.Region = Where;
 
 	Run Farm(AelvorSeed, Mine);
 	VT_REQUIRE(Farm.Ages.Generate(Run::Square(128), 300));
@@ -405,11 +415,12 @@ VAELEN_TEST(Mining, AColonyEatsWhatItDoesNotGrow)
 	Farm.Instance.TickMany(TicksPerYear * 5);
 	Pit.Instance.TickMany(TicksPerYear * 5);
 
-	// Neither keeps level - five years is five years - but the farm reaps and
-	// the pit does not, so the pit spends nearly twice as much of what it was
-	// given. The claim is the gap, not that a farm feeds itself for nothing.
+	// Since 11.06 the colony farms with whoever it has not bound, so the gap in
+	// grain has closed almost to nothing - which is the correction, not a
+	// failure. What still separates the two grounds is the ore: only the colony
+	// lifts any.
 	VT_CHECK_MSG(Pit.Grain(Where) < PitBefore, "the colony's grain falls: it eats what it does not grow");
-	VT_CHECK_MSG(Farm.Grain(Where) > Pit.Grain(Where), "and the same ground left to farm keeps more");
+	VT_CHECK_MSG(Pit.Grain(Where) > 0, "and the colony still has grain, because it still farms");
 	// The ore is the other side of the bargain: the pit has it, the farm does
 	// not lift any beyond what 06.02's yearly extraction gives everybody.
 	VT_CHECK_MSG(Pit.Stats(Where).Taken > 0, "the colony lifted ore");
@@ -428,7 +439,6 @@ VAELEN_TEST(Mining, TheEdgesOfAColony)
 	// A colony nobody founded lifts nothing, however the rules are set.
 	{
 		MiningRules Mine;
-		Mine.Region = Where;
 		Run W(AelvorSeed, Mine);
 		VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
 		VT_REQUIRE(W.Promote(Where));
@@ -447,7 +457,6 @@ VAELEN_TEST(Mining, TheEdgesOfAColony)
 	// rounded up to one.
 	{
 		MiningRules Mine;
-		Mine.Region = Where;
 		Mine.PerHandPerYear = 0;
 		Run W(AelvorSeed, Mine);
 		VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
@@ -463,7 +472,6 @@ VAELEN_TEST(Mining, TheEdgesOfAColony)
 	// reached leaves the rock alone.
 	{
 		MiningRules Mine;
-		Mine.Region = Where;
 		Mine.WorkFromAge = 250;
 		Run W(AelvorSeed, Mine);
 		VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));

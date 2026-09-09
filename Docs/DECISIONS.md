@@ -5673,3 +5673,61 @@ never bind at all.
   convicts becomes, in two generations, a free mining town that farms again -
   which is why its harvest recovers, and it is the world saying something the
   design never wrote down.
+
+## ADR-0094: A thing the world does with no event behind it cannot be remembered
+
+### Context
+
+11.07 puts the colony in the chronicle. Every layer of this project already has
+the same shape for that - a listener that turns the events which matter into
+records, and a sentence for each - so the task looked like filling in a template.
+
+It was not, because `FoundColony` published nothing at all. A colony began, the
+mined mark went on the region, a thousand people were bound, and the world's
+history said nothing had happened. There was no record to write because there
+was no event to write it from.
+
+Writing the chronicle then found a second thing. `MiningRules::Region` named the
+colony's region as a rule fixed when the system is built - and a test harness
+cannot know that region before it builds its systems, because the colony is
+founded afterwards. The chronicle test lifted an existing harness, mined nothing
+at all, and the reason was that the rule was zero.
+
+That is the third time in one phase. ADR-0090 removed
+`ProductionRules::MinedRegion` for it; 11.05 found `LodRules::Held` applies
+through the whole of `Generate`'s pre-history and empties the region; and now
+this.
+
+### Decision
+
+1. **`ColonyFoundedEvent`, published by `FoundColony`.** Nothing the world does
+   is remembered unless an event says it happened. This is the rule the phase
+   should have followed from 11.03 and did not.
+
+2. **`MiningSystem` reads the colony pool, not a rule.** There is no
+   `MiningRules::Region` any more. The system mines every colony the world holds,
+   which is also why it can run daily at all: the colony pool has as many
+   entries as there are colonies, and walking it is walking one entity.
+
+3. **The general rule, stated once for the phase.** *A rule is fixed when the
+   system is built; a fact has a date. Anything that begins during a world's
+   life must be a component, and the system must find it by looking.* Three
+   tasks paid for this separately before it was written down.
+
+4. **A colony's binding is one record, not a thousand.** `DescribeBinding` takes
+   the count and says it in one sentence. A thousand records saying the same
+   thing on the same day is a ledger, not a chronicle - and the same judgement
+   governs the lifts, which are told by the year rather than by the day.
+
+### Consequences
+
+- The frozen mining digest moves from `a7b00a23e7072fbb` to `e737ebcd1c65e709`,
+  for two reasons that are both real changes to the world it measures: 11.06
+  stopped a mined region reaping nothing, and this task replaced
+  `LodRules::Held` with `RequestDetail` in the harnesses so the hold begins at a
+  tick. Neither is a determinism failure - the same seed still gives the same
+  colony twice over, and the tests that prove it are the ones above the frozen
+  check.
+- The sentences read as the rest of the chronicle does: "the ground of Einzu was
+  given over to what lay under it", "464 people were bound to the colony of
+  Einzu", "a seam under Einzu gave up the last of itself".

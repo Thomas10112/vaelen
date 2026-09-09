@@ -74,7 +74,10 @@ namespace Vaelen::Colony
 
 	struct MiningRules
 	{
-		uint32 Region = 0;				 ///< the colony's region; 0 = no colony, and the system does nothing
+		// No Region here. A colony is founded at a tick and a rule is fixed when the
+		// system is built, so a rule cannot name one - ADR-0090, and this is the third
+		// place in Phase 11 to learn it. The system mines whatever the colony pool
+		// holds, which is the world's own answer to "where is it".
 		uint32 DaysPerYear = 360;		 ///< the calendar of 01.04 at SimLod::Aggregate
 		uint32 WorkFromAge = 12;		 ///< a person of the colony goes on the rock at this age
 		uint32 PerHandPerYear = 2;		 ///< units of ore a pair of hands lifts in a year, at ordinary skill
@@ -83,6 +86,11 @@ namespace Vaelen::Colony
 		uint32 GrainPerPersonPerYear = 4; ///< what the colony eats and does not grow (matches 06.02)
 	};
 
+	/// A colony founded on a region (Region, 0, Ore, 0). Nothing in the world
+	/// happens without an event that says so, or no chronicle can tell it -
+	/// FoundColony was silent until 11.07 needed it spoken.
+	inline constexpr EventType<Economy::StockPayload> ColonyFoundedEvent =
+		MakeEventType<Economy::StockPayload>("ColonyFounded");
 	/// A colony's lift (Region, 0, Ore, units), with the colony as subject.
 	inline constexpr EventType<Economy::StockPayload> OreLiftedEvent =
 		MakeEventType<Economy::StockPayload>("OreLifted");
@@ -98,9 +106,9 @@ namespace Vaelen::Colony
 	/// 11.07 can read it - which is the one thing 06.02's yearly extraction
 	/// cannot give, because it writes the stock directly.
 	///
-	/// The yearly pass must not also extract for this region or the ore is
-	/// counted twice; ProductionRules::MinedRegion is what stops it, a rule and
-	/// not a component, for the reason 11.02 gives about NeedRules::DailyRegion.
+	/// The yearly pass must not also extract on this ground or the ore is counted
+	/// twice; Economy::RegionMined is what stops it, which FoundColony puts on
+	/// the region at the tick the colony begins (ADR-0090).
 	class VAELEN_COLONY_API MiningSystem final : public ISystem
 	{
 	public:
