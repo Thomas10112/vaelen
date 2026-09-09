@@ -20,7 +20,8 @@
 // So a colony is held by the colony. `BondState::Holder` has meant "the region
 // itself" since 05.04 and this is the first thing that needed it in earnest.
 //
-// STATUS: INCOMPLETE (Phase 11) - written, not yet tested
+// STATUS: PROTOTYPE (Phase 11) - unit/integration/deterministic/edge tests in
+// Tests/Colony/Test_Holders.cpp, and the phase gate in Test_ColonyGate.cpp
 #pragma once
 
 #include "Vaelen/Colony/ColonyApi.h"

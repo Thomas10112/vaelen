@@ -21,7 +21,7 @@
 // stack through Phase 09, which is what a road needs) plus the bondage of 05.04
 // and the colony of Phase 11.
 //
-// STATUS: INCOMPLETE (Phase 11) - harness lifted, tests not yet written
+// STATUS: PROTOTYPE (Phase 11)
 
 #include "Vaelen/Colony/Holders.h"
 #include "Vaelen/Colony/Mining.h"

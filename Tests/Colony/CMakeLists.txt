@@ -8,7 +8,7 @@ add_executable(VaelenColonyTests
   ${VAELEN_COLONY_TEST_SOURCES})
 
 target_include_directories(VaelenColonyTests PRIVATE ${PROJECT_SOURCE_DIR}/Tests/Harness)
-target_link_libraries(VaelenColonyTests PRIVATE Vaelen::Colony Vaelen::Infrastructure Vaelen::Military Vaelen::Politics Vaelen::Economy Vaelen::Society Vaelen::Population Vaelen::Sim Vaelen::Core Threads::Threads)
+target_link_libraries(VaelenColonyTests PRIVATE Vaelen::Player Vaelen::Colony Vaelen::Infrastructure Vaelen::Military Vaelen::Politics Vaelen::Economy Vaelen::Society Vaelen::Population Vaelen::Sim Vaelen::Core Threads::Threads)
 
 set(VAELEN_COLONY_TEST_NAMES "")
 foreach(TestSource IN LISTS VAELEN_COLONY_TEST_SOURCES)
@@ -23,4 +23,6 @@ add_test(NAME Colony.Shuffled COMMAND VaelenColonyTests --shuffle 1)
 list(APPEND VAELEN_COLONY_TEST_NAMES Colony.Registry Colony.Shuffled)
 
 set_tests_properties(${VAELEN_COLONY_TEST_NAMES} PROPERTIES TIMEOUT 600)
-set_tests_properties(Colony.Shuffled PROPERTIES TIMEOUT 1800)
+set_tests_properties(Colony.Shuffled PROPERTIES TIMEOUT 5400)
+# The phase gate lives a century at 256 with a colony inside it, and replays it.
+set_tests_properties(Colony.ColonyGate PROPERTIES TIMEOUT 5400)

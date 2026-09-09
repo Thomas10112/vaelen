@@ -12,7 +12,7 @@
 // a colony that lifts ore every single day for a century would otherwise write
 // thirty-six thousand records nobody will ever read.
 //
-// STATUS: INCOMPLETE (Phase 11) - written, not yet tested
+// STATUS: PROTOTYPE (Phase 11) - text/deterministic tests in Tests/Colony/Test_Chronicle.cpp
 #pragma once
 
 #include "Vaelen/Colony/ColonyApi.h"

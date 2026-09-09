@@ -16,7 +16,8 @@
 // - a hook is an observed type declared by the module that needs it, never a
 // field pushed down into a lower module's Declare.
 //
-// STATUS: INCOMPLETE (Phase 11) - written, not yet compiled or tested
+// STATUS: PROTOTYPE (Phase 11) - unit/integration/deterministic/edge tests in
+// Tests/Colony/Test_Mining.cpp, and the phase gate in Test_ColonyGate.cpp
 #pragma once
 
 #include "Vaelen/Colony/ColonyApi.h"

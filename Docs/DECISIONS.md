@@ -5731,3 +5731,64 @@ this.
 - The sentences read as the rest of the chronicle does: "the ground of Einzu was
   given over to what lay under it", "464 people were bound to the colony of
   Einzu", "a seam under Einzu gave up the last of itself".
+
+## ADR-0095: A gate has to be full of what it claims to measure
+
+### Context
+
+11.08 is the Phase 11 gate: a century at 256 with the mining colony at full
+detail while the world around it keeps the year, every invariant of every phase
+each decade, frozen digests, and a life played inside the colony replayed into a
+fresh world of the same seed.
+
+It passed on its second run and the first one is the reason this ADR exists.
+
+The first run founded the colony on the ore-richest ground in AELVOR, which is
+what a mining colony wants, and the ground turned out to hold thirty-six people.
+Then the played life ended in its third year and `BeginEnslaved` found nobody
+else, because the start insists on somebody bound and a colony's bondage erodes -
+11.06 measured 1116 becoming 247 over sixty years, and at that size it reaches
+zero inside a decade. So the gate lived ninety of its hundred years with nobody
+played, recorded 1081 intents where there should have been 14400, and reported
+a century in a second and a half.
+
+It also failed, and the failure was the useful part. The replay's state digest
+differed. The recording released the mark when the life ended -
+`ReleasePlayer`, `EndOrders`, `EndStart`, `EndHours`, `EndRegard` - and the
+replay only does that when it takes somebody NEXT. With one life and no
+successor, the recording ended with the mark off a dead person and the replay
+ended with it on. A gate that had been full would never have shown it.
+
+### Decision
+
+1. **The colony is founded where the ore AND the people are.** The ranking is
+   the product of a region's ore and its population, so ground that is only rich
+   or only peopled falls away. That is also truer to the fiction: a colony is
+   sent somewhere worth sending people to.
+
+2. **The start takes whoever the colony has, bound or not.** A colony's bondage
+   erodes by 05.04's own rates, so a gate that insists on a bound life measures
+   nothing after the first one. What the gate is about is the colony, and 11.04
+   already proves the binding separately.
+
+3. **The colony's founding is an INPUT to the world, like a taking.** The replay
+   founds it on the same tick, binds the same number and raises the same
+   overseers, and the gate checks the tick as well as the counts. A world that
+   is not given the same inputs is not the same world, and the state digest
+   would say so - which is exactly how the first run's defect surfaced.
+
+4. **ADR-0089's rule again, stated for gates in general.** *A gate has to be
+   full of what it claims to measure.* The Phase 10 gate spent three quarters of
+   itself refusing intents at a corpse; this one spent nine tenths with nobody
+   played. Both passed their first run. The number to look at is not the verdict
+   but the volume: 14400 intents over forty years is what a life lived a day at
+   a time comes to, and anything less is a gate measuring its own silence.
+
+### Consequences
+
+- The gate now founds a colony of 4007 bound people on 4463 units of seam, works
+  every seam out inside the century, lives five lives and 14400 intents through
+  it, and replays all of them into the same world - same state digest, same
+  event log, same mining digest, and no intent answered differently.
+- Frozen at `half=78997c9e11f162a5`, `end=2862e6e238d2c1fd`,
+  `log=abb41cdb4e931d65`, in 27.8 seconds.

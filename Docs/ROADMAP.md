@@ -78,7 +78,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | CLOSED (08.01-08.08 VALIDATED headless; UNVERIFIED under UBT) |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | CLOSED (09.01-09.08 VALIDATED headless; UNVERIFIED under UBT) |
 | 10 | PLAYER | The player as one simulated person: enslaved start, body, needs, skills, relationships; player intent as commands into the simulation. | CLOSED (10.01-10.08, section 14) |
-| 11 | MINING COLONY | The starting place: a huge autonomous mining colony simulated by the same systems at full detail. | BROKEN DOWN (11.01-11.08, section 15) |
+| 11 | MINING COLONY | The starting place: a huge autonomous mining colony simulated by the same systems at full detail. | 11.01-11.08 WRITTEN and verified headless; NOT closed until the CI matrix is green (section 15) |
 | 12 | GAMEPLAY | Interaction verbs, knowledge (documents, maps), reputation and consequences without main quest or canonical ending. | PLANNED |
 | 13 | PRESENTATION | Unreal rendering, animation and audio of the world state, strictly read-only. | PLANNED |
 | 14 | UI | Interface and read-only views; command submission through the gameplay layer. | PLANNED |
@@ -2433,52 +2433,51 @@ and the project has spent ten phases not building one of those.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 11 — MINING COLONY — IN PROGRESS
-TASK        : 11.07 — THE COLONY IN THE CHRONICLE
-STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
+PHASE       : 11 — MINING COLONY — ALL EIGHT TASKS WRITTEN
+TASK        : 11.08 — THE PHASE 11 GATE
+STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine) — the phase is NOT closed until the CI
+              matrix is green on all nine jobs, per section 2
 
 PROGRESS
-█████████████████████ 87%
+████████████████████████ 100% written, awaiting the matrix
 
 CURRENTLY
-→ Every layer of this project has the same shape for a chronicle - a listener that turns the events
-  which matter into records, and a sentence for each - so this looked like filling in a template. It
-  was not, because FoundColony published nothing at all. A colony began, the mined mark went on the
-  region, a thousand people were bound, and the world's history said nothing had happened. There was
-  no record to write because there was no event to write it from.
+→ A century at 256 with the colony at full detail while the world keeps the year: every invariant of
+  every phase each decade, a life played inside the colony out of a recorded stream, and the whole of
+  it replayed into a fresh world of the same seed.
 
-  Writing the text then found a second thing, and it is the third time in one phase. MiningRules
-  named the colony's region as a rule fixed when the system is built - and a harness cannot know that
-  region before it builds its systems, because the colony is founded afterwards. The chronicle test
-  mined nothing, and the reason was a zero in a rule. ADR-0090 removed ProductionRules::MinedRegion
-  for exactly this; 11.05 found LodRules::Held applies through the whole of Generate's pre-history
-  and empties the region. So the rule is now written down once, for the phase: a rule is fixed when
-  the system is built and a fact has a date, so anything that BEGINS during a world's life must be a
-  component and the system must find it by looking. MiningSystem reads the colony pool now.
+  It passed on its second run, and the first one is why ADR-0095 exists. That run founded the colony
+  on the ore-richest ground in AELVOR - which is what a mining colony wants - and the ground held
+  thirty-six people. The played life ended in its third year, the start found nobody else because it
+  insists on somebody bound and a colony's bondage erodes to nothing at that size, and the gate lived
+  ninety of its hundred years with nobody played: 1081 intents where there should be 14400.
 
-  The sentences read as the rest of the chronicle does: "the ground of Einzu was given over to what
-  lay under it", "464 people were bound to the colony of Einzu", "a seam under Einzu gave up the last
-  of itself". A colony's binding is one record and not a thousand - a thousand records saying the
-  same thing on the same day is a ledger, not a chronicle.
+  It also FAILED, and that was the useful part. The replay's state digest differed, because the
+  recording releases the mark when a life ends and the replay only does that when it takes somebody
+  next - with one life and no successor, one world ended with the mark off a dead person and the
+  other with it on. A gate that had been full would never have shown it. The rule, for gates in
+  general: a gate has to be full of what it claims to measure, and the number to read is not the
+  verdict but the volume.
 
 COMPLETED
 ✓ Phases 00-09 closed · Phase 10 PLAYER closed
 ✓ 11.01 a region kept detailed · 11.02 a colony's people at the day · 11.03 the work of a colony
 ✓ 11.04 who holds it · 11.05 what a colony does to the people in it · 11.06 the colony and the world
-✓ 11.07 the colony in the chronicle — ColonyFoundedEvent, ColonyHistory, MiningSystem reading the
-  colony pool rather than a rule; ADR-0094
+✓ 11.07 the colony in the chronicle · 11.08 the phase gate
+✓ ADR-0090 to ADR-0095; no file of the phase carries STATUS: INCOMPLETE
 
 NEXT
-→ 11.08 — Phase 11 gate: the colony at full detail for a century with the world around it at the
-  year, every invariant of every phase each decade, frozen digests, and a played life inside it
-  replayed
+→ Push, then the CI matrix. Phase 11 closes against section 2 only when all nine jobs are green;
+  until then it is written and locally verified, which is not the same thing.
 
 TESTS
-✓ VaelenColonyTests 16 run, 16 passed across five suites, 1757 checks
-✓ Chronicle: 1 founding, 1571 lifts and 4 seams spent over twenty years, every one with a sentence
-✓ Mining 5/5 with the digest re-frozen at e737ebcd1c65e709 and its provenance written in place
-✓ Holders 6/6 · Toll 2/2 · Supply 2/2
-✓ Purity 173 files, 0 violations; the task touches no module outside VaelenColony
+✓ VaelenColonyTests 17 run, 17 passed across six suites, 1817 checks
+✓ The gate: a colony of 4007 bound on 4463 of seam, every seam worked out inside the century,
+  5 lives and 14400 intents lived a day at a time, in 27.8 s
+✓ Replayed blind: 14400 of 14400 intents, 5 of 5 takings, 0 answered differently, and the same state
+  digest, event log and mining digest
+✓ Frozen half=78997c9e11f162a5 end=2862e6e238d2c1fd log=abb41cdb4e931d65
+✓ Purity 173 files, 0 violations; clang-format clean
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)
