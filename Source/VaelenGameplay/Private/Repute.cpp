@@ -19,38 +19,42 @@ namespace Vaelen::Gameplay
 			return static_cast<int32>(std::min<int64>(Rules.Most, std::max<int64>(Rules.Least, Value)));
 		}
 
-		/// The slot for what one person thinks of another, made if there is
-		/// room and reused - oldest first - when there is not. A person is
-		/// thought about by a handful, and the handful is the most recent.
-		Player::Opinion* SlotFor(PersonRepute& R, uint32 Holder, SimTick Now)
-		{
-			for (usize i = 0; i < R.Known && i < MostThoughtOf; ++i)
-			{
-				if (R.Who[i].Person == Holder)
-				{
-					return &R.Who[i];
-				}
-			}
-			if (R.Known < MostThoughtOf)
-			{
-				Player::Opinion& O = R.Who[R.Known];
-				O = Player::Opinion{};
-				O.Person = Holder;
-				O.Last = Now;
-				++R.Known;
-				return &O;
-			}
-			usize Oldest = 0;
-			for (usize i = 1; i < MostThoughtOf; ++i)
-			{
-				Oldest = R.Who[i].Last < R.Who[Oldest].Last ? i : Oldest;
-			}
-			R.Who[Oldest] = Player::Opinion{};
-			R.Who[Oldest].Person = Holder;
-			R.Who[Oldest].Last = Now;
-			return &R.Who[Oldest];
-		}
+	} // namespace
 
+	/// The slot for what one person thinks of another, made if there is room and
+	/// reused - oldest first - when there is not. A person is thought about by a
+	/// handful, and the handful is the most recent.
+	Player::Opinion* SlotFor(PersonRepute& R, uint32 Holder, SimTick Now)
+	{
+		for (usize i = 0; i < R.Known && i < MostThoughtOf; ++i)
+		{
+			if (R.Who[i].Person == Holder)
+			{
+				return &R.Who[i];
+			}
+		}
+		if (R.Known < MostThoughtOf)
+		{
+			Player::Opinion& O = R.Who[R.Known];
+			O = Player::Opinion{};
+			O.Person = Holder;
+			O.Last = Now;
+			++R.Known;
+			return &O;
+		}
+		usize Oldest = 0;
+		for (usize i = 1; i < MostThoughtOf; ++i)
+		{
+			Oldest = R.Who[i].Last < R.Who[Oldest].Last ? i : Oldest;
+		}
+		R.Who[Oldest] = Player::Opinion{};
+		R.Who[Oldest].Person = Holder;
+		R.Who[Oldest].Last = Now;
+		return &R.Who[Oldest];
+	}
+
+	namespace
+	{
 		EntityHandle HandleOf(const World& W, const Population::PersonTypes& Persons, uint32 Person)
 		{
 			EntityHandle Found;

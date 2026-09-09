@@ -128,6 +128,13 @@ namespace Vaelen::Gameplay
 		ReputeRules Rules;
 	};
 
+	/// The slot holding what one person thinks of another, made if there is room
+	/// and taken from the oldest when there is not. Public because 12.03 needs
+	/// exactly this and a second copy of it got the eviction wrong: a page could
+	/// teach nobody anything about a person already thought of by the full
+	/// handful, which is every interesting person.
+	VAELEN_GAMEPLAY_API Player::Opinion* SlotFor(PersonRepute& About, uint32 Holder, SimTick Now);
+
 	/// What the world thinks of somebody (0 when nobody thinks anything).
 	VAELEN_GAMEPLAY_API int32 ReputeOf(const World& W, const Population::PersonTypes& Persons, const ReputeTypes& Types,
 									   uint32 Person);

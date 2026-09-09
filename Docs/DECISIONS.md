@@ -5906,3 +5906,48 @@ neither had been noticed:
   is where a repute has to cost somebody something.
 - Reading one line and not the ten under it cost a wrong premise in a pushed
   roadmap. The correction is its own commit, because the premise was public.
+
+## ADR-0098: A document is hearsay that outlives the teller
+
+### Context
+
+12.02 let one person tell another what they think of a third, and that story
+lives exactly as long as the people in it: a teller can be asked again, can
+change their mind, and dies. 12.03 asks what a world gets when a claim stops
+depending on anybody being alive to make it.
+
+### Decision
+
+1. **A document freezes an opinion, with a date on it.** `DocumentInfo` holds
+   who wrote it, who it speaks of, and `Says` - the regard its writer held AT
+   THE MOMENT OF WRITING. Nothing ever changes `Says`. The writer's own opinion
+   moves on, and the two come apart; that gap is the whole of what makes a
+   document interesting rather than a slower kind of truth.
+
+2. **A copy says exactly what the original said.** `Writer`, `About`, `Says` and
+   the date are carried over unchanged, and only `From` and the holder differ.
+   A copy is dangerous rather than harmless precisely because it does not know
+   it has aged.
+
+3. **Reading is worth less than being told, which is worth less than being
+   there.** `ReadPerMille` (200) against 12.02's `HeardPerMille` (300) against a
+   first-hand act at full weight. A page cannot be asked what it meant.
+
+4. **A lost document says nothing and cannot be copied.** What it said is gone;
+   what it caused is not, because what it caused is in the event log.
+
+### Consequences
+
+- Measured: a writer set down 15 about somebody; a year of the region living
+  later they think 0, and the page still says 15. And a person who had never met
+  the subject at all came to think 3 of them off that page.
+- **A limit worth naming: `MostThoughtOf` is eight.** Only eight people can hold
+  an opinion about anybody at once, oldest evicted. A reputation bounded at
+  eight holders is a village's reputation and not a polity's, and 12.05 - repute
+  travelling on the roads of 09.04 - is where that bound has to be faced rather
+  than raised quietly.
+- One defect of mine, and the reason `SlotFor` is public now: `ReadDocument`
+  carried its own copy of the slot logic and left out the eviction, so a page
+  could teach nobody anything about a person already thought of by the full
+  handful - which is every person worth writing about. Two copies of one rule is
+  one copy too many; there is one now, and both callers use it.
