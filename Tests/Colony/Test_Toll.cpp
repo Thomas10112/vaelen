@@ -101,6 +101,8 @@ namespace
 			Orgs->ObserveBonds(Bondage.Bond);
 			Harvest->ObserveTraits(Traits.Traits);
 			Harvest->ObserveMined(Colony.Mined);
+			// 11.06: and who is on the rock, so the rest of the colony still farms.
+			Harvest->ObserveBonds(Bondage.Bond);
 			Body->RunAfter("Production");
 			Body->ObserveRation(Production.Ration);
 			Houses->RunAfter("Lod");
@@ -328,8 +330,9 @@ VAELEN_TEST(Toll, WhatAColonyCostsThePeopleInIt)
 		for (uint32 Decade = 1; Decade <= 6; ++Decade)
 		{
 			W.Instance.TickMany(TicksPerYear * 10);
-			VAELEN_LOG_INFO(LogToll, "  %s year %u: %u alive, %u grain in the common stock",
-							AsColony ? "mine " : "farm ", Decade * 10u, W.Alive(Where), W.Grain(Where));
+			VAELEN_LOG_INFO(LogToll, "  %s year %u: %u alive, %u grain, %u still bound", AsColony ? "mine " : "farm ",
+							Decade * 10u, W.Alive(Where), W.Grain(Where),
+							MeasureHolding(W.Instance, W.Persons, W.Bondage, W.Standing, BondageRules{}, Where).Bound);
 		}
 		for (const Event& E : W.Instance.Log().All())
 		{
@@ -358,16 +361,20 @@ VAELEN_TEST(Toll, WhatAColonyCostsThePeopleInIt)
 	VAELEN_LOG_INFO(LogToll, "sixty years mining:  %u people became %u (natural %u, famine %u, starved %u, plague %u)",
 					PitWas, PitLeft, PitCause[0], PitCause[1], PitCause[2], PitCause[3]);
 	VT_CHECK_EQ(FarmWas, PitWas); // the two worlds start level
-	// The two worlds drain the same endowment at the same rate. The farm lives
-	// because it REAPS when the pile runs out; the colony reaps nothing, so it
-	// is fine while the store covers the year's need and collapses inside a
-	// decade of the year it stops. An endowment only moves the date.
-	VT_CHECK_MSG(PitLeft * 10 < FarmLeft, "a colony without a road empties itself");
-	VT_CHECK_MSG(FarmLeft >= FarmWas, "and the same ground left to farm feeds itself indefinitely");
-	// And it is starvation that does it - not famine, which needs a drought,
-	// and not plague. Naming the cause is the point of the test: the colony's
-	// people die with a full granary behind them until the year it is not.
-	VT_CHECK_MSG(PitCause[2] > 0, "the colony's dead starved");
+	// A colony costs its people a slice of the harvest and nothing more. An
+	// earlier version of this test read a collapse here - 1460 people became 39,
+	// by 1941 deaths from starvation - and that was true of the rule as 11.03
+	// first wrote it, which zeroed a mined region's harvest ENTIRELY. 11.06
+	// measured why that was too absolute: AELVOR is a subsistence world with no
+	// spare food anywhere to send a colony, so a colony that reaps nothing dies
+	// whatever the roads do. The rule now excludes the BOUND from the fields and
+	// leaves everybody else in them, and the colony feeds itself.
+	VT_CHECK_MSG(PitLeft >= PitWas, "a colony feeds itself, because the people it has not bound still farm");
+	VT_CHECK_MSG(FarmLeft >= FarmWas, "and so does the same ground left to farm");
+	// Nobody starves on either ground any more, which is the whole of the
+	// correction: the difference a colony makes is a store that drains faster,
+	// not a graveyard.
+	VT_CHECK_EQ(PitCause[2], 0u);
 	VT_CHECK_EQ(FarmCause[2], 0u);
 	VT_CHECK_MSG(PitCause[3] == 0 && FarmCause[3] == 0, "no plague in either, so sickness is not the difference");
 }

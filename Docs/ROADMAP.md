@@ -2434,50 +2434,51 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 11 — MINING COLONY — IN PROGRESS
-TASK        : 11.05 — WHAT A COLONY DOES TO THE PEOPLE IN IT
+TASK        : 11.06 — THE COLONY AND THE WORLD
 STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
-███████████████ 62%
+██████████████████ 75%
 
 CURRENTLY
-→ The roadmap asks whether the Phase 10 finding - a bound person dies young - is the world being
-  harsh or the model being wrong. Reading the code first said there is no mechanism at all: LifeRules
-  has no bondage term, death by health has one path and health falls only from hunger and plague, and
-  being fed last is a question of family rather than of the bond.
+→ The task set out to find how much a road can carry a colony and found that the question was wrong.
+  The arithmetic said it could just about be done: a route carries CarryMax (1000) a year times the
+  road's ease, 09.04's best road is grade 3 at 200 per grade, and a region holds four routes - 6400 a
+  year against the 5924 a colony of 1481 eats.
 
-  The measurement agrees, once it is made properly. One cohort, one age band, in an ordinary region
-  where 05.04's own rates give both groups: 61 of the bound died at a mean age of 66, 396 of the free
-  at 65. One year. The bond does not shorten a life, and Phase 10 was reading the region.
+  The measurement said the arithmetic was irrelevant. Post-founding, over sixty years, the roads
+  brought 115 units a year to a colony of 1432 that eats 5728, and 32 a year to one of 421 that eats
+  1684. Two per cent, and the small colony died as surely as the big one. Trade.cpp says why: a carry
+  is bounded by a quarter of the seller's surplus ABOVE ITS OWN WANT, and AELVOR lives at
+  subsistence - 06.02 has every region eat what it reaps and spoil a tenth of the rest. There is no
+  spare food anywhere in this world to send anybody.
 
-  Getting there took three attempts and every wrong one PASSED. Birth cohorts mixed (free at 23,
-  bound at 65 - an artefact); then the under-twelves the founding spares; then the discovery that a
-  colony has no free control of working age at all, because every adult but the elite is bound. The
-  control had to come from an ordinary region.
+  So the fault was in 11.03, which zeroed a mined region's harvest ENTIRELY. 11.04 had already
+  established that the elite are spared and the founding binds only those twelve and over, so a
+  colony HAS free people who are not on the rock. ProductionSystem::ObserveBonds now takes the bound
+  out of the fields and leaves everybody else in them, and a colony feeds itself: the same experiment
+  that gave 1460 people becoming 39 now gives 1497, with no deaths from starvation on either ground.
 
-  What the ground costs is the other half, and it is severe. One seed, one region, the founding the
-  only difference, both fed the same endowment far past what they can eat: 1460 people became 1497
-  farming and 39 mining, by 1941 deaths from starvation with no famine and no plague. And the shape
-  matters as much as the number - both worlds drain the endowment at the same rate, but the farm
-  reaps when the pile runs out and the colony does not. It is fine while the store covers the year's
-  need and collapses inside a decade of the year it stops. An endowment only moves the date.
+  Nothing in 06.04 or 09.04 was touched. Raising CarryMax or the road ease would have made a colony
+  live by changing every world since Phase 06 to paper over a rule of Phase 11.
 
 COMPLETED
 ✓ Phases 00-09 closed · Phase 10 PLAYER closed
 ✓ 11.01 a region kept detailed · 11.02 a colony's people at the day · 11.03 the work of a colony
-✓ 11.04 who holds it · 11.05 what a colony does to the people in it — measurement only, no kernel
-  file changed, because the finding is that the model was right
+✓ 11.04 who holds it · 11.05 what a colony does to the people in it
+✓ 11.06 the colony and the world — ProductionSystem::ObserveBonds, the harvest rule of 11.03
+  corrected, 2 tests; ADR-0093 supersedes the collapse figures of ADR-0092
 
 NEXT
-→ 11.06 — the colony and the world: what it sends out, what it needs in, and the roads of 09.04 that
-  carry both. The number to beat is above: a continuous inflow, not a bigger pile
+→ 11.07 — the colony in the chronicle, and the player's place in it: the start of 10.02 on the ground
+  it was always meant for
 
 TESTS
-✓ VaelenColonyTests Toll 2 run, 2 passed, 18 checks
-✓ The bound and the free of one cohort and one age band die a year apart (66 against 65)
-✓ 1460 people became 1497 farming and 39 mining on the same ground from one seed
-✓ Starvation, not famine and not plague: 1941 against 0 and 0
-✓ The collapse is late and sudden: 1481 alive at year 40, 333 at 50, 39 at 60
+✓ VaelenColonyTests Supply 2 run, 2 passed, 21 checks · Toll 2 run, 2 passed, 18 checks
+✓ The roads bring a fiftieth of what a colony eats, at either size
+✓ A colony of 1432 and one of 421 both live sixty years on ten years of food and their own fields
+✓ 1460 people become 1497 on mined ground and on farmed ground alike, nobody starving on either
+✓ A colony founded bound does not stay bound: 1116 become 247 over sixty years of 05.04
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)

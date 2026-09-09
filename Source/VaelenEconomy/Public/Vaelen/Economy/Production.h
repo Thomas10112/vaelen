@@ -22,6 +22,7 @@
 #include "Vaelen/Core/CoreTypes.h"
 #include "Vaelen/Economy/EconomyApi.h"
 #include "Vaelen/Economy/Stocks.h"
+#include "Vaelen/Society/BondState.h"
 #include "Vaelen/Population/Families.h"
 #include "Vaelen/Population/Needs.h"
 #include "Vaelen/Population/Persons.h"
@@ -160,6 +161,16 @@ namespace Vaelen::Economy
 			Mined = InMined;
 			HasMined = true;
 		}
+		/// Optional: who is bound (05.04). On mined ground the bound are on the
+		/// rock and not in the fields, so they neither work the land nor yield
+		/// from it; everybody else on that ground still farms. Without this a
+		/// mined region reaps nothing at all, which 11.06 found is too absolute -
+		/// a colony has free people, and AELVOR has no spare food to send it.
+		void ObserveBonds(ComponentType<Society::BondState> InBonds) noexcept
+		{
+			Bonds = InBonds;
+			HasBonds = true;
+		}
 		void Tick(TickContext& Context) override;
 
 	private:
@@ -181,6 +192,8 @@ namespace Vaelen::Economy
 		bool HasShops = false;
 		ComponentType<RegionMined> Mined;
 		bool HasMined = false;
+		ComponentType<Society::BondState> Bonds;
+		bool HasBonds = false;
 	};
 
 	/// Declares the mined mark. Called by whoever works ground for what is under

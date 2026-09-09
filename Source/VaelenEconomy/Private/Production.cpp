@@ -174,6 +174,17 @@ namespace Vaelen::Economy
 			}
 			HouseAt[Houses[i].Index] = static_cast<uint32>(i + 1);
 		}
+		// 11.06: which ground is worked for what is under it, by region, so the
+		// person loop can tell a miner from a farmer.
+		std::vector<uint8> MinedHere(N, 0u);
+		if (HasMined)
+		{
+			for (uint32 R = 1; R < N; ++R)
+			{
+				const EntityHandle RH = RegionHandles[R];
+				MinedHere[R] = !RH.IsNull() && W.Components().GetPool(Mined).TryGet(RH) != nullptr ? 1u : 0u;
+			}
+		}
 		std::vector<uint32> Alive(N, 0u), Workers(N, 0u), Unhoused(N, 0u), Crafters(N, 0u);
 		std::vector<uint64> UnhousedYield(N, 0u), CraftSum(N, 0u);
 		W.Components()
@@ -191,7 +202,15 @@ namespace Vaelen::Economy
 					const uint32 Farming =
 						T != nullptr ? T->Skills[static_cast<uint32>(Population::Skill::Farming)] : 0u;
 					const uint32 Craft = T != nullptr ? T->Skills[static_cast<uint32>(Population::Skill::Craft)] : 0u;
-					const bool Works = Population::AgeYears(P, Context.Tick) >= Rules.WorkerFromAge;
+					// On mined ground the bound are on the rock: they are not farm
+					// workers and the fields yield nothing from them. Everybody
+					// else on that ground still farms, which is what 11.06 found
+					// the first version of this rule got wrong by reaping nothing
+					// at all - a colony has free people, and there is no spare
+					// food anywhere in AELVOR to send it instead.
+					const bool OnRock =
+						MinedHere[P.Region] != 0 && HasBonds && W.Components().GetPool(Bonds).TryGet(H) != nullptr;
+					const bool Works = !OnRock && Population::AgeYears(P, Context.Tick) >= Rules.WorkerFromAge;
 					const uint64 Yield =
 						Works ? Rules.FarmingFloorPerMille + uint64{Rules.FarmingSpanPerMille} * Farming / 255u : 0u;
 					Workers[P.Region] += Works ? 1u : 0u;
@@ -250,10 +269,12 @@ namespace Vaelen::Economy
 			{
 				// The land takes so many workers: beyond the capacity's share the rest find none.
 				const uint64 Land = Capacity * Rules.WorkerSharePerMille / 1000u;
+				// Not zeroed for mined ground any more: Workers already excludes the
+				// bound, so a colony reaps in proportion to the people it has left
+				// over rather than not at all. 11.06 measured why that matters -
+				// AELVOR is a subsistence world with no spare food to send it.
 				const uint64 ScalePerMille =
-					OnTheRock
-						? 0u
-						: (Workers[Region] == 0 || Land >= Workers[Region] ? 1000u : Land * 1000u / Workers[Region]);
+					Workers[Region] == 0 || Land >= Workers[Region] ? 1000u : Land * 1000u / Workers[Region];
 				const Population::RegionStores* Granary =
 					HasStores ? W.Components().GetPool(Stores).TryGet(RH) : nullptr;
 				const uint64 ToCommon = Granary != nullptr ? std::min<uint32>(1000u, Granary->GrainPerMille) : 0u;

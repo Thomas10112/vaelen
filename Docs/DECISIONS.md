@@ -5600,3 +5600,76 @@ wrong one passed:
   which protects a region from demotion exactly as the rule does
   (`Lod.cpp:170`) but from the tick it is asked. This is ADR-0090's lesson again:
   a colony is a fact with a date, and so is the grain it is simulated at.
+
+## ADR-0093: A colony feeds itself, because the world has nothing to send it
+
+### Context
+
+11.06 asks what a colony sends out, what it needs in, and what the roads of
+09.04 carry. The number to beat came from 11.05: a colony with a one-off
+endowment held while the store covered the year's need and then collapsed -
+1460 people became 39 in sixty years, by 1941 deaths from starvation.
+
+The arithmetic said roads could just about do it. 06.04 carries at most
+`CarryMax` (1000) units of a good a year on a route, times
+`(1000 + RouteEase::CarryPerMille) / 1000`, and 09.04's best road is grade 3 at
+`EasePerGrade` 200, so 1600. A region holds `MaxRoutesPerRegion` (4). That is
+6400 a year against the 5924 a colony of 1481 eats. It fits, and only just.
+
+The measurement said the arithmetic was irrelevant. Post-founding inflow over
+sixty years, two colonies of different sizes on one seed:
+
+    region 75: 1432 people eat 5728 a year, the roads brought 115 a year
+    region 79:  421 people eat 1684 a year, the roads brought  32 a year
+
+Two per cent of what they eat, and the SMALL colony died as surely as the big
+one. (A first reading of mine said 3150 a year and fifty-five per cent of need.
+That was wrong: it divided a CUMULATIVE total which included the twenty years
+before the founding, when the region traded normally as an ordinary farm.)
+
+`Trade.cpp` says why. A carry is bounded by
+`(HeldS - WantS) * CarryPerMille / 1000 * Easier / 1000` - a quarter of the
+seller's surplus ABOVE ITS OWN WANT. AELVOR's regions live at subsistence:
+06.02 has them eat what they reap and spoil a tenth of what is left every year.
+Nobody has spare food, so there is nothing to send, and `CarryMax` and the roads
+never bind at all.
+
+### Decision
+
+1. **The rule of 11.03 was too absolute, and that was the whole cause.**
+   `RegionMined` zeroed a mined region's harvest entirely, on the ground that
+   its hands are on the rock. But 11.04 established that the elite are spared
+   and the founding binds only those twelve and over, so a colony has free
+   people who are not on the rock. `ProductionSystem::ObserveBonds` now excludes
+   the BOUND from the farm workers and from what the fields yield, and leaves
+   everybody else in them. A colony reaps in proportion to the people it has
+   left over.
+
+2. **This supersedes the collapse of ADR-0092 point 2 and 3.** Those figures
+   were true of the model as 11.03 first wrote it, and 11.05 reported them
+   faithfully. With the corrected rule the same experiment gives 1460 people
+   becoming 1497 on both grounds, with zero deaths from starvation on either.
+   What a colony costs its people is a store that drains faster - 1939 grain
+   left against 9196 after sixty years - and not a graveyard.
+
+3. **Nothing in 06.04 or 09.04 was touched.** Raising `CarryMax`,
+   `MaxRoutesPerRegion` or the road ease would have made a colony survive and
+   would have changed every world since Phase 06 to paper over a rule of Phase
+   11. The measurement says they are not the binding constraint, so they stay
+   as they are.
+
+### Consequences
+
+- **A colony is fed by the colony.** The roads bring about a fiftieth of what it
+  eats, and that is not a defect of the roads: it is what a subsistence world
+  has to spare. If a colony is ever to be supplied from outside, the mechanism
+  will have to be a polity provisioning it through the dues of 07.02 - grain
+  taken by authority rather than carried by a price gap - and that is a Phase 12
+  question, not this one.
+- **A colony founded bound does not stay bound.** Measured over sixty years,
+  1116 bound at the founding become 795, 578, 426, 335, 291 and 247 as 05.04's
+  manumission and flight take them out, with a persistent core because bondage
+  unredeemed hardens into slavery. So a penal colony nobody resupplies with
+  convicts becomes, in two generations, a free mining town that farms again -
+  which is why its harvest recovers, and it is the world saying something the
+  design never wrote down.
