@@ -24,3 +24,5 @@ list(APPEND VAELEN_PLAYER_TEST_NAMES Player.Registry Player.Shuffled)
 
 set_tests_properties(${VAELEN_PLAYER_TEST_NAMES} PROPERTIES TIMEOUT 300)
 set_tests_properties(Player.Shuffled PROPERTIES TIMEOUT 5400)
+# The phase gate lives a lifetime at 256 and then replays it, twice over.
+set_tests_properties(Player.PlayerGate PROPERTIES TIMEOUT 5400)
