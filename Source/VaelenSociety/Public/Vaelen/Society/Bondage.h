@@ -119,7 +119,8 @@ namespace Vaelen::Society
 	};
 
 	/// Binds a living person, the way the system binds one itself. Returns false
-	/// for an unknown or dead person, or one already bound.
+	/// for an unknown or dead person, one already bound, or a Holder who is the
+	/// person themselves.
 	///
 	/// 05.04 grows bondage a little at a time, and that is right for a world: at
 	/// its own rates a region settles near a twelfth of its people bound. A

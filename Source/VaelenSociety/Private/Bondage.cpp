@@ -445,7 +445,12 @@ namespace Vaelen::Society
 	bool BindPerson(World& W, const Population::PersonTypes& Persons, const BondageTypes& Types, uint32 Person,
 					BondKind Kind, BondEntry Entry, uint32 Holder, SimTick Tick, PersistentId Cause)
 	{
-		if (Person == 0 || Kind == BondKind::Free)
+		// Nobody holds themselves. The system's own path takes holders from the
+		// living elite and could never produce one, but this is a public verb and
+		// its caller is whoever needs it next. It cannot fire today - BindColony
+		// passes 0, the region itself - and a guard on a public verb is cheap now
+		// and expensive the first time somebody needs it.
+		if (Person == 0 || Kind == BondKind::Free || Holder == Person)
 		{
 			return false;
 		}
