@@ -78,8 +78,8 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 08 | MILITARY | Armies, conflicts, wars, security forces, conquest and its consequences. | CLOSED (08.01-08.08 VALIDATED headless; UNVERIFIED under UBT) |
 | 09 | INFRASTRUCTURE | Buildings, settlements, routes, logistics and their decay. | CLOSED (09.01-09.08 VALIDATED headless; UNVERIFIED under UBT) |
 | 10 | PLAYER | The player as one simulated person: enslaved start, body, needs, skills, relationships; player intent as commands into the simulation. | CLOSED (10.01-10.08, section 14) |
-| 11 | MINING COLONY | The starting place: a huge autonomous mining colony simulated by the same systems at full detail. | 11.01-11.08 WRITTEN and verified headless; NOT closed until the CI matrix is green (section 15) |
-| 12 | GAMEPLAY | Interaction verbs, knowledge (documents, maps), reputation and consequences without main quest or canonical ending. | PLANNED |
+| 11 | MINING COLONY | The starting place: a huge autonomous mining colony simulated by the same systems at full detail. | CLOSED (11.01-11.08 VALIDATED headless, CI run 113 green on all nine jobs; UNVERIFIED under UBT) |
+| 12 | GAMEPLAY | Interaction verbs, knowledge (documents, maps), reputation and consequences without main quest or canonical ending. | BROKEN DOWN (12.01-12.08, section 16) |
 | 13 | PRESENTATION | Unreal rendering, animation and audio of the world state, strictly read-only. | PLANNED |
 | 14 | UI | Interface and read-only views; command submission through the gameplay layer. | PLANNED |
 | 15 | STREAMING & LOD | Engine streaming coupled to simulation LOD 0-4: what is simulated at which detail away from the player. | PLANNED |
@@ -2426,66 +2426,164 @@ already do belongs in one of those phases, as a rule they were missing, and not 
 special case for the colony. A colony with its own economy would be a second simulation,
 and the project has spent ten phases not building one of those.
 
-## 16. Current BUILD STATUS
+## 15b. Phase 11 closed
+
+Closed against section 2 on 2026-09-09: CI run 113 green on all nine jobs
+(six Linux presets, clang-format, Windows MSVC, macOS AppleClang) at 6be319f;
+the eight phase gates green locally in one run (GATES-DONE 0 failing); purity
+173 files, 0 violations; determinism tests for every system of the phase and
+frozen digests on the gate; no file carrying STATUS: INCOMPLETE; ADR-0090 to
+ADR-0095 for every architecture decision.
+
+What the phase established, one line per task:
+
+| Task | What it settled |
+|---|---|
+| 11.01 | A region the world keeps detailed by policy rather than by crowding, and what that costs, measured |
+| 11.02 | Its people live at the day while the world keeps the year, and a year of days sums to the year exactly |
+| 11.03 | They lift ore from a seam that runs out, credited through `AddStock` and nothing else so the chronicle can tell it |
+| 11.04 | Founded bound, because bondage cannot GROW into a colony, and held by the colony because no elite could hold that many |
+| 11.05 | The bond does not shorten a life; the ground does |
+| 11.06 | The world cannot feed a colony - AELVOR is a subsistence world - so a colony feeds itself |
+| 11.07 | What the world does with no event behind it cannot be remembered |
+| 11.08 | A gate has to be full of what it claims to measure |
+
+The two rules the phase paid for and wrote down:
+
+- **A rule is fixed when the system is built; a fact has a date.** Anything that
+  BEGINS during a world's life must be a component the system finds by looking.
+  Paid for three times before it was written: `ProductionRules::MinedRegion`
+  starved a region through three centuries of pre-history, `LodRules::Held`
+  emptied the region it was meant to keep, and `MiningRules::Region` mined
+  nothing because a harness cannot know a region before it builds its systems.
+- **A gate has to be full of what it claims to measure.** Read the volume before
+  the verdict. Paid for twice: the Phase 10 gate spent three quarters of itself
+  refusing intents at a corpse, and the Phase 11 gate spent nine tenths of its
+  century with nobody played. Both passed their first run.
+
+The thirteen PROTOTYPE files of the phase, and their limits, as section 2
+requires them to be named:
+
+`Source/VaelenColony/{ColonyApi.h, Mining.h, Mining.cpp, Holders.h,
+Holders.cpp, ColonyHistory.h, ColonyHistory.cpp}` and
+`Tests/Colony/{Test_Mining, Test_Holders, Test_Toll, Test_Supply,
+Test_Chronicle, Test_ColonyGate}.cpp`.
+
+- **A colony is founded by a caller, not by the world.** Nothing in AELVOR
+  decides to send people to the ore. The phase gives a colony everything it
+  needs to BE one and nothing that makes one happen; that belongs to Phase 12
+  or to a scenario.
+- **Overseers are not unseated when a sitting member is later bound.** Measured
+  at two of twenty-four after three years. Whether an institution should is a
+  Phase 05 question, and the test measures the drift rather than asserting it
+  away.
+- **A colony's supply is its own fields.** 06.04 carries about a fiftieth of
+  what a colony eats. A colony provisioned from outside would need the dues of
+  07.02, which is Phase 12.
+- **`MeasureHolding` walks every person of a region on each call.** Fine for a
+  test and on no tick path, but it is not a runtime query.
+
+Two defects the pre-push re-read found, neither reachable by any test in the
+phase, both fixed before the push: the coarse branch of 06.02 still zeroed a
+mined region's harvest (the 11.06 defect surviving in the half that had not
+been fixed, unreachable because 11.01 holds a colony detailed), and
+`Society::BindPerson` accepted a Holder equal to the person.
+
+## 16. Phase 12 - GAMEPLAY: task breakdown
+
+Broken down on the closing of Phase 11. Phases 13-20 are broken down as each
+previous phase closes.
+
+What this phase is not. 10.05 already gave seven verbs - work, rest, eat, move,
+speak, give, take - and every one goes through the system that owns the change.
+Reading before writing showed something more: `Doings::Do` takes a PERSON INDEX,
+not "the player", so the verbs are already anybody's. What is the player's is
+the plumbing around them, the intent queue and `PlayerOrderSystem`.
+
+So this phase does not add a second way to act. It adds the two things a player
+has that a simulated person has never needed: a head that holds less than the
+world does, and a name that travels further than they do.
+
+The surface of the first of those is already known, and it is small.
+`grep -rn "Log().All()" Source/` gives thirty-one files, and the criterion that
+sorts them is: reading the log to work out WHAT THE WORLD DOES is legitimate,
+because a system is the world's own machinery; reading it to work out WHAT A
+PERSON OR AN INSTITUTION BELIEVES is not. By that test all but two fall away -
+`Regard.cpp:95`, the opinion one person holds of another, and
+`Decisions.cpp:91`, what an organisation decides over a memory window. Every
+person in AELVOR is currently omniscient about anything that touched them.
+
+| Task | Content | Test kind |
+|---|---|---|
+| 12.01 | `VaelenGameplay` module; a way for a person nobody is playing to act, using the verbs of 10.05 unchanged - what decides an unplayed person's intent is the phase's real question; `MeasureVerbs` | unit, deterministic |
+| 12.02 | Knowledge as a filter over the world's log: what a person was present for, was told, or has read, always smaller than the truth. The two call sites above read it instead of `Log().All()` | unit, edge, integration with 10.06 and 05.05 |
+| 12.03 | Documents: a thing that carries knowledge between people, outlives them, is copied, is lost, and is wrong when its writer was | integration with 03.07, 12.02 |
+| 12.04 | Maps as the one document the world can check: what a person believes about ground they have not walked, and how it is wrong | integration with 02.x, 12.03 |
+| 12.05 | Reputation beyond the region: 10.06 gives what the people around somebody make of them; this carries it on the roads of 09.04 and decays with distance and time | integration with 10.06, 09.04 |
+| 12.06 | Consequences: what a polity, an organisation or a family does about somebody whose repute has reached them, through the systems that already act (07.02 dues, 05.05 decisions, 05.04 bondage) | integration with 05.05, 07.02 |
+| 12.07 | Gameplay in the chronicle: what was known, by whom, and when - the why of a decision walked back to what its maker believed rather than to what was true | text, deterministic |
+| 12.08 | Phase 12 gate: a played life at 256 inside the colony with knowledge, documents and repute, every invariant each decade, frozen digests, replayed - and FULL: 14400 intents, not 1081 | long-duration, replay |
+
+Every task ends with the usual report block, the docs refreshed and a commit.
+
+The rule the phase is written to: **a person acts on what they believe, and the
+world acts on what it has heard.** Anything that lets a player read the world's
+true state, or lets the world react to something nobody could have told it, does
+not belong in this phase. That is what makes a document worth forging and a
+reputation worth minding, and it is the first time in twelve phases that the
+simulation and somebody's picture of it are allowed to differ at all.
+
+## 17. Current BUILD STATUS
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 11 — MINING COLONY — ALL EIGHT TASKS WRITTEN
-TASK        : 11.08 — THE PHASE 11 GATE
-STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine) — the phase is NOT closed until the CI
-              matrix is green on all nine jobs, per section 2
+PHASE       : 11 — MINING COLONY — CLOSED
+TASK        : next is 12.01 — A PERSON NOBODY IS PLAYING
+STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████████████████ 100% written, awaiting the matrix
+████████████████████████████ 12 of 21 phases closed (00-11)
 
 CURRENTLY
-→ A century at 256 with the colony at full detail while the world keeps the year: every invariant of
-  every phase each decade, a life played inside the colony out of a recorded stream, and the whole of
-  it replayed into a fresh world of the same seed.
+→ Phase 11 closed against section 2 on CI run 113: nine jobs green at 6be319f, the eight phase gates
+  green locally in one run, purity 173 files and 0 violations, no file carrying INCOMPLETE, and
+  ADR-0090 to ADR-0095 for every decision. Section 15b lists the thirteen PROTOTYPE files with their
+  limits, as section 2 requires.
 
-  It passed on its second run, and the first one is why ADR-0095 exists. That run founded the colony
-  on the ore-richest ground in AELVOR - which is what a mining colony wants - and the ground held
-  thirty-six people. The played life ended in its third year, the start found nobody else because it
-  insists on somebody bound and a colony's bondage erodes to nothing at that size, and the gate lived
-  ninety of its hundred years with nobody played: 1081 intents where there should be 14400.
-
-  It also FAILED, and that was the useful part. The replay's state digest differed, because the
-  recording releases the mark when a life ends and the replay only does that when it takes somebody
-  next - with one life and no successor, one world ended with the mark off a dead person and the
-  other with it on. A gate that had been full would never have shown it. The rule, for gates in
-  general: a gate has to be full of what it claims to measure, and the number to read is not the
-  verdict but the volume.
+  Phase 12 is broken down in section 16, and reading before writing has already halved its first
+  task and given its second an exact surface. Doings::Do takes a PERSON INDEX, not "the player", so
+  the seven verbs of 10.05 are already anybody's - 12.01 has nothing to promote, and the real
+  question becomes what decides an unplayed person's intent. And of the thirty-one files that read
+  the world's whole event log, only two decide what somebody BELIEVES rather than what the world
+  does: Regard.cpp:95 and Decisions.cpp:91. Every person in AELVOR is currently omniscient about
+  anything that touched them, and those two call sites are the whole of 12.02.
 
 COMPLETED
-✓ Phases 00-09 closed · Phase 10 PLAYER closed
+✓ Phases 00-10 closed · Phase 11 MINING COLONY closed
 ✓ 11.01 a region kept detailed · 11.02 a colony's people at the day · 11.03 the work of a colony
-✓ 11.04 who holds it · 11.05 what a colony does to the people in it · 11.06 the colony and the world
+✓ 11.04 who holds it · 11.05 what it does to them · 11.06 the colony and the world
 ✓ 11.07 the colony in the chronicle · 11.08 the phase gate
-✓ ADR-0090 to ADR-0095; no file of the phase carries STATUS: INCOMPLETE
 
 NEXT
-→ Push, then the CI matrix. Phase 11 closes against section 2 only when all nine jobs are green;
-  until then it is written and locally verified, which is not the same thing.
+→ 12.01 — a way for a person nobody is playing to act, using the verbs of 10.05 unchanged
 
 TESTS
-✓ VaelenColonyTests 17 run, 17 passed across six suites, 1817 checks
-✓ The gate: a colony of 4007 bound on 4463 of seam, every seam worked out inside the century,
-  5 lives and 14400 intents lived a day at a time, in 27.8 s
-✓ Replayed blind: 14400 of 14400 intents, 5 of 5 takings, 0 answered differently, and the same state
-  digest, event log and mining digest
-✓ Frozen half=78997c9e11f162a5 end=2862e6e238d2c1fd log=abb41cdb4e931d65
-✓ Purity 173 files, 0 violations; clang-format clean
+✓ CI run 113: nine jobs green (six Linux presets, clang-format, Windows MSVC, macOS AppleClang)
+✓ Eight phase gates green in one local run: GATES-DONE 0 failing
+✓ VaelenColonyTests 17 run, 17 passed across six suites, 1817 checks, CTest 8/8 with Shuffled
+✓ The Phase 11 gate: a century at 256, a colony of 4007 bound on 4463 of seam, 5 lives and 14400
+  intents, replayed blind to the same state digest, event log and mining digest
 
 BLOCKERS
-∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)
+∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build, which is Phase 13)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ```
 
-## 17. Verification record
+## 18. Verification record
 
 Commands run on 2026-09-05 (clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.15, clang-format 18.1.3, Linux x86_64) with the checked-in presets, each into
 `out/build/<preset>`:
