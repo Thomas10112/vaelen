@@ -5426,3 +5426,100 @@ reading of a corpse. The test passed on the way through.
 - The tests measure the mine and not a famine, which cost one wrong design and
   two wrong readings to arrive at. Both are written into the tests where the
   next person will meet them.
+
+## ADR-0091: A colony is founded bound, and holds itself
+
+### Context
+
+11.04 asks who holds a colony. Phase 05 already had bondage: people enter it
+through debt, birth, capture or a promotion, leave it through manumission,
+flight, a holder's death or their own, and a holder takes no more than
+`BondageRules::MaxHeldPerHolder` - twelve. None of that was ever tested at the
+density this phase needs, because Phase 05 never had a colony.
+
+So the task began with a measurement rather than a design
+(`Tests/Colony/Test_Holders.cpp`). Thirty years on the busiest region of AELVOR
+128 gave:
+
+    1484 alive, 114 bound (7.7%), 114 held by a person, 0 by the region,
+    48 elites (capacity 576), fullest holder 3
+
+Two things fell out of it, and both contradicted what the task had assumed.
+
+**Bondage cannot grow into a colony.** At 05.04's own rates - debt at fifteen
+per mille a year against manumission at twenty-five and flight at eight -
+a region settles near a twelfth of its people bound. Waiting longer does not
+help; that is an equilibrium, not a ramp. A colony where nearly everybody is
+bound has to be FOUNDED that way, which is what the fiction always said: the
+people are sent there.
+
+**And the holders were never the limit until then.** Forty-eight elites held a
+hundred and fourteen people between them, a fifth of what they could carry.
+They become the limit only once a colony is founded: a thousand hands want
+eighty-four holders at twelve each, and the region has forty-eight.
+
+Reading how the shortfall is handled found a defect. `Bondage.cpp` chose a
+holder with `NextHolder()`, which returns 0 when every elite is full, and then:
+
+    const uint32 Holder = NextHolder();
+    if (Holder == 0) { break; }
+
+At capacity the loop stopped. People the region's strata said were bound were
+silently left free, so `RegionStrata` and the actual bonds disagreed and nothing
+said so. It had never shown because no test had ever filled the elite.
+
+### Decision
+
+1. **The region is the holder of last resort.** `BondState::Holder == 0` has
+   meant "the region itself" since 05.04, and the enslaved whose holder dies
+   already pass through `NextHolder()` and can land there. The promotion path
+   now uses it too instead of breaking. This fixes the silent shortfall for
+   every world, not only for colonies, and it is what a colony IS: one holding
+   with hundreds in it rather than a place of masters with twelve each.
+
+2. **Two missing verbs, in the module that owns each.** `Society::BindPerson`
+   binds somebody the way the system binds one itself, and
+   `Society::FoundOrganization` makes an organisation the way the yearly system
+   makes one. Both existed only as private lambdas inside their systems. A
+   founding needs them, and nothing outside a layer may write that layer's
+   state, so they belong there rather than in whoever founds a colony.
+
+3. **`OrganizationKind::Overseers`, and why an enum was safe here when it was
+   not in 11.03.** 11.03 rejected `Work::Mine` because `Buildings.cpp` iterates
+   `K < WorkCount` and raises one building of every kind per region per year, so
+   a fifth kind would appear in every world ever made. `OrganizationKind` is not
+   like that: `Organizations.cpp` founds each kind BY NAME, never by walking the
+   enum, and `OrganizationKind::Count` sizes only `OrganizationStats::PerKind`,
+   which is a stats struct and in no digest. **The danger is not adding a value
+   to an enum. It is adding a value to an enum that something iterates to create
+   things.** Check the loops before the layout.
+
+4. **Standing was not flattened; it was removed.** 05.02 takes the rank off
+   anybody bound and leaves them out of the ranking. So in a colony standing
+   very nearly ceases to exist: nine hundred and thirty-five people were ranked
+   on that ground, and eighty-two are, with nobody dead. Among the free few
+   nothing moved at all - a hundred and ninety-eight per mille stood above the
+   common run before, a hundred and ninety-five after. "Everybody's rank is the
+   same work" is literally true in this model, and the first version of the test
+   passed for the wrong reason by checking only that fewer people stood high.
+
+5. **An overseer who falls into bondage keeps their seat, and the test says so.**
+   `OrganizationSystem::ObserveBonds` keeps the bound out of the candidates, so
+   nobody is ever SET to hold a colony that holds them. But 05.01 does not take
+   a seat back when a sitting member is bound later, and three years on two of
+   twenty-four overseers were held. Whether an institution should unseat a bound
+   member is a Phase 05 question and not a colony's, so the test measures the
+   drift instead of asserting it away.
+
+### Consequences
+
+- `BindColony` binds the colony's commoners to the colony itself, sparing the
+  elite so that somebody is left to be an overseer at all. Every bond goes
+  through `Society::BindPerson`, so 05.04 owns every bond in the world as it
+  always has and the colony owns none of them.
+- Once founded, a colony is not a special case: five years of 05.04 took eleven
+  hundred and fifteen bound down to nine hundred and eleven through manumission
+  and flight, exactly as it would anywhere else.
+- The overseers outlive the people in them, because the yearly system re-seats
+  them as it re-seats a guild. That is what makes them an institution rather
+  than a list of owners.

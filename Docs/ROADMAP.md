@@ -2434,49 +2434,55 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 11 — MINING COLONY — IN PROGRESS
-TASK        : 11.03 — THE WORK OF A COLONY
+TASK        : 11.04 — WHO HOLDS IT
 STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
-█████████ 37%
+████████████ 50%
 
 CURRENTLY
-→ Reading 06.02 before writing anything showed that most of 11.03 already existed. Production.cpp
-  sums the richness of a region's iron and copper deposits and adds five per mille of it to the
-  common stock every year. Two things it does not do turned out to be the whole task: the seam never
-  depletes, so a deposit is infinite; and the lift is written straight into RegionStock::Amount
-  rather than through AddStock, so it is in no event log, has no cause, and no chronicle can say
-  where the ore came from.
+→ The task began with a measurement rather than a design, and the measurement contradicted the
+  design twice. Thirty years on the busiest region of AELVOR 128: 1484 alive, 114 bound (7.7%), 114
+  held by a person, none by the region, 48 elites with a capacity of 576 between them, the fullest
+  of them holding three.
 
-  VaelenColony is the tenth kernel module, above Infrastructure and below Player, because 10.02's
-  start stands on ground this module owns. MiningSystem runs at SimLod::Aggregate for one region:
-  it counts the hands, works out what a year of them would lift, and takes the day's share of it by
-  the same exact-sum schedule 11.02 proved - so a year of days lifts what a year should, seam by
-  seam in deposit-index order, never one unit more than a seam held.
+  So bondage cannot GROW into a colony. Debt at fifteen per mille a year against manumission at
+  twenty-five and flight at eight settles a region near a twelfth of its people bound, and that is
+  an equilibrium rather than a ramp. A colony has to be FOUNDED bound, which is what the fiction
+  always said - the people are sent there. And the holders were never the limit until then: they
+  become one the moment a colony exists, because a thousand hands want eighty-four holders at twelve
+  each and the region has forty-eight.
 
-  The design cost one wrong answer. The mark that tells 06.02 to stop reaping was first a rule,
-  ProductionRules::MinedRegion, on 11.02's precedent that rules are in no digest. It compiled, the
-  tests passed, and the colony had seven people in it: a system's rules are fixed when the system is
-  built, which is before Generate runs three hundred years of pre-history, so the region had reaped
-  nothing since the world began. The mining figures were a reading of a corpse, and the test passed
-  on the way through. A colony is a fact with a date, so the mark is a component now (ADR-0090).
+  Reading how that shortfall was handled found a defect of Phase 05. Bondage.cpp took a holder from
+  NextHolder(), which returns 0 when every elite is full, and then broke out of the loop. People the
+  region's strata said were bound were silently left free, and nothing said so. BondState::Holder
+  has meant "the region itself" since 05.04 and the enslaved whose holder dies already land there;
+  the promotion path now uses it too, which fixes every world and not only colonies.
+
+  Standing turned out not to flatten in a colony but to VANISH: 05.02 takes the rank off anybody
+  bound, so 935 ranked people became 82 with nobody dead, and among the free few nothing moved at
+  all (198 per mille stood above the common run before, 195 after). The first version of that test
+  passed for the wrong reason.
 
 COMPLETED
 ✓ Phases 00-09 closed · Phase 10 PLAYER closed
-✓ 11.01 a region the world keeps detailed · 11.02 a colony's people at the day
-✓ 11.03 the work of a colony — VaelenColony, MiningSystem, DepositTaken, RegionMined, 5 tests
+✓ 11.01 a region kept detailed · 11.02 a colony's people at the day · 11.03 the work of a colony
+✓ 11.04 who holds it — Society::BindPerson and FoundOrganization (two verbs that existed only as
+  private lambdas), OrganizationKind::Overseers, OrganizationSystem::ObserveBonds, the region as
+  holder of last resort, Colony::BindColony / RaiseOverseers / MeasureHolding, 6 tests
 
 NEXT
-→ 11.04 — who holds it: the bondage of 05.04 at colony scale, the overseers of 05.01, and the
-  standing of 05.02 in a place where everybody's rank is the same work
+→ 11.05 — what a colony does to the people in it: the ration of 04.04 at that density, sickness, and
+  whether the Phase 10 finding (a bound person dies young) is the world being harsh or the model
+  being wrong
 
 TESTS
-✓ VaelenColonyTests 5 run, 5 passed, 70 checks
-✓ 701 hands on the rock, 1464 units lifted of the 2151 the four seams held
-✓ A seam gives what it held and not one unit more, then ten years of nothing
-✓ 1061 lifts over three years, identical tick for tick in two worlds, frozen a7b00a23e7072fbb
-✓ Five years on the same ground: farm grain 23630, colony grain 12551, both from 40003
-✓ Every unit entered through AddStock — the log holds exactly what the seams gave
+✓ VaelenColonyTests Holders 6 run, 6 passed, 65 checks
+✓ Thirty years of debt bound 114 of 1484; the founding bound 1047 more in a tick
+✓ All 1047 held by the colony itself, against a person-holding capacity of only 576
+✓ Once founded it is no special case: 1115 bound became 911 over five years of 05.04
+✓ Overseers: 12 seated with none held at the first seating, 24 with two held three years on
+✓ Two worlds of one seed bind the same people in the same order to the same condition
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)

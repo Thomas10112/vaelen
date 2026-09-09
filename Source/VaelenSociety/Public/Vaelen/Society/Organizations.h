@@ -21,6 +21,7 @@
 #include "Vaelen/Sim/Event.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/System.h"
+#include "Vaelen/Society/BondState.h"
 #include "Vaelen/Society/SocietyApi.h"
 
 #include <string>
@@ -38,9 +39,10 @@ namespace Vaelen::Society
 	{
 		Council = 0,
 		Temple,
-		Guild,	 ///< the skilled of a craft (05.05)
-		Warband, ///< the fighters (05.05)
-		Clan,	 ///< reserved
+		Guild,	   ///< the skilled of a craft (05.05)
+		Warband,   ///< the fighters (05.05)
+		Clan,	   ///< reserved
+		Overseers, ///< those who hold a colony for it (11.04); founded by name, never by the year
 		Count
 	};
 	VAELEN_SOCIETY_API const char* OrganizationKindName(OrganizationKind Kind) noexcept;
@@ -136,10 +138,20 @@ namespace Vaelen::Society
 		}
 		/// Runs after another yearly system too (Needs, Lod). The system must exist.
 		void RunAfter(std::string_view Name) { After.emplace_back(Name); }
+		/// Optional: who is bound (05.04). Only the overseers of 11.04 need it -
+		/// a person cannot be set to hold a colony they are held by - and without
+		/// it every other organisation seats exactly whom it always did.
+		void ObserveBonds(ComponentType<BondState> InBonds) noexcept
+		{
+			Bonds = InBonds;
+			HasBonds = true;
+		}
 		void Tick(TickContext& Context) override;
 
 	private:
 		std::vector<std::string> After;
+		ComponentType<BondState> Bonds;
+		bool HasBonds = false;
 		World* Owner;
 		History::PreHistoryTypes Types;
 		Population::PersonTypes Persons;
@@ -150,6 +162,19 @@ namespace Vaelen::Society
 	};
 
 	/// Organisations seated in a region (index order), alive or disbanded.
+	/// Founds an organisation in a region, at a tick, the way the system founds
+	/// one itself. Returns its index, or 0 for an unknown region.
+	///
+	/// The yearly system founds councils, temples, guilds and warbands because a
+	/// region grew into them. Some organisations are not grown into but made -
+	/// the overseers of a colony are made the day the colony is (11.04) - and
+	/// this is the verb for that. It belongs here, in the module that owns
+	/// organisations, because nothing may make one from outside the layer that
+	/// owns them.
+	VAELEN_SOCIETY_API uint32 FoundOrganization(World& W, const History::PreHistoryTypes& Types,
+												const OrganizationTypes& Organizations, OrganizationKind Kind,
+												uint32 Region, uint32 Seats, SimTick Tick, PersistentId Cause = {});
+
 	VAELEN_SOCIETY_API void OrganizationsOf(const World& W, const OrganizationTypes& Types, uint32 Region,
 											std::vector<OrganizationInfo>& Out);
 	/// Living members of an organisation, by person index, ascending.

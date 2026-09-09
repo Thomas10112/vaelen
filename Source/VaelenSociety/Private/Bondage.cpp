@@ -277,11 +277,14 @@ namespace Vaelen::Society
 					{
 						continue;
 					}
+					// 11.04: when every elite is full the region itself holds them.
+					// BondState::Holder has meant "the region itself" since 05.04;
+					// this is the first path that had to use it. Before, the loop
+					// broke here and the people the strata said were bound were
+					// silently left free, so RegionStrata and the bonds disagreed
+					// and nothing said so. A region that keeps people bound with
+					// nobody to hold them is what a colony IS.
 					const uint32 Holder = NextHolder();
-					if (Holder == 0)
-					{
-						break;
-					}
 					const bool Enslave = ToEnslave > 0;
 					BondState B;
 					B.Kind = static_cast<uint8>(Enslave ? BondKind::Enslaved : BondKind::Bonded);
@@ -437,6 +440,41 @@ namespace Vaelen::Society
 				W.Components().GetPool(Bonds.Strata).Add(RegionHandles[Region], Strata);
 			}
 		}
+	}
+
+	bool BindPerson(World& W, const Population::PersonTypes& Persons, const BondageTypes& Types, uint32 Person,
+					BondKind Kind, BondEntry Entry, uint32 Holder, SimTick Tick, PersistentId Cause)
+	{
+		if (Person == 0 || Kind == BondKind::Free)
+		{
+			return false;
+		}
+		EntityHandle Found;
+		uint32 Region = 0;
+		W.Components()
+			.GetPool(Persons.Person)
+			.ForEach(
+				[&](EntityHandle H, const PersonInfo& P)
+				{
+					if (P.Index == Person && Found.IsNull() && P.State == static_cast<uint8>(LifeState::Alive))
+					{
+						Found = H;
+						Region = P.Region;
+					}
+				});
+		if (Found.IsNull() || W.Components().GetPool(Types.Bond).TryGet(Found) != nullptr)
+		{
+			return false; // unknown, dead, or bound already
+		}
+		BondState B;
+		B.Kind = static_cast<uint8>(Kind);
+		B.Entry = static_cast<uint8>(Entry);
+		B.Holder = Holder;
+		B.Since = Tick;
+		W.Components().GetPool(Types.Bond).Add(Found, B);
+		W.Events().Publish(Tick, BondEnteredEvent, BondPayload{Person, Region, B.Kind, B.Entry},
+						   W.Entities().GetId(Found), Cause);
+		return true;
 	}
 
 	const BondState* BondOf(const World& W, const Population::PersonTypes& Persons, const BondageTypes& Types,

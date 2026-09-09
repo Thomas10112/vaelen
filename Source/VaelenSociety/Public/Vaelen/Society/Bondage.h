@@ -118,6 +118,22 @@ namespace Vaelen::Society
 		BondageRules Rules;
 	};
 
+	/// Binds a living person, the way the system binds one itself. Returns false
+	/// for an unknown or dead person, or one already bound.
+	///
+	/// 05.04 grows bondage a little at a time, and that is right for a world: at
+	/// its own rates a region settles near a twelfth of its people bound. A
+	/// colony is not grown into, it is FOUNDED - the people are sent there
+	/// already bound - and this is the verb that founding needs. It belongs
+	/// here, in the module that owns bondage, rather than in whoever founds a
+	/// colony, because nothing may write a bond from outside the layer that
+	/// owns one.
+	///
+	/// Holder is a person index, or 0 for the region itself.
+	VAELEN_SOCIETY_API bool BindPerson(World& W, const Population::PersonTypes& Persons, const BondageTypes& Types,
+									   uint32 Person, BondKind Kind, BondEntry Entry, uint32 Holder, SimTick Tick,
+									   PersistentId Cause = {});
+
 	/// The bond of a person (nullptr when free or unknown).
 	VAELEN_SOCIETY_API const BondState* BondOf(const World& W, const Population::PersonTypes& Persons,
 											   const BondageTypes& Types, uint32 Person);

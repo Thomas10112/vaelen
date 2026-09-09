@@ -70,6 +70,8 @@ namespace Vaelen::Society
 			return "warband";
 		case OrganizationKind::Clan:
 			return "clan";
+		case OrganizationKind::Overseers:
+			return "overseers";
 		case OrganizationKind::Count:
 		default:
 			return "?";
@@ -313,6 +315,11 @@ namespace Vaelen::Society
 						{
 							continue;
 						}
+						else if (O.Kind == static_cast<uint32>(OrganizationKind::Overseers) && HasBonds &&
+								 W.Components().GetPool(Bonds).TryGet(R.Handle) != nullptr)
+						{
+							continue; // nobody holds a colony they are held by
+						}
 						Candidates.push_back(R);
 					}
 					if (O.Kind == static_cast<uint32>(OrganizationKind::Council))
@@ -417,6 +424,53 @@ namespace Vaelen::Society
 				}
 			}
 		}
+	}
+
+	uint32 FoundOrganization(World& W, const History::PreHistoryTypes& Types, const OrganizationTypes& Organizations,
+							 OrganizationKind Kind, uint32 Region, uint32 Seats, SimTick Tick, PersistentId Cause)
+	{
+		if (Region == 0 || Kind >= OrganizationKind::Count)
+		{
+			return 0;
+		}
+		EntityHandle RH;
+		uint32 Culture = 0;
+		W.Components()
+			.GetPool(Types.World.RegionTypes_.Region)
+			.ForEach(
+				[&](EntityHandle H, const WorldGen::RegionInfo& R)
+				{
+					if (R.Index == Region && RH.IsNull())
+					{
+						RH = H;
+					}
+				});
+		if (RH.IsNull())
+		{
+			return 0;
+		}
+		const History::RegionPopulation* Counts = W.Components().GetPool(Types.Population.Population).TryGet(RH);
+		Culture = Counts != nullptr ? Counts->Majority : 0u;
+		// The next index, read off what exists: the system keeps its own running
+		// counter inside a tick, and this has to agree with it across ticks.
+		uint32 Next = 0;
+		W.Components()
+			.GetPool(Organizations.Organization)
+			.ForEach([&](EntityHandle, const OrganizationInfo& O) { Next = O.Index > Next ? O.Index : Next; });
+		OrganizationInfo O;
+		O.Index = Next + 1u;
+		O.Kind = static_cast<uint32>(Kind);
+		O.Region = Region;
+		O.Culture = Culture;
+		O.Seats = Seats;
+		O.Founded = Tick;
+		O.Identity = Noise::LatticeHash(W.Config().Seed ^ OrganizationSalt, static_cast<int32>(O.Index),
+										static_cast<int32>(Region));
+		const EntityHandle H = W.CreateEntity(IdKind::Organization);
+		W.Components().GetPool(Organizations.Organization).Add(H, O);
+		W.Events().Publish(Tick, OrganizationFoundedEvent, OrganizationPayload{O.Index, O.Kind, Region, 0},
+						   W.Entities().GetId(H), Cause);
+		return O.Index;
 	}
 
 	void OrganizationsOf(const World& W, const OrganizationTypes& Types, uint32 Region,
