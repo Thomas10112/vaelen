@@ -47,6 +47,8 @@ namespace Vaelen::Population
 	{
 		LodTypes T;
 		T.State = W.Types().Register<LodState>("LodState");
+		T.Held = W.Types().Register<PersonHeld>("PersonHeld");
+		W.Components().CreatePool(T.Held);
 		W.Components().CreatePool(T.State);
 		return T;
 	}
@@ -263,6 +265,10 @@ namespace Vaelen::Population
 								{
 									return;
 								}
+								if (W.Components().GetPool(Lod.Held).TryGet(H) != nullptr)
+								{
+									return; // somebody is holding them here
+								}
 								const uint32 Age = AgeYears(P, Context.Tick);
 								if (Age >= Rules.MoverFrom && Age < Rules.MoverTo)
 								{
@@ -435,5 +441,65 @@ namespace Vaelen::Population
 		W.Events().Publish(Now, PersonMovedEvent, PersonPayload{Person, To, Age, From}, W.Entities().GetId(Found),
 						   Cause);
 		return true;
+	}
+
+	bool HoldPerson(World& W, const PersonTypes& Persons, const LodTypes& Types, uint32 Person, uint32 Why)
+	{
+		EntityHandle Found;
+		W.Components()
+			.GetPool(Persons.Person)
+			.ForEach(
+				[&](EntityHandle H, const PersonInfo& P)
+				{
+					if (Found.IsNull() && P.Index == Person && P.State == static_cast<uint8>(LifeState::Alive))
+					{
+						Found = H;
+					}
+				});
+		if (Found.IsNull() || W.Components().GetPool(Types.Held).TryGet(Found) != nullptr)
+		{
+			return false;
+		}
+		PersonHeld Mark;
+		Mark.Why = Why;
+		W.Components().GetPool(Types.Held).Add(Found, Mark);
+		return true;
+	}
+
+	bool FreePerson(World& W, const PersonTypes& Persons, const LodTypes& Types, uint32 Person)
+	{
+		EntityHandle Found;
+		W.Components()
+			.GetPool(Persons.Person)
+			.ForEach(
+				[&](EntityHandle H, const PersonInfo& P)
+				{
+					if (Found.IsNull() && P.Index == Person)
+					{
+						Found = H;
+					}
+				});
+		if (Found.IsNull() || W.Components().GetPool(Types.Held).TryGet(Found) == nullptr)
+		{
+			return false;
+		}
+		W.Components().GetPool(Types.Held).Remove(Found);
+		return true;
+	}
+
+	bool IsHeld(const World& W, const PersonTypes& Persons, const LodTypes& Types, uint32 Person)
+	{
+		bool Out = false;
+		W.Components()
+			.GetPool(Persons.Person)
+			.ForEach(
+				[&](EntityHandle H, const PersonInfo& P)
+				{
+					if (!Out && P.Index == Person)
+					{
+						Out = W.Components().GetPool(Types.Held).TryGet(H) != nullptr;
+					}
+				});
+		return Out;
 	}
 } // namespace Vaelen::Population

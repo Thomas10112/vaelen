@@ -83,7 +83,8 @@ namespace Vaelen::Player
 	VAELEN_PLAYER_API uint32 BeginEnslaved(World& W, const History::PreHistoryTypes& Types,
 										   const Population::PersonTypes& Persons, const Society::BondageTypes& Bondage,
 										   const Society::StandingTypes& Standing, const PlayerTypes& Player,
-										   const StartTypes& Start, const StartRules& Rules, SimTick Now);
+										   const StartTypes& Start, const StartRules& Rules, SimTick Now,
+										   const Population::LodTypes* Lod = nullptr);
 	/// What the life was at its first moment (nullptr when no life was taken up).
 	VAELEN_PLAYER_API const PlayerStart* StartOf(const World& W, const StartTypes& Start);
 

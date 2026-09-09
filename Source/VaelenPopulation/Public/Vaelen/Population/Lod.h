@@ -45,9 +45,26 @@ namespace Vaelen::Population
 	};
 	static_assert(sizeof(LodState) == 4 * (LodState::MaxWanted + 6), "LodState must stay padding free");
 
+	/// Component on a person the crossings of 04.06 must leave where they are.
+	///
+	/// The bridge sends unmarried adults of a crowded region to a neighbour and
+	/// turns them into counts, which is right for a world and wrong for anybody
+	/// the world outside the simulation is holding on to: Phase 10's player is
+	/// exactly the profile it picks - alive, unmarried, of an age to travel -
+	/// and a player who is emigrated stops being a person to play. Whoever has a
+	/// reason to hold somebody in the fine grain marks them, and the bridge
+	/// skips them. Nothing else in the project has such a reason yet.
+	struct PersonHeld
+	{
+		uint32 Why = 0; ///< free for the holder to say why; 0 is fine
+		uint32 Reserved = 0;
+	};
+	static_assert(sizeof(PersonHeld) == 8, "PersonHeld must stay padding free");
+
 	struct LodTypes
 	{
 		ComponentType<LodState> State;
+		ComponentType<PersonHeld> Held;
 		static VAELEN_POPULATION_API LodTypes Declare(World& W);
 	};
 
@@ -88,6 +105,15 @@ namespace Vaelen::Population
 	/// Lets a region go coarse at the next yearly tick; false when it was not wanted.
 	VAELEN_POPULATION_API bool ReleaseDetail(World& W, const LodTypes& Types, uint32 Region);
 	VAELEN_POPULATION_API bool IsWanted(const World& W, const LodTypes& Types, uint32 Region);
+
+	/// Holds a living person in the fine grain: the crossings will not take
+	/// them. False for an unknown or dead person, or one already held.
+	VAELEN_POPULATION_API bool HoldPerson(World& W, const PersonTypes& Persons, const LodTypes& Types, uint32 Person,
+										  uint32 Why = 0);
+	/// Lets them go again. False when they were not held.
+	VAELEN_POPULATION_API bool FreePerson(World& W, const PersonTypes& Persons, const LodTypes& Types, uint32 Person);
+	/// Whether the crossings will leave this person where they are.
+	VAELEN_POPULATION_API bool IsHeld(const World& W, const PersonTypes& Persons, const LodTypes& Types, uint32 Person);
 
 	/// Moves one living person from the detailed region they are in to another
 	/// detailed region and reconciles the coarse counts of both, so that the two

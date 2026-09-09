@@ -22,6 +22,7 @@
 
 #include "Vaelen/Core/CoreTypes.h"
 #include "Vaelen/Player/PlayerApi.h"
+#include "Vaelen/Population/Lod.h"
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Sim/PreHistory.h"
 
@@ -54,10 +55,19 @@ namespace Vaelen::Player
 	/// False when the person is unknown, dead, or when somebody is already
 	/// marked: a world holds one player at a time, and taking a second would
 	/// leave the first behind with no way to say which was meant.
+	///
+	/// Give it the LOD types and it also holds them in the fine grain (04.06),
+	/// which a played person needs: the crossings send unmarried adults of a
+	/// crowded region to a neighbour and turn them into counts, and the player
+	/// is exactly the profile they pick. A gate that ran forty years without
+	/// this found its person emigrated in the third year. Without the types the
+	/// mark is what it always was and the world may still take them.
 	VAELEN_PLAYER_API bool TakePlayer(World& W, const Population::PersonTypes& Persons, const PlayerTypes& Player,
-									  uint32 Person, SimTick Now);
-	/// Removes the mark. The world runs on exactly as it did.
-	VAELEN_PLAYER_API bool ReleasePlayer(World& W, const PlayerTypes& Player);
+									  uint32 Person, SimTick Now, const Population::LodTypes* Lod = nullptr);
+	/// Removes the mark, and the hold with it. The world runs on exactly as it did.
+	VAELEN_PLAYER_API bool ReleasePlayer(World& W, const PlayerTypes& Player,
+										 const Population::PersonTypes* Persons = nullptr,
+										 const Population::LodTypes* Lod = nullptr);
 	/// The person index being played, 0 when nobody is.
 	VAELEN_PLAYER_API uint32 PlayerPerson(const World& W, const PlayerTypes& Player);
 	/// The mark itself (nullptr when nobody is played).

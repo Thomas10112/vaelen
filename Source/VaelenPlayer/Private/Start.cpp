@@ -53,7 +53,8 @@ namespace Vaelen::Player
 
 	uint32 BeginEnslaved(World& W, const History::PreHistoryTypes& Types, const Population::PersonTypes& Persons,
 						 const Society::BondageTypes& Bondage, const Society::StandingTypes& Standing,
-						 const PlayerTypes& Player, const StartTypes& Start, const StartRules& Rules, SimTick Now)
+						 const PlayerTypes& Player, const StartTypes& Start, const StartRules& Rules, SimTick Now,
+						 const Population::LodTypes* Lod)
 	{
 		if (PlayerPerson(W, Player) != 0 || StartOf(W, Start) != nullptr)
 		{
@@ -109,7 +110,7 @@ namespace Vaelen::Player
 		std::sort(Offered.begin(), Offered.end(), [](const Candidate& A, const Candidate& B)
 				  { return A.OnOre != B.OnOre ? A.OnOre > B.OnOre : A.Person < B.Person; });
 		const Candidate& Taken = Offered.front();
-		if (!TakePlayer(W, Persons, Player, Taken.Person, Now))
+		if (!TakePlayer(W, Persons, Player, Taken.Person, Now, Lod))
 		{
 			return 0;
 		}

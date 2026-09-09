@@ -7,6 +7,7 @@
 
 #include "Vaelen/Core/Hash.h"
 #include "Vaelen/Sim/Noise.h"
+#include "Vaelen/Population/Lod.h"
 #include "Vaelen/Sim/World.h"
 
 #include <algorithm>
@@ -51,7 +52,7 @@ namespace Vaelen::Player
 	}
 
 	bool TakePlayer(World& W, const Population::PersonTypes& Persons, const PlayerTypes& Player, uint32 Person,
-					SimTick Now)
+					SimTick Now, const Population::LodTypes* Lod)
 	{
 		if (PlayerPerson(W, Player) != 0)
 		{
@@ -67,16 +68,29 @@ namespace Vaelen::Player
 		Fresh.Since = Now;
 		Fresh.Identity = Noise::LatticeHash(W.Config().Seed ^ PlayerSalt, static_cast<int32>(Person), 0);
 		W.Components().GetPool(Player.Mark).Add(H, Fresh);
+		if (Lod != nullptr)
+		{
+			// And hold them where they are: the crossings of 04.06 would
+			// otherwise send them to a neighbour as a count, which ends a
+			// played life without anybody dying.
+			Population::HoldPerson(W, Persons, *Lod, Person, Person);
+		}
 		return true;
 	}
 
-	bool ReleasePlayer(World& W, const PlayerTypes& Player)
+	bool ReleasePlayer(World& W, const PlayerTypes& Player, const Population::PersonTypes* Persons,
+					   const Population::LodTypes* Lod)
 	{
+		const uint32 Was = PlayerPerson(W, Player);
 		std::vector<EntityHandle> Marked;
 		W.Components().GetPool(Player.Mark).ForEach([&](EntityHandle H, const PlayerMark&) { Marked.push_back(H); });
 		for (const EntityHandle H : Marked)
 		{
 			W.Components().GetPool(Player.Mark).Remove(H);
+		}
+		if (Was != 0 && Persons != nullptr && Lod != nullptr)
+		{
+			Population::FreePerson(W, *Persons, *Lod, Was); // the world may have them back
 		}
 		return !Marked.empty();
 	}

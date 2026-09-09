@@ -1143,7 +1143,12 @@ namespace
 		// Phase 10, on top of everything above.
 		uint32 Begin(StartRules R = StartRules{})
 		{
-			return BeginEnslaved(Instance, Ages.Types(), Persons, Bondage, Standing, One, First, R, Instance.Now());
+			// With the LOD types, so the crossings of 04.06 leave them where
+			// they are: a player emigrated to a neighbour is a life that ends
+			// without anybody dying, which is how the first run of this gate
+			// lost its person in the third year.
+			return BeginEnslaved(Instance, Ages.Types(), Persons, Bondage, Standing, One, First, R, Instance.Now(),
+								 &Lod);
 		}
 		bool Open() { return BeginOrders(Instance, One, Queue, Instance.Now()); }
 		Refusal Mean(const PlayerCommand& C) { return Submit(Instance, One, Queue, OrderRules{}, C); }
@@ -1426,6 +1431,7 @@ VAELEN_TEST(PlayerGate, ALifetimeAt256HoldsEveryInvariantAndFreezes)
 	std::vector<Recorded> Stream;
 	uint32 Failures = 0;
 	uint32 Died = 0;
+	uint32 Ended = 0;
 	Hash64 AtHalf = 0;
 	for (uint32 Year = 1; Year <= LifeYears; ++Year)
 	{
@@ -1445,6 +1451,12 @@ VAELEN_TEST(PlayerGate, ALifetimeAt256HoldsEveryInvariantAndFreezes)
 		if (Died == 0 && (P == nullptr || P->State != static_cast<uint8>(LifeState::Alive)))
 		{
 			Died = Year; // a life that ends is a life
+			Ended = P == nullptr ? 3u : P->State;
+			VAELEN_LOG_INFO(LogPlayerGate, "the life ended in year %u, %s", BeforeYears + Year,
+							Ended == static_cast<uint32>(LifeState::Dead)
+								? "dead"
+								: (Ended == static_cast<uint32>(LifeState::Gone) ? "gone from the fine grain"
+																				 : "no longer a person at all"));
 		}
 		if (Year % 10 == 0)
 		{
@@ -1490,7 +1502,14 @@ VAELEN_TEST(PlayerGate, ALifetimeAt256HoldsEveryInvariantAndFreezes)
 	// because of them, and people came to think something of them.
 	const HourStats Hours = W.Hours_();
 	const RegardStats Regard_ = W.Regard();
-	VT_CHECK_MSG(Hours.Days > 7000, "the day turned for a life, not for a year or two");
+	// A life that runs the whole forty years is 14400 days of it; one that ends
+	// is as many days as it had years. Either is a life; neither is a fortnight,
+	// and a played person who is quietly emigrated in the third year is not one
+	// at all, which is what the hold of 04.06 is for.
+	const uint32 Lived = Died == 0 ? LifeYears : Died;
+	VT_CHECK_MSG(Hours.Days > Lived * 300u, "the day turned for every year the life had");
+	VT_CHECK_MSG(Lived > 20, "and the life had years, not a season");
+	VT_CHECK_MSG(Ended != static_cast<uint32>(LifeState::Gone), "the crossings left the played person alone");
 	VT_CHECK(Orders_.Taken > 5000);
 	VT_CHECK_MSG(Orders_.Taken > Orders_.Refused, "and most of what was meant was done rather than refused");
 	VT_CHECK_MSG(Done.Worked > 0 && Done.Ate > 0, "they worked and they ate");
