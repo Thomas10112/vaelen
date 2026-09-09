@@ -4938,3 +4938,48 @@ what this project is for.
 The rule to hold to as the phase goes on: if a command cannot be expressed as
 something a person in that world could do, applied by the system that already
 owns it, it does not belong in Phase 10.
+
+
+## ADR-0083: A start is found, not written
+
+### Context
+
+The player begins bound. The obvious way to arrange that is to bind somebody at
+the moment the game starts - pick a person, set their `BondState` to Enslaved,
+begin. It takes four lines and it breaks ADR-0082 completely: it writes state
+into the world from outside the simulation, and a world that can be written to
+from outside cannot be replayed.
+
+### Decision
+
+1. **The start looks for a life the world already made, and the search is
+   allowed to come back empty.** 05.04 binds people every year - for debt, at
+   birth, by capture, by being on the wrong side of a promotion - and 10.02
+   takes one of them. A world whose detailed regions hold nobody bound returns
+   zero and writes nothing at all.
+2. **Ore ground is a preference, not a requirement, and the record says which it
+   got.** The ground a mining colony would stand on and the ground the most
+   people live on are not the same ground: at AELVOR 128 the two busiest
+   regions - the only ones simulated person by person - have no ore under them
+   at all. A start that refused to happen over that would be a start that never
+   happens. `PlayerStart::OnOre` records the truth either way, and Phase 11 will
+   have to reconcile the colony with where the people actually are.
+3. **`PlayerStart` is a record and never a rule.** Nothing reads it to decide
+   anything; it says what the life WAS at its first moment - the region, the
+   bond and who held it, the family, the standing 05.02 had already given them,
+   their age - and it does not change as the life goes on. The world runs the
+   same whether it is there or not.
+4. **The lowest person index among those offered**, so that the same world hands
+   over the same life twice, which is what a replay needs.
+
+### Consequences
+
+The start is honest about the world it landed in: at AELVOR 128 after sixty
+years of detail there are 288 bound people to choose from, and the one handed
+over is person 3821 of region 26 - bonded, held by person 720, of family 767,
+with the standing 05.02 had already given them, aged 40. Not a character sheet:
+a place in a world, with a holder who exists and a family who exist.
+
+And the failure mode is a real one that a test asserts rather than a hypothetical
+one: a world configured never to bind anybody offers nobody, and the start says
+so instead of manufacturing a life.

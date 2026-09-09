@@ -2393,42 +2393,46 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 10 — PLAYER — IN PROGRESS
-TASK        : 10.01 — THE PLAYER IS SOMEBODY THE WORLD ALREADY HAD
+TASK        : 10.02 — THE ENSLAVED START
 STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
 █████████████████████████ 95%
 
 CURRENTLY
-→ Nine phases have built a world of people who are born, eat, work, are bound and freed, marry, hold
-  office, march and die. The player is ONE OF THEM: a component on an existing person of a detailed
-  region, with no position of its own, no needs of its own and no rules of its own.
+→ The player begins bound. The obvious way to arrange that - pick a person, set their bond to
+  Enslaved, begin - takes four lines and breaks ADR-0082 completely: it writes state into the world
+  from outside the simulation, and a world that can be written to from outside cannot be replayed.
 
-  The obvious shape - a Player entity with its own everything - is the one that quietly ends the
-  project, because a player that is not a person is a second simulation running beside the first and
-  every system after this has to be written twice.
+  So the start LOOKS FOR a life the world already made, and the search is allowed to come back
+  empty. 05.04 binds people every year - for debt, at birth, by capture, by being on the wrong side
+  of a promotion - and 10.02 takes one of them. A world configured never to bind anybody offers
+  nobody, and the start says so instead of manufacturing a life.
 
-  The mark does nothing at all in 10.01. It does not tick, publish or read anything. That is not an
-  unfinished task; it is the foundation, and it is tested before anything is built on it: two worlds
-  of one seed, one with a player marked and one without, run fifty years to the same state digest -
-  2550e13a5efc68c6 both. Everything the player will do in 10.04 and 10.05 therefore has to go through
-  a system that already owns that part of the world, because the mark carries no state to change.
-  That is the constraint that makes a played life replayable from a recorded command stream.
+  The ore ground turned out to be a preference and not a requirement, and the record is honest about
+  which it got. At AELVOR 128 the two busiest regions - the only ones simulated person by person -
+  have no ore under them at all. A start that refused to happen over that would be a start that never
+  happens; Phase 11 will have to reconcile the colony with where the people actually are.
+
+  What the world handed over: person 3821 of region 26 - bonded, held by person 720, of family 767,
+  with the standing 05.02 had already given them, aged 40. Not a character sheet: a place in a world,
+  with a holder who exists and a family who exist.
 
 COMPLETED
 ✓ Phases 00-08 closed · Phase 09 INFRASTRUCTURE closed (six presets, 109 CTest entries, all gates)
-✓ Phase 10 broken down into 10.01-10.08 (roadmap section 14)
-✓ 10.01 the player as a mark — PlayerMark, TakePlayer, ReleasePlayer, MeasurePlayer, 4 tests
+✓ 10.01 the player as a mark on somebody the world already had
+✓ 10.02 the enslaved start — PlayerStart, BeginEnslaved, StartOf, MeasureStart, 4 tests
 
 NEXT
-→ 10.02 — the enslaved start: bound by 05.04, on the ground of the mining colony, with the standing
-  05.02 gives someone in that condition and the family 04.03 gives them
+→ 10.03 — the player's grain: the person the player is runs at the finest LOD the scheduler has while
+  the world around them runs at the year; what that costs and what it must not change
 
 TESTS
-✓ VaelenPlayerTests 4 run, 4 passed
-✓ A world carrying a player and one that is not run fifty years to the same digest
-✓ One player to a world; only a living person of a region simulated person by person
-✓ The mark survives a save and a load and still points at the same person
+✓ VaelenPlayerTests 8 run, 8 passed
+✓ 288 bound people to choose from after sixty years of detail; the same world hands over the same
+  life twice, and it survives a save and a load
+✓ A world that binds nobody offers nobody, and writes nothing
+✓ The record of the first moment does not change as the life goes on
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)

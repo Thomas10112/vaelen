@@ -4,10 +4,12 @@
 set(VAELEN_PLAYER_PUBLIC_HEADERS
   Public/Vaelen/Player/PlayerApi.h
   Public/Vaelen/Player/Player.h
+  Public/Vaelen/Player/Start.h
 )
 
 set(VAELEN_PLAYER_SOURCES
   Private/Player.cpp
+  Private/Start.cpp
 )
 
 add_library(VaelenPlayer STATIC ${VAELEN_PLAYER_SOURCES} ${VAELEN_PLAYER_PUBLIC_HEADERS})
