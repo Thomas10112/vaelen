@@ -12,54 +12,53 @@ refresh").
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 10 — PLAYER — IN PROGRESS
-TASK        : 10.07 — THE PLAYER IN THE CHRONICLE
-STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine, Windows and macOS)
+PHASE       : 10 — PLAYER — HEADLESS COMPLETE, NOT YET CLOSED
+TASK        : 10.08 — THE PHASE 10 GATE
+STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine, Windows, macOS)
 
 PROGRESS
-█████████████████████████ 99%
+██████████████████████████ 100% of the tasks · the phase stays OPEN until the CI matrix runs
 
 CURRENTLY
-→ The same shape as the six chronicle tasks under it, one layer up. The event log holds every hour
-  the played person spent and every unit of grain that moved because of it, which is exactly what
-  nobody remembers. A chronicle is the small part a life keeps: what they gave, what they took,
-  where they walked. A day of work is not history and a meal is not history - what is kept is what
-  touched somebody else, the same line 10.06 draws, for the same reason.
+→ The gate passes, and it is the whole of what Phase 10 claimed:
 
-  Every event still has a sentence whether the chronicle kept it or not, stamped with the year in
-  the same hand as every layer below, falling through to the works text (and so to the military, and
-  so down to the person) or, in a lighter world, to the economy text. So a player's chronicle can
-  tell you about a battle, and through that about a harvest, and through that about a person.
+    gate: 40 year(s) at 256 played across 3 life/lives from person 21640 of region 42 in 106.4 s
+          [asserts on]; 14400 intent(s) and 3 taking(s) recorded, 8639 taken, 0 refused, 0 dropped
+    replay: 14400 of 14400 intent(s) and 3 of 3 taking(s), 0 answered differently
 
-  And the why runs the other way, all the way down, because 10.05 passes the act's own event as the
-  cause of everything a doing moves:
+  A world of 256 regions with every system of Phases 04 to 10 running, three hundred years of
+  pre-history, two regions detailed, sixty years more so 05.04 had bound somebody to be, then forty
+  years lived a day at a time out of intents decided from the world. Every invariant of every phase
+  each decade. Then the same seed, the same takings and the same intents into a fresh world: the
+  same state digest, the same event log, the same life word for word.
 
-      Year 361, age of Okerdun: Edavaken received 2 of goods.
-        because Kihemiss gave to Voha, 1 hour of it.
-
-  ExportLife writes the whole of it: who they are in the world's own naming, what they did in order,
-  who knows them and what those people make of them, and then the why of the last thing that
-  happened because of them, walked back to its root.
+  It took six runs, and five of them found something. A first run that passed while spending three
+  quarters of itself refusing intents at a corpse. A younger person dying SOONER than an older one,
+  which is backwards for mortality and turned out to be 04.06's crossings emigrating the played
+  person - a life ending with nobody dead. This world's mortality, which means forty years is played
+  across several lives, which in turn sharpened what a replay's input is: the seed, the takings AND
+  the intents. And two measures of mine that had not caught up with the rule a life owns its records.
 
 COMPLETED
 ✓ Phases 00-08 closed · Phase 09 INFRASTRUCTURE closed
 ✓ 10.01 the mark · 10.02 the enslaved start · 10.03 the grain · 10.04 intent as commands
-✓ 10.05 the seven verbs · 10.06 what the people make of them
-✓ 10.07 the player in the chronicle — LifeChronicle, DescribeLifeEvent, ExportChronicleWithLife,
-  ExportWhyWithLife, LifeTimeline, ExportLife, CheckLifeChronicle. 6 tests, frozen text.
+✓ 10.05 the seven verbs · 10.06 what the people make of them · 10.07 the player in the chronicle
+✓ 10.08 the gate — frozen half=4b861672a7e5f857 end=8c16c294502ee784 log=4a86e3f3bc62df03
+  life=7105a2243db1481e
+✓ ADR-0082 to ADR-0089 · Phase 11 breakdown written (Docs/ROADMAP.md section 15)
 
 NEXT
-→ 10.08 — the Phase 10 gate: a world at 256 with the player placed and driven by a recorded command
-  stream for a lifetime, every invariant of every phase each decade, frozen digests, and the stream
-  replayed to exactly the same life. This is also the CI run that must be allowed to finish.
+→ The CI matrix, which is exit criterion 1 and the one thing Phase 10 has never had: no Phase 10
+  file has yet been compiled by MSVC or AppleClang, because runs 89 to 96 were each cancelled by the
+  next push. THIS is the run that must be allowed to finish, and the phase is not closed until it
+  does. Then Phase 11 — the mining colony, which is the same systems at a different setting.
 
 TESTS
-✓ VaelenPlayerTests 37 run, 37 passed
-✓ A day of work is not history; what touched somebody else is, and a refusal is not an act
-✓ The why of the grain that moved walks back to the giving that moved it
-✓ A life reads as a life: name, house, deeds in order, who thinks what, and why the last of it
-✓ Frozen: 12 records and text 3727cebce1fc782c over twenty days
-✓ Five doings with room for two: two kept, three dropped and counted rather than lost in silence
+✓ VaelenPlayerTests 38 run, 38 passed (Player 4, Start 4, Hours 5, Commands 6, Doings 6, Regard 6,
+  LifeHistory 6, PlayerGate 1)
+✓ VaelenPopulationTests 39 run, 39 passed — the frozen bridge digest of 04.06 unmoved at
+  25340bd6f788726a, so the hold added for the player disturbed nothing already walking through it
+✓ Two presets 102/102 each at 10.07; the gate is new since and goes into the matrix now
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)
@@ -262,7 +261,7 @@ Phase 09 against the exit criteria (`Docs/ROADMAP.md` section 2): (1) six Linux 
 | 10.05 | What the player can do: work, rest, eat, move, speak, give, take, each through the system that already owns that change | PROTOTYPE: Doings 6 tests (+1 in Population) |
 | 10.06 | What the people around them make of them: opinions read out of the acts in the log, weighed by the standing of whoever holds them | PROTOTYPE: Regard 6 tests |
 | 10.07 | The player in the chronicle: a life as records, every event with a sentence, and the why walked back through every layer below | PROTOTYPE: LifeHistory 6 tests |
-| 10.08 | Phase 10 gate | PLANNED |
+| 10.08 | Phase 10 gate: forty years at 256 played across three lives out of a recorded stream, every invariant each decade, and the stream replayed to the same life | PROTOTYPE: PlayerGate 1 test |
 
 ## File status
 
@@ -488,8 +487,9 @@ the purity checker, applied to headers and sources).
 | `Player/Test_Doings.cpp` (Phase 10) | PROTOTYPE | 6 |
 | `Player/Test_Regard.cpp` (Phase 10) | PROTOTYPE | 6 |
 | `Player/Test_LifeHistory.cpp` (Phase 10) | PROTOTYPE | 6 |
+| `Player/Test_PlayerGate.cpp` (Phase 10) | PROTOTYPE | 1 |
 
-Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 6, Deposits 5, WorldPipeline 4, History 3, Population 5, Naming 5, Religion 5, Disasters 5, PreHistory 5, HistoryText 5, HistoryGate 2 (161 tests; 158 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.History`, `Sim.Population`, `Sim.Naming`, `Sim.Religion`, `Sim.Disasters`, `Sim.PreHistory`, `Sim.HistoryText`, `Sim.HistoryGate`, `Sim.Registry`, `Sim.Shuffled` (42 entries in total). Population suites: Persons 6, Lives 5, Families 5, Needs 6, Traits 5, Lod 6, PersonHistory 5, PopulationGate 1 (39 tests; 39 without assertions); CTest entries `Population.Persons`, `Population.Lives`, `Population.Families`, `Population.Needs`, `Population.Traits`, `Population.Lod`, `Population.PersonHistory`, `Population.PopulationGate`, `Population.Registry`, `Population.Shuffled` (10 entries). Society suites: Organizations 5, Standing 4, Norms 4, Bondage 4, Decisions 4, Strata 3, SocietyHistory 3, SocietyGate 1 (28 tests; 28 without assertions); CTest entries `Society.Organizations`, `Society.Standing`, `Society.Norms`, `Society.Bondage`, `Society.Decisions`, `Society.Strata`, `Society.SocietyHistory`, `Society.SocietyGate`, `Society.Registry`, `Society.Shuffled` (10 entries). Economy suites: Stocks 4, Production 4, Markets 4, Trade 4, Wealth 5, Grains 2, EconomyHistory 3, EconomyGate 1 (27 tests; 27 without assertions); CTest entries `Economy.Stocks`, `Economy.Production`, `Economy.Markets`, `Economy.Trade`, `Economy.Wealth`, `Economy.Grains`, `Economy.EconomyHistory`, `Economy.EconomyGate`, `Economy.Registry`, `Economy.Shuffled` (10 entries). Politics suites: Polities 4, Law 4, Reach 5, Succession 4, Factions 4, Diplomacy 4, PoliticsHistory 3, PoliticsGate 1 (29 tests; 29 without assertions); CTest entries `Politics.Diplomacy`, `Politics.Factions`, `Politics.Law`, `Politics.Polities`, `Politics.PoliticsGate`, `Politics.PoliticsHistory`, `Politics.Reach`, `Politics.Succession`, `Politics.Registry`, `Politics.Shuffled` (10 entries). Military suites: Armies 4, Battle 4, March 4, MilitaryGate 1, MilitaryHistory 4, Siege 4, Toll 4, War 4 (29 tests; 29 without assertions); CTest entries `Military.Armies`, `Military.Battle`, `Military.March`, `Military.MilitaryGate`, `Military.MilitaryHistory`, `Military.Siege`, `Military.Toll`, `Military.War`, `Military.Registry`, `Military.Shuffled` (10 entries). Infrastructure suites: Buildings 4, Works 5, Places 4, Roads 5, Decay 5, Logistics 5, WorksHistory 5, InfrastructureGate 2 (35 tests; 35 without assertions); CTest entries `Infrastructure.Buildings`, `Infrastructure.Works`, `Infrastructure.Places`, `Infrastructure.Roads`, `Infrastructure.Decay`, `Infrastructure.Logistics`, `Infrastructure.WorksHistory`, `Infrastructure.InfrastructureGate`, `Infrastructure.Registry`, `Infrastructure.Shuffled` (10 entries). Player suites: Player 4, Start 4, Hours 5, Commands 6, Doings 6, Regard 6, LifeHistory 6 (37 tests; 37 without assertions); CTest entries `Player.Player`, `Player.Start`, `Player.Hours`, `Player.Commands`, `Player.Doings`, `Player.Regard`, `Player.LifeHistory`, `Player.Registry`, `Player.Shuffled` (9 entries).
+Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 6, Deposits 5, WorldPipeline 4, History 3, Population 5, Naming 5, Religion 5, Disasters 5, PreHistory 5, HistoryText 5, HistoryGate 2 (161 tests; 158 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.History`, `Sim.Population`, `Sim.Naming`, `Sim.Religion`, `Sim.Disasters`, `Sim.PreHistory`, `Sim.HistoryText`, `Sim.HistoryGate`, `Sim.Registry`, `Sim.Shuffled` (42 entries in total). Population suites: Persons 6, Lives 5, Families 5, Needs 6, Traits 5, Lod 6, PersonHistory 5, PopulationGate 1 (39 tests; 39 without assertions); CTest entries `Population.Persons`, `Population.Lives`, `Population.Families`, `Population.Needs`, `Population.Traits`, `Population.Lod`, `Population.PersonHistory`, `Population.PopulationGate`, `Population.Registry`, `Population.Shuffled` (10 entries). Society suites: Organizations 5, Standing 4, Norms 4, Bondage 4, Decisions 4, Strata 3, SocietyHistory 3, SocietyGate 1 (28 tests; 28 without assertions); CTest entries `Society.Organizations`, `Society.Standing`, `Society.Norms`, `Society.Bondage`, `Society.Decisions`, `Society.Strata`, `Society.SocietyHistory`, `Society.SocietyGate`, `Society.Registry`, `Society.Shuffled` (10 entries). Economy suites: Stocks 4, Production 4, Markets 4, Trade 4, Wealth 5, Grains 2, EconomyHistory 3, EconomyGate 1 (27 tests; 27 without assertions); CTest entries `Economy.Stocks`, `Economy.Production`, `Economy.Markets`, `Economy.Trade`, `Economy.Wealth`, `Economy.Grains`, `Economy.EconomyHistory`, `Economy.EconomyGate`, `Economy.Registry`, `Economy.Shuffled` (10 entries). Politics suites: Polities 4, Law 4, Reach 5, Succession 4, Factions 4, Diplomacy 4, PoliticsHistory 3, PoliticsGate 1 (29 tests; 29 without assertions); CTest entries `Politics.Diplomacy`, `Politics.Factions`, `Politics.Law`, `Politics.Polities`, `Politics.PoliticsGate`, `Politics.PoliticsHistory`, `Politics.Reach`, `Politics.Succession`, `Politics.Registry`, `Politics.Shuffled` (10 entries). Military suites: Armies 4, Battle 4, March 4, MilitaryGate 1, MilitaryHistory 4, Siege 4, Toll 4, War 4 (29 tests; 29 without assertions); CTest entries `Military.Armies`, `Military.Battle`, `Military.March`, `Military.MilitaryGate`, `Military.MilitaryHistory`, `Military.Siege`, `Military.Toll`, `Military.War`, `Military.Registry`, `Military.Shuffled` (10 entries). Infrastructure suites: Buildings 4, Works 5, Places 4, Roads 5, Decay 5, Logistics 5, WorksHistory 5, InfrastructureGate 2 (35 tests; 35 without assertions); CTest entries `Infrastructure.Buildings`, `Infrastructure.Works`, `Infrastructure.Places`, `Infrastructure.Roads`, `Infrastructure.Decay`, `Infrastructure.Logistics`, `Infrastructure.WorksHistory`, `Infrastructure.InfrastructureGate`, `Infrastructure.Registry`, `Infrastructure.Shuffled` (10 entries). Player suites: Player 4, Start 4, Hours 5, Commands 6, Doings 6, Regard 6, LifeHistory 6, PlayerGate 1 (38 tests; 38 without assertions); CTest entries `Player.Player`, `Player.Start`, `Player.Hours`, `Player.Commands`, `Player.Doings`, `Player.Regard`, `Player.LifeHistory`, `Player.PlayerGate`, `Player.Registry`, `Player.Shuffled` (10 entries).
 
 ### Tools/ and CI
 

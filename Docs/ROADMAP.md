@@ -2385,7 +2385,48 @@ The engine-facing part (the game engine class and the Enhanced Input mappings th
 `Config/` files already note for this phase) stays UNVERIFIED until the Phase 13
 presentation work, as every engine-facing file in the project has since Phase 00.
 
-## 15. Current BUILD STATUS
+## 15. Phase 11 - MINING COLONY: task breakdown
+
+Broken down on the closing of Phase 10. Phases 12-20 are broken down as each previous
+phase closes.
+
+What this phase is. Ten phases have built a world that runs at the year, with two regions
+at a time simulated person by person because that is what a chronicle needs. The starting
+place of the game is not that: it is one huge colony, simulated at full detail
+continuously, with hundreds of people whose work, hunger, standing and quarrels are all
+individual - and it has to run at that detail while the rest of AELVOR keeps its yearly
+grain around it. Nothing new is invented for it. It is the same systems at a different
+setting, which is the claim to be tested rather than asserted.
+
+Three things learned in Phase 10 point straight at this phase. The scheduler's finer
+grains work and cost what they should (10.03), but they have only ever run for ONE
+person; a colony wants them for a region. The LOD bridge will take a person out of the
+fine grain when it feels like it (the hold of 04.06, added when the gate found the played
+person emigrated); a colony needs that decided by policy rather than by crowding. And a
+bound person of a crowded region dies young (10.08), which is either this world being
+harsh or the ration of 04.04 being wrong at that density - the colony is where that gets
+settled.
+
+| Task | Content | Test kind |
+|---|---|---|
+| 11.01 | The colony as a region the world keeps detailed: a LOD policy that holds it there rather than letting crowding decide, and what that costs per tick measured honestly | unit, deterministic, performance |
+| 11.02 | A colony's people at the day: the finer grain of 10.03 for a whole region rather than one person, with the cost of it measured against the yearly world around it | integration with 10.03, long-duration |
+| 11.03 | The work of a colony: ore out of the ground through 06.01 and 09.02, the deposits of 02.07 depleting as it is taken, and what a colony eats that it does not grow | integration with 06.01, 09.02, 02.07 |
+| 11.04 | Who holds it: the bondage of 05.04 at colony scale, the overseers of 05.01, and the standing of 05.02 in a place where everybody's rank is the same work | integration with 05.01, 05.02, 05.04 |
+| 11.05 | What a colony does to the people in it: the ration of 04.04 at that density, sickness, and whether the Phase 10 finding (a bound person dies young) is the world being harsh or the model being wrong | integration with 04.04, edge |
+| 11.06 | The colony and the world: what it sends out, what it needs in, and the roads of 09.04 that carry both | integration with 06.04, 09.04, 09.06 |
+| 11.07 | The colony in the chronicle, and the player's place in it: the start of 10.02 on the ground it was always meant for | text, integration with 10.02, 10.07 |
+| 11.08 | Phase 11 gate: the colony at full detail for a century with the world around it at the year, every invariant of every phase each decade, frozen digests, and a played life inside it replayed | long-duration, replay |
+
+Every task ends with the usual report block, the docs refreshed and a commit.
+
+The rule the phase is written to: **the colony is the same systems at a different
+setting.** Any behaviour it needs that cannot be had by configuring what Phases 04 to 10
+already do belongs in one of those phases, as a rule they were missing, and not in a
+special case for the colony. A colony with its own economy would be a second simulation,
+and the project has spent ten phases not building one of those.
+
+## 16. Current BUILD STATUS
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -2438,7 +2479,7 @@ BLOCKERS
 
 ```
 
-## 16. Verification record
+## 17. Verification record
 
 Commands run on 2026-09-05 (clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.15, clang-format 18.1.3, Linux x86_64) with the checked-in presets, each into
 `out/build/<preset>`:

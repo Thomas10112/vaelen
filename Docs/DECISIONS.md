@@ -5282,3 +5282,70 @@ needs to know that a player exists.
 
 The rule to hold to: if the player's chronicle ever needs a mechanism the other
 six do not have, the thing to suspect is the mechanism, not the six.
+
+## ADR-0089: A played life is an input, and a life owns its records
+
+### Context
+
+Phase 10 spent seven tasks arguing that a played life is a life of this world and
+not a second simulation beside it. The gate is where that stopped being an
+argument, and it took six runs to get right - not because the simulation was
+wrong, but because each run showed that the shape of the claim was not yet
+stated properly.
+
+The first run passed. Reading its numbers rather than its verdict showed that
+the person taken was forty years old, died in year ten of the forty, and that
+three quarters of the gate was intents refused on behalf of a corpse. A green
+test measuring almost nothing.
+
+The second, meant to fix that by taking somebody under twenty-five, lost them in
+year THREE. A younger person dying sooner is backwards for mortality, and that
+was the tell: they were not dying. The crossings of 04.06 send unmarried adults
+of sixteen to forty out of a crowded region and turn them into counts, and the
+played person is exactly that profile. A played life was ending with nobody
+dead.
+
+### Decision
+
+1. **A person can be held in the fine grain, and 04.06 owns that.** `PersonHeld`
+   and `HoldPerson` / `FreePerson` / `IsHeld` live where the crossings live. The
+   crossings skip a held person; with nobody held the code is inert, so nothing
+   nine phases froze can move. `TakePlayer` holds their person when it is given
+   the LOD types, and lets them go on release.
+2. **A world with mortality in it is played across several lives.** A bound
+   person of a crowded region at 256 does not live forty years, and a gate that
+   pretended otherwise would be measuring a world that does not exist. The gate
+   plays the forty years across as many people as the world's mortality demands:
+   a life ends, the mark comes off, another of this world's people is taken up.
+3. **The input to a replay is the seed, the takings, and the intents.** Taking
+   somebody up is the other thing the outside world does, so it is recorded with
+   its tick and reproduced. That is a stronger claim than the intents alone ever
+   made: a replay that rebuilt a different world would have nobody to hand over
+   at the right moment, and the gate would fail on the taking rather than on a
+   digest.
+4. **A life owns its records and they end with it.** The mark, the queue, the
+   day, the start and the opinions all go when the life does - `EndOrders`,
+   `EndStart`, `EndHours`, `EndRegard` - while what the person DID stays in the
+   world's history, which is where it belongs and what the chronicle reads. The
+   invariants that say one day and one queue to a world are right, and the way
+   to satisfy them across several lives is to end each one properly rather than
+   to weaken them.
+
+### Consequences
+
+The gate passes: forty years at 256 with every system of Phases 04 to 10
+running, played across three lives out of 14400 intents and 3 takings, every
+invariant of every phase checked each decade, and the whole thing replayed blind
+into a fresh world of the same seed to the same state digest, the same event log
+and the same life word for word.
+
+Two consequences worth carrying forward. Anything that measures a life - days
+lived, acts taken, opinions held - measures the life being lived and not the
+years, so what spans a span of years is the sum over the lives in it; a caller
+that wants the latter has to add them up, and the gate does. And 04.06 now has a
+way to be told what it must not move, which Phase 11's colony will need for a
+whole region rather than one person.
+
+The rule to hold to: when a long test disagrees with the simulation, read its
+numbers before its verdict. Five of the six runs of this gate found something,
+and only one of the five was a defect in the test alone.
