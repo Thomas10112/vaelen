@@ -48,6 +48,13 @@ namespace Vaelen::Player
 	struct PlayerTypes
 	{
 		ComponentType<PlayerMark> Mark;
+		/// The hold of 04.06: people the crossings must leave where they are.
+		/// Declared HERE, by the module with a reason to hold somebody, because
+		/// a component type registered inside a lower module's Declare joins the
+		/// type registry of every world that declares that module and moves its
+		/// state digest - which broke the frozen digests of six closed phases
+		/// when this was tried the other way round.
+		ComponentType<Population::PersonHeld> Held;
 		static VAELEN_PLAYER_API PlayerTypes Declare(World& W);
 	};
 
@@ -56,18 +63,17 @@ namespace Vaelen::Player
 	/// marked: a world holds one player at a time, and taking a second would
 	/// leave the first behind with no way to say which was meant.
 	///
-	/// Give it the LOD types and it also holds them in the fine grain (04.06),
-	/// which a played person needs: the crossings send unmarried adults of a
-	/// crowded region to a neighbour and turn them into counts, and the player
-	/// is exactly the profile they pick. A gate that ran forty years without
-	/// this found its person emigrated in the third year. Without the types the
-	/// mark is what it always was and the world may still take them.
+	/// It also holds them in the fine grain (04.06), which a played person
+	/// needs: the crossings send unmarried adults of a crowded region to a
+	/// neighbour and turn them into counts, and the player is exactly the
+	/// profile they pick. A gate that ran forty years without this found its
+	/// person emigrated in the third year. The bridge honours the hold only
+	/// when it was told to observe it (LodSystem::ObserveHeld).
 	VAELEN_PLAYER_API bool TakePlayer(World& W, const Population::PersonTypes& Persons, const PlayerTypes& Player,
-									  uint32 Person, SimTick Now, const Population::LodTypes* Lod = nullptr);
+									  uint32 Person, SimTick Now);
 	/// Removes the mark, and the hold with it. The world runs on exactly as it did.
 	VAELEN_PLAYER_API bool ReleasePlayer(World& W, const PlayerTypes& Player,
-										 const Population::PersonTypes* Persons = nullptr,
-										 const Population::LodTypes* Lod = nullptr);
+										 const Population::PersonTypes* Persons = nullptr);
 	/// The person index being played, 0 when nobody is.
 	VAELEN_PLAYER_API uint32 PlayerPerson(const World& W, const PlayerTypes& Player);
 	/// The mark itself (nullptr when nobody is played).

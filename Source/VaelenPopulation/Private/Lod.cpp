@@ -47,8 +47,6 @@ namespace Vaelen::Population
 	{
 		LodTypes T;
 		T.State = W.Types().Register<LodState>("LodState");
-		T.Held = W.Types().Register<PersonHeld>("PersonHeld");
-		W.Components().CreatePool(T.Held);
 		W.Components().CreatePool(T.State);
 		return T;
 	}
@@ -265,7 +263,7 @@ namespace Vaelen::Population
 								{
 									return;
 								}
-								if (W.Components().GetPool(Lod.Held).TryGet(H) != nullptr)
+								if (HasHeld && W.Components().GetPool(Held).TryGet(H) != nullptr)
 								{
 									return; // somebody is holding them here
 								}
@@ -443,7 +441,14 @@ namespace Vaelen::Population
 		return true;
 	}
 
-	bool HoldPerson(World& W, const PersonTypes& Persons, const LodTypes& Types, uint32 Person, uint32 Why)
+	ComponentType<PersonHeld> DeclareHold(World& W)
+	{
+		const ComponentType<PersonHeld> T = W.Types().Register<PersonHeld>("PersonHeld");
+		W.Components().CreatePool(T);
+		return T;
+	}
+
+	bool HoldPerson(World& W, const PersonTypes& Persons, ComponentType<PersonHeld> Held, uint32 Person, uint32 Why)
 	{
 		EntityHandle Found;
 		W.Components()
@@ -456,17 +461,17 @@ namespace Vaelen::Population
 						Found = H;
 					}
 				});
-		if (Found.IsNull() || W.Components().GetPool(Types.Held).TryGet(Found) != nullptr)
+		if (Found.IsNull() || W.Components().GetPool(Held).TryGet(Found) != nullptr)
 		{
 			return false;
 		}
 		PersonHeld Mark;
 		Mark.Why = Why;
-		W.Components().GetPool(Types.Held).Add(Found, Mark);
+		W.Components().GetPool(Held).Add(Found, Mark);
 		return true;
 	}
 
-	bool FreePerson(World& W, const PersonTypes& Persons, const LodTypes& Types, uint32 Person)
+	bool FreePerson(World& W, const PersonTypes& Persons, ComponentType<PersonHeld> Held, uint32 Person)
 	{
 		EntityHandle Found;
 		W.Components()
@@ -479,15 +484,15 @@ namespace Vaelen::Population
 						Found = H;
 					}
 				});
-		if (Found.IsNull() || W.Components().GetPool(Types.Held).TryGet(Found) == nullptr)
+		if (Found.IsNull() || W.Components().GetPool(Held).TryGet(Found) == nullptr)
 		{
 			return false;
 		}
-		W.Components().GetPool(Types.Held).Remove(Found);
+		W.Components().GetPool(Held).Remove(Found);
 		return true;
 	}
 
-	bool IsHeld(const World& W, const PersonTypes& Persons, const LodTypes& Types, uint32 Person)
+	bool IsHeld(const World& W, const PersonTypes& Persons, ComponentType<PersonHeld> Held, uint32 Person)
 	{
 		bool Out = false;
 		W.Components()
@@ -497,7 +502,7 @@ namespace Vaelen::Population
 				{
 					if (!Out && P.Index == Person)
 					{
-						Out = W.Components().GetPool(Types.Held).TryGet(H) != nullptr;
+						Out = W.Components().GetPool(Held).TryGet(H) != nullptr;
 					}
 				});
 		return Out;

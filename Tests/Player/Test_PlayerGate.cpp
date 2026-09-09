@@ -290,6 +290,9 @@ namespace
 			Hands = std::make_unique<Doings>(Ages.Types(), Persons, Families, Needs, Economy, DoingRules{});
 			Acts_->ObserveDoing(Hands.get());
 			Talk = std::make_unique<RegardSystem>(Instance, Ages.Types(), Persons, One, Standing, Known, RegardRules{});
+			// The bridge honours the hold only when it is told to look for it,
+			// which is what keeps every world without a player unchanged.
+			Bridge->ObserveHeld(One.Held);
 			Instance.Systems().Add(Bonds.get());
 			Instance.Systems().Add(Days_.get());
 			Instance.Systems().Add(Acts_.get());
@@ -1147,12 +1150,11 @@ namespace
 		// Phase 10, on top of everything above.
 		uint32 Begin(StartRules R = StartRules{})
 		{
-			// With the LOD types, so the crossings of 04.06 leave them where
-			// they are: a player emigrated to a neighbour is a life that ends
-			// without anybody dying, which is how the first run of this gate
-			// lost its person in the third year.
-			return BeginEnslaved(Instance, Ages.Types(), Persons, Bondage, Standing, One, First, R, Instance.Now(),
-								 &Lod);
+			// The mark holds them in the fine grain (PlayerTypes::Held), and the
+			// bridge is told to honour it in the constructor: a player emigrated
+			// to a neighbour is a life that ends without anybody dying, which is
+			// how the first run of this gate lost its person in the third year.
+			return BeginEnslaved(Instance, Ages.Types(), Persons, Bondage, Standing, One, First, R, Instance.Now());
 		}
 		bool Open() { return BeginOrders(Instance, One, Queue, Instance.Now()); }
 		Refusal Mean(const PlayerCommand& C) { return Submit(Instance, One, Queue, OrderRules{}, C); }
@@ -1491,7 +1493,7 @@ VAELEN_TEST(PlayerGate, ALifetimeAt256HoldsEveryInvariantAndFreezes)
 				DaysLived += W.Hours_().Days;
 				ActsTaken += W.Acts().Taken;
 				ActsRefused += W.Acts().Refused;
-				ReleasePlayer(W.Instance, W.One, &W.Persons, &W.Lod);
+				ReleasePlayer(W.Instance, W.One, &W.Persons);
 				EndOrders(W.Instance, W.Queue);
 				EndStart(W.Instance, W.First);
 				EndHours(W.Instance, W.Clock);
@@ -1599,7 +1601,7 @@ VAELEN_TEST(PlayerGate, ALifetimeAt256HoldsEveryInvariantAndFreezes)
 		{
 			if (Took > 0)
 			{
-				ReleasePlayer(In.Instance, In.One, &In.Persons, &In.Lod);
+				ReleasePlayer(In.Instance, In.One, &In.Persons);
 				EndOrders(In.Instance, In.Queue);
 				EndStart(In.Instance, In.First);
 				EndHours(In.Instance, In.Clock);

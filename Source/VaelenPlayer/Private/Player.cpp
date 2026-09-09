@@ -47,12 +47,13 @@ namespace Vaelen::Player
 	{
 		PlayerTypes T;
 		T.Mark = W.Types().Register<PlayerMark>("PlayerMark");
+		T.Held = Population::DeclareHold(W); // the hold of 04.06, declared by its only user
 		W.Components().CreatePool(T.Mark);
 		return T;
 	}
 
 	bool TakePlayer(World& W, const Population::PersonTypes& Persons, const PlayerTypes& Player, uint32 Person,
-					SimTick Now, const Population::LodTypes* Lod)
+					SimTick Now)
 	{
 		if (PlayerPerson(W, Player) != 0)
 		{
@@ -68,18 +69,14 @@ namespace Vaelen::Player
 		Fresh.Since = Now;
 		Fresh.Identity = Noise::LatticeHash(W.Config().Seed ^ PlayerSalt, static_cast<int32>(Person), 0);
 		W.Components().GetPool(Player.Mark).Add(H, Fresh);
-		if (Lod != nullptr)
-		{
-			// And hold them where they are: the crossings of 04.06 would
-			// otherwise send them to a neighbour as a count, which ends a
-			// played life without anybody dying.
-			Population::HoldPerson(W, Persons, *Lod, Person, Person);
-		}
+		// And hold them where they are: the crossings of 04.06 would otherwise
+		// send them to a neighbour as a count, which ends a played life without
+		// anybody dying.
+		Population::HoldPerson(W, Persons, Player.Held, Person, Person);
 		return true;
 	}
 
-	bool ReleasePlayer(World& W, const PlayerTypes& Player, const Population::PersonTypes* Persons,
-					   const Population::LodTypes* Lod)
+	bool ReleasePlayer(World& W, const PlayerTypes& Player, const Population::PersonTypes* Persons)
 	{
 		const uint32 Was = PlayerPerson(W, Player);
 		std::vector<EntityHandle> Marked;
@@ -88,9 +85,9 @@ namespace Vaelen::Player
 		{
 			W.Components().GetPool(Player.Mark).Remove(H);
 		}
-		if (Was != 0 && Persons != nullptr && Lod != nullptr)
+		if (Was != 0 && Persons != nullptr)
 		{
-			Population::FreePerson(W, *Persons, *Lod, Was); // the world may have them back
+			Population::FreePerson(W, *Persons, Player.Held, Was); // the world may have them back
 		}
 		return !Marked.empty();
 	}

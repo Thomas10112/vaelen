@@ -26,3 +26,9 @@ set_tests_properties(${VAELEN_INFRASTRUCTURE_TEST_NAMES} PROPERTIES TIMEOUT 300)
 set_tests_properties(Infrastructure.Shuffled PROPERTIES TIMEOUT 5400)
 # Five centuries at 256 with every Phase 04 to 09 system running.
 set_tests_properties(Infrastructure.InfrastructureGate PROPERTIES TIMEOUT 5400)
+# Decay and WorksHistory grow a world for centuries before they measure anything,
+# which is about two minutes on the Linux debug preset and past the 300 s default
+# on a loaded Windows runner - both timed out there on the first full matrix run
+# Phase 10 was allowed to finish. The work is the same; the machine is slower.
+set_tests_properties(Infrastructure.Decay PROPERTIES TIMEOUT 1800)
+set_tests_properties(Infrastructure.WorksHistory PROPERTIES TIMEOUT 1800)

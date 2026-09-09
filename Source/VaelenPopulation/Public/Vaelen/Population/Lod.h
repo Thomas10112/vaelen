@@ -54,6 +54,13 @@ namespace Vaelen::Population
 	/// and a player who is emigrated stops being a person to play. Whoever has a
 	/// reason to hold somebody in the fine grain marks them, and the bridge
 	/// skips them. Nothing else in the project has such a reason yet.
+	///
+	/// It is an OBSERVED type and not one of LodTypes, which matters more than it
+	/// looks: registering a component type inside a lower module's Declare adds
+	/// it to the type registry of every world that declares that module, which
+	/// moves the state digest of every one of them. Doing it the other way round
+	/// broke the frozen digests of six closed phases at once, and the CI matrix
+	/// caught it. Whoever needs the hook declares it and hands it over.
 	struct PersonHeld
 	{
 		uint32 Why = 0; ///< free for the holder to say why; 0 is fine
@@ -64,7 +71,6 @@ namespace Vaelen::Population
 	struct LodTypes
 	{
 		ComponentType<LodState> State;
-		ComponentType<PersonHeld> Held;
 		static VAELEN_POPULATION_API LodTypes Declare(World& W);
 	};
 
@@ -106,14 +112,20 @@ namespace Vaelen::Population
 	VAELEN_POPULATION_API bool ReleaseDetail(World& W, const LodTypes& Types, uint32 Region);
 	VAELEN_POPULATION_API bool IsWanted(const World& W, const LodTypes& Types, uint32 Region);
 
+	/// Declares the hold type. Called by whoever holds people - the Player of
+	/// Phase 10 - and by nobody else, so that a world with no reason to hold
+	/// anybody has exactly the components it had before this existed.
+	VAELEN_POPULATION_API ComponentType<PersonHeld> DeclareHold(World& W);
 	/// Holds a living person in the fine grain: the crossings will not take
 	/// them. False for an unknown or dead person, or one already held.
-	VAELEN_POPULATION_API bool HoldPerson(World& W, const PersonTypes& Persons, const LodTypes& Types, uint32 Person,
-										  uint32 Why = 0);
+	VAELEN_POPULATION_API bool HoldPerson(World& W, const PersonTypes& Persons, ComponentType<PersonHeld> Held,
+										  uint32 Person, uint32 Why = 0);
 	/// Lets them go again. False when they were not held.
-	VAELEN_POPULATION_API bool FreePerson(World& W, const PersonTypes& Persons, const LodTypes& Types, uint32 Person);
+	VAELEN_POPULATION_API bool FreePerson(World& W, const PersonTypes& Persons, ComponentType<PersonHeld> Held,
+										  uint32 Person);
 	/// Whether the crossings will leave this person where they are.
-	VAELEN_POPULATION_API bool IsHeld(const World& W, const PersonTypes& Persons, const LodTypes& Types, uint32 Person);
+	VAELEN_POPULATION_API bool IsHeld(const World& W, const PersonTypes& Persons, ComponentType<PersonHeld> Held,
+									  uint32 Person);
 
 	/// Moves one living person from the detailed region they are in to another
 	/// detailed region and reconciles the coarse counts of both, so that the two
@@ -140,6 +152,14 @@ namespace Vaelen::Population
 		const char* GetName() const noexcept override { return "Lod"; }
 		SimLod GetLod() const noexcept override { return SimLod::World; }
 		std::vector<std::string_view> GetDependencies() const override { return {"Lives"}; }
+		/// Optional: people the crossings must leave where they are (Phase 10).
+		/// Without it the bridge behaves exactly as it did before the hold
+		/// existed, which is what keeps six closed phases frozen.
+		void ObserveHeld(ComponentType<PersonHeld> InHeld) noexcept
+		{
+			Held = InHeld;
+			HasHeld = true;
+		}
 		void Tick(TickContext& Context) override;
 
 	private:
@@ -148,6 +168,8 @@ namespace Vaelen::Population
 		PersonTypes Persons;
 		LodTypes Lod;
 		LodRules Rules;
+		ComponentType<PersonHeld> Held;
+		bool HasHeld = false;
 		WorldGen::RegionGraphCache Roads; ///< derived, rebuilt when the map it came from is replaced
 	};
 
