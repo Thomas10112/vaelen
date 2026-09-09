@@ -12,67 +12,43 @@ refresh").
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 09 — INFRASTRUCTURE — CLOSED
-TASK        : 09.08 — THE PHASE GATE
-STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
+PHASE       : 10 — PLAYER — IN PROGRESS
+TASK        : 10.01 — THE PLAYER IS SOMEBODY THE WORLD ALREADY HAD
+STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
-█████████████████████████ 94%
+█████████████████████████ 95%
 
 CURRENTLY
-→ Phase 09 closed. Five centuries at 256 with every Phase 04 to 09 system running, the two most
-  peopled regions simulated person by person, every invariant of all six Phase 09 measures checked
-  each decade along with the Phase 07 and 08 ones under them, a snapshot of year 250 reloaded and
-  replayed to exactly the same year 500, and four frozen digests.
+→ Nine phases have built a world of people who are born, eat, work, are bound and freed, marry, hold
+  office, march and die. The player is ONE OF THEM: a component on an existing person of a detailed
+  region, with no position of its own, no needs of its own and no rules of its own.
 
-  The gate passed on its first run, which after Phase 08 is a claim that needs saying out loud rather
-  than enjoying quietly. Three habits came out of ADR-0073 and were applied from 09.01: every
-  cross-layer effect is one number an earlier phase already reads and is exactly one where nothing is
-  built; every derived number is recomputed from what stands rather than added to; every measure
-  recomputes what it checks and counts disagreement as Bad. Seven hooks were added to five systems
-  across Phases 04, 06, 07 and 08 and not one frozen digest of those phases moved.
+  The obvious shape - a Player entity with its own everything - is the one that quietly ends the
+  project, because a player that is not a person is a second simulation running beside the first and
+  every system after this has to be written twice.
 
-  And the gate settled the one thing no task suite could: 09.05's war wear, disclosed in that commit
-  as wired-but-unproven. Region 26's granary, in the year a foreign host stood on it: 1000 to 1000
-  with the host worth nothing, 1000 to 550 with it worth six hundred per mille.
-
-WHAT PHASE 09 IS
-→ 06.04 gave the world routes as artefacts of trade and 05.05 gave councils a granary as a number on
-  a region. Phase 09 does not replace either. A building is a thing standing in a region, raised out
-  of what the region holds in common and the hands its fields can spare, never a number the
-  simulation reads instead of the world. It does one thing, and that thing is the single number an
-  earlier phase already reads: the granary softens the drought of 04.04, the mill and the smithy lift
-  the harvest and the craft of 06.02, the wall slows what the siege of 08.04 brings down, the road
-  lets more of the trade of 06.04 across and carries the word of 07.03 and the host of 08.02 further.
-  Settlements got a body on one tile of the map. Everything wears, and what is not kept falls and
-  stays on the ground as a ruin the next century builds back on. And a chronicle keeps the small part
-  of all that a century would remember.
+  The mark does nothing at all in 10.01. It does not tick, publish or read anything. That is not an
+  unfinished task; it is the foundation, and it is tested before anything is built on it: two worlds
+  of one seed, one with a player marked and one without, run fifty years to the same state digest -
+  2550e13a5efc68c6 both. Everything the player will do in 10.04 and 10.05 therefore has to go through
+  a system that already owns that part of the world, because the mark carries no state to change.
+  That is the constraint that makes a played life replayable from a recorded command stream.
 
 COMPLETED
-✓ Phases 00-07 (headless, Phase 07 closed) · Phase 08 MILITARY closed
-✓ 09.01 buildings · 09.02 what a building does · 09.03 settlements as places · 09.04 roads
-✓ 09.05 decay and ruins · 09.06 logistics · 09.07 the chronicle · 09.08 the gate — Phase 09 CLOSED
+✓ Phases 00-08 closed · Phase 09 INFRASTRUCTURE closed (six presets, 109 CTest entries, all gates)
+✓ Phase 10 broken down into 10.01-10.08 (roadmap section 14)
+✓ 10.01 the player as a mark — PlayerMark, TakePlayer, ReleasePlayer, MeasurePlayer, 4 tests
 
 NEXT
-→ Phase 10 breakdown, then 10.01
+→ 10.02 — the enslaved start: bound by 05.04, on the ground of the mining colony, with the standing
+  05.02 gives someone in that condition and the family 04.03 gives them
 
-TESTS (the phase-closing run)
-✓ AELVOR 256, five centuries in 506 s with assertions on:
-  250=8b4cb819fd43509d 500=eaa38e2280e675df log=d092f23ea58a33d6 text=ee1a4c61f999a397
-✓ The snapshot of year 250 reloaded and replayed reaches exactly the same year 500
-✓ 200 works raised, 389 enlarged, 112 fallen, 10 raised back on their own ruins, 67 towns standing,
-  210 roads cut and 165 lost, 23 regions served, 5537 chronicle records
-✓ The world builds up and wears down to an equilibrium: 89 works standing at year 100 and 88 at year
-  500, with the ruins growing from 15 to 112 underneath; roads peak at 51 around year 200 and fall
-  to 18 by year 500
-
-EXIT CRITERIA (roadmap section 2)
-✓ 1. Six Linux presets green with every gate; Windows MSVC and macOS run in CI
-✓ 2. Determinism tests for every system of the phase: same seed, snapshot round trip, frozen values
-✓ 3. No file of the phase carries PROTOTYPE or INCOMPLETE; the engine-facing files stay UNVERIFIED
-✓ 4. Unit, integration, deterministic, edge, text and long-duration tests for every system, and the
-     one gap 09.05 disclosed is now closed by the gate
-✓ 5. ARCHITECTURE, CONVENTIONS, DECISIONS and ROADMAP updated; ADR-0074 to ADR-0081
+TESTS
+✓ VaelenPlayerTests 4 run, 4 passed
+✓ A world carrying a player and one that is not run fifty years to the same digest
+✓ One player to a world; only a living person of a region simulated person by person
+✓ The mark survives a save and a load and still points at the same person
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)
@@ -261,6 +237,21 @@ Phase 07 against the exit criteria (`Docs/ROADMAP.md` section 2): (1) CI matrix 
 | 09.06 | Logistics: one number on the ground from the best road touching it, read by the marching of 08.02 and the reach of 07.03 | PROTOTYPE: Logistics 5 tests |
 | 09.07 | Infrastructure in the chronicle: a granary raised, a mill fallen in, a road cut, a town settled, and the why of a fall walked back to the flood | PROTOTYPE: WorksHistory 5 tests |
 | 09.08 | Phase 09 gate: five centuries at 256 with every Phase 04 to 09 system, every invariant each decade, a snapshot replayed, four frozen digests | VALIDATED: InfrastructureGate 2 tests |
+
+Phase 09 against the exit criteria (`Docs/ROADMAP.md` section 2): (1) six Linux presets green with every gate, 109 CTest entries each and 0 warnings; (2) determinism tests for every system, frozen digests per task and for the gate at 250 and 500 years with the log and the text; (3) no PROTOTYPE or INCOMPLETE file in the module, the two engine-facing files UNVERIFIED; (4) unit, integration, deterministic, edge, text and long-duration categories present, and the one gap 09.05 disclosed closed by the gate; (5) ADR-0074 to ADR-0081, docs updated. Verdict: **Phase 09 VALIDATED on the headless side, UNVERIFIED on the engine side until the next UE 5.6 build.**
+
+## Phase 10 task breakdown (canonical numbering: `Docs/ROADMAP.md` section 14)
+
+| Task | Content | Status |
+|---|---|---|
+| 10.01 | `VaelenPlayer` module; the player as a mark on an existing person of a detailed region, carrying no state of its own | PROTOTYPE: Player 4 tests |
+| 10.02 | The enslaved start | PLANNED |
+| 10.03 | The player's grain | PLANNED |
+| 10.04 | Intent as commands | PLANNED |
+| 10.05 | What the player can do | PLANNED |
+| 10.06 | What the people around them make of them | PLANNED |
+| 10.07 | The player in the chronicle | PLANNED |
+| 10.08 | Phase 10 gate | PLANNED |
 
 ## File status
 
@@ -479,8 +470,9 @@ the purity checker, applied to headers and sources).
 | `Infrastructure/Test_Logistics.cpp` (Phase 09) | VALIDATED | 5 |
 | `Infrastructure/Test_WorksHistory.cpp` (Phase 09) | VALIDATED | 5 |
 | `Infrastructure/Test_InfrastructureGate.cpp` (Phase 09) | VALIDATED | 2 |
+| `Player/Test_Player.cpp` (Phase 10) | PROTOTYPE | 4 |
 
-Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 6, Deposits 5, WorldPipeline 4, History 3, Population 5, Naming 5, Religion 5, Disasters 5, PreHistory 5, HistoryText 5, HistoryGate 2 (161 tests; 158 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.History`, `Sim.Population`, `Sim.Naming`, `Sim.Religion`, `Sim.Disasters`, `Sim.PreHistory`, `Sim.HistoryText`, `Sim.HistoryGate`, `Sim.Registry`, `Sim.Shuffled` (42 entries in total). Population suites: Persons 6, Lives 5, Families 5, Needs 6, Traits 5, Lod 5, PersonHistory 5, PopulationGate 1 (38 tests; 38 without assertions); CTest entries `Population.Persons`, `Population.Lives`, `Population.Families`, `Population.Needs`, `Population.Traits`, `Population.Lod`, `Population.PersonHistory`, `Population.PopulationGate`, `Population.Registry`, `Population.Shuffled` (10 entries). Society suites: Organizations 5, Standing 4, Norms 4, Bondage 4, Decisions 4, Strata 3, SocietyHistory 3, SocietyGate 1 (28 tests; 28 without assertions); CTest entries `Society.Organizations`, `Society.Standing`, `Society.Norms`, `Society.Bondage`, `Society.Decisions`, `Society.Strata`, `Society.SocietyHistory`, `Society.SocietyGate`, `Society.Registry`, `Society.Shuffled` (10 entries). Economy suites: Stocks 4, Production 4, Markets 4, Trade 4, Wealth 5, Grains 2, EconomyHistory 3, EconomyGate 1 (27 tests; 27 without assertions); CTest entries `Economy.Stocks`, `Economy.Production`, `Economy.Markets`, `Economy.Trade`, `Economy.Wealth`, `Economy.Grains`, `Economy.EconomyHistory`, `Economy.EconomyGate`, `Economy.Registry`, `Economy.Shuffled` (10 entries). Politics suites: Polities 4, Law 4, Reach 5, Succession 4, Factions 4, Diplomacy 4, PoliticsHistory 3, PoliticsGate 1 (29 tests; 29 without assertions); CTest entries `Politics.Diplomacy`, `Politics.Factions`, `Politics.Law`, `Politics.Polities`, `Politics.PoliticsGate`, `Politics.PoliticsHistory`, `Politics.Reach`, `Politics.Succession`, `Politics.Registry`, `Politics.Shuffled` (10 entries). Military suites: Armies 4, Battle 4, March 4, MilitaryGate 1, MilitaryHistory 4, Siege 4, Toll 4, War 4 (29 tests; 29 without assertions); CTest entries `Military.Armies`, `Military.Battle`, `Military.March`, `Military.MilitaryGate`, `Military.MilitaryHistory`, `Military.Siege`, `Military.Toll`, `Military.War`, `Military.Registry`, `Military.Shuffled` (10 entries). Infrastructure suites: Buildings 4, Works 5, Places 4, Roads 5, Decay 5, Logistics 5, WorksHistory 5, InfrastructureGate 2 (35 tests; 35 without assertions); CTest entries `Infrastructure.Buildings`, `Infrastructure.Works`, `Infrastructure.Places`, `Infrastructure.Roads`, `Infrastructure.Decay`, `Infrastructure.Logistics`, `Infrastructure.WorksHistory`, `Infrastructure.InfrastructureGate`, `Infrastructure.Registry`, `Infrastructure.Shuffled` (10 entries).
+Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 6, Deposits 5, WorldPipeline 4, History 3, Population 5, Naming 5, Religion 5, Disasters 5, PreHistory 5, HistoryText 5, HistoryGate 2 (161 tests; 158 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.History`, `Sim.Population`, `Sim.Naming`, `Sim.Religion`, `Sim.Disasters`, `Sim.PreHistory`, `Sim.HistoryText`, `Sim.HistoryGate`, `Sim.Registry`, `Sim.Shuffled` (42 entries in total). Population suites: Persons 6, Lives 5, Families 5, Needs 6, Traits 5, Lod 5, PersonHistory 5, PopulationGate 1 (38 tests; 38 without assertions); CTest entries `Population.Persons`, `Population.Lives`, `Population.Families`, `Population.Needs`, `Population.Traits`, `Population.Lod`, `Population.PersonHistory`, `Population.PopulationGate`, `Population.Registry`, `Population.Shuffled` (10 entries). Society suites: Organizations 5, Standing 4, Norms 4, Bondage 4, Decisions 4, Strata 3, SocietyHistory 3, SocietyGate 1 (28 tests; 28 without assertions); CTest entries `Society.Organizations`, `Society.Standing`, `Society.Norms`, `Society.Bondage`, `Society.Decisions`, `Society.Strata`, `Society.SocietyHistory`, `Society.SocietyGate`, `Society.Registry`, `Society.Shuffled` (10 entries). Economy suites: Stocks 4, Production 4, Markets 4, Trade 4, Wealth 5, Grains 2, EconomyHistory 3, EconomyGate 1 (27 tests; 27 without assertions); CTest entries `Economy.Stocks`, `Economy.Production`, `Economy.Markets`, `Economy.Trade`, `Economy.Wealth`, `Economy.Grains`, `Economy.EconomyHistory`, `Economy.EconomyGate`, `Economy.Registry`, `Economy.Shuffled` (10 entries). Politics suites: Polities 4, Law 4, Reach 5, Succession 4, Factions 4, Diplomacy 4, PoliticsHistory 3, PoliticsGate 1 (29 tests; 29 without assertions); CTest entries `Politics.Diplomacy`, `Politics.Factions`, `Politics.Law`, `Politics.Polities`, `Politics.PoliticsGate`, `Politics.PoliticsHistory`, `Politics.Reach`, `Politics.Succession`, `Politics.Registry`, `Politics.Shuffled` (10 entries). Military suites: Armies 4, Battle 4, March 4, MilitaryGate 1, MilitaryHistory 4, Siege 4, Toll 4, War 4 (29 tests; 29 without assertions); CTest entries `Military.Armies`, `Military.Battle`, `Military.March`, `Military.MilitaryGate`, `Military.MilitaryHistory`, `Military.Siege`, `Military.Toll`, `Military.War`, `Military.Registry`, `Military.Shuffled` (10 entries). Infrastructure suites: Buildings 4, Works 5, Places 4, Roads 5, Decay 5, Logistics 5, WorksHistory 5, InfrastructureGate 2 (35 tests; 35 without assertions); CTest entries `Infrastructure.Buildings`, `Infrastructure.Works`, `Infrastructure.Places`, `Infrastructure.Roads`, `Infrastructure.Decay`, `Infrastructure.Logistics`, `Infrastructure.WorksHistory`, `Infrastructure.InfrastructureGate`, `Infrastructure.Registry`, `Infrastructure.Shuffled` (10 entries). Player suites: Player 4 (4 tests; 4 without assertions); CTest entries `Player.Player`, `Player.Registry`, `Player.Shuffled` (3 entries).
 
 ### Tools/ and CI
 
@@ -505,6 +497,15 @@ Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, Lo
 | `Public/Vaelen/Infrastructure/Logistics.h`, `Private/Logistics.cpp` | VALIDATED (Phase 09) — covered by `Tests/Infrastructure/Test_Logistics.cpp` |
 | `Public/Vaelen/Infrastructure/InfrastructureHistory.h`, `Private/InfrastructureHistory.cpp` | VALIDATED (Phase 09) — covered by `Tests/Infrastructure/Test_WorksHistory.cpp` |
 | The whole module together | VALIDATED (Phase 09) — covered by `Tests/Infrastructure/Test_InfrastructureGate.cpp` |
+
+### `Source/VaelenPlayer` (Phase 10)
+
+| File | Status |
+|---|---|
+| `VaelenPlayer.Build.cs`, `Private/VaelenPlayerModule.cpp` | UNVERIFIED — engine-side, not compiled headless, and newer than the first Unreal build |
+| `CMakeLists.txt` | PROTOTYPE (Phase 10) |
+| `Public/Vaelen/Player/PlayerApi.h` | PROTOTYPE (Phase 10) |
+| `Public/Vaelen/Player/Player.h`, `Private/Player.cpp` | PROTOTYPE (Phase 10) — covered by `Tests/Player/Test_Player.cpp` |
 
 ## Verified here
 

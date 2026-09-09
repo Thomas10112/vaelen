@@ -16,3 +16,4 @@ VaelenEconomy
 VaelenPolitics
 VaelenMilitary
 VaelenInfrastructure
+VaelenPlayer

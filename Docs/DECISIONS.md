@@ -4897,3 +4897,44 @@ first time it has been seen over five centuries.
 
 A gate that passes first time is not a reason to trust the next one less. Phase
 10 gets the same gate.
+
+
+## ADR-0082: The player is a mark on somebody the world already had
+
+### Context
+
+Nine phases have built a world of people who are born, eat, work, are bound and
+freed, marry, hold office, march and die. Phase 10 has to put a player in it,
+and the obvious shape - a Player entity with its own position, its own needs and
+its own rules - is the one that quietly ends the project. A player that is not a
+person is a second simulation running beside the first, and every system after
+this one has to be written twice.
+
+### Decision
+
+1. **The player is a component on an existing person entity**, and nothing else.
+   No position of its own, no needs of its own, no rules of its own. The person
+   was already being simulated by 04.01 through 09.06 and goes on being.
+2. **The mark does nothing at all in 10.01.** It does not tick, publish, or read
+   anything. That is not an unfinished task; it is the foundation the rest of
+   the phase is built on, and it is tested before anything is built on it: a
+   world with a player in it and the same world without one run to the same state
+   digest for fifty years. Two worlds of one seed, one marked and one not:
+   2550e13a5efc68c6 both.
+3. **One player to a world.** Taking a second is refused rather than leaving the
+   first behind with no way to say which was meant.
+4. **Only a living person of a detailed region.** A coarse region has no persons
+   to be, only a count of them - so `TakePlayer` on somebody there fails, and
+   there is nothing to be confused about later.
+
+### Consequences
+
+Everything the player will do in 10.04 and 10.05 has to go through a system that
+already owns that part of the world, because there is no other way in: the mark
+carries no state to change. That is the constraint that makes a played life
+replayable from a recorded command stream, which is what 10.08 will test and
+what this project is for.
+
+The rule to hold to as the phase goes on: if a command cannot be expressed as
+something a person in that world could do, applied by the system that already
+owns it, it does not belong in Phase 10.

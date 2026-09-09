@@ -2392,67 +2392,43 @@ presentation work, as every engine-facing file in the project has since Phase 00
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 09 — INFRASTRUCTURE — CLOSED
-TASK        : 09.08 — THE PHASE GATE
-STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
+PHASE       : 10 — PLAYER — IN PROGRESS
+TASK        : 10.01 — THE PLAYER IS SOMEBODY THE WORLD ALREADY HAD
+STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
-█████████████████████████ 94%
+█████████████████████████ 95%
 
 CURRENTLY
-→ Phase 09 closed. Five centuries at 256 with every Phase 04 to 09 system running, the two most
-  peopled regions simulated person by person, every invariant of all six Phase 09 measures checked
-  each decade along with the Phase 07 and 08 ones under them, a snapshot of year 250 reloaded and
-  replayed to exactly the same year 500, and four frozen digests.
+→ Nine phases have built a world of people who are born, eat, work, are bound and freed, marry, hold
+  office, march and die. The player is ONE OF THEM: a component on an existing person of a detailed
+  region, with no position of its own, no needs of its own and no rules of its own.
 
-  The gate passed on its first run, which after Phase 08 is a claim that needs saying out loud rather
-  than enjoying quietly. Three habits came out of ADR-0073 and were applied from 09.01: every
-  cross-layer effect is one number an earlier phase already reads and is exactly one where nothing is
-  built; every derived number is recomputed from what stands rather than added to; every measure
-  recomputes what it checks and counts disagreement as Bad. Seven hooks were added to five systems
-  across Phases 04, 06, 07 and 08 and not one frozen digest of those phases moved.
+  The obvious shape - a Player entity with its own everything - is the one that quietly ends the
+  project, because a player that is not a person is a second simulation running beside the first and
+  every system after this has to be written twice.
 
-  And the gate settled the one thing no task suite could: 09.05's war wear, disclosed in that commit
-  as wired-but-unproven. Region 26's granary, in the year a foreign host stood on it: 1000 to 1000
-  with the host worth nothing, 1000 to 550 with it worth six hundred per mille.
-
-WHAT PHASE 09 IS
-→ 06.04 gave the world routes as artefacts of trade and 05.05 gave councils a granary as a number on
-  a region. Phase 09 does not replace either. A building is a thing standing in a region, raised out
-  of what the region holds in common and the hands its fields can spare, never a number the
-  simulation reads instead of the world. It does one thing, and that thing is the single number an
-  earlier phase already reads: the granary softens the drought of 04.04, the mill and the smithy lift
-  the harvest and the craft of 06.02, the wall slows what the siege of 08.04 brings down, the road
-  lets more of the trade of 06.04 across and carries the word of 07.03 and the host of 08.02 further.
-  Settlements got a body on one tile of the map. Everything wears, and what is not kept falls and
-  stays on the ground as a ruin the next century builds back on. And a chronicle keeps the small part
-  of all that a century would remember.
+  The mark does nothing at all in 10.01. It does not tick, publish or read anything. That is not an
+  unfinished task; it is the foundation, and it is tested before anything is built on it: two worlds
+  of one seed, one with a player marked and one without, run fifty years to the same state digest -
+  2550e13a5efc68c6 both. Everything the player will do in 10.04 and 10.05 therefore has to go through
+  a system that already owns that part of the world, because the mark carries no state to change.
+  That is the constraint that makes a played life replayable from a recorded command stream.
 
 COMPLETED
-✓ Phases 00-07 (headless, Phase 07 closed) · Phase 08 MILITARY closed
-✓ 09.01 buildings · 09.02 what a building does · 09.03 settlements as places · 09.04 roads
-✓ 09.05 decay and ruins · 09.06 logistics · 09.07 the chronicle · 09.08 the gate — Phase 09 CLOSED
+✓ Phases 00-08 closed · Phase 09 INFRASTRUCTURE closed (six presets, 109 CTest entries, all gates)
+✓ Phase 10 broken down into 10.01-10.08 (roadmap section 14)
+✓ 10.01 the player as a mark — PlayerMark, TakePlayer, ReleasePlayer, MeasurePlayer, 4 tests
 
 NEXT
-→ Phase 10 breakdown, then 10.01
+→ 10.02 — the enslaved start: bound by 05.04, on the ground of the mining colony, with the standing
+  05.02 gives someone in that condition and the family 04.03 gives them
 
-TESTS (the phase-closing run)
-✓ AELVOR 256, five centuries in 506 s with assertions on:
-  250=8b4cb819fd43509d 500=eaa38e2280e675df log=d092f23ea58a33d6 text=ee1a4c61f999a397
-✓ The snapshot of year 250 reloaded and replayed reaches exactly the same year 500
-✓ 200 works raised, 389 enlarged, 112 fallen, 10 raised back on their own ruins, 67 towns standing,
-  210 roads cut and 165 lost, 23 regions served, 5537 chronicle records
-✓ The world builds up and wears down to an equilibrium: 89 works standing at year 100 and 88 at year
-  500, with the ruins growing from 15 to 112 underneath; roads peak at 51 around year 200 and fall
-  to 18 by year 500
-
-EXIT CRITERIA (roadmap section 2)
-✓ 1. Six Linux presets green with every gate; Windows MSVC and macOS run in CI
-✓ 2. Determinism tests for every system of the phase: same seed, snapshot round trip, frozen values
-✓ 3. No file of the phase carries PROTOTYPE or INCOMPLETE; the engine-facing files stay UNVERIFIED
-✓ 4. Unit, integration, deterministic, edge, text and long-duration tests for every system, and the
-     one gap 09.05 disclosed is now closed by the gate
-✓ 5. ARCHITECTURE, CONVENTIONS, DECISIONS and ROADMAP updated; ADR-0074 to ADR-0081
+TESTS
+✓ VaelenPlayerTests 4 run, 4 passed
+✓ A world carrying a player and one that is not run fifty years to the same digest
+✓ One player to a world; only a living person of a region simulated person by person
+✓ The mark survives a save and a load and still points at the same person
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)
