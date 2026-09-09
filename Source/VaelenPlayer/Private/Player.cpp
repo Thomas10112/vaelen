@@ -76,18 +76,22 @@ namespace Vaelen::Player
 		return true;
 	}
 
-	bool ReleasePlayer(World& W, const PlayerTypes& Player, const Population::PersonTypes* Persons)
+	bool ReleasePlayer(World& W, const PlayerTypes& Player)
 	{
-		const uint32 Was = PlayerPerson(W, Player);
 		std::vector<EntityHandle> Marked;
 		W.Components().GetPool(Player.Mark).ForEach([&](EntityHandle H, const PlayerMark&) { Marked.push_back(H); });
 		for (const EntityHandle H : Marked)
 		{
+			// Everything TakePlayer did, undone: the mark, and the hold that
+			// sits on the same entity. A release that left the hold behind
+			// would leave a component the world did not have before anybody was
+			// played, which is precisely what 10.01 promises it does not - and
+			// what the macOS leg of the matrix caught when it was left behind.
 			W.Components().GetPool(Player.Mark).Remove(H);
-		}
-		if (Was != 0 && Persons != nullptr)
-		{
-			Population::FreePerson(W, *Persons, Player.Held, Was); // the world may have them back
+			if (W.Components().GetPool(Player.Held).TryGet(H) != nullptr)
+			{
+				W.Components().GetPool(Player.Held).Remove(H);
+			}
 		}
 		return !Marked.empty();
 	}

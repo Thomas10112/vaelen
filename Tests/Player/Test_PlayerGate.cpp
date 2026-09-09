@@ -1499,7 +1499,7 @@ VAELEN_TEST(PlayerGate, ALifetimeAt256HoldsEveryInvariantAndFreezes)
 				DaysLived += W.Hours_().Days;
 				ActsTaken += W.Acts().Taken;
 				ActsRefused += W.Acts().Refused;
-				ReleasePlayer(W.Instance, W.One, &W.Persons);
+				ReleasePlayer(W.Instance, W.One);
 				EndOrders(W.Instance, W.Queue);
 				EndStart(W.Instance, W.First);
 				EndHours(W.Instance, W.Clock);
@@ -1607,7 +1607,7 @@ VAELEN_TEST(PlayerGate, ALifetimeAt256HoldsEveryInvariantAndFreezes)
 		{
 			if (Took > 0)
 			{
-				ReleasePlayer(In.Instance, In.One, &In.Persons);
+				ReleasePlayer(In.Instance, In.One);
 				EndOrders(In.Instance, In.Queue);
 				EndStart(In.Instance, In.First);
 				EndHours(In.Instance, In.Clock);

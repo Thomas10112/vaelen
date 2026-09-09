@@ -71,9 +71,10 @@ namespace Vaelen::Player
 	/// when it was told to observe it (LodSystem::ObserveHeld).
 	VAELEN_PLAYER_API bool TakePlayer(World& W, const Population::PersonTypes& Persons, const PlayerTypes& Player,
 									  uint32 Person, SimTick Now);
-	/// Removes the mark, and the hold with it. The world runs on exactly as it did.
-	VAELEN_PLAYER_API bool ReleasePlayer(World& W, const PlayerTypes& Player,
-										 const Population::PersonTypes* Persons = nullptr);
+	/// Removes the mark, and the hold with it - everything TakePlayer did, so a
+	/// world that has released its player holds exactly the components it held
+	/// before anybody was played. That is 10.01's promise and a test of it.
+	VAELEN_PLAYER_API bool ReleasePlayer(World& W, const PlayerTypes& Player);
 	/// The person index being played, 0 when nobody is.
 	VAELEN_PLAYER_API uint32 PlayerPerson(const World& W, const PlayerTypes& Player);
 	/// The mark itself (nullptr when nobody is played).
