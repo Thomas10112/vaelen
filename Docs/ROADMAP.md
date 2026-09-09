@@ -2620,6 +2620,17 @@ BLOCKERS
 
 ## 18. Verification record
 
+**Two presets are not enough, and CI run 118 proved it.** Every task since Phase
+10 has been verified against one debug preset and one clang preset, for speed.
+That pair cannot see a whole class of defect: `-Wformat-truncation` and the rest
+of gcc's optimiser-driven warnings only fire with `-O2` ON and only under gcc, so
+`linux-gcc-release` and `linux-gcc-noasserts` are the two legs that catch them.
+12.04 shipped a 64-byte buffer that `NameDocument` could overrun by twelve bytes,
+and both of my presets called it green. **A task is verified against
+`linux-gcc-debug`, a clang preset AND `linux-gcc-release` from here on** - the
+third build is a couple of minutes and it is the one that reads the code the way
+the compiler will in a release.
+
 Commands run on 2026-09-05 (clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.15, clang-format 18.1.3, Linux x86_64) with the checked-in presets, each into
 `out/build/<preset>`:
 
