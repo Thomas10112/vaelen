@@ -2393,46 +2393,44 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 10 — PLAYER — IN PROGRESS
-TASK        : 10.02 — THE ENSLAVED START
+TASK        : 10.03 — THE PLAYER'S GRAIN
 STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
-█████████████████████████ 95%
+█████████████████████████ 96%
 
 CURRENTLY
-→ The player begins bound. The obvious way to arrange that - pick a person, set their bond to
-  Enslaved, begin - takes four lines and breaks ADR-0082 completely: it writes state into the world
-  from outside the simulation, and a world that can be written to from outside cannot be replayed.
+→ Every system built in nine phases runs at SimLod::World: once every 8640 ticks, which the calendar
+  of 01.04 calls a year. That is right for a harvest, a levy and a polity, and it is useless to
+  somebody living a life. A person eats today, works today and sleeps tonight.
 
-  So the start LOOKS FOR a life the world already made, and the search is allowed to come back
-  empty. 05.04 binds people every year - for debt, at birth, by capture, by being on the wrong side
-  of a promotion - and 10.02 takes one of them. A world configured never to bind anybody offers
-  nobody, and the start says so instead of manufacturing a life.
+  The scheduler has had the finer grains since 01.03 and nothing had used them: Period[] is
+  {1, 4, 24, 720, 8640}, so the tick IS the hour and SimLod::Aggregate is the day. PlayerDaySystem is
+  the first thing in the project to run at one of them, and it runs for exactly one person - with
+  nobody played it returns immediately and costs a pointer chase.
 
-  The ore ground turned out to be a preference and not a requirement, and the record is honest about
-  which it got. At AELVOR 128 the two busiest regions - the only ones simulated person by person -
-  have no ore under them at all. A start that refused to happen over that would be a start that never
-  happens; Phase 11 will have to reconcile the colony with where the people actually are.
-
-  What the world handed over: person 3821 of region 26 - bonded, held by person 720, of family 767,
-  with the standing 05.02 had already given them, aged 40. Not a character sheet: a place in a world,
-  with a holder who exists and a family who exist.
+  What it does is grant time: a day gives waking hours, and 10.04's commands will spend them.
+  SpendHours is a budget and never an overdraft. What it must not do is change the world, and that is
+  testable exactly: a world with somebody played and a world without, both carrying the system, write
+  the SAME event log over twenty years - e4b3a487cb40e4af both, over 7200 days lived. The state
+  digests differ because the mark and the day ARE state; the history does not, because the day makes
+  none.
 
 COMPLETED
-✓ Phases 00-08 closed · Phase 09 INFRASTRUCTURE closed (six presets, 109 CTest entries, all gates)
-✓ 10.01 the player as a mark on somebody the world already had
-✓ 10.02 the enslaved start — PlayerStart, BeginEnslaved, StartOf, MeasureStart, 4 tests
+✓ Phases 00-08 closed · Phase 09 INFRASTRUCTURE closed
+✓ 10.01 the player as a mark · 10.02 the enslaved start
+✓ 10.03 the player's grain — PlayerHours, PlayerDaySystem, SpendHours, MeasureHours, 5 tests
 
 NEXT
-→ 10.03 — the player's grain: the person the player is runs at the finest LOD the scheduler has while
-  the world around them runs at the year; what that costs and what it must not change
+→ 10.04 — intent as commands: a queue the player submits to, validated against the world and applied
+  by a system INSIDE the simulation, so that a recorded command stream replays to the same life
 
 TESTS
-✓ VaelenPlayerTests 8 run, 8 passed
-✓ 288 bound people to choose from after sixty years of detail; the same world hands over the same
-  life twice, and it survives a save and a load
-✓ A world that binds nobody offers nobody, and writes nothing
-✓ The record of the first moment does not change as the life goes on
+✓ VaelenPlayerTests 13 run, 13 passed
+✓ The day turns 360 times a year while the world runs at the year: 720 days over two years
+✓ Twenty years, 7200 days lived, and the event log identical to the world with nobody in it
+✓ A day is a budget: asking for more than is left gives what is left, and the next day gives it back
+✓ Half a spent day survives a save and a load
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)

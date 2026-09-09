@@ -4983,3 +4983,50 @@ a place in a world, with a holder who exists and a family who exist.
 And the failure mode is a real one that a test asserts rather than a hypothetical
 one: a world configured never to bind anybody offers nobody, and the start says
 so instead of manufacturing a life.
+
+
+## ADR-0084: The first system in nine phases to want a grain finer than the year
+
+### Context
+
+Every system built so far runs at `SimLod::World`: once every 8640 ticks, which
+the calendar of 01.04 calls a year. That is right for a harvest, a levy and a
+polity, and it is useless to somebody living a life. A person eats today, works
+today and sleeps tonight.
+
+The scheduler has had the finer grains since 01.03 and nothing has used them:
+`Period[]` is `{1, 4, 24, 720, 8640}`, so the tick IS the hour and
+`SimLod::Aggregate` is the day. 10.03 is the first thing in the project to run
+at one of them.
+
+### Decision
+
+1. **It runs at the day, and for exactly one person.** `PlayerDaySystem` is
+   `SimLod::Aggregate`, so it fires 360 times a year against every other
+   system's once, and its first act is to look for the mark: with nobody played
+   it returns immediately and costs a pointer chase.
+2. **What it does is grant time, and nothing else.** A day gives the person
+   waking hours; 10.04's commands will spend them. `SpendHours` is a budget and
+   never an overdraft - asking for more than is left gives what is left.
+3. **It publishes nothing.** That is the claim that lets a person live an hour
+   at a time inside a world that runs at the year, and it is testable exactly:
+   a world with somebody played and a world without, both carrying the system,
+   write the SAME event log over twenty years - e4b3a487cb40e4af both, over 7200
+   days lived. The state digests differ, because the mark and the day are state;
+   the history does not, because the day makes none.
+4. **A day that cannot turn is counted, not skipped silently.** If the played
+   person dies or goes back to the coarse grain, `Missed` grows and the record
+   says how many days went by without them.
+
+### Consequences
+
+The cost is a system tick 360 times a year for one person, which is what a
+playable life costs and is the cheapest form of it: the world around them keeps
+its yearly grain, and only the played person pays for the finer one. Phase 11's
+mining colony will want the same treatment for a whole region, and this is the
+shape it will take.
+
+The rule to hold to: anything the fine grain writes must be the player's own
+record. The moment it writes something the world owns, the log digests diverge
+and the test in `Test_Hours.cpp` fails - which is the intended alarm, not an
+inconvenience.
