@@ -188,8 +188,12 @@ namespace Vaelen::Population
 				const bool Frail = Age < 5 || Age >= Rules.ElderFrom;
 				auto Extra = [&](uint32 Damage)
 				{ return Frail ? Damage + Damage * Rules.FrailExtraPerMille / 1000u : Damage; };
-				N.Food = Clamp255(static_cast<int32>(N.Food) + static_cast<int32>(Refill) -
-								  static_cast<int32>(Rules.FoodBurn));
+				// The colony of Phase 11 spends its food a day at a time, so the
+				// year does not take it again: the ration still arrives, the
+				// hunger below is still judged on what is left, and only the
+				// burn has already happened.
+				const uint32 Burn = Rules.DailyRegion != 0 && R.Info.Region == Rules.DailyRegion ? 0u : Rules.FoodBurn;
+				N.Food = Clamp255(static_cast<int32>(N.Food) + static_cast<int32>(Refill) - static_cast<int32>(Burn));
 				uint32 Cause = static_cast<uint32>(DeathCause::Natural);
 				PersistentId CauseEvent;
 				if (N.Food < Rules.HungerLine)
@@ -384,5 +388,52 @@ namespace Vaelen::Population
 		}
 		PersonNeeds* N = W.Components().GetPool(Needs.Needs).TryGet(H);
 		return N != nullptr ? LowerTo(N->Food, Amount) : 0u;
+	}
+
+	uint32 ShareOfDay(uint32 DayOfYear, uint32 DaysPerYear, uint32 Total) noexcept
+	{
+		if (DaysPerYear == 0)
+		{
+			return 0;
+		}
+		const uint32 Day = DayOfYear % DaysPerYear;
+		// The difference of two exact divisions: every day takes its share, the
+		// rounding never accumulates, and the year sums to Total exactly.
+		const uint64 Upto = uint64{Day + 1} * Total / DaysPerYear;
+		const uint64 Before = uint64{Day} * Total / DaysPerYear;
+		return static_cast<uint32>(Upto - Before);
+	}
+
+	void ColonyDaySystem::Tick(TickContext& Context)
+	{
+		World& W = *Owner;
+		if (Rules.Region == 0 || Rules.DaysPerYear == 0)
+		{
+			return; // no colony; the finer grain has nobody to run for
+		}
+		// SimLod::Aggregate is the day (01.03's Period[] is {1, 4, 24, 720, 8640}).
+		const uint64 Day = Context.Tick / 24u;
+		const uint32 Take =
+			ShareOfDay(static_cast<uint32>(Day % Rules.DaysPerYear), Rules.DaysPerYear, Rules.FoodPerYear);
+		if (Take == 0)
+		{
+			return;
+		}
+		W.Components()
+			.GetPool(Persons.Person)
+			.ForEach(
+				[&](EntityHandle H, const PersonInfo& P)
+				{
+					if (P.Region != Rules.Region || P.State != static_cast<uint8>(LifeState::Alive))
+					{
+						return;
+					}
+					PersonNeeds* N = W.Components().GetPool(Needs.Needs).TryGet(H);
+					if (N == nullptr)
+					{
+						return;
+					}
+					N->Food = static_cast<uint8>(N->Food > Take ? N->Food - Take : 0u);
+				});
 	}
 } // namespace Vaelen::Population

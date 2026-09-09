@@ -63,6 +63,16 @@ namespace Vaelen::Population
 		uint32 ElderFrom = 60;							 ///< elders and infants take an extra share of every blow
 		uint32 FrailExtraPerMille = 300;
 		uint32 FamineMemoryYears = 3; ///< hunger this long after a drought is still that drought's famine
+		/// A region whose people spend their food a day at a time (Phase 11).
+		/// The yearly pass still gives them the ration, still counts the hunger
+		/// and still buries the dead - it just does not take the year's food in
+		/// one step, because ColonyDaySystem already took it in three hundred
+		/// and sixty. 0 is nowhere, which is every world before Phase 11.
+		///
+		/// In the rules rather than in a component for the reason ADR-0090
+		/// gives: a component field joins the state digest of every world that
+		/// declares the module, and a rule joins nothing.
+		uint32 DailyRegion = 0;
 	};
 
 	/// Stores of a region, on the region entity: written by later modules, read
@@ -183,6 +193,48 @@ namespace Vaelen::Population
 	/// strength - a day of work does.
 	VAELEN_POPULATION_API uint32 TirePerson(World& W, const PersonTypes& Persons, const NeedTypes& Needs, uint32 Person,
 											uint32 Amount);
+	struct ColonyDayRules
+	{
+		uint32 Region = 0;		  ///< whose people live at the day; 0 = nowhere
+		uint32 DaysPerYear = 360; ///< the calendar of 01.04 at SimLod::Aggregate
+		uint32 FoodPerYear = 200; ///< spread across the days; keep it equal to NeedRules::FoodBurn
+	};
+
+	/// Daily, for the people of one region: what a day of living costs them.
+	///
+	/// 10.03 gave one person a day at a time. A colony wants it for everybody in
+	/// it, which is the same idea at a different scale and the whole claim of
+	/// Phase 11 - the same systems at a different setting.
+	///
+	/// It takes the year's food in three hundred and sixty steps whose total is
+	/// exactly the year's food, by an integer schedule off the day of the year
+	/// rather than a carry: PersonNeeds has no spare field to carry one in, and
+	/// a schedule needs no state at all. So a person of the colony grows hungry
+	/// through the year instead of all at once when the year turns, and a year
+	/// of it costs them exactly what the yearly pass would have taken.
+	class VAELEN_POPULATION_API ColonyDaySystem final : public ISystem
+	{
+	public:
+		ColonyDaySystem(World& InWorld, PersonTypes InPersons, NeedTypes InNeeds, ColonyDayRules InRules) noexcept
+			: Owner(&InWorld), Persons(InPersons), Needs(InNeeds), Rules(InRules)
+		{
+		}
+		const char* GetName() const noexcept override { return "ColonyDay"; }
+		SimLod GetLod() const noexcept override { return SimLod::Aggregate; }
+		std::vector<std::string_view> GetDependencies() const override { return {}; }
+		void Tick(TickContext& Context) override;
+
+	private:
+		World* Owner;
+		PersonTypes Persons;
+		NeedTypes Needs;
+		ColonyDayRules Rules;
+	};
+
+	/// What a day of the year takes, by the schedule above: the steps of a year
+	/// sum to Total exactly, whatever Total and DaysPerYear are.
+	VAELEN_POPULATION_API uint32 ShareOfDay(uint32 DayOfYear, uint32 DaysPerYear, uint32 Total) noexcept;
+
 	/// Takes Amount off a person's Food, floored at starving. Returns what was
 	/// taken. The counterpart of FeedPerson, for what a person spends between
 	/// the yearly rations of NeedSystem - which still owns hunger and famine.

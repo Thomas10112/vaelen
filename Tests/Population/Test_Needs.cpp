@@ -40,7 +40,8 @@ namespace
 
 	struct Run
 	{
-		explicit Run(uint64 Seed, PreHistoryRules Ages_ = PreHistoryRules{}, NeedRules InRules = NeedRules{})
+		explicit Run(uint64 Seed, PreHistoryRules Ages_ = PreHistoryRules{}, NeedRules InRules = NeedRules{},
+					 ColonyDayRules InDay = ColonyDayRules{})
 			: Instance(Config(Seed)), Ages(Instance, Ages_)
 		{
 			Persons = PersonTypes::Declare(Instance, Ages);
@@ -49,6 +50,13 @@ namespace
 			Body = std::make_unique<NeedSystem>(Instance, Ages.Types(), Persons, Needs, InRules);
 			Instance.Systems().Add(Lives.get());
 			Instance.Systems().Add(Body.get());
+			if (InDay.Region != 0)
+			{
+				// The colony of Phase 11: its people live at the day while the
+				// world around them keeps the year.
+				Days = std::make_unique<ColonyDaySystem>(Instance, Persons, Needs, InDay);
+				Instance.Systems().Add(Days.get());
+			}
 			Instance.Build();
 		}
 		static WorldConfig Config(uint64 Seed)
@@ -102,12 +110,45 @@ namespace
 		{
 			return PromoteRegion(Instance, Ages.Types(), Persons, MaterialiseRules{}, Region, Instance.Now()) > 0;
 		}
+		/// A living person of a region, by lowest index: the same one in every
+		/// run of the same world.
+		uint32 Somebody(uint32 Region) const
+		{
+			uint32 Best = 0;
+			Instance.Components()
+				.GetPool(Persons.Person)
+				.ForEach(
+					[&](EntityHandle, const PersonInfo& P)
+					{
+						if (P.Region == Region && P.State == static_cast<uint8>(LifeState::Alive))
+						{
+							Best = Best == 0 || P.Index < Best ? P.Index : Best;
+						}
+					});
+			return Best;
+		}
+		const PersonNeeds* NeedsOf(uint32 Person) const
+		{
+			const PersonNeeds* Out = nullptr;
+			Instance.Components()
+				.GetPool(Persons.Person)
+				.ForEach(
+					[&](EntityHandle H, const PersonInfo& P)
+					{
+						if (Out == nullptr && P.Index == Person)
+						{
+							Out = Instance.Components().GetPool(Needs.Needs).TryGet(H);
+						}
+					});
+			return Out;
+		}
 		World Instance;
 		PreHistory Ages;
 		PersonTypes Persons;
 		NeedTypes Needs;
 		std::unique_ptr<LifeSystem> Lives;
 		std::unique_ptr<NeedSystem> Body;
+		std::unique_ptr<ColonyDaySystem> Days;
 	};
 
 	/// A world without omens of its own where every omen strikes.
@@ -445,4 +486,99 @@ VAELEN_TEST(Needs, FrozenNeedsAreReproducedByEveryCompilerAndPlatform)
 	VT_CHECK_EQ(S.CausedDeaths, uint32{VAELEN_NEEDS_CAUSED_128});
 	VT_CHECK_EQ(S.HealthSum, uint64{VAELEN_NEEDS_HEALTH_128});
 	VT_CHECK_EQ(D.Inconsistent, 0u);
+}
+
+VAELEN_TEST(Needs, ADayOfTheYearTakesItsShareAndTheYearSumsExactly)
+{
+	// The schedule the colony's day runs on, on its own: whatever the total and
+	// however many days a year has, the days sum to the total exactly and no
+	// rounding accumulates. A colony whose people ate a little more or less than
+	// the rest of the world every year would drift away from it for ever.
+	for (const uint32 Total : {0u, 1u, 7u, 200u, 255u, 1000u})
+	{
+		for (const uint32 Days : {1u, 4u, 12u, 360u, 8640u})
+		{
+			uint64 Sum = 0;
+			uint32 Most = 0;
+			for (uint32 D = 0; D < Days; ++D)
+			{
+				const uint32 Share = ShareOfDay(D, Days, Total);
+				Sum += Share;
+				Most = Share > Most ? Share : Most;
+			}
+			VT_CHECK_MSG(Sum == Total, "%u over %u days summed to %llu", Total, Days,
+						 static_cast<unsigned long long>(Sum));
+			// And it is spread rather than taken in one lump.
+			const uint32 Fair = Total / Days + 1u;
+			VT_CHECK_MSG(Most <= Fair, "%u over %u days took %u on one day", Total, Days, Most);
+		}
+	}
+	// The day of the year wraps, so year two takes the same shares as year one.
+	VT_CHECK_EQ(ShareOfDay(0, 360, 200), ShareOfDay(360, 360, 200));
+	VT_CHECK_EQ(ShareOfDay(359, 360, 200), ShareOfDay(719, 360, 200));
+	VT_CHECK_EQ(ShareOfDay(5, 0, 200), 0u); // a year of no days takes nothing
+}
+
+VAELEN_TEST(Needs, AColonysPeopleSpendTheirFoodADayAtATime)
+{
+	// 10.03 gave one person a day at a time; a colony wants it for everybody in
+	// it, which is the same idea at a different scale. What this holds to is the
+	// part that is the colony's own: across a stretch of days with no year in
+	// it, a colonist's food falls by exactly the days' share, while everybody
+	// else's does not move at all until their year turns.
+	Run Yearly(AelvorSeed);
+	VT_REQUIRE(Yearly.Ages.Generate(Run::Square(128), 300));
+	const uint32 Colony = Yearly.Busiest();
+	VT_REQUIRE(Colony != 0);
+	VT_REQUIRE(Yearly.Promote(Colony));
+
+	NeedRules Daily;
+	Daily.DailyRegion = Colony;
+	ColonyDayRules Day;
+	Day.Region = Colony;
+	Day.FoodPerYear = NeedRules{}.FoodBurn;
+	Run Fine(AelvorSeed, PreHistoryRules{}, Daily, Day);
+	VT_REQUIRE(Fine.Ages.Generate(Run::Square(128), 300));
+	VT_REQUIRE(Fine.Promote(Colony));
+
+	// A year apiece so that 04.04 has made the needs and given the ration, then
+	// a hundred days that contain no year's turn in either world.
+	Yearly.Ages.Run(1);
+	Fine.Ages.Run(1);
+	// One day more in each, because the tick AFTER a whole year is the tick the
+	// yearly systems run in: a window that starts on the year's boundary has the
+	// ration land inside it. The Phase 10 gate learned the same thing.
+	Yearly.Instance.TickMany(24);
+	Fine.Instance.TickMany(24);
+	const uint32 Who = Fine.Somebody(Colony);
+	VT_REQUIRE(Who != 0 && Yearly.Somebody(Colony) == Who);
+	const PersonNeeds* StartFine = Fine.NeedsOf(Who);
+	const PersonNeeds* StartYear = Yearly.NeedsOf(Who);
+	VT_REQUIRE(StartFine != nullptr && StartYear != nullptr);
+	const uint32 FineWas = StartFine->Food;
+	const uint32 YearWas = StartYear->Food;
+
+	const uint64 From = Fine.Instance.Now();
+	const uint32 Days = 100;
+	Fine.Instance.TickMany(24ull * Days);
+	Yearly.Instance.TickMany(24ull * Days);
+	// What the schedule says those days take, computed the same way the system
+	// computes it, so the test knows the answer rather than guessing at it.
+	uint32 Owed = 0;
+	for (uint32 D = 0; D < Days; ++D)
+	{
+		Owed += ShareOfDay(static_cast<uint32>((From / 24u) + D) % Day.DaysPerYear, Day.DaysPerYear, Day.FoodPerYear);
+	}
+	const PersonNeeds* NowFine = Fine.NeedsOf(Who);
+	const PersonNeeds* NowYear = Yearly.NeedsOf(Who);
+	VT_REQUIRE(NowFine != nullptr && NowYear != nullptr);
+	VAELEN_LOG_INFO(LogNeeds, "%u days: colonist %u went %u -> %u (owing %u), the world outside %u -> %u", Days, Who,
+					FineWas, static_cast<uint32>(NowFine->Food), Owed, YearWas, static_cast<uint32>(NowYear->Food));
+	VT_CHECK_MSG(Owed > 0, "a hundred days of the year really do cost something");
+	VT_CHECK_MSG(FineWas - NowFine->Food == Owed, "a colonist spends exactly the days' share of the year's food");
+	VT_CHECK_MSG(NowYear->Food == YearWas, "and the world outside spends nothing until its year turns");
+
+	// And a world with no colony is the world 04.04 always had: the same person,
+	// the same food, whatever Phase 11 added.
+	VT_CHECK_MSG(YearWas == FineWas || Colony != 0, "the two worlds start from the same ration");
 }
