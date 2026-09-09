@@ -77,6 +77,9 @@ namespace Vaelen::Player
 		Costly,	  ///< it asks for more hours than a whole day has
 		Full,	  ///< the queue is already holding all it can
 		Stale,	  ///< it waited so long unapplied that it is no longer meant
+		Nothing,  ///< there is nothing to do it with: no grain to eat, none to give
+		TooFar,	  ///< the region is not one a person can walk to from here
+		NoOne,	  ///< the person it is aimed at is not here, or not alive
 		Count
 	};
 	VAELEN_PLAYER_API const char* RefusalName(Refusal Why);
@@ -141,6 +144,27 @@ namespace Vaelen::Player
 	/// What the world would not let them do (Amount = the Refusal).
 	inline constexpr EventType<ActPayload> PlayerRefusedEvent = MakeEventType<ActPayload>("PlayerRefused");
 
+	/// What turns an allowed intent into a change in the world.
+	///
+	/// PlayerOrderSystem owns the queue, the hours and the refusals; it does NOT
+	/// own eating, working or walking, and it must not reach into the modules
+	/// that do. So it asks one of these instead, and 10.05 supplies one whose
+	/// every verb goes through the system that already owns that change. With
+	/// none, an intent costs its hours and changes nothing else, which is
+	/// exactly what 10.04 does on its own.
+	class VAELEN_PLAYER_API IDoing
+	{
+	public:
+		virtual ~IDoing() = default;
+		/// Refusal::None when the world would allow it now. Must change nothing:
+		/// it is asked BEFORE the hours are spent, so that an attempt the world
+		/// refuses costs the person nothing.
+		virtual Refusal Allows(const World& W, uint32 Person, const PlayerCommand& Command) const = 0;
+		/// Does it. Cause is the act's own event, so that everything a doing
+		/// moves can be walked back to the intent that moved it.
+		virtual void Do(World& W, uint32 Person, const PlayerCommand& Command, SimTick Now, PersistentId Cause) = 0;
+	};
+
 	/// Daily, after PlayerDay: the ONLY thing in the project that acts on an
 	/// intent. It takes them in the order they were meant, refuses what the
 	/// world does not allow, spends the hours the day granted, and stops when
@@ -169,6 +193,9 @@ namespace Vaelen::Player
 			return Out;
 		}
 		void RunAfter(std::string_view Name) { After.emplace_back(Name); }
+		/// Optional: what actually does the things (10.05). Without one, an
+		/// intent costs its hours and changes nothing else.
+		void ObserveDoing(IDoing* InDoing) noexcept { Doing = InDoing; }
 		void Tick(TickContext& Context) override;
 
 	private:
@@ -180,6 +207,7 @@ namespace Vaelen::Player
 		HourTypes Hours;
 		OrderTypes Orders;
 		OrderRules Rules;
+		IDoing* Doing = nullptr;
 	};
 
 	/// Opens the queue on the played person. False when nobody is played or the

@@ -76,6 +76,10 @@ namespace Vaelen::Population
 	/// PersonPayload::Other carries the other region.
 	inline constexpr EventType<PersonPayload> PersonLeftEvent = MakeEventType<PersonPayload>("PersonLeft");
 	inline constexpr EventType<PersonPayload> PersonArrivedEvent = MakeEventType<PersonPayload>("PersonArrived");
+	/// A person walked from one detailed region to another, and is still a
+	/// person in both (unlike a crossing, which turns one into counts).
+	/// PersonPayload::Other carries the region left behind.
+	inline constexpr EventType<PersonPayload> PersonMovedEvent = MakeEventType<PersonPayload>("PersonMoved");
 
 	/// The state (created on first use).
 	VAELEN_POPULATION_API LodState& LodStateOf(World& W, const LodTypes& Types);
@@ -84,6 +88,19 @@ namespace Vaelen::Population
 	/// Lets a region go coarse at the next yearly tick; false when it was not wanted.
 	VAELEN_POPULATION_API bool ReleaseDetail(World& W, const LodTypes& Types, uint32 Region);
 	VAELEN_POPULATION_API bool IsWanted(const World& W, const LodTypes& Types, uint32 Region);
+
+	/// Moves one living person from the detailed region they are in to another
+	/// detailed region and reconciles the coarse counts of both, so that the two
+	/// grains still agree afterwards. False when the person is unknown or not
+	/// alive, when either region is not detailed, or when they are already
+	/// there; nothing changes then. Publishes PersonMovedEvent with the cause.
+	///
+	/// This is the only way anything in the project moves a person between
+	/// regions, and it lives here because 04.06 is what owns a person changing
+	/// the region they are counted in. The player of Phase 10 walks through it
+	/// like everything else.
+	VAELEN_POPULATION_API bool MovePerson(World& W, const History::PreHistoryTypes& Types, const PersonTypes& Persons,
+										  uint32 Person, uint32 To, SimTick Now, PersistentId Cause = {});
 
 	/// Yearly: demotions, promotions, then the crossings.
 	class VAELEN_POPULATION_API LodSystem final : public ISystem

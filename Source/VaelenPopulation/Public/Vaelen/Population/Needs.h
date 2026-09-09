@@ -164,4 +164,28 @@ namespace Vaelen::Population
 	};
 	VAELEN_POPULATION_API NeedStats MeasureNeeds(const World& W, const PersonTypes& Persons, const NeedTypes& Needs,
 												 uint32 Region);
+
+	/// Feeds one living person: raises Food by at most Amount, and never past
+	/// sated. Returns what was actually added, 0 for an unknown person, a dead
+	/// one, one with no needs (a coarse region has none), or a person already
+	/// full. The yearly ration of NeedSystem is untouched and still owns hunger,
+	/// health and famine; this is a meal, and it lives here because 04.04 owns
+	/// what a person's food is.
+	VAELEN_POPULATION_API uint32 FeedPerson(World& W, const PersonTypes& Persons, const NeedTypes& Needs, uint32 Person,
+											uint32 Amount);
+	/// Rests one living person: raises Rest by at most Amount, never past whole.
+	/// Returns what was added. Rest is the field 04.04 reserved for Phase 10 and
+	/// nothing in the world reads it; what spends it is the player's day.
+	VAELEN_POPULATION_API uint32 RestPerson(World& W, const PersonTypes& Persons, const NeedTypes& Needs, uint32 Person,
+											uint32 Amount);
+	/// Takes Amount off a person's Rest, floored at spent. Returns what was
+	/// taken. The counterpart of RestPerson, for whatever spends a person's
+	/// strength - a day of work does.
+	VAELEN_POPULATION_API uint32 TirePerson(World& W, const PersonTypes& Persons, const NeedTypes& Needs, uint32 Person,
+											uint32 Amount);
+	/// Takes Amount off a person's Food, floored at starving. Returns what was
+	/// taken. The counterpart of FeedPerson, for what a person spends between
+	/// the yearly rations of NeedSystem - which still owns hunger and famine.
+	VAELEN_POPULATION_API uint32 HungerPerson(World& W, const PersonTypes& Persons, const NeedTypes& Needs,
+											  uint32 Person, uint32 Amount);
 } // namespace Vaelen::Population

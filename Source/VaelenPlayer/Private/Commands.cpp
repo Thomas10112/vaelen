@@ -109,6 +109,12 @@ namespace Vaelen::Player
 			return "the queue is full";
 		case Refusal::Stale:
 			return "no longer meant";
+		case Refusal::Nothing:
+			return "nothing to do it with";
+		case Refusal::TooFar:
+			return "too far to walk";
+		case Refusal::NoOne:
+			return "nobody there";
 		case Refusal::Count:
 			break;
 		}
@@ -239,6 +245,12 @@ namespace Vaelen::Player
 			{
 				break; // the day is gone; what is left waits for tomorrow
 			}
+			if (Why == Refusal::None && Doing != nullptr)
+			{
+				// Asked before a single hour is spent, so that something the
+				// world will not allow costs the person nothing.
+				Why = Doing->Allows(W, Person, C);
+			}
 			const PlayerCommand Done = C;
 			C.Why = static_cast<uint8>(Why);
 			Queue->First = static_cast<uint32>((usize{Queue->First} + 1) % MostOrders);
@@ -254,10 +266,15 @@ namespace Vaelen::Player
 			}
 			const uint32 Paid = SpendHours(W, Hours, Cost);
 			++Queue->Taken;
-			// 10.05 hangs the effect of each kind here, and every one of them
-			// goes through the system that already owns that part of the world.
-			Context.Events->Publish(Context.Tick, PlayerActedEvent, ActPayload{Person, Done.Kind, Done.Target, Paid},
-									W.Entities().GetId(H));
+			const PersistentId Act =
+				Context.Events->Publish(Context.Tick, PlayerActedEvent,
+										ActPayload{Person, Done.Kind, Done.Target, Paid}, W.Entities().GetId(H));
+			if (Doing != nullptr)
+			{
+				// The effect of each kind, through the system that already owns
+				// that part of the world, with the act itself as the cause.
+				Doing->Do(W, Person, Done, Context.Tick, Act);
+			}
 		}
 	}
 

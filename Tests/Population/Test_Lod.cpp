@@ -8,6 +8,7 @@
 #include "Vaelen/Population/Lives.h"
 #include "Vaelen/Population/Lod.h"
 #include "Vaelen/Population/Persons.h"
+#include "Vaelen/Sim/Regions.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/Religion.h"
 #include "Vaelen/Sim/Snapshot.h"
@@ -480,4 +481,91 @@ VAELEN_TEST(Lod, FrozenBridgeIsReproducedByEveryCompilerAndPlatform)
 	VT_CHECK_EQ(S.Immigrants, uint32{VAELEN_LOD_IMMIGRANTS_128});
 	VT_CHECK_EQ(D.Inconsistent, 0u);
 	VT_CHECK_EQ(D.DetailedRegions, 1u);
+}
+
+VAELEN_TEST(Lod, APersonWalksToTheNextRegionAndBothGrainsStillAgree)
+{
+	// A crossing turns a person into counts, because the far side is coarse.
+	// This is the other move: both sides are detailed, the person stays a
+	// person, and the coarse counts of both regions have to end up telling the
+	// same story as the persons in them. 04.06 owns that, which is why the
+	// player of Phase 10 walks through here rather than setting a field.
+	Run W(AelvorSeed);
+	VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
+	const uint32 From = W.Ranked()[0];
+	VT_CHECK(RequestDetail(W.Instance, W.Lod, From));
+	const RegionGraph Graph = BuildRegionGraph(W.Instance.Map(), W.Ages.Types().World.Regions);
+	VT_REQUIRE(From < Graph.Neighbours.size() && !Graph.Neighbours[From].empty());
+	uint32 To = 0;
+	for (const uint32 R : W.Ranked())
+	{
+		for (const uint16 N : Graph.Neighbours[From])
+		{
+			To = To == 0 && uint32{N} == R ? R : To;
+		}
+	}
+	VT_REQUIRE(To != 0);
+	VT_CHECK(RequestDetail(W.Instance, W.Lod, To));
+	W.Ages.Run(1);
+	VT_REQUIRE(W.Detailed(From) && W.Detailed(To));
+
+	// Somebody living there, by lowest index so the choice is the same in every run.
+	uint32 Who = 0;
+	W.Instance.Components()
+		.GetPool(W.Persons.Person)
+		.ForEach(
+			[&](EntityHandle, const PersonInfo& P)
+			{
+				if (P.Region == From && P.State == static_cast<uint8>(LifeState::Alive))
+				{
+					Who = Who == 0 || P.Index < Who ? P.Index : Who;
+				}
+			});
+	VT_REQUIRE(Who != 0);
+	const uint32 HadFrom = W.Counts(From)->Total;
+	const uint32 HadTo = W.Counts(To)->Total;
+	const usize Mark = W.Instance.Log().Count();
+
+	VT_CHECK(MovePerson(W.Instance, W.Ages.Types(), W.Persons, Who, To, W.Instance.Now()));
+	VAELEN_LOG_INFO(LogLod, "person %u walked from region %u (%u people) to region %u (%u people)", Who, From,
+					W.Counts(From)->Total, To, W.Counts(To)->Total);
+	VT_CHECK_EQ(W.Counts(From)->Total, HadFrom - 1u);
+	VT_CHECK_EQ(W.Counts(To)->Total, HadTo + 1u);
+	VT_CHECK_MSG(IsConsistent(W.Instance, W.Ages.Types(), W.Persons, From), "the region left behind still adds up");
+	VT_CHECK_MSG(IsConsistent(W.Instance, W.Ages.Types(), W.Persons, To), "and so does the one walked into");
+	const PersonInfo* Moved = FindPerson(W.Instance, W.Persons, Who);
+	VT_REQUIRE(Moved != nullptr);
+	VT_CHECK_EQ(Moved->Region, To);
+	VT_CHECK_MSG(Moved->State == static_cast<uint8>(LifeState::Alive), "and is still a person, not a count");
+
+	uint32 Events = 0;
+	const std::vector<Event>& All = W.Instance.Log().All();
+	for (usize i = Mark; i < All.size(); ++i)
+	{
+		if (All[i].Is(PersonMovedEvent))
+		{
+			++Events;
+			const PersonPayload P = All[i].Get<PersonPayload>();
+			VT_CHECK_EQ(P.Person, Who);
+			VT_CHECK_EQ(P.Region, To);
+			VT_CHECK_EQ(P.Other, From); // the region left behind
+		}
+	}
+	VT_CHECK_EQ(Events, 1u);
+
+	// And what it refuses: the same region, an unknown person, and anywhere the
+	// world is not simulating person by person.
+	VT_CHECK(!MovePerson(W.Instance, W.Ages.Types(), W.Persons, Who, To, W.Instance.Now()));
+	VT_CHECK(!MovePerson(W.Instance, W.Ages.Types(), W.Persons, 999999u, From, W.Instance.Now()));
+	VT_CHECK(!MovePerson(W.Instance, W.Ages.Types(), W.Persons, Who, 0u, W.Instance.Now()));
+	uint32 Coarse = 0;
+	for (const uint32 R : W.Ranked())
+	{
+		Coarse = Coarse == 0 && R != From && R != To ? R : Coarse;
+	}
+	VT_REQUIRE(Coarse != 0);
+	VT_CHECK_MSG(!MovePerson(W.Instance, W.Ages.Types(), W.Persons, Who, Coarse, W.Instance.Now()),
+				 "a coarse region has no persons to walk into, only a count of them");
+	VT_CHECK_EQ(FindPerson(W.Instance, W.Persons, Who)->Region, To);
+	VT_CHECK(IsConsistent(W.Instance, W.Ages.Types(), W.Persons, To));
 }

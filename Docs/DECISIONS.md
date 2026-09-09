@@ -5095,3 +5095,73 @@ The rule to hold to: if a thing the player does cannot be expressed as a command
 applied by the system that owns that change, it does not belong in this project.
 A player who can write to the world from outside it cannot be replayed, and a
 world that cannot be replayed is not this project.
+
+## ADR-0086: A verb the player has is a call into somebody else's module
+
+### Context
+
+10.04 gave intent a shape and put a system inside the simulation in charge of
+acting on it, and deliberately left the acting empty: an intent cost its hours
+and changed nothing. This is the task that fills it in, and it is the task where
+the architecture of the whole project is easiest to lose.
+
+The shortest way to make a player work, eat and walk is to write the three
+fields: add to the region's stock, raise the person's food, set their region.
+Three lines each, no dependencies, works immediately. It also ends the project,
+in two ways. The stock, the food and the region are numbers other systems own
+and maintain invariants over - a person's region is a fact the coarse counts of
+04.06 have to agree with, and setting it behind their back leaves a world whose
+two grains disagree. And a verb that writes what it wants cannot be replayed by
+re-running the simulation: it has to be replayed by re-running the verb, and the
+two drift the first time the economy changes.
+
+### Decision
+
+A doing is a call into the module that owns that change, and nothing else.
+
+1. **PlayerOrderSystem does not know how to do anything.** It owns the queue,
+   the hours and the refusals. For the doing itself it asks an `IDoing`, and
+   10.05 supplies one. A world that was never handed the verbs is exactly the
+   world 10.04 left, which is what keeps that task's tests honest.
+2. **Each verb is somebody else's function.** Work and giving and taking go
+   through `Economy::AddStock` (06.01); eating goes through `AddStock` for the
+   grain and `Population::FeedPerson` (04.04) for the meal; resting goes through
+   `Population::RestPerson`, into the `Rest` field 04.04 had reserved for Phase
+   10 since it was written; walking goes through `Population::MovePerson`.
+3. **`MovePerson` is new, and it belongs to 04.06 rather than here.** Moving a
+   person between regions means the coarse counts of both have to be made to
+   agree with the persons in them again, so it reconciles both, refuses any
+   region the world is not simulating person by person, and publishes what
+   happened. The player walks through it like anything else that ever moves a
+   person will.
+4. **A day of work costs the body.** It burns food and spends rest through
+   04.04, which is what makes eating and resting worth doing at all. The yearly
+   ration still tops everybody up once a year: a hungry day inside a fed year is
+   levelled out there, and that is the yearly system doing its job rather than
+   this one being undone.
+5. **Refusal comes before payment.** Every doing is asked whether the world
+   allows it BEFORE a single hour is spent, so an attempt the world turns down -
+   nothing to eat, nobody there, too far to walk - costs the person nothing.
+6. **Everything a doing moves carries the act as its cause.** The act's own
+   event id is passed down into `AddStock` and `MovePerson`, so the grain that
+   moved and the walk that happened point back at the intent that caused them.
+   That is the chain 10.07 walks back through every layer under the player.
+7. **Speaking does nothing.** It is in the log with who it was aimed at, and
+   10.06 builds what the people around the player make of them out of exactly
+   that. A verb that wrote an opinion somewhere would be a dialogue tree with
+   extra steps.
+
+### Consequences
+
+The verbs are slower to write and there are fewer places for them to be wrong.
+The test that matters is not that work adds grain: it is that sixty days of a
+life, recorded as a stream of intents and replayed blind into a fresh world of
+the same seed, give the same state digest with the economy and the people in it,
+not merely the same queue. That test passes, and it could not pass if any verb
+wrote a number directly, because nothing in a replay would have re-run the verb.
+
+The rule to hold to: if a thing the player wants to do has no owner to call, the
+answer is to give that change an owner - a function in the module whose
+invariants it touches - and not to write the field from here. `MovePerson` is
+what that looks like: it is used by the player today and it is where anything
+that ever moves a person will go.

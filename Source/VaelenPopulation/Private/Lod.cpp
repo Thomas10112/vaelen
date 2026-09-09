@@ -394,4 +394,46 @@ namespace Vaelen::Population
 		}
 		return S;
 	}
+
+	bool MovePerson(World& W, const History::PreHistoryTypes& Types, const PersonTypes& Persons, uint32 Person,
+					uint32 To, SimTick Now, PersistentId Cause)
+	{
+		if (Person == 0 || To == 0)
+		{
+			return false;
+		}
+		EntityHandle Found;
+		uint32 From = 0;
+		W.Components()
+			.GetPool(Persons.Person)
+			.ForEach(
+				[&](EntityHandle H, const PersonInfo& P)
+				{
+					if (Found.IsNull() && P.Index == Person && P.State == static_cast<uint8>(LifeState::Alive))
+					{
+						Found = H;
+						From = P.Region;
+					}
+				});
+		if (Found.IsNull() || From == To)
+		{
+			return false;
+		}
+		// Both grains must be the fine one: a coarse region has no persons to
+		// walk into, only a count of them, and 04.06 already owns that crossing.
+		if (!IsDetailed(W, Types, Persons, From) || !IsDetailed(W, Types, Persons, To))
+		{
+			return false;
+		}
+		PersonInfo& P = W.Components().GetPool(Persons.Person).Get(Found);
+		const uint32 Age = AgeYears(P, Now);
+		P.Region = To;
+		// The coarse counts of both regions are rebuilt from the persons in
+		// them, so the two grains still agree the moment this returns.
+		ReconcileRegion(W, Types, Persons, From);
+		ReconcileRegion(W, Types, Persons, To);
+		W.Events().Publish(Now, PersonMovedEvent, PersonPayload{Person, To, Age, From}, W.Entities().GetId(Found),
+						   Cause);
+		return true;
+	}
 } // namespace Vaelen::Population

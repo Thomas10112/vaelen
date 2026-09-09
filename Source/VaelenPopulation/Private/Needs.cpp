@@ -292,4 +292,97 @@ namespace Vaelen::Population
 		}
 		return S;
 	}
+
+	namespace
+	{
+		/// The handle of a living person, null when there is none such.
+		EntityHandle LivingHandle(const World& W, const PersonTypes& Persons, uint32 Person)
+		{
+			EntityHandle Out;
+			if (Person == 0)
+			{
+				return Out;
+			}
+			W.Components()
+				.GetPool(Persons.Person)
+				.ForEach(
+					[&](EntityHandle H, const PersonInfo& P)
+					{
+						if (Out.IsNull() && P.Index == Person && P.State == static_cast<uint8>(LifeState::Alive))
+						{
+							Out = H;
+						}
+					});
+			return Out;
+		}
+
+		/// Takes a byte down towards nothing and says by how much it moved.
+		uint32 LowerTo(uint8& Field, uint32 Amount) noexcept
+		{
+			if (Field == 0 || Amount == 0)
+			{
+				return 0;
+			}
+			const uint32 Taken = std::min<uint32>(Field, Amount);
+			Field = static_cast<uint8>(Field - Taken);
+			return Taken;
+		}
+
+		/// Raises a byte towards a ceiling and says by how much it moved.
+		uint32 RaiseTo(uint8& Field, uint32 Amount, uint32 Ceiling) noexcept
+		{
+			const uint32 Was = Field;
+			if (Was >= Ceiling || Amount == 0)
+			{
+				return 0;
+			}
+			const uint32 Now = std::min<uint32>(Ceiling, Was + Amount);
+			Field = static_cast<uint8>(Now);
+			return Now - Was;
+		}
+	} // namespace
+
+	uint32 FeedPerson(World& W, const PersonTypes& Persons, const NeedTypes& Needs, uint32 Person, uint32 Amount)
+	{
+		const EntityHandle H = LivingHandle(W, Persons, Person);
+		if (H.IsNull())
+		{
+			return 0;
+		}
+		PersonNeeds* N = W.Components().GetPool(Needs.Needs).TryGet(H);
+		return N != nullptr ? RaiseTo(N->Food, Amount, 255u) : 0u;
+	}
+
+	uint32 RestPerson(World& W, const PersonTypes& Persons, const NeedTypes& Needs, uint32 Person, uint32 Amount)
+	{
+		const EntityHandle H = LivingHandle(W, Persons, Person);
+		if (H.IsNull())
+		{
+			return 0;
+		}
+		PersonNeeds* N = W.Components().GetPool(Needs.Needs).TryGet(H);
+		return N != nullptr ? RaiseTo(N->Rest, Amount, 255u) : 0u;
+	}
+
+	uint32 TirePerson(World& W, const PersonTypes& Persons, const NeedTypes& Needs, uint32 Person, uint32 Amount)
+	{
+		const EntityHandle H = LivingHandle(W, Persons, Person);
+		if (H.IsNull())
+		{
+			return 0;
+		}
+		PersonNeeds* N = W.Components().GetPool(Needs.Needs).TryGet(H);
+		return N != nullptr ? LowerTo(N->Rest, Amount) : 0u;
+	}
+
+	uint32 HungerPerson(World& W, const PersonTypes& Persons, const NeedTypes& Needs, uint32 Person, uint32 Amount)
+	{
+		const EntityHandle H = LivingHandle(W, Persons, Person);
+		if (H.IsNull())
+		{
+			return 0;
+		}
+		PersonNeeds* N = W.Components().GetPool(Needs.Needs).TryGet(H);
+		return N != nullptr ? LowerTo(N->Food, Amount) : 0u;
+	}
 } // namespace Vaelen::Population

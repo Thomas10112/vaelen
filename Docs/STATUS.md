@@ -13,50 +13,51 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 10 — PLAYER — IN PROGRESS
-TASK        : 10.04 — INTENT AS COMMANDS
+TASK        : 10.05 — WHAT THE PLAYER CAN DO
 STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
-█████████████████████████ 96%
+█████████████████████████ 97%
 
 CURRENTLY
-→ The rule of the phase is that the player is a person the world already had, and this task is what
-  makes that testable: NOTHING is ever written into the world from outside the simulation. What
-  arrives from outside - a keypress, a script, a recorded stream - is an INTENT: a small struct that
-  says what the person wants to do, put in a queue and nothing more. It moves no hour, no store, no
-  standing and no person, and it publishes nothing.
+→ Seven verbs, and not one of them writes anything itself. 10.04 left the acting empty on purpose;
+  this fills it in under the rule the phase was written to - a doing changes the world ONLY through
+  the system that already owns that change.
 
-  PlayerOrderSystem, inside the simulation and after PlayerDay, is the only thing allowed to act on
-  one. It takes the intents in the order they were meant, refuses what the world does not allow
-  (nobody played, the person dead, an intent with no name, something no day is long enough for, one
-  that waited past the month it was meant in), spends the hours 10.03 granted, and stops when the day
-  is gone - so a person who means eight things at dawn does not do all eight at dawn. What is left
-  waits for tomorrow.
+  work  → Economy::AddStock (06.01) for the goods, and Population::HungerPerson / TirePerson (04.04)
+          for what the day costs the body, so that eating and resting are worth doing
+  eat   → AddStock for the grain, Population::FeedPerson (04.04) for the meal
+  rest  → Population::RestPerson (04.04) - the field 04.04 had reserved for Phase 10 since 2026
+  move  → Population::MovePerson (04.06), new, which is the only thing in the project that moves a
+          person between regions: it reconciles the coarse counts of both, so the two grains still
+          tell the same story afterwards, and it refuses anywhere the world is not simulating person
+          by person. A person can only walk next door, which the region graph of 02.06 decides.
+  speak → nothing but the act itself, in the log, for 10.06 to read
+  give  → AddStock twice, out of one house and into another; take → the same, the other way
 
-  The reason for the ceremony is replay, and it is now a test rather than an argument: 1200 intents
-  recorded over 200 days of a life with their submission ticks, 789 taken, 21 refused, 387 turned
-  away at a full queue; replayed blind into a fresh world of the same seed, the door gave the same
-  answer to all 1200, the queue holds the same intents in the same slots, and the event log is the
-  same log. The player's half of the input is a stream of structs; the world's half is the seed.
+  PlayerOrderSystem does not know how to do any of them. It asks an IDoing, and 10.05 is one; a
+  world that was never handed the verbs is exactly the world 10.04 left. Every doing is asked BEFORE
+  a single hour is spent, so an attempt the world refuses costs the person nothing, and everything a
+  doing moves carries the act's own event as its cause - which is the causal chain 10.07 walks back.
 
 COMPLETED
 ✓ Phases 00-08 closed · Phase 09 INFRASTRUCTURE closed
-✓ 10.01 the player as a mark · 10.02 the enslaved start · 10.03 the player's grain
-✓ 10.04 intent as commands — Intent, Refusal, PlayerCommand, PlayerOrders, PlayerOrderSystem,
-  Submit/Order, BeginOrders/EndOrders, MeasureOrders, 6 tests
+✓ 10.01 the mark · 10.02 the enslaved start · 10.03 the player's grain · 10.04 intent as commands
+✓ 10.05 what the player can do — IDoing, Doings, DoingRules, MeasureDoings; Population::MovePerson,
+  FeedPerson, HungerPerson, RestPerson, TirePerson. 6 tests here, 1 more in Population.
 
 NEXT
-→ 10.05 — what the player can do: work, rest, eat, move, speak, give, take, each of them a command
-  that costs time and changes the world only through the system that already owns that change
+→ 10.06 — what the people around the player make of them, built from what the player actually did
+  (the act events of 10.04 and 10.05) and from the standing of 05.02, never from a dialogue tree
 
 TESTS
-✓ VaelenPlayerTests 19 run, 19 passed
-✓ Queueing an intent spends no hour and writes no history; the simulation is what acts
-✓ A day of 16 waking hours holds four works of four hours, and the other four wait for tomorrow
-✓ Refused rather than silently done: no player, no queue, no name, longer than a day, no longer
-  meant, and the intents of somebody ninety years dead
-✓ 1200 recorded intents replayed blind to the same life: same verdicts, same queue, same log
-✓ A queue with intents still waiting in it survives a save and a load
+✓ VaelenPlayerTests 25 run, 25 passed · VaelenPopulationTests 39 run, 39 passed
+✓ A day of work puts grain in the store through the economy, and the goods carry the act as cause
+✓ Three days of work then a meal: food 219 → 255, grain 6 → 5, all of it through 04.04 and 06.01
+✓ A walk to the next region leaves both regions consistent, and the far side is refused when coarse
+✓ Giving and taking move goods between houses and make none: the region held 947 before and after
+✓ Sixty days of a life replayed from the recorded stream: same log, same state digest, economy and
+  people included
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)
@@ -256,7 +257,7 @@ Phase 09 against the exit criteria (`Docs/ROADMAP.md` section 2): (1) six Linux 
 | 10.02 | The enslaved start: a life found among the people 05.04 had already bound, never written into the world | PROTOTYPE: Start 4 tests |
 | 10.03 | The player's grain: the day for one person while the world runs at the year, granting hours and writing no history | PROTOTYPE: Hours 5 tests |
 | 10.04 | Intent as commands: a queue the outside submits to, and a system inside the simulation that is the only thing allowed to act on it, so a recorded stream replays to the same life | PROTOTYPE: Commands 6 tests |
-| 10.05 | What the player can do | PLANNED |
+| 10.05 | What the player can do: work, rest, eat, move, speak, give, take, each through the system that already owns that change | PROTOTYPE: Doings 6 tests (+1 in Population) |
 | 10.06 | What the people around them make of them | PLANNED |
 | 10.07 | The player in the chronicle | PLANNED |
 | 10.08 | Phase 10 gate | PLANNED |
@@ -482,8 +483,9 @@ the purity checker, applied to headers and sources).
 | `Player/Test_Start.cpp` (Phase 10) | PROTOTYPE | 4 |
 | `Player/Test_Hours.cpp` (Phase 10) | PROTOTYPE | 5 |
 | `Player/Test_Commands.cpp` (Phase 10) | PROTOTYPE | 6 |
+| `Player/Test_Doings.cpp` (Phase 10) | PROTOTYPE | 6 |
 
-Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 6, Deposits 5, WorldPipeline 4, History 3, Population 5, Naming 5, Religion 5, Disasters 5, PreHistory 5, HistoryText 5, HistoryGate 2 (161 tests; 158 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.History`, `Sim.Population`, `Sim.Naming`, `Sim.Religion`, `Sim.Disasters`, `Sim.PreHistory`, `Sim.HistoryText`, `Sim.HistoryGate`, `Sim.Registry`, `Sim.Shuffled` (42 entries in total). Population suites: Persons 6, Lives 5, Families 5, Needs 6, Traits 5, Lod 5, PersonHistory 5, PopulationGate 1 (38 tests; 38 without assertions); CTest entries `Population.Persons`, `Population.Lives`, `Population.Families`, `Population.Needs`, `Population.Traits`, `Population.Lod`, `Population.PersonHistory`, `Population.PopulationGate`, `Population.Registry`, `Population.Shuffled` (10 entries). Society suites: Organizations 5, Standing 4, Norms 4, Bondage 4, Decisions 4, Strata 3, SocietyHistory 3, SocietyGate 1 (28 tests; 28 without assertions); CTest entries `Society.Organizations`, `Society.Standing`, `Society.Norms`, `Society.Bondage`, `Society.Decisions`, `Society.Strata`, `Society.SocietyHistory`, `Society.SocietyGate`, `Society.Registry`, `Society.Shuffled` (10 entries). Economy suites: Stocks 4, Production 4, Markets 4, Trade 4, Wealth 5, Grains 2, EconomyHistory 3, EconomyGate 1 (27 tests; 27 without assertions); CTest entries `Economy.Stocks`, `Economy.Production`, `Economy.Markets`, `Economy.Trade`, `Economy.Wealth`, `Economy.Grains`, `Economy.EconomyHistory`, `Economy.EconomyGate`, `Economy.Registry`, `Economy.Shuffled` (10 entries). Politics suites: Polities 4, Law 4, Reach 5, Succession 4, Factions 4, Diplomacy 4, PoliticsHistory 3, PoliticsGate 1 (29 tests; 29 without assertions); CTest entries `Politics.Diplomacy`, `Politics.Factions`, `Politics.Law`, `Politics.Polities`, `Politics.PoliticsGate`, `Politics.PoliticsHistory`, `Politics.Reach`, `Politics.Succession`, `Politics.Registry`, `Politics.Shuffled` (10 entries). Military suites: Armies 4, Battle 4, March 4, MilitaryGate 1, MilitaryHistory 4, Siege 4, Toll 4, War 4 (29 tests; 29 without assertions); CTest entries `Military.Armies`, `Military.Battle`, `Military.March`, `Military.MilitaryGate`, `Military.MilitaryHistory`, `Military.Siege`, `Military.Toll`, `Military.War`, `Military.Registry`, `Military.Shuffled` (10 entries). Infrastructure suites: Buildings 4, Works 5, Places 4, Roads 5, Decay 5, Logistics 5, WorksHistory 5, InfrastructureGate 2 (35 tests; 35 without assertions); CTest entries `Infrastructure.Buildings`, `Infrastructure.Works`, `Infrastructure.Places`, `Infrastructure.Roads`, `Infrastructure.Decay`, `Infrastructure.Logistics`, `Infrastructure.WorksHistory`, `Infrastructure.InfrastructureGate`, `Infrastructure.Registry`, `Infrastructure.Shuffled` (10 entries). Player suites: Player 4, Start 4, Hours 5, Commands 6 (19 tests; 19 without assertions); CTest entries `Player.Player`, `Player.Start`, `Player.Hours`, `Player.Commands`, `Player.Registry`, `Player.Shuffled` (6 entries).
+Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without). CTest entries: `Kernel.Purity`, `Kernel.PuritySelfTest`, `Core.Assert`, `Core.CoreTypes`, `Core.Harness`, `Core.Hash`, `Core.Ids`, `Core.Log`, `Core.LogFloor`, `Core.Random`, `Core.Version`, `Core.Registry`, `Core.Shuffled`, `Core.Reversed` (14 entries). Sim suites: EntityHandle 3, EntityRegistry 13, ComponentType 4, ComponentPool 8, ComponentStore 3, SimClock 4, Scheduler 8, Event 2, EventLog 2, EventBus 6, Archive 4, World 3, Snapshot 8, Replay 5, MiniWorld 4, TileGrid 4, WorldMap 6, FixedPoint 4, Noise 5, WorldGen 6, Climate 6, Hydrology 5, Regions 6, Deposits 5, WorldPipeline 4, History 3, Population 5, Naming 5, Religion 5, Disasters 5, PreHistory 5, HistoryText 5, HistoryGate 2 (161 tests; 158 tests without assertions); CTest entries `Sim.EntityHandle`, `Sim.EntityRegistry`, `Sim.ComponentType`, `Sim.ComponentPool`, `Sim.ComponentStore`, `Sim.SimClock`, `Sim.Scheduler`, `Sim.Event`, `Sim.EventLog`, `Sim.EventBus`, `Sim.Archive`, `Sim.World`, `Sim.Snapshot`, `Sim.Replay`, `Sim.MiniWorld`, `Sim.TileGrid`, `Sim.WorldMap`, `Sim.FixedPoint`, `Sim.Noise`, `Sim.WorldGen`, `Sim.Climate`, `Sim.Hydrology`, `Sim.Regions`, `Sim.Deposits`, `Sim.WorldPipeline`, `Sim.History`, `Sim.Population`, `Sim.Naming`, `Sim.Religion`, `Sim.Disasters`, `Sim.PreHistory`, `Sim.HistoryText`, `Sim.HistoryGate`, `Sim.Registry`, `Sim.Shuffled` (42 entries in total). Population suites: Persons 6, Lives 5, Families 5, Needs 6, Traits 5, Lod 6, PersonHistory 5, PopulationGate 1 (39 tests; 39 without assertions); CTest entries `Population.Persons`, `Population.Lives`, `Population.Families`, `Population.Needs`, `Population.Traits`, `Population.Lod`, `Population.PersonHistory`, `Population.PopulationGate`, `Population.Registry`, `Population.Shuffled` (10 entries). Society suites: Organizations 5, Standing 4, Norms 4, Bondage 4, Decisions 4, Strata 3, SocietyHistory 3, SocietyGate 1 (28 tests; 28 without assertions); CTest entries `Society.Organizations`, `Society.Standing`, `Society.Norms`, `Society.Bondage`, `Society.Decisions`, `Society.Strata`, `Society.SocietyHistory`, `Society.SocietyGate`, `Society.Registry`, `Society.Shuffled` (10 entries). Economy suites: Stocks 4, Production 4, Markets 4, Trade 4, Wealth 5, Grains 2, EconomyHistory 3, EconomyGate 1 (27 tests; 27 without assertions); CTest entries `Economy.Stocks`, `Economy.Production`, `Economy.Markets`, `Economy.Trade`, `Economy.Wealth`, `Economy.Grains`, `Economy.EconomyHistory`, `Economy.EconomyGate`, `Economy.Registry`, `Economy.Shuffled` (10 entries). Politics suites: Polities 4, Law 4, Reach 5, Succession 4, Factions 4, Diplomacy 4, PoliticsHistory 3, PoliticsGate 1 (29 tests; 29 without assertions); CTest entries `Politics.Diplomacy`, `Politics.Factions`, `Politics.Law`, `Politics.Polities`, `Politics.PoliticsGate`, `Politics.PoliticsHistory`, `Politics.Reach`, `Politics.Succession`, `Politics.Registry`, `Politics.Shuffled` (10 entries). Military suites: Armies 4, Battle 4, March 4, MilitaryGate 1, MilitaryHistory 4, Siege 4, Toll 4, War 4 (29 tests; 29 without assertions); CTest entries `Military.Armies`, `Military.Battle`, `Military.March`, `Military.MilitaryGate`, `Military.MilitaryHistory`, `Military.Siege`, `Military.Toll`, `Military.War`, `Military.Registry`, `Military.Shuffled` (10 entries). Infrastructure suites: Buildings 4, Works 5, Places 4, Roads 5, Decay 5, Logistics 5, WorksHistory 5, InfrastructureGate 2 (35 tests; 35 without assertions); CTest entries `Infrastructure.Buildings`, `Infrastructure.Works`, `Infrastructure.Places`, `Infrastructure.Roads`, `Infrastructure.Decay`, `Infrastructure.Logistics`, `Infrastructure.WorksHistory`, `Infrastructure.InfrastructureGate`, `Infrastructure.Registry`, `Infrastructure.Shuffled` (10 entries). Player suites: Player 4, Start 4, Hours 5, Commands 6, Doings 6 (25 tests; 25 without assertions); CTest entries `Player.Player`, `Player.Start`, `Player.Hours`, `Player.Commands`, `Player.Doings`, `Player.Registry`, `Player.Shuffled` (7 entries).
 
 ### Tools/ and CI
 
@@ -520,6 +522,7 @@ Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, Lo
 | `Public/Vaelen/Player/Start.h`, `Private/Start.cpp` | PROTOTYPE (Phase 10) — covered by `Tests/Player/Test_Start.cpp` |
 | `Public/Vaelen/Player/Hours.h`, `Private/Hours.cpp` | PROTOTYPE (Phase 10) — covered by `Tests/Player/Test_Hours.cpp` |
 | `Public/Vaelen/Player/Commands.h`, `Private/Commands.cpp` | PROTOTYPE (Phase 10) — covered by `Tests/Player/Test_Commands.cpp` |
+| `Public/Vaelen/Player/Doings.h`, `Private/Doings.cpp` | PROTOTYPE (Phase 10) — covered by `Tests/Player/Test_Doings.cpp` |
 
 ## Verified here
 
