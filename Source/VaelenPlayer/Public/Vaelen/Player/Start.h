@@ -85,6 +85,14 @@ namespace Vaelen::Player
 										   const Society::StandingTypes& Standing, const PlayerTypes& Player,
 										   const StartTypes& Start, const StartRules& Rules, SimTick Now,
 										   const Population::LodTypes* Lod = nullptr);
+	/// Ends the start, so that another life may be taken up. False when none was.
+	///
+	/// The record says what the life WAS at its first moment, so it belongs to
+	/// the life and goes when the life does; what happened in it stays in the
+	/// world's history, which is where it belongs. A world with mortality in it
+	/// will not let one person be played for forty years, and the Phase 10 gate
+	/// takes up another when one ends.
+	VAELEN_PLAYER_API bool EndStart(World& W, const StartTypes& Start);
 	/// What the life was at its first moment (nullptr when no life was taken up).
 	VAELEN_PLAYER_API const PlayerStart* StartOf(const World& W, const StartTypes& Start);
 

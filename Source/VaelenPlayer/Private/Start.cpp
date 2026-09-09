@@ -131,6 +131,17 @@ namespace Vaelen::Player
 		return Taken.Person;
 	}
 
+	bool EndStart(World& W, const StartTypes& Start)
+	{
+		std::vector<EntityHandle> Held;
+		W.Components().GetPool(Start.Start).ForEach([&](EntityHandle H, const PlayerStart&) { Held.push_back(H); });
+		for (const EntityHandle H : Held)
+		{
+			W.Components().GetPool(Start.Start).Remove(H);
+		}
+		return !Held.empty();
+	}
+
 	const PlayerStart* StartOf(const World& W, const StartTypes& Start)
 	{
 		const PlayerStart* Found = nullptr;

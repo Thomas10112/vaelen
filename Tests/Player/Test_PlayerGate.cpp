@@ -1250,6 +1250,17 @@ namespace
 		Refusal Verdict = Refusal::None;
 	};
 
+	/// The other thing the outside world does: take somebody up. A world with
+	/// mortality in it will not let one person be played for forty years, so a
+	/// life ends and another is taken, and the tick that happened on is as much
+	/// a part of the input as any intent. Seed plus takings plus intents is the
+	/// whole of what a replay is given.
+	struct Taking
+	{
+		uint64 Tick = 0;
+		uint32 Person = 0;
+	};
+
 	/// What the person means to do today, decided from the world they are in
 	/// rather than from a script: hungry, they eat; tired, they rest; otherwise
 	/// they work, and now and then they have something to do with somebody.
@@ -1429,34 +1440,48 @@ VAELEN_TEST(PlayerGate, ALifetimeAt256HoldsEveryInvariantAndFreezes)
 
 	const auto Start = std::chrono::steady_clock::now();
 	std::vector<Recorded> Stream;
+	std::vector<Taking> Takings{Taking{W.Instance.Now(), Who}};
 	uint32 Failures = 0;
 	uint32 Died = 0;
 	uint32 Ended = 0;
+	uint32 Lives = 1;
+	uint32 Playing = Who;
 	Hash64 AtHalf = 0;
 	for (uint32 Year = 1; Year <= LifeYears; ++Year)
 	{
 		for (uint32 Day = 0; Day < DaysPerYear; ++Day)
 		{
-			// Nothing is meant by somebody who is not there. The stream stops at
-			// the death and the world runs on without them, which is 10.01's
-			// claim and is checked by the decades that follow.
-			if (Died == 0)
+			if (Playing != 0)
 			{
-				const PlayerCommand C = Decide(W, Who, Year, Day);
+				const PlayerCommand C = Decide(W, Playing, Year, Day);
 				Stream.push_back(Recorded{C.Issued, C, W.Mean(C)});
 			}
 			W.Day();
-		}
-		const PersonInfo* P = W.Person_(Who);
-		if (Died == 0 && (P == nullptr || P->State != static_cast<uint8>(LifeState::Alive)))
-		{
-			Died = Year; // a life that ends is a life
-			Ended = P == nullptr ? 3u : P->State;
-			VAELEN_LOG_INFO(LogPlayerGate, "the life ended in year %u, %s", BeforeYears + Year,
-							Ended == static_cast<uint32>(LifeState::Dead)
-								? "dead"
-								: (Ended == static_cast<uint32>(LifeState::Gone) ? "gone from the fine grain"
-																				 : "no longer a person at all"));
+			// A life that ends: the mark comes off, and another of this world's
+			// people is taken up. Everything that happens to the first one stays
+			// in the world's history exactly as it happened.
+			const PersonInfo* Now_ = Playing != 0 ? W.Person_(Playing) : nullptr;
+			if (Playing != 0 && (Now_ == nullptr || Now_->State != static_cast<uint8>(LifeState::Alive)))
+			{
+				Ended = Now_ == nullptr ? 3u : Now_->State;
+				Died = Died == 0 ? Year : Died;
+				VAELEN_LOG_INFO(LogPlayerGate, "a life ended in year %u, %s", BeforeYears + Year,
+								Ended == static_cast<uint32>(LifeState::Dead)
+									? "dead"
+									: (Ended == static_cast<uint32>(LifeState::Gone) ? "gone from the fine grain"
+																					 : "no longer a person at all"));
+				ReleasePlayer(W.Instance, W.One, &W.Persons, &W.Lod);
+				EndOrders(W.Instance, W.Queue);
+				EndStart(W.Instance, W.First);
+				const uint32 Next_ = W.Begin(Anywhere);
+				Playing = Next_;
+				if (Next_ != 0)
+				{
+					Takings.push_back(Taking{W.Instance.Now(), Next_});
+					++Lives;
+					VT_CHECK(W.Open());
+				}
+			}
 		}
 		if (Year % 10 == 0)
 		{
@@ -1489,13 +1514,13 @@ VAELEN_TEST(PlayerGate, ALifetimeAt256HoldsEveryInvariantAndFreezes)
 	const OrderStats Orders_ = W.Acts();
 	const DoingStats Done = W.Did();
 	VAELEN_LOG_INFO(LogPlayerGate,
-					"gate: person %u of region %u lived %u year(s) at 256 in %.1f s [asserts %s]; %zu intent(s) "
-					"recorded, %u taken, %u refused, %u dropped; died in year %u; frozen: half=%016llx end=%016llx "
-					"log=%016llx life=%016llx",
-					Who, First_, LifeYears, Elapsed, VAELEN_ASSERTS_ENABLED ? "on" : "off", Stream.size(),
-					Orders_.Taken, Orders_.Refused, Orders_.Dropped, Died, static_cast<unsigned long long>(AtHalf),
-					static_cast<unsigned long long>(AtEnd), static_cast<unsigned long long>(Log),
-					static_cast<unsigned long long>(LifeDigest));
+					"gate: %u year(s) at 256 played across %u life/lives from person %u of region %u in %.1f s "
+					"[asserts %s]; %zu intent(s) and %zu taking(s) recorded, %u taken, %u refused, %u dropped; "
+					"first death in year %u; frozen: half=%016llx end=%016llx log=%016llx life=%016llx",
+					LifeYears, Lives, Who, First_, Elapsed, VAELEN_ASSERTS_ENABLED ? "on" : "off", Stream.size(),
+					Takings.size(), Orders_.Taken, Orders_.Refused, Orders_.Dropped, Died,
+					static_cast<unsigned long long>(AtHalf), static_cast<unsigned long long>(AtEnd),
+					static_cast<unsigned long long>(Log), static_cast<unsigned long long>(LifeDigest));
 	VAELEN_LOG_INFO(LogPlayerGate, "the life:\n%s", Story.c_str());
 
 	// A life really was lived: days turned, things were done, the world moved
