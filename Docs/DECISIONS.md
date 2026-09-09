@@ -5792,3 +5792,62 @@ ended with it on. A gate that had been full would never have shown it.
   event log, same mining digest, and no intent answered differently.
 - Frozen at `half=78997c9e11f162a5`, `end=2862e6e238d2c1fd`,
   `log=abb41cdb4e931d65`, in 27.8 seconds.
+
+## ADR-0096: The verbs that create are already done; the verbs that only move are done by nobody
+
+### Context
+
+12.01 gives a person nobody is playing a way to act. The roadmap called it
+"promoting the verbs of 10.05 from the player's own to anybody's", and reading
+the code before writing showed there is nothing to promote: `Doings::Do` takes a
+PERSON INDEX, not "the player". The verbs have always been anybody's. What is
+the player's is the plumbing - the intent queue and `PlayerOrderSystem`.
+
+So the question became which verbs an unplayed person may use, and that is not a
+matter of taste. Reading what each one does splits them exactly, and the line is
+CONSERVATION:
+
+    Wait       nothing at all
+    Speak      nothing moves; the act is in the log and 10.06 reads it
+    Give/Take  move goods between two houses
+    Move       MovePerson, which reconciles both grains
+    Work       AddStock(+WorkYield) - CREATES goods
+    Eat        AddStock(-EatGrain) and FeedPerson - DESTROYS and fills
+    Rest       RestPerson - fills
+
+06.02 already harvests for everybody and 04.04 already rations everybody, in
+aggregate. A person who works and eats individually is therefore counted twice.
+For one played person that is negligible, and 10.03 accepted it knowingly; for a
+region of unplayed people the economy would roughly double.
+
+### Decision
+
+1. **An unplayed person does only what nothing else does.** Speak and give -
+   conservative acts, through `Doings::Do` unchanged, so a played person and an
+   unplayed one do the same thing by the same call. That is the whole claim of
+   the task and it needed no new verb.
+
+2. **`RegionLively` is a component, not a rule.** Ground becomes lively at a
+   tick. ADR-0090, and Phase 11 paid for it three times.
+
+3. **What decides the intent is deliberately thin, and says so in place.**
+   Somebody nearby, something to spare. 12.02 is the answer to that question - a
+   person acts on what they BELIEVE - and nobody believes anything yet.
+
+### Consequences
+
+- Conservation is measured against a CONTROL rather than against zero, and the
+  reason is a finding of its own. The first version compared a region's holdings
+  before and after a hundred days of acts and found grain up by 168. It was not
+  the giving: the same world with `ActPerMille = 0` - nobody acting at all -
+  moves by exactly the same 168, because the window began on a year boundary and
+  the tick AFTER a whole year is the tick the yearly systems run in. Comparing
+  lively ground against still ground isolates what the acts did, and by that
+  measure 22228 acts (15918 spoken, 6310 given) leave the region holding exactly
+  what stillness leaves.
+- That drift is left named rather than explained: something moves a region's
+  holdings across a year boundary without publishing an event that the window
+  catches. It is not this task's, it is not the acts, and it is worth finding
+  before 12.08 freezes anything.
+- A world with no lively ground writes a history of its own, and two such worlds
+  of one seed are identical - the 10.03 claim, one layer up.

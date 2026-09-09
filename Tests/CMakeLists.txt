@@ -10,6 +10,7 @@ add_subdirectory(Military)
 add_subdirectory(Infrastructure)
 add_subdirectory(Colony)
 add_subdirectory(Player)
+add_subdirectory(Gameplay)
 
 # Kernel purity: no engine headers, exceptions, RTTI or non-deterministic
 # randomness inside engine-agnostic modules. Python 3 is a hard requirement:

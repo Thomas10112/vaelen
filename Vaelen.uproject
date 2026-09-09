@@ -116,6 +116,23 @@
 			]
 		},
 		{
+			"Name": "VaelenGameplay",
+			"Type": "Runtime",
+			"LoadingPhase": "PreDefault",
+			"AdditionalDependencies": [
+				"VaelenCore",
+				"VaelenSim",
+				"VaelenPopulation",
+				"VaelenSociety",
+				"VaelenEconomy",
+				"VaelenPolitics",
+				"VaelenMilitary",
+				"VaelenInfrastructure",
+				"VaelenColony",
+				"VaelenPlayer"
+			]
+		},
+		{
 			"Name": "Vaelen",
 			"Type": "Runtime",
 			"LoadingPhase": "Default",
