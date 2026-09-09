@@ -6,12 +6,14 @@ set(VAELEN_GAMEPLAY_PUBLIC_HEADERS
   Public/Vaelen/Gameplay/Living.h
   Public/Vaelen/Gameplay/Repute.h
   Public/Vaelen/Gameplay/Documents.h
+  Public/Vaelen/Gameplay/Maps.h
 )
 
 set(VAELEN_GAMEPLAY_SOURCES
   Private/Living.cpp
   Private/Repute.cpp
   Private/Documents.cpp
+  Private/Maps.cpp
 )
 
 add_library(VaelenGameplay STATIC ${VAELEN_GAMEPLAY_SOURCES} ${VAELEN_GAMEPLAY_PUBLIC_HEADERS})

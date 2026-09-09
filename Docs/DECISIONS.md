@@ -5951,3 +5951,49 @@ depending on anybody being alive to make it.
   could teach nobody anything about a person already thought of by the full
   handful - which is every person worth writing about. Two copies of one rule is
   one copy too many; there is one now, and both callers use it.
+
+## ADR-0099: A map is the one document the world can check
+
+### Context
+
+12.03's documents say what their writer thought of somebody, and nothing can
+ever say whether that was right - an opinion has no truth to be measured
+against. 12.04 asks what changes when a claim is about GROUND, because the
+ground is right there: 02.06 built the region graph and `AreAdjacent` answers
+for anybody.
+
+### Decision
+
+1. **`PersonGround` holds what somebody can name, and which of it they stood
+   on.** A person who read a region off a page names it exactly as readily as
+   one who walked there; the single bit that separates them is `Walked`, and
+   nothing in the world tells the person which of their own beliefs it is.
+
+2. **A map of walked ground is true by construction, and only of CONSECUTIVE
+   crossings.** A first version claimed every pair of walked regions, which
+   would have drawn a false map out of an honest walk - going from A to C by
+   way of B does not put A next to C. Known is in arrival order and the claims
+   are the crossings actually made.
+
+3. **`ForgeClaim` is the only way a map becomes wrong.** Ground does not move,
+   so a map is not wrong because the world changed under it; it is wrong because
+   somebody drew it wrong. That is deliberate and it is what makes the check
+   worth having.
+
+4. **`CheckMap` is the world reading the map back.** Nothing else in twelve
+   phases can be asked whether it is true.
+
+### Consequences
+
+- Measured: a map of ground walked from region 26 to region 2 gives one claim,
+  one true, none false. One forged road later it gives two claims, one true and
+  one false, and the world says exactly which. A reader who has never left their
+  own region can then name both roads, and has walked neither - the only thing
+  that tells them apart is a bit they cannot see.
+- **A limit: walked ground pushes read ground out of a full head, and never the
+  reverse.** Standing somewhere is worth more than reading about it, and a
+  person holds eight regions. A world where somebody can be talked out of what
+  they have seen is a different design and would need saying so.
+- Maps do not decay and nothing forges them by itself. Both are for whoever
+  needs a forger - 12.06's consequences, or a scenario - and this task gives the
+  verb rather than the motive.
