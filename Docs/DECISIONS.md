@@ -5165,3 +5165,65 @@ answer is to give that change an owner - a function in the module whose
 invariants it touches - and not to write the field from here. `MovePerson` is
 what that looks like: it is used by the player today and it is where anything
 that ever moves a person will go.
+
+## ADR-0087: An opinion is a reading of the log, not a number a menu moves
+
+### Context
+
+Every game that has ever had a reputation system has built it the same way: a
+dialogue tree with a number hanging off it. The player picks line 2 rather than
+line 1, somebody's approval goes up four, and what the world thinks of them is a
+record of which buttons were pressed. It is easy, it is what players expect, and
+it is a different project from this one - it makes the opinion the primary thing
+and the world a decoration on it.
+
+Nine phases have built the other order: the world is what happened, and the
+event log is what it remembers. 10.04 and 10.05 put every act of the player in
+that log with who did it, what kind it was and who it was aimed at.
+
+### Decision
+
+An opinion is read out of the log, and out of nothing else.
+
+1. **RegardSystem walks the acts of the day.** It looks at the tail of the log -
+   the events of this tick - and stops there. It never reads the life, it never
+   reads a menu, and there is no dialogue anywhere in the module.
+2. **Only what was done to somebody counts.** Working and eating are nobody
+   else's business; speaking, giving and taking are aimed at a person and are
+   what make one. A refused doing is not an act at all, so nobody saw it: the
+   world has no opinion about what the player tried.
+3. **The standing of 05.02 enters in one place and one way.** An opinion is
+   worth what its holder is worth, so the repute of the player at large is the
+   opinions weighted by the RANK 05.02 gives whoever holds them. The head of a
+   house thinking well of you counts for more than a field hand doing the same,
+   and the unranked - the bound, the young - still count for something rather
+   than nothing.
+4. **It is a read of 05.02 and never a write to it.** The played person's own
+   standing is what StandingSystem says it is, from the house, the office, the
+   traits and the years, exactly as for everybody else. Nothing here touches it,
+   and a test holds two worlds to that.
+5. **A person is known to the handful they have dealt with.** Eight opinions at
+   once; when a ninth person is dealt with, the faintest and oldest of them is
+   who stops thinking about the player. Nobody is remembered by a region.
+6. **The world forgets.** An opinion drifts back towards nothing at a rate a
+   year can be measured in, stopping at nothing rather than souring into a
+   grudge. A kindness done once is not a claim on somebody for ever.
+
+### Consequences
+
+What the world makes of the player cannot be authored, only earned, and the test
+that shows the design is doing something is not that a gift raises a number. It
+is two worlds of one seed doing the same gift and the same theft to the same two
+people the other way round: the deeds are worth exactly the same to the people
+who received them, and the repute comes out +35 against -63, because the place
+hears the higher-ranked one louder.
+
+The cost is that a designer cannot hand-place a reaction, and Phase 12's
+dialogue will have to be written against this rather than around it: what
+somebody says to the player is a function of an opinion earned in the log, and
+if the writing wants a scene the world has not earned, the answer is to give the
+player a way to earn it rather than to set the number.
+
+The rule to hold to: nothing writes an opinion except a reading of what is in
+the log. The moment something sets one directly, the number stops being a fact
+about the world and the whole of 10.06 becomes decoration.

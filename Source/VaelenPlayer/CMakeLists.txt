@@ -8,6 +8,7 @@ set(VAELEN_PLAYER_PUBLIC_HEADERS
   Public/Vaelen/Player/Hours.h
   Public/Vaelen/Player/Commands.h
   Public/Vaelen/Player/Doings.h
+  Public/Vaelen/Player/Regard.h
 )
 
 set(VAELEN_PLAYER_SOURCES
@@ -16,6 +17,7 @@ set(VAELEN_PLAYER_SOURCES
   Private/Hours.cpp
   Private/Commands.cpp
   Private/Doings.cpp
+  Private/Regard.cpp
 )
 
 add_library(VaelenPlayer STATIC ${VAELEN_PLAYER_SOURCES} ${VAELEN_PLAYER_PUBLIC_HEADERS})
