@@ -2433,45 +2433,50 @@ and the project has spent ten phases not building one of those.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 10 — PLAYER — IN PROGRESS
-TASK        : 10.03 — THE PLAYER'S GRAIN
+PHASE       : 11 — MINING COLONY — IN PROGRESS
+TASK        : 11.03 — THE WORK OF A COLONY
 STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
-█████████████████████████ 96%
+█████████ 37%
 
 CURRENTLY
-→ Every system built in nine phases runs at SimLod::World: once every 8640 ticks, which the calendar
-  of 01.04 calls a year. That is right for a harvest, a levy and a polity, and it is useless to
-  somebody living a life. A person eats today, works today and sleeps tonight.
+→ Reading 06.02 before writing anything showed that most of 11.03 already existed. Production.cpp
+  sums the richness of a region's iron and copper deposits and adds five per mille of it to the
+  common stock every year. Two things it does not do turned out to be the whole task: the seam never
+  depletes, so a deposit is infinite; and the lift is written straight into RegionStock::Amount
+  rather than through AddStock, so it is in no event log, has no cause, and no chronicle can say
+  where the ore came from.
 
-  The scheduler has had the finer grains since 01.03 and nothing had used them: Period[] is
-  {1, 4, 24, 720, 8640}, so the tick IS the hour and SimLod::Aggregate is the day. PlayerDaySystem is
-  the first thing in the project to run at one of them, and it runs for exactly one person - with
-  nobody played it returns immediately and costs a pointer chase.
+  VaelenColony is the tenth kernel module, above Infrastructure and below Player, because 10.02's
+  start stands on ground this module owns. MiningSystem runs at SimLod::Aggregate for one region:
+  it counts the hands, works out what a year of them would lift, and takes the day's share of it by
+  the same exact-sum schedule 11.02 proved - so a year of days lifts what a year should, seam by
+  seam in deposit-index order, never one unit more than a seam held.
 
-  What it does is grant time: a day gives waking hours, and 10.04's commands will spend them.
-  SpendHours is a budget and never an overdraft. What it must not do is change the world, and that is
-  testable exactly: a world with somebody played and a world without, both carrying the system, write
-  the SAME event log over twenty years - e4b3a487cb40e4af both, over 7200 days lived. The state
-  digests differ because the mark and the day ARE state; the history does not, because the day makes
-  none.
+  The design cost one wrong answer. The mark that tells 06.02 to stop reaping was first a rule,
+  ProductionRules::MinedRegion, on 11.02's precedent that rules are in no digest. It compiled, the
+  tests passed, and the colony had seven people in it: a system's rules are fixed when the system is
+  built, which is before Generate runs three hundred years of pre-history, so the region had reaped
+  nothing since the world began. The mining figures were a reading of a corpse, and the test passed
+  on the way through. A colony is a fact with a date, so the mark is a component now (ADR-0090).
 
 COMPLETED
-✓ Phases 00-08 closed · Phase 09 INFRASTRUCTURE closed
-✓ 10.01 the player as a mark · 10.02 the enslaved start
-✓ 10.03 the player's grain — PlayerHours, PlayerDaySystem, SpendHours, MeasureHours, 5 tests
+✓ Phases 00-09 closed · Phase 10 PLAYER closed
+✓ 11.01 a region the world keeps detailed · 11.02 a colony's people at the day
+✓ 11.03 the work of a colony — VaelenColony, MiningSystem, DepositTaken, RegionMined, 5 tests
 
 NEXT
-→ 10.04 — intent as commands: a queue the player submits to, validated against the world and applied
-  by a system INSIDE the simulation, so that a recorded command stream replays to the same life
+→ 11.04 — who holds it: the bondage of 05.04 at colony scale, the overseers of 05.01, and the
+  standing of 05.02 in a place where everybody's rank is the same work
 
 TESTS
-✓ VaelenPlayerTests 13 run, 13 passed
-✓ The day turns 360 times a year while the world runs at the year: 720 days over two years
-✓ Twenty years, 7200 days lived, and the event log identical to the world with nobody in it
-✓ A day is a budget: asking for more than is left gives what is left, and the next day gives it back
-✓ Half a spent day survives a save and a load
+✓ VaelenColonyTests 5 run, 5 passed, 70 checks
+✓ 701 hands on the rock, 1464 units lifted of the 2151 the four seams held
+✓ A seam gives what it held and not one unit more, then ten years of nothing
+✓ 1061 lifts over three years, identical tick for tick in two worlds, frozen a7b00a23e7072fbb
+✓ Five years on the same ground: farm grain 23630, colony grain 12551, both from 40003
+✓ Every unit entered through AddStock — the log holds exactly what the seams gave
 
 BLOCKERS
 ∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)

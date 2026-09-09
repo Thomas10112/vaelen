@@ -17,3 +17,4 @@ VaelenPolitics
 VaelenMilitary
 VaelenInfrastructure
 VaelenPlayer
+VaelenColony

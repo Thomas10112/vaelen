@@ -5349,3 +5349,80 @@ whole region rather than one person.
 The rule to hold to: when a long test disagrees with the simulation, read its
 numbers before its verdict. Five of the six runs of this gate found something,
 and only one of the five was a defect in the test alone.
+
+## ADR-0090: A colony is a fact with a date, not a setting of the run
+
+### Context
+
+11.03 gives a colony its work: hands on the ore seams of 02.07, the ore credited
+through the stocks of 06.01, and the seam running out as it is taken.
+
+Reading 06.02 before writing anything showed that most of that already existed.
+`Production.cpp` sums the richness of a region's iron and copper deposits and
+adds five per mille of it to the common stock every year. Two things it does not
+do, and they turned out to be the whole task: the seam never depletes, so a
+deposit is infinite; and the lift is written straight into `RegionStock::Amount`
+rather than through `AddStock`, so it is in no event log, has no cause, and no
+chronicle can say where the ore came from.
+
+That left one design question: how does 06.02 know to stop reaping and
+extracting on ground a colony works? Counting the ore twice - once by the year
+and once by the colony's day - would be a defect of the most ordinary kind.
+
+The first answer was a rule, `ProductionRules::MinedRegion`, on the precedent of
+11.02's `NeedRules::DailyRegion`: rules are in no digest, so a rule costs no
+closed phase anything. It compiled, the tests passed, and the numbers were
+nonsense. The colony had seven people in it.
+
+The rules of a system are fixed when the system is built, which is before
+`Generate` runs three hundred years of pre-history. So the region had reaped
+nothing since the world began. The colony was not starving in the test; it had
+starved for three centuries before the test began, and the mining figures were a
+reading of a corpse. The test passed on the way through.
+
+### Decision
+
+1. **The mark is a component, because a colony BEGINS.** `Economy::RegionMined`
+   sits on a region entity and says: this ground is worked for what is under it.
+   `FoundColony` puts it there, at a tick, and the world before that call is a
+   world with no colony in it. A rule could not express that, because a rule has
+   no date.
+
+2. **Declared by the module that needs it, observed by the one below.** The mark
+   is registered by `Economy::DeclareMined(World&)`, which only `VaelenColony`
+   calls, and `ProductionSystem::ObserveMined` reads it. A world that never
+   founds a colony has exactly the components it had before 11.03 existed, so no
+   frozen digest of Phases 06 to 10 moves. This is ADR-0086's rule applied
+   upwards: 11.01 paid for it with six phases' digests, and this is the second
+   time it has been the answer.
+
+3. **One mark, three consequences, all from the same fact.** The hands are on
+   the rock and not in the fields, so: nothing is reaped there, no ore is
+   extracted there by the year, and the people still eat out of the common
+   stock. That last one is not an extra rule - it is what makes a colony a place
+   that eats what it does not grow, and what 11.06's road exists to answer.
+
+4. **Depletion is the colony's own component.** `DepositTaken` sits on the
+   deposit entity and is declared by `VaelenColony` alone. `DepositInfo` has two
+   reserved words that would have held the count; using them was rejected for
+   the same reason as the rule - it is a Phase 02 VALIDATED struct, and writing
+   Phase 11 state into it makes the world-generation digest a function of
+   Phase 11.
+
+5. **No `Work::Mine`, and no `Skill::Mining`.** `Buildings.cpp` raises one
+   building of every kind per region per year, so a fifth `Work` would raise
+   mines in every world ever made. `Skill::Count` sizes `PersonTraits`, whose
+   size is asserted at sixteen bytes, so a sixth skill would move the component
+   digest of every world ever made. The colony's hands use the craft 06.02
+   already turns ore into tools with.
+
+### Consequences
+
+- A colony can be founded at any moment of a world's life, and the world before
+  it is untouched. That is what 11.07 needs to put the player's start on the
+  colony's ground at a date rather than at the beginning of time.
+- `VaelenColony` is the tenth kernel module, above Infrastructure and below
+  Player, because 10.02's start stands on ground this module owns.
+- The tests measure the mine and not a famine, which cost one wrong design and
+  two wrong readings to arrive at. Both are written into the tests where the
+  next person will meet them.

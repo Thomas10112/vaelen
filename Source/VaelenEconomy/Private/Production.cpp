@@ -61,6 +61,13 @@ namespace Vaelen::Economy
 		return T;
 	}
 
+	ComponentType<RegionMined> DeclareMined(World& W)
+	{
+		const ComponentType<RegionMined> T = W.Types().Register<RegionMined>("RegionMined");
+		W.Components().CreatePool(T);
+		return T;
+	}
+
 	void ProductionSystem::Tick(TickContext& Context)
 	{
 		if (Context.Events == nullptr)
@@ -212,6 +219,11 @@ namespace Vaelen::Economy
 			{
 				continue;
 			}
+			// 11.03: this ground's hands are on the rock, not in the fields. One
+			// fact, three consequences below: nothing reaped here, no ore extracted
+			// here, and the people still eat out of the common stock - which is
+			// what makes a colony a place that eats what it does not grow.
+			const bool OnTheRock = HasMined && W.Components().GetPool(Mined).TryGet(RH) != nullptr;
 			const History::RegionPopulation* Counts = W.Components().GetPool(Types.Population.Population).TryGet(RH);
 			const uint64 Capacity = Counts != nullptr ? Counts->Capacity : 0u;
 			const bool Fine = Detailed[Region] != 0;
@@ -229,7 +241,7 @@ namespace Vaelen::Economy
 			uint64 Harvest = 0;
 			if (!Fine)
 			{
-				const uint64 OnLand = std::min<uint64>(People, Capacity);
+				const uint64 OnLand = OnTheRock ? 0u : std::min<uint64>(People, Capacity);
 				Harvest = OnLand * Rules.WorkerSharePerMille / 1000u * Rules.HarvestPerWorker * Kept / 1000u *
 						  FieldsPerMille / 1000u;
 				Common->Amount[G_GRAIN] = Saturate(Common->Amount[G_GRAIN] + Harvest);
@@ -239,7 +251,9 @@ namespace Vaelen::Economy
 				// The land takes so many workers: beyond the capacity's share the rest find none.
 				const uint64 Land = Capacity * Rules.WorkerSharePerMille / 1000u;
 				const uint64 ScalePerMille =
-					Workers[Region] == 0 || Land >= Workers[Region] ? 1000u : Land * 1000u / Workers[Region];
+					OnTheRock
+						? 0u
+						: (Workers[Region] == 0 || Land >= Workers[Region] ? 1000u : Land * 1000u / Workers[Region]);
 				const Population::RegionStores* Granary =
 					HasStores ? W.Components().GetPool(Stores).TryGet(RH) : nullptr;
 				const uint64 ToCommon = Granary != nullptr ? std::min<uint32>(1000u, Granary->GrainPerMille) : 0u;
@@ -324,7 +338,7 @@ namespace Vaelen::Economy
 										W.Entities().GetId(RH), Blows[Region].Event);
 			}
 			// 3. The other goods, all in the common stock.
-			if (People >= Rules.ExtractFromPeople)
+			if (!OnTheRock && People >= Rules.ExtractFromPeople)
 			{
 				Common->Amount[G_TIMBER] =
 					Saturate(Common->Amount[G_TIMBER] + uint64{Timber[Region]} * Rules.ExtractPerMille / 1000u);

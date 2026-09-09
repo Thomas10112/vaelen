@@ -58,6 +58,22 @@ namespace Vaelen::Economy
 		static VAELEN_ECONOMY_API ProductionTypes Declare(World& W);
 	};
 
+	/// Component on a region entity: this ground is worked for what is under it
+	/// rather than for what grows on it. Its people are on the rock, so the yearly
+	/// pass reaps nothing here and extracts no ore - whoever put the mark on it
+	/// lifts the ore at their own grain instead.
+	///
+	/// It is a component and not a rule because a colony is a fact with a date:
+	/// a rule fixed when the systems are built would have been true through the
+	/// whole of pre-history, and the first version of this task starved the
+	/// colony's region for three hundred years before the world had even begun.
+	struct RegionMined
+	{
+		uint32 Why = 0; ///< free for the marker's own use
+		uint32 Reserved = 0;
+	};
+	static_assert(sizeof(RegionMined) == 8, "RegionMined must stay padding free");
+
 	struct ProductionRules
 	{
 		uint32 GrainPerPerson = 4; ///< a person's yearly need
@@ -137,6 +153,13 @@ namespace Vaelen::Economy
 			Dues = InDues;
 			HasDues = true;
 		}
+		/// Optional: which regions are mined rather than farmed (11.03). Without
+		/// it every region farms, which is every world made before that task.
+		void ObserveMined(ComponentType<RegionMined> InMined) noexcept
+		{
+			Mined = InMined;
+			HasMined = true;
+		}
 		void Tick(TickContext& Context) override;
 
 	private:
@@ -156,7 +179,14 @@ namespace Vaelen::Economy
 		bool HasDues = false;
 		ComponentType<RegionWorkshops> Shops;
 		bool HasShops = false;
+		ComponentType<RegionMined> Mined;
+		bool HasMined = false;
 	};
+
+	/// Declares the mined mark. Called by whoever works ground for what is under
+	/// it - the Colony of Phase 11 - and by nobody else, so that a world with no
+	/// mine has exactly the components it had before this existed.
+	VAELEN_ECONOMY_API ComponentType<RegionMined> DeclareMined(World& W);
 
 	/// The ration of a region (nullptr before the first harvest or for an unknown region).
 	VAELEN_ECONOMY_API const Population::RegionRation* RationOf(const World& W, const History::PreHistoryTypes& Types,
