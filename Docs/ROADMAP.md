@@ -2668,6 +2668,14 @@ CURRENTLY
   It is NOT `VaelenPresentation` - that is now 13.07c, engine-side - and
   ADR-0113's C4251 decision stays open, because MSVC never reads a web page.
 
+→ And the equilibrium's "84 of 126 regions peopled" is not a third of the world
+  lying empty. The forty-two that never take anyone have a **median size of 3
+  tiles** against 301 for the rest - they are offcuts of the region partition
+  along the coast, not bad land. Any per-region statistic on the page is diluted
+  by them: "55 peopled of 126" says 55 of the 84 regions that could ever hold
+  anyone. No threshold is introduced to make the number read better; the
+  observation is written down instead. ADR-0127.
+
 → **AELVOR SETTLES, AND HOLDS FOR NINE HUNDRED YEARS.** Every gate stops at four
   or five centuries; nothing had ever run this world further. Fifteen centuries
   at 256, in 275 s, with assertions on:

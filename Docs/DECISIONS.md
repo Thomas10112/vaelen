@@ -7847,3 +7847,53 @@ than from a rule that says two hundred thousand.
 > made from a gate is a claim about a young world** - and nothing inside the data
 > says so. When a finding is about what the world IS rather than what it did once,
 > run it further before writing it down.
+
+## ADR-0127 — "126 regions" overstates the world by forty-two slivers
+
+**Date:** 2026-09-10
+**Status:** Accepted (an observation about the generator, not a change)
+**Phase:** 13 — from the fifteen-century run of ADR-0126
+
+### The question
+
+AELVOR's equilibrium settles at **84 regions peopled of 126**, and never moves
+again in nine hundred years. A third of the world permanently empty invites the
+conclusion that a third of the land is uninhabitable, or that something stops
+people spreading into it.
+
+### The answer is size, not land
+
+```
+regions never peopled in 1500 years   42     median size    3 tiles
+regions peopled at some point         84     median size  301 tiles
+```
+
+A hundredfold difference. Biome is a red herring: boreal forest is 55 per cent of
+the never-peopled set, but it is also 15 per cent of the peopled one - boreal
+regions that are BIG get people. The forty-two are offcuts of the region
+partition, three tiles apiece, mostly along a coastline where a partition of the
+land naturally leaves fragments.
+
+Nothing is wrong. A Voronoi-shaped partition produces a tail of slivers, and a
+sliver cannot hold a population that needs to eat.
+
+### What it does mean, and it touches the page
+
+**Any statistic taken per region is diluted by forty-two fragments.** "55 regions
+peopled of 126" reads as *most of this world is empty*, when what it says is *55
+of the 84 regions that could ever hold anyone*. The viewer reports the world's
+own numbers and is right to; a reader who does not know about the tail will draw
+the wrong conclusion from them anyway.
+
+No threshold is being introduced here. "A region under N tiles is not real" would
+be a rule invented to make a number read better, and this project has spent
+enough ADRs on the difference between what the world says and what would be
+convenient. The observation is written down instead, where the next person
+reading a per-region statistic can find it.
+
+### Where it came from
+
+Nobody asked this question in thirteen phases, because the answer only becomes
+visible when a world is run long enough to STOP changing. At year 420 the count
+was still climbing and 55 of 126 looked like a world filling up. It had already
+finished.
