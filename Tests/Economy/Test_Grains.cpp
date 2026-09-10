@@ -48,7 +48,7 @@ using namespace Vaelen::WorldGen;
 // Refrozen 2026-09-08: person indices are taken from a counter that only
 // goes up, so a demoted region no longer hands its indices out again (see
 // PersonCounter).
-#define VAELEN_GRAINS_LIVING_64 0x3262bff481851b8dull
+#define VAELEN_GRAINS_LIVING_64 0x477efde8a0ccb23dull
 #define VAELEN_GRAINS_PROMOTIONS_64 21u
 
 namespace

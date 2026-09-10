@@ -61,10 +61,10 @@ using namespace Vaelen::WorldGen;
 // Recorded on clang 18 / Linux x86_64 (08.08): AELVOR 256 at year 300, the two
 // most peopled regions detailed, five centuries with every Phase 04 to 08
 // system running.
-#define VAELEN_MILGATE_FROZEN_256_250 0x795f25aed60dcb61ull
-#define VAELEN_MILGATE_FROZEN_256_500 0x90b8eda971f657f2ull
-#define VAELEN_MILGATE_LOG_256_500 0xde646de7ded3e7fdull
-#define VAELEN_MILGATE_TEXT_256_500 0xd704a925653f8ecbull
+#define VAELEN_MILGATE_FROZEN_256_250 0xe54185b390417928ull
+#define VAELEN_MILGATE_FROZEN_256_500 0xa7560df2532427d5ull
+#define VAELEN_MILGATE_LOG_256_500 0x8fa93771e78cfb50ull
+#define VAELEN_MILGATE_TEXT_256_500 0x2e557eaed9ed8d0full
 
 namespace
 {

@@ -54,9 +54,9 @@ using namespace Vaelen::WorldGen;
 // Recorded on clang 18 / Linux x86_64 on 2026-09-07 (07.02): AELVOR 128 at
 // year 300, the busiest region detailed, 100 years with every Phase 04, 05,
 // 06 and 07 system so far.
-#define VAELEN_ANNALS_FROZEN_128 0x0b532f477350eef8ull
+#define VAELEN_ANNALS_FROZEN_128 0xb79d0190886f022dull
 #define VAELEN_ANNALS_RECORDS_128 100u
-#define VAELEN_ANNALS_LINES_128 4285u
+#define VAELEN_ANNALS_LINES_128 3708u
 
 namespace
 {

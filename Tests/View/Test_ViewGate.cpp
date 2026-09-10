@@ -58,8 +58,8 @@ using namespace Vaelen::WorldGen;
 // 300, a century more with the busiest region simulated person by person, then
 // a year watched a day at a time - 360 frames, the screen kept up to date by
 // nothing but deltas and checked against a fresh frame every day.
-#define VAELEN_VIEWGATE_FROZEN_VIEW 0xd95d12572069446eull
-#define VAELEN_VIEWGATE_FROZEN_STATE 0x0c5813e6d3d13406ull
+#define VAELEN_VIEWGATE_FROZEN_VIEW 0x115c2ff70a5327c4ull
+#define VAELEN_VIEWGATE_FROZEN_STATE 0x3ec40b78f2dd2174ull
 
 namespace
 {

@@ -63,7 +63,7 @@ using namespace Vaelen::WorldGen;
 // Recorded on clang 18 / Linux x86_64 on 2026-09-08 (09.06): AELVOR 128 at
 // year 300, the two most peopled regions detailed, 150 years with every Phase
 // 04 to 09 system.
-#define VAELEN_WAYS_FROZEN_128 0x0d2760dcc43a63f2ull
+#define VAELEN_WAYS_FROZEN_128 0x80a80e7fbe537794ull
 
 namespace
 {

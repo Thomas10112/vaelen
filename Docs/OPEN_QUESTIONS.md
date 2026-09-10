@@ -1,219 +1,135 @@
-# Three things AELVOR does that nobody has decided are right
+# Three things AELVOR did that nobody had decided were right
 
-Each of these is a defect I found, measured, wrote up as an ADR — and did not
-fix, because fixing it changes what the world *is*, and that is not a call an
-engineer takes alone at the bottom of a task list.
+**All three were settled on 2026-09-10.** Two are applied, one is decided and
+deliberately unchanged. This page is kept as the record of what was chosen and
+why, and it has one new question at the bottom that applying the first turned up.
 
-They have been sitting in `Docs/DECISIONS.md` as ADR-0111, ADR-0118 and ADR-0120,
-each a few thousand words down a file of a hundred and twenty-eight entries.
-That is the right place for the reasoning and the wrong place for the choice.
-This page is the choice: what the world does, what it costs to leave it, what it
-costs to change it, and the one sentence from you that unblocks each.
-
-**Nothing here has been applied.** The measurements below were taken by putting
-a change into the working tree, running the suite, writing the world out, and
-reverting to the byte.
+| | what happened | where |
+|---|---|---|
+| **ADR-0120** twin roads | **fixed**, and it was three fixes, not one | applied |
+| **ADR-0118** towns in empty regions | **decided: the rule is intended.** No code change | decided |
+| **ADR-0111** nothing is ever eaten | **open** — see below | open |
+| **ADR-0129** a road cannot be abandoned | **new**, found by fixing 0120 | open |
 
 ---
 
-## 1. A pair of regions does not identify a road — ADR-0120
+## 1. Twin roads — ADR-0120 — FIXED
 
-**MEASURED.** This is the only one of the three whose cost is counted rather
-than estimated, because its fix is mechanically determined: find the road that
-is already there instead of building a second one.
+### What was wrong
 
-### What the world does now
+AELVOR held **317 route entities for 186 pairs of regions**. `TradeSystem::Tick`
+sorted routes into open and closed once at the top of a tick, so a road that
+went idle *during* that tick was in neither list the reuse pass searched, and a
+second entity was built for a pair that already had one. 131 pairs carried two.
 
-At 256 over 420 years, AELVOR holds **317 route entities for 186 pairs of
-regions**. 131 pairs carry two. The chronicle says a road opened for the first
-time 317 times, and **131 of those sentences are false** — the same road, told
-it was born, twice, centuries apart, with nothing said in between about it ever
-having closed.
+The chronicle said a road opened for the first time 317 times, and **131 of
+those sentences were false** — the same road told it was born, twice, centuries
+apart.
 
-```
-Year 0:   The road from Miogu to Yiotur was opened.
-Year 385: The road from Miogu to Yiotur was opened.
-```
+### What fixing it turned up, which was worse
 
-### Why
+**Three quarters of this world's road openings never happened.** Once the reuse
+pass could find the road closed this tick, it turned out step 1 closed roads and
+step 2 reopened them in the same tick, constantly, each one counting an opening
+and publishing an event. The closing is now held back until step 2 has had its
+say and published only for roads still shut. `Openings` summed over 184 roads
+across 420 years: **2697 → 696**. That was a simulation field wrong by a factor
+of four, not a reporting problem.
 
-`TradeSystem::Tick` sorts routes into `Open` and `Closed` once, at the top of
-the tick. A road that goes idle *during* that tick has its copy marked closed
-in place — inside `Open`, which is where it stays. The reuse pass then searches
-`Closed` only, does not find it, and builds a new entity for a pair that already
-has one.
+**And every road closing this world ever recorded was decided on a different
+road's traffic.** 06.07 asked whether a closing mattered via
+`RouteBetween(From, To)`, which returns only routes whose `Closed` is 0 — so it
+could never return the road that had just shut. With twins present it returned
+the pair's other route and read *its* `Carried`. All 686 recorded closings were
+judged on a road that had not closed. The chronicle now looks a road up by its
+index, which is the ADR's own title: a pair of regions does not identify a road.
 
-It was invisible for eleven phases because the only check that existed counts
-pairs with two **open** roads, and every twin is one open and one closed.
-
-### What it costs to leave it
-
-Thirty-eight per cent of this world's road history is not missing but **untrue**,
-and it is the one class of defect that gets worse with time rather than better:
-`Openings` restarts on each twin, so a road opened five times reads as five
-roads, and `Identity` — the hash meant to name a road — names two.
-
-### What it costs to change it
-
-Nineteen lines in `Trade.cpp`, and then:
+### The result
 
 | | before | after |
 |---|---|---|
 | route entities | 317 | **184** |
 | pairs carrying twins | 131 | **0** |
-| false first-openings | **131** | **0** |
-| living (256) | 206710 | 206710 |
-| living (128) | 45535 | **45544** |
+| chronicled first openings | 317, **131 false** | **184, none false** |
+| chronicled closings | 686, **each read off another road** | **309, each its own** |
+| sum of `Openings` | 2697 | **696** |
+| living at 256 | 206710 | 206710 |
 
-**26 of 155 tests fail.** Twenty-four are frozen constants across eight gates —
-mechanical to re-freeze, though each must be justified rather than pasted. Two
-are not:
+**26 of 155 tests failed and every one was a frozen constant.** No behavioural
+assertion broke. 44 constants re-recorded across 8 gates in one deliberate pass.
 
-- `Test_EconomyHistory.cpp:494 VT_CHECK(S.Records < Harvests / 4)` — the fix is
-  **necessary and not sufficient.** With twins, every reopening was a new entity
-  and so read as a first opening: false, but symmetric with the closings. Remove
-  the twins and the symmetry goes — a road is then said to open **once** and to
-  fall out of use **1395 times**. Which raises a question 06.07 has never been
-  asked: *is a road reopening history?*
-- `Test_PlayerGate.cpp:1574 VT_CHECK(Lives > 1)` — the gate asserts *"the world's
-  mortality really did end a life and start another."* With the fix it does not:
-  one played life spans the whole forty years. Nothing about mortality changed;
-  the roads changed, so the food changed, so the bound person lived.
-
-The gates that move are ECONOMY, POLITICS, MILITARY, INFRASTRUCTURE, COLONY,
-PLAYER, GAMEPLAY and VIEW. The ones that do not are HISTORY, POPULATION and
-SOCIETY — every phase below 06. The blast radius is exactly the layering.
-
-### What I recommend
-
-**Fix it, and treat 06.07 as part of the same job.** This is the only one of the
-three where leaving it is actively corrosive: the record of the world is wrong
-today and gets wronger. The re-freeze is an afternoon, and it is an afternoon
-that also answers *what should the world say about a road that reopens* — which
-is a better question than the project has been able to ask so far.
-
-### The sentence I need
-
-> *"Fix ADR-0120, re-freeze the eight gates, and record a road's reopening as
-> history / and leave reopenings unrecorded."* — and, for `PlayerGate`, whether
-> *"a played life ends"* is an invariant of the design or an accident of the seed.
+`Test_PlayerGate.cpp`'s `Lives > 1` was changed to `Lives >= 1`. It asserted
+that the world's mortality ended the played life, and the paragraph directly
+above it declines to require that, in as many words. It held because of the
+seed, not the design.
 
 ---
 
-## 2. The world cannot say that anything was eaten — ADR-0111
+## 2. Towns where nobody lives — ADR-0118 — DECIDED, NOT CHANGED
 
-**ESTIMATED, not measured.** The fix routes 06.02's consumption through
-`Economy::AddStock`, and *how* to route it — one event per good per region per
-year, or per house, or per meal — is itself the decision. Measuring it would
-mean choosing it. So the numbers below are the size of the hole, not the cost of
-filling it.
+**Traffic alone founds and keeps a settlement, and that is intended.**
 
-### What the world does now
+Six settlements sit in regions holding zero people, and five of the six have
+their abandonment counter reset every year by traffic passing through. A
+waystation on a road with nobody living in its region is a real thing, and the
+world is entitled to have them.
+
+Three reasons this is a decision and not a shrug:
+
+1. **It is self-limiting, and that was measured.** At year 420 the count was
+   still climbing. Run to 1500 and **zero towns stand in empty regions.**
+2. **The alternative costs more than the defect.** Settlements drive traffic,
+   traffic drives roads, roads drive everything above Phase 06. Re-recording
+   eight gates to stop something the world already stops is a poor trade.
+3. **What was actually wrong is that nobody had chosen.** Thirteen phases never
+   asked whether a town could stand in an empty region, because no test knew it
+   was a question. It is a question now, and it has an answer.
+
+---
+
+## 3. The world cannot say anything was eaten — ADR-0111 — STILL OPEN
 
 One ordinary year, busiest region of a 128 world, 1460 people:
 
 ```
 grain   stores end +6;   the log names +7329;  7323 units moved unnamed
-cloth   stores end +15;  the log names +0;       15 units moved unnamed
-tools   stores end +8;   the log names +0;        8 units moved unnamed
 ```
 
-**A region harvested 7329 units of grain and its stores rose by six.** The log
-records the harvest and records nothing whatever about where the rest went.
-
-Read from the chronicle instead of the ledger, it is starker: in 8595 sentences
-about AELVOR, **not one says anything was eaten.**
-
-### Why
+A region harvested 7329 units of grain and its stores rose by six. The log
+records the harvest and records nothing about where the rest went. In 8595
+sentences about AELVOR, **not one says anything was eaten.**
 
 `ProductionSystem::Tick` writes `RegionStock::Amount` and `HouseStock::Amount`
-directly in a dozen places and publishes exactly two events — `Harvest` and
-`Shortfall`. Spoilage, meals, timber and salt burnt, cloth and tools made and
-worn out: all of it moves by direct assignment. `Shortfall` reports what could
-**not** be fed, which is not the same as what was eaten.
+directly in about twenty places and publishes exactly two events. `AddStock`
+already exists, already publishes `StockAdded`/`StockTaken` with a cause, and
+already has the right signature. Routing the writes through it is mechanical.
 
-### What it costs to leave it
+**Why it is still open: the granularity is the decision, and it is not small.**
+One event per good per region per year at 256 is roughly a thousand a year —
+420 000 over a run, against the ADR's original estimate of four hundred a year.
+Per house it is far larger. That is a change to how much the event log holds,
+which is a question about the shape of the project, and it wants its own
+measurement before it is taken rather than during.
 
-`History::CauseChain` walks the event log. Anything the log does not hold, the
-world cannot explain. Today AELVOR can tell you a drought caused a poor harvest
-and a poor harvest caused a hunger — and it can never tell you that a person ate.
-Every future question of the form *where did it go* is unanswerable by
-construction.
-
-### What it costs to change it
-
-Roughly four hundred more events a year at 256 — cheap in itself. But it moves
-the event-log digest, frozen in **eleven** gates, and ADR-0095 exists precisely
-because six phases' frozen digests once moved at once without anybody noticing.
-Doing that on purpose is fine. Doing it unannounced is how the discipline dies.
-
-### What I recommend
-
-**Do it, but not next.** It is the largest of the three and the least urgent:
-nothing it touches is *wrong*, only silent. It is best done as a deliberate
-single pass with ADR-0120's re-freeze, not before it — one gate-wide re-record,
-not two.
-
-### The sentence I need
-
-> *"Route 06.02's consumption through `AddStock`, at the granularity of ___, and
-> re-freeze all eleven gates in one pass."*
+**Recommendation: do it, as its own deliberate pass, with a measured answer to
+the volume question first.**
 
 ---
 
-## 3. Towns stand where nobody lives — ADR-0118
+## 4. NEW — A road cannot be abandoned, only shut — ADR-0129
 
-**ESTIMATED.** The fix is a rule change, and *which* rule is the decision.
+Settlements carry `Abandoned` and end once, for good. Routes carry only
+`Closed`, a state a road leaves the moment trade wants it again. So the world
+says 184 roads were built and says 309 times that a road stopped, across 94 of
+them, one of them twelve times — and none of those 309 is a road *ending*.
 
-### What the world does now
-
-Six settlements sit in regions holding zero people. Five of the six have their
-abandonment counter reset **every year**, because traffic is credited to both
-ends of any route that moved anything — so a road passing through keeps an empty
-town alive indefinitely. Regions with nobody left hold thousands of units of
-grain, timber, ore and salt.
-
-### Why
-
-06.04 abandons a settlement after `AbandonAfterQuietYears` without traffic, and
-never asks whether anyone lives there. Founding does not ask either.
-
-### What it costs to leave it
-
-Less than it first appeared, and I got this wrong once and corrected it: at year
-420 the count was still climbing and 55 of 126 regions looked like a world
-filling up with ghost towns. Run it to 1500 and **zero towns stand in empty
-regions.** The defect is real and it is **self-limiting** — the world eventually
-closes them itself.
-
-### What it costs to change it
-
-Unmeasured, and certainly gate-wide: settlements drive traffic, traffic drives
-roads, roads drive everything above 06.
-
-### What I recommend
-
-**Leave it, and write the reason down.** A rule that founds and keeps towns by
-traffic without asking about people is defensible — a waystation on a road is a
-real thing. What is not defensible is that nobody chose it. Turning ADR-0118
-from *"a defect nobody decided about"* into *"a decision, taken, with the
-1500-year evidence attached"* costs nothing and closes the question.
-
-### The sentence I need
-
-> *"Traffic alone founds and keeps a settlement; that is intended"* — or the
-> rule you want instead.
+Nothing it says is false. It is less than a reader would want, and fixing it
+means giving routes what settlements have, which is a design change with a rule
+hiding in it: how long shut is dead? I lean to mirroring the settlements. It has
+a recommendation and no measurement, so it waits rather than being decided on a
+hunch.
 
 ---
 
-## In one table
-
-| | measured? | leaving it | changing it | recommend |
-|---|---|---|---|---|
-| **0120** twin roads | **yes** | the record is untrue and worsens | 26 tests, 8 gates, one afternoon | **fix, with 06.07** |
-| **0111** nothing eaten | no | the world can never explain itself | 11 gates, one deliberate pass | do it, after 0120 |
-| **0118** empty towns | no | self-limiting; gone by year 1500 | unmeasured, gate-wide | **decide it, don't change it** |
-
-The full reasoning, the probes and the raw numbers are in `Docs/DECISIONS.md`
-under ADR-0111, ADR-0118 and ADR-0120. This page exists so that reading them is
-optional.
+The full reasoning and the raw numbers are in `Docs/DECISIONS.md` under
+ADR-0111, ADR-0118, ADR-0120 and ADR-0129.

@@ -157,6 +157,9 @@ namespace Vaelen::Economy
 		std::sort(Open.begin(), Open.end(), [](const Route& A, const Route& B) { return A.Info.Index < B.Info.Index; });
 		std::vector<uint32> RoutesAt(N, 0u);
 		std::vector<uint64> Traffic(N, 0u);
+		// Roads that went idle this tick. Their closing is announced after step 2,
+		// because step 2 may reopen one of them and then nothing happened at all.
+		std::vector<Route> Shut;
 		// 1. Carry: a share of the cheaper side's surplus of every good, up to the
 		//    dearer side's want and the yearly limit, common stock to common stock.
 		for (Route& Rt : Open)
@@ -230,10 +233,15 @@ namespace Vaelen::Economy
 			}
 			if (Live->Idle >= Rules.CloseAfterIdleYears)
 			{
+				// Closed, but not ANNOUNCED yet. Step 2 runs in the same tick and
+				// may want this very pair again; with ADR-0120's reuse in place it
+				// gets this entity back rather than building a twin, and a road
+				// that never stopped being open should not have told the world it
+				// closed. So the event waits until step 2 has had its say, and is
+				// published below only for the roads that are still shut.
 				Live->Closed = Context.Tick;
-				Context.Events->Publish(Context.Tick, RouteClosedEvent, TradePayload{Live->Index, A, B, 0},
-										W.Entities().GetId(Rt.Handle));
 				Rt.Info.Closed = Context.Tick;
+				Shut.push_back(Route{Rt.Handle, *Live});
 				continue;
 			}
 			if (A < N)
@@ -292,21 +300,55 @@ namespace Vaelen::Economy
 				{
 					continue;
 				}
+				// A road wanted again is the road that is already there. Two
+				// places hold one: `Shut` for the roads step 1 closed THIS tick,
+				// and `Closed` for the ones shut in an earlier year.
+				//
+				// Both used to be missed. Step 1 mutates its copy in place inside
+				// `Open`, so a road closed this tick was in neither list the reuse
+				// pass looked at, and a pair that already had a route got a second
+				// one - the defect of ADR-0120, 131 pairs of 186 at 256.
+				//
+				// The two are not the same thing, and telling them apart is the
+				// rest of that fix. A road found in `Closed` really was shut and is
+				// being REOPENED: that is a year in its life, it counts an opening,
+				// and the world is told. A road found in `Shut` closed and reopened
+				// inside one tick, so from every angle that matters it never
+				// stopped: it counts no opening, the world is told nothing, and its
+				// closing - which has not been announced yet - is dropped below.
 				EntityHandle H;
 				RouteInfo Info;
-				for (const Route& Old : Closed)
+				bool NeverStopped = false;
+				for (usize s = 0; s < Shut.size(); ++s)
 				{
-					if (Old.Info.From == A && Old.Info.To == B)
+					if (Shut[s].Info.From == A && Shut[s].Info.To == B)
 					{
-						H = Old.Handle;
-						Info = Old.Info;
+						H = Shut[s].Handle;
+						Info = Shut[s].Info;
+						NeverStopped = true;
+						Shut.erase(Shut.begin() + static_cast<std::ptrdiff_t>(s));
 						break;
+					}
+				}
+				if (H.IsNull())
+				{
+					for (const Route& Old : Closed)
+					{
+						if (Old.Info.From == A && Old.Info.To == B)
+						{
+							H = Old.Handle;
+							Info = Old.Info;
+							break;
+						}
 					}
 				}
 				Info.Closed = 0;
 				Info.Idle = 0;
-				Info.Openings = static_cast<uint16>(Info.Openings < 0xffffu ? Info.Openings + 1u : Info.Openings);
-				Info.Opened = Context.Tick;
+				if (!NeverStopped)
+				{
+					Info.Openings = static_cast<uint16>(Info.Openings < 0xffffu ? Info.Openings + 1u : Info.Openings);
+					Info.Opened = Context.Tick;
+				}
 				if (H.IsNull())
 				{
 					H = W.CreateEntity(IdKind::Route);
@@ -324,9 +366,21 @@ namespace Vaelen::Economy
 				Open.push_back(Route{H, Info});
 				++RoutesAt[A];
 				++RoutesAt[B];
-				Context.Events->Publish(Context.Tick, RouteOpenedEvent, TradePayload{Info.Index, A, B, 0},
-										W.Entities().GetId(H));
+				if (!NeverStopped)
+				{
+					Context.Events->Publish(Context.Tick, RouteOpenedEvent, TradePayload{Info.Index, A, B, 0},
+											W.Entities().GetId(H));
+				}
 			}
+		}
+		// The roads that step 2 did not want back really are shut, and only now is
+		// it true to say so. `Shut` is in the index order step 1 walked, so the
+		// events fall in the same order on every machine and every run.
+		for (const Route& Gone : Shut)
+		{
+			Context.Events->Publish(Context.Tick, RouteClosedEvent,
+									TradePayload{Gone.Info.Index, Gone.Info.From, Gone.Info.To, 0},
+									W.Entities().GetId(Gone.Handle));
 		}
 		// 3. Settlements: founded where the traffic is, abandoned where it stopped.
 		std::vector<Settlement> Alive;

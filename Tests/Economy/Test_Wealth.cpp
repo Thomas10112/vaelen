@@ -44,7 +44,7 @@ using namespace Vaelen::WorldGen;
 // Recorded on clang 18 / Linux x86_64 on 2026-09-07 (06.05): AELVOR 128 at
 // year 300, the busiest region detailed, 100 years with every Phase 04 body,
 // Phase 05 society and Phase 06 system so far.
-#define VAELEN_WEALTH_FROZEN_128 0x8347935dd85ca3e9ull
+#define VAELEN_WEALTH_FROZEN_128 0x2f0c68538e847160ull
 #define VAELEN_WEALTH_HEIRS_128 4u
 #define VAELEN_WEALTH_INHERITANCES_128 12u
 

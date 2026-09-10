@@ -2593,10 +2593,10 @@ VAELEN BUILD STATUS
 
 PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (12 of 12) · ENGINE HALF STARTED (13.06 of 3)
 TASK        : 13.08f done — the viewer page is checked by CTest, not by me looking at it
-CI          : run 144 on e480e46 — 9 of 9 GREEN. gcc-debug 104 min, clang-debug 90,
-              macOS 76, Windows 69, the four non-debug Linux legs 14-15 min.
-BLOCKED ON  : three decisions, stated as choices in Docs/OPEN_QUESTIONS.md
-              (ADR-0120 twin roads · ADR-0111 nothing eaten · ADR-0118 empty towns)
+CI          : run 146 on acbf7fc — 9 of 9 GREEN, and the first run to prove the
+              three Viewer entries pass on Windows and macOS too.
+DECIDED     : ADR-0120 FIXED (and it was three fixes) · ADR-0118 decided, unchanged
+OPEN        : ADR-0111 nothing eaten · ADR-0129 a road cannot be abandoned
 STATUS      : PROTOTYPE (headless) / VALIDATED (UE 5.6, compiles, links and runs)
 
 PROGRESS

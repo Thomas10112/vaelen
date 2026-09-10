@@ -13,12 +13,12 @@ decision rule decided: robustness, then architectural simplicity, performance,
 evolvability, determinism), Consequences (what it costs and what it enables), Status
 (accepted / superseded, and the validation state of the implementation).
 
-**Three records in this file are PROPOSED and await the project owner's
-decision: ADR-0111, ADR-0118 and ADR-0120.** They are defects found, measured
-and deliberately not fixed, because fixing them changes what the world is.
-`Docs/OPEN_QUESTIONS.md` states each as a choice - what it costs to leave it,
-what it costs to change it, and the one sentence that unblocks it - so that
-reading the three records in full is optional.
+**Two records in this file are PROPOSED and await the project owner's decision:
+ADR-0111 and ADR-0129.** ADR-0120 was accepted and applied on 2026-09-10 and
+ADR-0118 was decided the same day without a code change.
+`Docs/OPEN_QUESTIONS.md` carries all four as choices - what each costs to leave,
+what it costs to change, and what was decided - so that reading the records in
+full is optional.
 
 Rules for this file:
 
@@ -7114,8 +7114,34 @@ engine's palette changes, this changes with it, deliberately and by hand.
 ## ADR-0118 — Six towns stand where nobody lives, and the rule that should close them counts the wrong thing
 
 **Date:** 2026-09-10
-**Status:** Proposed — the change is the project owner's call, not mine
+**Status:** DECIDED 2026-09-10 — **traffic alone founds and keeps a settlement, and that is intended.** No code changes.
 **Phase:** 13 — found by 13.07b, one hour after the viewer existed
+
+> **The decision, taken 2026-09-10.** The rule stays as it is. A settlement is
+> founded where the traffic is and kept while the traffic lasts, and 06.04 does
+> not ask whether anyone lives there — deliberately, from today. A waystation on
+> a road with nobody living in its region is a real thing, and the world is
+> entitled to have them.
+>
+> Three reasons this is a decision and not a shrug:
+>
+> 1. **It is self-limiting, and that was measured.** At year 420 the count was
+>    still climbing and 55 of 126 regions looked like a world filling up with
+>    ghost towns. Run to 1500 and **zero towns stand in empty regions.** The rule
+>    closes them itself; it just takes longer than four centuries.
+> 2. **The alternative is a bigger change than the defect.** Settlements drive
+>    traffic, traffic drives roads, roads drive everything above Phase 06.
+>    Re-recording eight gates to stop a thing the world already stops is a poor
+>    trade.
+> 3. **What was actually wrong was that nobody had chosen.** Thirteen phases of
+>    tests never asked whether a town could stand in an empty region, because no
+>    test knew it was a question. It is a question now, and it has an answer.
+>
+> What does NOT change: the six towns of the measurement below are real, the
+> `Quiet` counter really is reset by traffic that passes through, and the
+> thousands of units sitting in regions with nobody left to eat them are really
+> sitting there. Those are consequences of the rule, now chosen rather than
+> inherited.
 
 ### How it was found
 
@@ -7418,8 +7444,15 @@ would take an hour and buy nothing.
 ## ADR-0120 — A pair of regions does not identify a road, and 06.04 meant it to
 
 **Date:** 2026-09-10
-**Status:** Proposed — the fix is the project owner's call, not mine
-**Phase:** 13 — found by 13.08a
+**Status:** ACCEPTED and APPLIED — the project owner said to do all three
+**Phase:** 13 — found by 13.08a, applied the same day
+
+> **Applied 2026-09-10.** Everything below up to "What the fix actually costs"
+> was written while this was still a proposal, and is left as it was. What
+> applying it found is at the end, under **What applying it turned up**, and it
+> is more than the fix: three quarters of this world's road openings never
+> happened, and every road closing it ever recorded was decided on the wrong
+> road's traffic.
 
 ### How it was found
 
@@ -7616,6 +7649,148 @@ time, about a thing that had happened before. For a project whose README says
 the simulation is the source of truth and whose chronicle is meant to be
 readable as history, that is a different order of defect from a wasted entity,
 and it is the reason this ADR is worth acting on rather than filing.
+
+### What applying it turned up
+
+The measurement said the one-line fix was necessary and not sufficient. It was
+right, and for reasons the measurement could not see. Applying it took three
+changes, not one, and the second and third are larger findings than the first.
+
+**One. The road that is already there.** `TradeSystem::Tick`'s reuse pass now
+looks in both places a shut road can be, and tells them apart:
+
+- `Closed`, the roads shut in an earlier year. A road found here really was
+  shut and is being REOPENED: that is a year in its life, it counts an opening,
+  and the world is told.
+- `Shut`, the roads closed in THIS tick. A road found here closed and reopened
+  inside one tick, so it never stopped: no opening is counted, nothing is said.
+
+**Two. Three quarters of this world's road openings never happened.** Step 1
+closed a road and step 2 reopened it in the same tick, over and over, and every
+one of those counted as an opening and published an event. With the closing held
+back until step 2 has had its say, and published only for the roads still shut:
+
+```
+sum of Openings, 184 roads over 420 years    2697  ->  696
+```
+
+Two thousand of the 2697 openings in this world's records were a road being shut
+and reopened between two lines of the same function. That is not a chronicle
+problem. `Openings` is a simulation field, and it was wrong by a factor of four.
+
+**Three, and the worst of them: every road closing this world ever recorded was
+decided on a DIFFERENT road's traffic.** 06.07 asked whether a closing mattered
+by calling `RouteBetween(From, To)` — and `RouteBetween` returns only a route
+whose `Closed` is 0. The road that has just shut can never be the one it
+returns. With ADR-0120's twins present it returned the pair's OTHER route and
+read its `Carried`; the 686 closings this world recorded were each decided on a
+road that had not closed. Fix the twins and it returns nothing at all, and the
+world falls silent about roads ending — which is how this was found: the count
+went to zero and stayed there through two attempted rules.
+
+The fix is the ADR's own title. A pair of regions does not identify a road, so
+the chronicle looks the road up by its index. `RouteOfIndex` is four lines and
+finds a road whether it is open or shut.
+
+### What it did to the world
+
+AELVOR at 256, 300 years of pre-history and 420 years run:
+
+| | before | after |
+|---|---|---|
+| route entities | 317 | **184** |
+| pairs carrying twins | 131 | **0** |
+| chronicled first openings | 317, of which **131 false** | **184, none false** |
+| chronicled closings | 686, **each read off another road** | **309, each its own** |
+| sum of `Openings` | 2697 | **696** |
+| living | 206710 | 206710 |
+
+### What it cost, and what it did not
+
+**26 of 155 tests failed, and every one was a frozen constant.** Not one
+behavioural assertion broke. Both of the two that the measurement had flagged
+came back green on their own:
+
+- `Test_EconomyHistory.cpp:494 VT_CHECK(S.Records < Harvests / 4)` passes,
+  because the chronicle got *smaller*, not larger — records at 128 went
+  1147 -> 574. The measurement predicted this would need a decision about
+  whether a reopening is history. It did not: most of those "reopenings" were
+  never openings.
+- `Test_PlayerGate.cpp:1574 VT_CHECK(Lives > 1)` was changed, and would have
+  been changed even if it had passed. It asserted that the world's mortality
+  ended the played life — and the paragraph directly above it declines to
+  require that, in as many words. It held because of the seed. It is now
+  `Lives >= 1` with the reason written where the old line stood.
+
+42 constants across 8 gates were re-recorded in one pass, plus two more by hand
+whose macro name collides across three test files (`VAELEN_ANNALS_RECORDS_128`
+is three different numbers in three files, which is worth its own tidy-up one
+day). The re-freezing tool refuses a constant whose two runs disagree, because
+a gate that is not deterministic is the thing a frozen digest exists to catch.
+
+### What is still not right, and is not mine to invent
+
+**The simulation has no concept of a road being abandoned.** Settlements carry
+an `Abandoned`; routes carry only `Closed`, which a road leaves the moment trade
+warrants it again. So 06.07 still cannot say "this road ended" — only "this road
+stopped for a while", 309 times across 94 roads, against 184 lines saying a road
+was built. The asymmetry is smaller than it was and it is honest now, but it is
+still an asymmetry, and closing it means giving routes what settlements have.
+That is a design change, not a defect fix. **ADR-0129.**
+
+## ADR-0129 — A road cannot be abandoned, only shut, and the chronicle has been guessing
+
+**Status:** Proposed — a design change, not a defect fix
+**Date:** 2026-09-10
+**Phase:** 13 — found by applying ADR-0120
+
+### The gap
+
+A settlement can end. `SettlementInfo` carries `Abandoned`, 06.04 sets it after
+`AbandonAfterQuietYears` without traffic, and `SettlementAbandonedEvent` says so
+once, for good.
+
+A road cannot. `RouteInfo` carries `Closed`, which is a tick a road sits at
+until trade warrants it again — a state, not an ending. There is no
+`RouteAbandonedEvent` and no year at which a road is done.
+
+So 06.07, asked to record "the day it is abandoned after having carried
+something", has been approximating. It looked at `Carried` and called that
+abandonment, which for eleven phases meant reading the traffic of the pair's
+OTHER route (ADR-0120). With that fixed the approximation is at least about the
+right road, and it is still an approximation: at 256 over 420 years the world
+says 184 roads were built, and says 309 times that a road stopped, across 94 of
+them, one of them twelve times. Some of those are a road ending. The world
+cannot tell which.
+
+### Why it is not fixed here
+
+Because inventing a road's death is a decision about what AELVOR is, not a
+repair of something broken. It needs a rule — how long shut is dead? — and that
+rule changes what the world does, not only what it says. Two candidates:
+
+- **Mirror the settlements.** A route shut for `AbandonAfterQuietYears` is
+  abandoned; publish it once, and let the chronicle record that and drop the
+  lapses. Cheap, symmetric with the towns, and it gives `CauseChain` a real end
+  to point at. It also lets a road come back from the dead unless abandonment
+  also stops the reuse pass finding it, which is a second decision hiding in the
+  first.
+- **Say the truth as it stands.** Record lapses AND returns, both, and let a
+  road read as the on-and-off thing it is. Honest, and it puts some nine hundred
+  more lines into an eighteen-thousand-line chronicle, against the principle the
+  whole file is built on: routine is not history.
+
+I lean to the first. But ADR-0111 and ADR-0118 each came with a measurement and
+a recommendation, and this one has a recommendation and no measurement, so it
+waits rather than being decided on a hunch.
+
+### What holds until then
+
+Nothing the chronicle says is false. A road was built; a road stopped carrying,
+as often as that happened. It is less than a reader would want, and the comment
+in `EconomyHistory.cpp` now says so plainly where it used to claim otherwise.
+
+---
 
 ## ADR-0121 — The network is not part of the frame, because the frame is diffed
 

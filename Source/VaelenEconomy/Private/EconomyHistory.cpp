@@ -71,6 +71,31 @@ namespace Vaelen::Economy
 			Ceiling = std::max(Floor, Base * Rules.CeilingPerMille / 1000u);
 		}
 
+		/// The route with this index, open or shut.
+		///
+		/// NOT `RouteBetween`, which this used to call and which returns only a
+		/// route whose `Closed` is 0. A closing event is about a road that has
+		/// just shut, so the pair lookup could never find it - and returned the
+		/// OTHER route of the pair instead, back when ADR-0120's twins meant
+		/// there was one. Every closing this world recorded before that fix was
+		/// decided on a different road's traffic. A pair of regions does not
+		/// identify a road; its index does.
+		const RouteInfo* RouteOfIndex(const World& W, const TradeTypes& Trade, uint32 Index)
+		{
+			const RouteInfo* Found = nullptr;
+			W.Components()
+				.GetPool(Trade.Route)
+				.ForEach(
+					[&](EntityHandle H, const RouteInfo& R)
+					{
+						if (Found == nullptr && R.Index == Index)
+						{
+							Found = W.Components().GetPool(Trade.Route).TryGet(H);
+						}
+					});
+			return Found;
+		}
+
 		void AppendRegion(const World& W, const History::PreHistoryTypes& Types, uint32 Region, std::string& Out)
 		{
 			std::string Name;
@@ -113,7 +138,7 @@ namespace Vaelen::Economy
 			{
 				return false;
 			}
-			const RouteInfo* R = RouteBetween(*Owner, Context.Trade, P.From, P.To);
+			const RouteInfo* R = RouteOfIndex(*Owner, Context.Trade, P.Route);
 			if (R == nullptr)
 			{
 				return false;

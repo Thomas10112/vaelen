@@ -115,18 +115,18 @@ using namespace Vaelen::WorldGen;
 // did NOT move by that change and were not re-recorded - the history this world
 // wrote and the life that was lived in it are the same ones, which is the
 // evidence that the change was to the bookkeeping and not to the world.
-#define VAELEN_PLAYERGATE_FROZEN_HALF 0x1346aac980b8c6b7ull
-#define VAELEN_PLAYERGATE_FROZEN_END 0xd51dc2a7d4a468e8ull
-#define VAELEN_PLAYERGATE_LOG 0x4a86e3f3bc62df03ull
-#define VAELEN_PLAYERGATE_LIFE 0x7105a2243db1481eull
+#define VAELEN_PLAYERGATE_FROZEN_HALF 0xf1fa74c732139c86ull
+#define VAELEN_PLAYERGATE_FROZEN_END 0xb4b631e68a96f56full
+#define VAELEN_PLAYERGATE_LOG 0xa810f22c65459d9dull
+#define VAELEN_PLAYERGATE_LIFE 0x5d7c3a439b10fa79ull
 
 // Recorded on gcc 13 / Linux x86_64 on 2026-09-09 (11.08): AELVOR 256 at year
 // 300, sixty years of detail on the ground where the ore and the people both
 // are, the colony founded and bound there, and forty years lived a day at a
 // time inside it out of a recorded stream of intents.
-#define VAELEN_COLONYGATE_FROZEN_HALF 0x78997c9e11f162a5ull
-#define VAELEN_COLONYGATE_FROZEN_END 0x2862e6e238d2c1fdull
-#define VAELEN_COLONYGATE_LOG 0xabb41cdb4e931d65ull
+#define VAELEN_COLONYGATE_FROZEN_HALF 0x87186a3f308a6015ull
+#define VAELEN_COLONYGATE_FROZEN_END 0x6bae72ff19c4f54bull
+#define VAELEN_COLONYGATE_LOG 0x76ea6c0c4536a9a8ull
 
 // Recorded on gcc 13 / Linux x86_64 on 2026-09-10 (12.08): AELVOR 256 at year
 // 300, sixty years of detail on the ground where the ore and the people both
@@ -139,10 +139,10 @@ using namespace Vaelen::WorldGen;
 // nothing to walk. Every check it made was true and the gate was hollow, which
 // is ADR-0095 exactly. The volumes below are asserted before the digests for
 // that reason.
-#define VAELEN_GAMEPLAYGATE_FROZEN_HALF 0xa93a0190543952eaull
-#define VAELEN_GAMEPLAYGATE_FROZEN_END 0x6a93fa19a2016086ull
-#define VAELEN_GAMEPLAYGATE_LOG 0xcb125f942294717cull
-#define VAELEN_GAMEPLAYGATE_BELIEF 0xaa9c8172fa306bd1ull
+#define VAELEN_GAMEPLAYGATE_FROZEN_HALF 0x914ad41b823514b2ull
+#define VAELEN_GAMEPLAYGATE_FROZEN_END 0x124ed0f97847b319ull
+#define VAELEN_GAMEPLAYGATE_LOG 0xa34856fba9c8e8ebull
+#define VAELEN_GAMEPLAYGATE_BELIEF 0x43769254e60f4027ull
 
 namespace
 {
