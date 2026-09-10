@@ -2591,8 +2591,8 @@ first question Phase 13 or a later gameplay phase should be asked.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (8 of 8) · ENGINE HALF STARTED (13.06 of 3)
-TASK        : 13.08a done — the roads are in the view, and the colony with them
+PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (9 of 9) · ENGINE HALF STARTED (13.06 of 3)
+TASK        : 13.08c done — four centuries of AELVOR, scrubbable
 STATUS      : PROTOTYPE (headless) / VALIDATED (UE 5.6, compiles, links and runs)
 
 PROGRESS
@@ -2667,6 +2667,23 @@ CURRENTLY
 
   It is NOT `VaelenPresentation` - that is now 13.07c, engine-side - and
   ADR-0113's C4251 decision stays open, because MSVC never reads a web page.
+
+→ **13.08c IS DONE: THE WORLD MOVES.** `--every N` keeps a frame; the page has a
+  slider and every reading on it comes from the chosen year. 42 frames at 256,
+  1.2 MB, and the arc is the point:
+
+    year  10        992 alive,  8 roads open,  4 regions peopled
+    year 250     31 872 alive, 55 roads open
+    year 420    123 600 alive, 78 roads open, 55 regions peopled
+
+  Getting the pre-history INTO the timeline meant moving those three hundred
+  years out of `Generate` and into `Run`. The first attempt did that and produced
+  a DIFFERENT world - 27564 alive against 36374 - not because the years changed
+  but because `RequestDetail` now fired at year zero, where nobody has spread and
+  no region is worth detailing. A run is not defined by which call ticks the
+  clock; it is defined by when the world is asked to pay attention. With the
+  request back at its own year, the restructure reproduces the old run to the
+  bit. ADR-0122.
 
 → **13.08a IS DONE, AND THE OBVIOUS TEST FOUND A DEFECT.** `RegionView::Roads`
   is a COUNT - three routes touch this region, and not which three - so a map
@@ -2873,6 +2890,7 @@ kernel work: engine-agnostic, tested under the presets, covered by a gate.
 | 13.07a | The GROUND in the view (`Vaelen/View/Land.h`), and `Tools/Atlas`: AELVOR generated, run and written out as numbers, with no engine anywhere | unit, integration, deterministic, edge | **DONE 2026-09-10** |
 | 13.07b | The world DRAWN from that view and from nothing else (`Tools/Viewer/Atlas.html`): relief, biomes, rivers, regions, settlements, every tile readable | rendered headless, checked against the run | **DONE 2026-09-10** |
 | 13.08a | The NETWORK in the view (`Vaelen/View/Net.h`): roads as roads and not as a count, and the colony. Drawn on the same page | unit, integration, deterministic, edge | **DONE 2026-09-10** |
+| 13.08c | The world IN TIME: `--every N` keeps a frame, the page scrubs four centuries, and the pre-history stops being a black box | deterministic (a timelined run is the same run), checked output | **DONE 2026-09-10** |
 
 **Engine-side (needs UE 5.6, another machine).** Nothing here can be written
 honestly from a container without the engine, and writing it anyway is how a
@@ -3157,6 +3175,38 @@ AELVOR 256, plain    : frame 0xd0407d9684ab4f5a, ground 0x1faebda9e6c61a5b - unm
 nothing. And a system that is never constructed - an edit whose anchor had moved,
 applied without asserting it matched - builds green, tests green, and reports
 zero hands. Both were found by running the thing and reading the number.
+
+### 13.08c done - four centuries, and what actually defines a run
+
+The page showed one frozen year. The world has four hundred and twenty.
+
+`--every N` keeps a `WorldView` and a `NetView` every N years; the page gets a
+slider, and every number on it - living, bound, settlements, roads open, the
+towns drawn, the weight of each road - is read from the chosen year. A frame
+carries regions and routes and NOT the ground, which does not change and would
+otherwise be the whole file; both go in as flat arrays with a stride.
+
+**The finding.** The pre-history ran inside `PreHistory::Generate`, so the
+timeline could not see into the first three centuries - the ones where nine
+hundred people become twenty thousand. Seeding with `Generate(Config, 0, false)`
+and putting every year through `Run` fixes that, and the first attempt at it
+produced a different world: 27564 alive against 36374, and no region detailed at
+all. The years had not changed. `RequestDetail` had moved to year zero, where
+nobody has spread yet and `Busiest()` finds nothing worth detailing.
+
+> A run is not defined by which call ticks the clock. It is defined by WHEN the
+> world is asked to pay attention.
+
+With the request back after exactly `PreHistory` years, the restructured run
+reproduces the old one to the bit - frame `0x1ad9b6c934b65257`, ground
+`0x8f7f4948f49b6e86`, network `0x7f0e8fbdef66b895` at 128, all unmoved. That is
+what makes it a restructure.
+
+**And what the page refuses to draw.** The kept frames carry no colonies, so the
+only year the page knows there is one is the last. The marker appears in that
+year alone and the panel says `Colony (at year 420)`, because a mine on the map
+at year 10 - three centuries before anybody dug it - is the confident wrong
+picture this whole layer exists to prevent.
 
 **What must not happen in this phase.** A file marked VALIDATED because it
 looked right. UNVERIFIED is not an embarrassment to be cleared by assertion; it

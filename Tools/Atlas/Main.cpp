@@ -350,6 +350,15 @@ namespace
 		}
 	};
 
+	/// One moment of the world, kept so the page can be scrubbed through it. The
+	/// ground is NOT here: it does not change, and a copy of 65536 tiles a frame
+	/// would be the whole file.
+	struct Kept
+	{
+		WorldView Frame;
+		NetView Net;
+	};
+
 	struct Options
 	{
 		uint32 Size = 128;
@@ -359,7 +368,34 @@ namespace
 		std::string Out = "aelvor.json";
 		bool Tiles = true;
 		bool Colony = false;
+		uint32 Every = 0; ///< years between kept frames; 0 = keep only the last
 	};
+
+	/// Runs Years years, keeping a frame every Opt.Every of them. Taking a view
+	/// is const: the world does not know it happened, so a run with --every
+	/// simulates the same world as a run without it - which the digests check.
+	void Step(KernelRun& Run, std::vector<Kept>& Timeline, const Options& Opt, uint32 Years)
+	{
+		if (Years == 0)
+		{
+			return;
+		}
+		if (Opt.Every == 0)
+		{
+			Run.Ages.Run(Years);
+			return;
+		}
+		for (uint32 Done = 0; Done < Years;)
+		{
+			const uint32 Slice = Opt.Every < (Years - Done) ? Opt.Every : (Years - Done);
+			Run.Ages.Run(Slice);
+			Done += Slice;
+			Kept K;
+			TakeView(Run.Instance, Run.Sources(), K.Frame);
+			TakeNetView(Run.Instance, Run.Sources(), K.Net);
+			Timeline.push_back(std::move(K));
+		}
+	}
 
 	bool ParseUnsigned(const char* Text, uint64& Out)
 	{
@@ -387,7 +423,8 @@ namespace
 							 "  --seed V        decimal or 0x hex (default 0x41454c564f52)\n"
 							 "  --out PATH      where to write the JSON (default aelvor.json)\n"
 							 "  --no-tiles      write the regions only, not the ground\n"
-							 "  --colony        found a mining colony on the busiest region\n");
+							 "  --colony        found a mining colony on the busiest region\n"
+							 "  --every N       also keep a frame every N years, for a timeline\n");
 	}
 
 	bool ParseOptions(int Argc, char** Argv, Options& Out)
@@ -429,6 +466,14 @@ namespace
 			{
 				++I;
 				Out.Years = static_cast<uint32>(Value > 100000 ? 100000 : Value);
+			}
+			else if (std::strcmp(Arg, "--every") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
+			{
+				++I;
+				// A frame a year on a five-hundred-year run is five hundred
+				// frames of every region: legible in a browser and nowhere near
+				// what the kernel can produce, so the ceiling is on the count.
+				Out.Every = static_cast<uint32>(Value > 100000 ? 100000 : Value);
 			}
 			else if (std::strcmp(Arg, "--seed") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
 			{
@@ -472,15 +517,29 @@ namespace
 		}
 
 		const auto Started = std::chrono::steady_clock::now();
+		std::vector<Kept> Timeline;
 		KernelRun Run(Opt.Seed, Opt.Colony);
 		WorldGenConfig Gen;
 		Gen.Width = Opt.Size;
 		Gen.Height = Opt.Size;
-		if (!Run.Ages.Generate(Gen, Opt.PreHistory))
+		// Seed the world and run NOTHING. Every year then goes through Run, where
+		// a frame can be taken between them, and the pre-history is no longer a
+		// black box the timeline cannot see into.
+		//
+		// This is only equivalent because the years are the same years: what
+		// changes a run is not which call ticks the clock but WHEN detail is
+		// requested, and that still happens after exactly PreHistory years. The
+		// first attempt moved it to year zero, where nobody has spread yet and no
+		// region is worth detailing, and produced a different world - 27564 alive
+		// against 36374. The digests below are checked against the split run.
+		if (!Run.Ages.Generate(Gen, 0, false))
 		{
 			std::fprintf(stderr, "AELVOR: generation failed at %u x %u\n", Opt.Size, Opt.Size);
 			return 1;
 		}
+		// The founding centuries, in steps when a timeline is wanted.
+		Step(Run, Timeline, Opt, Opt.PreHistory);
+
 		// Detail goes where the colony will be when one is asked for, and to the
 		// busiest region otherwise. Only --colony changes it, so a run without
 		// the flag simulates exactly the world every run before this one did.
@@ -499,7 +558,7 @@ namespace
 		{
 			Dug = Detail;
 		}
-		Run.Ages.Run(Opt.Years);
+		Step(Run, Timeline, Opt, Opt.Years);
 		const double Seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - Started).count();
 
 		WorldView Frame;
@@ -517,7 +576,8 @@ namespace
 
 		Json J;
 		// Four numbers a tile, seven-odd characters each, plus the regions.
-		J.Reserve(Ground.Tiles.size() * 32u + Frame.Regions.size() * 128u + Net.Routes.size() * 96u + 4096u);
+		J.Reserve(Ground.Tiles.size() * 32u + Frame.Regions.size() * 128u + Net.Routes.size() * 96u +
+				  Timeline.size() * (Frame.Regions.size() * 32u + Net.Routes.size() * 20u) + 4096u);
 		J.Put("{\"vaelen\":\"0.0.1\",\"world\":\"AELVOR\",\"schema\":1,\n\"run\":{");
 		J.Put("\"seed\":");
 		J.Hex(Opt.Seed);
@@ -657,7 +717,59 @@ namespace
 			J.Field("lifted", C.Lifted);
 			J.Put("}");
 		}
-		J.Put("\n],\n\"tiles\":{");
+		J.Put("\n],\n\"timeline\":{");
+		J.Field("every", Opt.Every);
+		J.Put(",");
+		J.Field("frames", static_cast<uint32>(Timeline.size()));
+		// Flat arrays with a stride rather than an object a region: at a frame a
+		// decade over four centuries that is the difference between a file a
+		// browser opens and one it thinks about.
+		J.Put(",\"regionStride\":5,\"routeStride\":3,\"keep\":[");
+		for (usize F = 0; F < Timeline.size(); ++F)
+		{
+			const Kept& K = Timeline[F];
+			J.Put(F == 0 ? "\n" : ",\n");
+			J.Put("{");
+			J.Field("year", K.Frame.Year);
+			J.Put(",");
+			J.Field("people", K.Frame.People);
+			J.Put(",");
+			J.Field("open", K.Net.Open);
+			J.Put(",\"regions\":[");
+			for (usize R = 0; R < K.Frame.Regions.size(); ++R)
+			{
+				const RegionView& V = K.Frame.Regions[R];
+				if (R != 0)
+				{
+					J.Put(",");
+				}
+				J.Unsigned(V.Index);
+				J.Put(",");
+				J.Unsigned(V.People);
+				J.Put(",");
+				J.Unsigned(V.Bound);
+				J.Put(",");
+				J.Unsigned(V.Settlement);
+				J.Put(",");
+				J.Unsigned(V.Roads);
+			}
+			J.Put("],\"routes\":[");
+			for (usize R = 0; R < K.Net.Routes.size(); ++R)
+			{
+				const RouteView& V = K.Net.Routes[R];
+				if (R != 0)
+				{
+					J.Put(",");
+				}
+				J.Unsigned(V.Index);
+				J.Put(",");
+				J.Unsigned(V.Open);
+				J.Put(",");
+				J.Unsigned(V.Carried);
+			}
+			J.Put("]}");
+		}
+		J.Put("\n]},\n\"tiles\":{");
 		// Four parallel arrays in tile order rather than one object per tile: an
 		// object per tile is nine times the bytes and says nothing more.
 		auto Column = [&J, &Ground](const char* Name, int Which)
@@ -716,12 +828,13 @@ namespace
 
 		VAELEN_LOG_INFO(LogAtlas,
 						"AELVOR %ux%u, seed 0x%llx: year %u, %u land tiles, %u regions (%u peopled, %u detailed), "
-						"%u living, %u roads open of %u, %u colonies (%u hands on region %u), %u bytes to %s. "
-						"Simulated in %.2f s.",
+						"%u living, %u roads open of %u, %u colonies (%u hands on region %u), %u frames kept, "
+						"%u bytes to %s. Simulated in %.2f s.",
 						Opt.Size, Opt.Size, static_cast<unsigned long long>(Opt.Seed), Frame.Year, GroundStats.Land,
 						FrameStats.Regions, FrameStats.Peopled, FrameStats.Detailed, Frame.People, NetStats_.Open,
-						NetStats_.Routes, NetStats_.Colonies, NetStats_.Hands, Dug, static_cast<uint32>(J.Text.size()),
-						Opt.Out.c_str(), Seconds);
+						NetStats_.Routes, NetStats_.Colonies, NetStats_.Hands, Dug,
+						static_cast<uint32>(Timeline.size()), static_cast<uint32>(J.Text.size()), Opt.Out.c_str(),
+						Seconds);
 		return 0;
 	}
 } // namespace

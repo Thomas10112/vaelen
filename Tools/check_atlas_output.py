@@ -136,6 +136,44 @@ def check(doc):
     idle = [c.get("region") for c in colonies if c.get("hands", 0) == 0 and c.get("lifted", 0) > 0]
     want(not idle, "colonies %s lifted ore with nobody on the rock" % idle[:8])
 
+  # ── the centuries ──────────────────────────────────────────────────────────
+  tl = doc.get("timeline")
+  if want(isinstance(tl, dict), "missing section: timeline"):
+    keep = tl.get("keep")
+    rstride, tstride = tl.get("regionStride"), tl.get("routeStride")
+    if want(isinstance(keep, list), "timeline.keep is missing"):
+      want(tl.get("frames") == len(keep),
+           "timeline.frames says %r, the list has %d" % (tl.get("frames"), len(keep)))
+      want(rstride == 5 and tstride == 3,
+           "the strides are %r and %r, not 5 and 3" % (rstride, tstride))
+      years = [f.get("year") for f in keep]
+      want(years == sorted(years) and len(set(years)) == len(years),
+           "the kept frames are not in strictly increasing year order")
+      if keep:
+        want(years[-1] == doc["run"].get("year"),
+             "the last kept frame is year %r, the run ended at %r" % (years[-1], doc["run"].get("year")))
+      ragged = [f.get("year") for f in keep
+                if len(f.get("regions", [])) % 5 or len(f.get("routes", [])) % 3]
+      want(not ragged, "frames %s have a row that does not fill the stride" % ragged[:8])
+      # Every frame talks about the regions and roads the document has, and its
+      # own totals add up. A frame that quietly lost half its regions would
+      # scrub past without anything looking wrong.
+      routeIds = {r.get("index") for r in (routes or [])}
+      bad_frames = []
+      for f in keep:
+        a = f.get("regions", [])
+        if {a[i] for i in range(0, len(a) - 4, 5)} - named:
+          bad_frames.append(("regions", f.get("year")))
+          continue
+        if sum(a[i + 1] for i in range(0, len(a) - 4, 5)) != f.get("people"):
+          bad_frames.append(("people", f.get("year")))
+        r = f.get("routes", [])
+        if {r[i] for i in range(0, len(r) - 2, 3)} - routeIds:
+          bad_frames.append(("routes", f.get("year")))
+        elif sum(1 for i in range(0, len(r) - 2, 3) if r[i + 1]) != f.get("open"):
+          bad_frames.append(("open", f.get("year")))
+      want(not bad_frames, "kept frames disagree with the document: %s" % bad_frames[:6])
+
   for key, where in (("digest", frame), ("digest", ground)):
     want(isinstance(where.get(key), str) and where[key] != "0x0000000000000000",
          "a digest is missing or zero, so nothing can be compared to this run")
@@ -151,7 +189,7 @@ def a_world():
   """
   return {
     "schema": 1,
-    "run": {"seed": "0x41454c564f52", "size": 2},
+    "run": {"seed": "0x41454c564f52", "size": 2, "year": 10},
     "frame": {"width": 2, "height": 2, "people": 3, "regions": 2},
     "ground": {"width": 2, "height": 2, "tiles": 4, "land": 2, "coast": 1, "regions": 2,
                "digest": "0x0000000000000001", "elevationScale": 65536},
@@ -161,6 +199,9 @@ def a_world():
                 "digest": "0x0000000000000003"},
     "routes": [{"index": 1, "from": 1, "to": 2, "open": 1, "idle": 0, "openings": 1, "carried": 5}],
     "colonies": [{"region": 1, "hands": 2, "lifted": 7}],
+    "timeline": {"every": 5, "frames": 2, "regionStride": 5, "routeStride": 3, "keep": [
+      {"year": 5, "people": 1, "open": 0, "regions": [1, 1, 0, 0, 0, 2, 0, 0, 0, 0], "routes": [1, 0, 0]},
+      {"year": 10, "people": 3, "open": 1, "regions": [1, 2, 1, 1, 1, 2, 1, 0, 0, 1], "routes": [1, 1, 5]}]},
     "tiles": {"biome": [1, 1, 0, 0], "ground": [LAND, LAND | COAST, SHORE, 0],
               "region": [1, 2, 0, 0], "elevation": [10, 20, -5, -9]},
   }
@@ -215,10 +256,20 @@ def self_test():
   breaks("route neither open nor closed", lambda d: d["routes"][0].update(open=2))
   breaks("colony off the map", lambda d: d["colonies"][0].update(region=9))
   breaks("ore with no hands", lambda d: d["colonies"][0].update(hands=0))
+  breaks("missing timeline", lambda d: d.pop("timeline"))
+  breaks("frame count", lambda d: d["timeline"].update(frames=3))
+  breaks("stride", lambda d: d["timeline"].update(regionStride=4))
+  breaks("year order", lambda d: d["timeline"]["keep"].reverse())
+  breaks("last year", lambda d: d["timeline"]["keep"][-1].update(year=11))
+  breaks("ragged row", lambda d: d["timeline"]["keep"][0]["regions"].append(7))
+  breaks("frame region off the map", lambda d: d["timeline"]["keep"][0]["regions"].__setitem__(0, 9))
+  breaks("frame people", lambda d: d["timeline"]["keep"][0].update(people=9))
+  breaks("frame route off the map", lambda d: d["timeline"]["keep"][0]["routes"].__setitem__(0, 9))
+  breaks("frame open count", lambda d: d["timeline"]["keep"][0].update(open=1))
 
   for line in failures:
     print("SELF-TEST: %s" % line, file=sys.stderr)
-  print("self-test: %d checks exercised, %d failures" % (32, len(failures)))
+  print("self-test: %d checks exercised, %d failures" % (42, len(failures)))
   return 1 if failures else 0
 
 
@@ -238,6 +289,9 @@ def same(first, second):
     bad += 1
   if a["regions"] != b["regions"]:
     print("the regions differ between two runs of one seed", file=sys.stderr)
+    bad += 1
+  if a.get("timeline") != b.get("timeline"):
+    print("the centuries differ between two runs of one seed", file=sys.stderr)
     bad += 1
   if bad == 0:
     print("%s and %s are the same world (frame %s, ground %s)"
@@ -273,11 +327,13 @@ def main():
     key = (r.get("from"), r.get("to"))
     twins += 1 if key in pairs else 0
     pairs[key] = 1
+  keep = doc.get("timeline", {}).get("keep", [])
+  span = ("years %u-%u in %u frames" % (keep[0]["year"], keep[-1]["year"], len(keep))) if keep else "one moment"
   print("%s: %u x %u, %u tiles, %u land, %u coast, %u regions, %u roads (%u open, %u twinned), "
-        "%u colonies, frame %s, ground %s, network %s"
+        "%u colonies, %s, frame %s, ground %s, network %s"
         % (args.path, ground["width"], ground["height"], ground["tiles"], ground["land"],
            ground["coast"], ground["regions"], net.get("routes", 0), net.get("open", 0), twins,
-           net.get("colonies", 0), doc["frame"]["digest"], ground["digest"], net.get("digest", "-")))
+           net.get("colonies", 0), span, doc["frame"]["digest"], ground["digest"], net.get("digest", "-")))
   return 0
 
 

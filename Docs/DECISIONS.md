@@ -7381,3 +7381,73 @@ run at 256 still reports frame `0xd0407d9684ab4f5a` and ground
   hands because the `MiningSystem` was never constructed - an edit whose anchor
   had moved, applied without an assertion that it had matched. The build was
   green, the tests were green, and the number was zero. Only running it said so.
+
+## ADR-0122 — The years are the same years; what changes a run is when detail is asked for
+
+**Date:** 2026-09-10
+**Status:** Accepted
+**Phase:** 13 — task 13.08c
+
+### What was added
+
+`--every N` on `Tools/Atlas`: keep a `WorldView` and a `NetView` every N years and
+write them into the file, and a slider on the page that reads every number from
+the chosen year. AELVOR at 256 with `--every 10` is 42 frames, 1.2 MB, and the
+arc it shows is the point of the whole exercise:
+
+```
+year  10        992 alive     8 roads open     4 regions peopled
+year 210     24 223 alive    22 roads open
+year 250     31 872 alive    55 roads open
+year 420    123 600 alive    78 roads open    55 regions peopled
+```
+
+### The size decision
+
+A frame carries regions and routes and **not the ground**. The ground does not
+change and a copy of 65536 tiles a frame would be the file. Regions and routes go
+in as flat arrays with a documented stride rather than an object apiece: at a
+frame a decade over four centuries that is the difference between a file a
+browser opens and one it thinks about.
+
+### The finding, which is worth more than the feature
+
+The pre-history ran **inside** `PreHistory::Generate`, so the timeline could not
+see into the first three hundred years - the most interesting three hundred, when
+a world of nine hundred people becomes a world of twenty thousand. The fix looks
+trivial: seed with `Generate(Config, 0, false)` and put every year through `Run`,
+where a frame can be taken between them.
+
+The first attempt did exactly that and **produced a different world**: 27564
+alive against 36374, 46 regions peopled against 65, and no region simulated
+person by person at all. Nothing about the years had changed. What had changed
+was that `RequestDetail` now fired at year zero, where nobody has spread yet and
+`Busiest()` finds no region worth detailing.
+
+> **A run is not defined by which call ticks the clock. It is defined by when the
+> world is asked to pay attention.** Move the tick and nothing happens; move the
+> request and you get another world.
+
+With detail requested after exactly `PreHistory` years, as before, the
+restructured run reproduces the old one to the bit - frame `0x1ad9b6c934b65257`,
+ground `0x8f7f4948f49b6e86`, network `0x7f0e8fbdef66b895` at 128, all three
+unmoved. That is what makes it a restructure and not a change.
+
+### Why the timeline cannot lie about the colony
+
+The kept frames carry regions and routes. They do not carry colonies, so the only
+year this page knows there is one is the year the run ended. The marker is drawn
+in that year alone and the panel labels the row `Colony (at year 420)` - because
+a mine drawn on the map at year 10, three centuries before anybody dug it, is
+exactly the kind of confident wrong picture this whole layer exists to avoid.
+
+### Verified, not assumed
+
+Taking a view is const: the world does not know it happened. A run with `--every`
+therefore simulates the run without it, and the digests say so rather than the
+argument. `Tools/check_atlas_output.py` gained ten rules over the timeline - the
+frames are in year order, the last one is the year the run ended, no row breaks
+its stride, every frame's regions and routes are ones the document has, and each
+frame's own totals add up - each proved to fire by `--self-test`, now 42 checks.
+The CTest runs use `--every 5 --colony`, so CI exercises the tool the way it is
+actually used rather than only its simplest shape.
