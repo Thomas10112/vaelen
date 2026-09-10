@@ -84,8 +84,14 @@ namespace Vaelen::View
 						{
 							return;
 						}
-						Ways[R.From <= Most ? R.From : 0u] += R.From <= Most && R.From != 0 ? 1u : 0u;
-						Ways[R.To <= Most ? R.To : 0u] += R.To <= Most && R.To != 0 ? 1u : 0u;
+						if (R.From != 0 && R.From <= Most)
+						{
+							++Ways[R.From];
+						}
+						if (R.To != 0 && R.To <= Most)
+						{
+							++Ways[R.To];
+						}
 					});
 			W.Components()
 				.GetPool(From.Trade.Settlement)
@@ -94,7 +100,17 @@ namespace Vaelen::View
 					{
 						if (S.Abandoned == 0 && S.Region != 0 && S.Region <= Most)
 						{
-							Seats[S.Region] = S.Index;
+							// The LOWEST index wins, not the last one written.
+							// 06.04 founds one living settlement to a region and a
+							// re-founding marks the old one abandoned, so today
+							// this never has to choose - and "today it never has
+							// to choose" is what LodRules::Held and
+							// MiningRules::Region both said before they cost this
+							// project a task each. Last-writer-wins here would be
+							// last-writer-wins over POOL ORDER, which is the one
+							// thing a frame must never depend on.
+							Seats[S.Region] =
+								Seats[S.Region] == 0 || S.Index < Seats[S.Region] ? S.Index : Seats[S.Region];
 						}
 					});
 		}
