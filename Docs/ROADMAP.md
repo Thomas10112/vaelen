@@ -2668,6 +2668,20 @@ CURRENTLY
   It is NOT `VaelenPresentation` - that is now 13.07c, engine-side - and
   ADR-0113's C4251 decision stays open, because MSVC never reads a web page.
 
+→ **ADR-0111 IS NOT ONLY ABOUT A DIGEST.** With the chronicle readable, the gap
+  can be stated in the world's own words. This is a complete explanation, as
+  AELVOR gives it:
+
+    Year 202: Grain could not be had in Iarist.
+       because  Iarist harvested 1085 of grain.
+
+  A famine explained by a harvest, and the chain stops there. Across everything
+  the world remembers and every cause behind it - 8595 sentences - "harvested"
+  appears 53 times and "could not be had" 159, and **eaten, consumed, spoiled,
+  rationed and stored appear zero times.** Not one sentence in the memory of a
+  four-century world says anything was ever eaten. Routing 06.02's spoilage and
+  meals through `AddStock` is what would close that link.
+
 → **ADR-0118 IS BIGGER THAN IT LOOKED, AND IT IS THE OTHER HALF.** The six
   settlements standing in empty regions were the question "why can they not
   die". The chronicle answers one nobody had asked - how were they BORN:

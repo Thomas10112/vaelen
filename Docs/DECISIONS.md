@@ -6644,6 +6644,41 @@ because of what it costs rather than because it is hard:
 
 ---
 
+### Revised by the chronicle (13.08e): the world cannot say anything was eaten
+
+The original entry measured the gap in units: a region harvested 7329 of grain,
+its stores rose by six, and the log names none of the other 7323. With 13.08d's
+chronicle and 13.08e's cause chains readable, the same gap can be stated in the
+world's own words, and it is worse than an accounting hole.
+
+This is a complete explanation, as AELVOR gives it:
+
+```
+Year 202: Grain could not be had in Iarist.
+   because  Iarist harvested 1085 of grain.
+```
+
+A famine explained by a harvest, and the chain stops there - because the events
+between the two were never published. Counted over everything the world
+remembers and every cause behind those memories, 8595 sentences in all:
+
+```
+harvest              53   (only ever as a cause, never as a record)
+could not be had    159
+went N short         58
+eaten / consumed / spoiled / rationed / stored     0
+```
+
+**Not one sentence in the memory of a four-century world says anything was
+eaten.** The two apparent matches are "great" and the generated names Feda and
+Fedel; searched for as whole words, both are zero.
+
+So the choice in this ADR is not only about a digest. Routing 06.02's spoilage
+and meals through `AddStock` is what would let the chronicle say where a harvest
+went, and without it the causal chain the README promises stops one link short
+of every famine this world has ever had - offering, as the reason people
+starved, the fact that they grew food.
+
 ## ADR-0112 — A build target names every module, and the uproject is what makes it build
 
 **Date:** 2026-09-10
