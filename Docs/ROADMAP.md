@@ -2591,8 +2591,10 @@ first question Phase 13 or a later gameplay phase should be asked.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (11 of 11) · ENGINE HALF STARTED (13.06 of 3)
+PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (12 of 12) · ENGINE HALF STARTED (13.06 of 3)
 TASK        : 13.08f done — the viewer page is checked by CTest, not by me looking at it
+CI          : run 144 on e480e46 — 9 of 9 GREEN. gcc-debug 104 min, clang-debug 90,
+              macOS 76, Windows 69, the four non-debug Linux legs 14-15 min.
 BLOCKED ON  : three decisions, stated as choices in Docs/OPEN_QUESTIONS.md
               (ADR-0120 twin roads · ADR-0111 nothing eaten · ADR-0118 empty towns)
 STATUS      : PROTOTYPE (headless) / VALIDATED (UE 5.6, compiles, links and runs)

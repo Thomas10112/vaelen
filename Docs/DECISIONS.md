@@ -7386,9 +7386,20 @@ longest single test     2276 s   Gameplay.Shuffled
 floor, 4 workers        5298 s   (88 min)
 
 measured on CI          5395 s   (90 min)
+simulated, NO cost      6691 s   (112 min)   <- what run 140 was doing
 simulated, as it is     5298 s
 simulated, cost = time  5299 s
 ```
+
+The middle line is what this ADR bought: **twenty-three minutes**, and it is
+what makes run 140's cancellation make sense at last. `linux-gcc-debug` runs
+slower than clang throughout, and 112 minutes plus that margin is past the
+120-minute limit the job then had. Run 144 measured it for real: **gcc-debug
+104 minutes, clang-debug 90, macOS 76, Windows 69, the four non-debug Linux legs
+14 to 15.** Nine of nine green, and gcc-debug now fits inside the old limit as
+well as the new one.
+
+But refining further:
 
 **The win is zero.** The schedule is already at the floor and the two per cent
 above it is process start-up, not packing. Those three late tests are not waste:
