@@ -98,9 +98,9 @@ using namespace Vaelen::WorldGen;
 // did NOT move by that change and were not re-recorded - the history this world
 // wrote and the life that was lived in it are the same ones, which is the
 // evidence that the change was to the bookkeeping and not to the world.
-#define VAELEN_PLAYERGATE_FROZEN_HALF 0xf1fa74c732139c86ull
-#define VAELEN_PLAYERGATE_FROZEN_END 0xb4b631e68a96f56full
-#define VAELEN_PLAYERGATE_LOG 0xa810f22c65459d9dull
+#define VAELEN_PLAYERGATE_FROZEN_HALF 0xcbabf49184794e61ull
+#define VAELEN_PLAYERGATE_FROZEN_END 0x458fd55fec8bfeb6ull
+#define VAELEN_PLAYERGATE_LOG 0x83ffbf6305c229a1ull
 #define VAELEN_PLAYERGATE_LIFE 0x5d7c3a439b10fa79ull
 
 namespace

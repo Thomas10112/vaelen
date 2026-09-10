@@ -59,7 +59,7 @@ using namespace Vaelen::WorldGen;
 // Refrozen 2026-09-08: person indices are taken from a counter that only
 // goes up, so a demoted region no longer hands its indices out again (see
 // PersonCounter).
-#define VAELEN_GRAINS_LIVING_64 0x477efde8a0ccb23dull
+#define VAELEN_GRAINS_LIVING_64 0xbdb8fa25bcced57dull
 #define VAELEN_GRAINS_PROMOTIONS_64 21u
 
 namespace
@@ -488,6 +488,7 @@ VAELEN_TEST(Ledger, HowMuchOfAYearTheLogCanAccountFor)
 	// What the log says moved in or out of this region during that year.
 	std::array<int64, static_cast<usize>(Good::Count)> Explained{};
 	uint32 Events = 0;
+	uint64 Carried = 0; ///< units 06.04 moved in or out, of no good in particular
 	for (const Event& E : W.Instance.Log().All())
 	{
 		const uint64 At = static_cast<uint64>(E.Tick);
@@ -511,16 +512,26 @@ VAELEN_TEST(Ledger, HowMuchOfAYearTheLogCanAccountFor)
 		}
 		if (E.Is(GoodsCarriedEvent))
 		{
-			++Events; // 06.04 carries between regions; counted below only if it names this one
+			++Events;
+			// It CANNOT be added to Explained, and that is the finding rather
+			// than an oversight: TradePayload has a Route, a From, a To and an
+			// Amount, and no Good. There is nowhere to put these units.
+			const TradePayload& P = E.Get<TradePayload>();
+			if (P.From == Where || P.To == Where)
+			{
+				Carried += P.Amount;
+			}
 		}
 	}
 
 	int64 Logged = 0;
 	int64 Dark = 0;
+	std::array<int64, static_cast<usize>(Good::Count)> Missing{};
 	for (usize g = 0; g < Explained.size(); ++g)
 	{
 		const int64 Net = After[g] - Before[g];
 		const int64 Miss = Net - Explained[g]; // what moved that no event names
+		Missing[g] = Miss < 0 ? -Miss : Miss;
 		Logged += Explained[g] < 0 ? -Explained[g] : Explained[g];
 		Dark += Miss < 0 ? -Miss : Miss;
 		if (Net != 0 || Explained[g] != 0)
@@ -563,10 +574,32 @@ VAELEN_TEST(Ledger, HowMuchOfAYearTheLogCanAccountFor)
 
 	VT_CHECK_MSG(Logged > 0, "the log names SOMETHING, or the window missed the year's pass entirely");
 	VT_CHECK_MSG(HarvestsHere > 0, "and the region did harvest during it");
-	// Deliberately NOT "Dark == 0". That would be a wish, and this test exists to
-	// record what is true today so the number can be argued with. The day 06.02
-	// publishes its spoilage and its meals, this line says by how much the world
-	// got more honest - and until then it says, in a number, that the chronicle
-	// can tell you what a region GREW and not what it ATE.
-	VT_CHECK_MSG(Dark > 0, "and there is movement it does not name, which is the finding this file records");
+
+	// THAT DAY CAME. This assertion used to read `Dark > 0` with a comment
+	// saying that the day 06.02 published its spoilage and its meals, the line
+	// would say by how much the world got more honest. ADR-0111 was applied and
+	// the answer is: entirely, for everything 06.02 touches.
+	//
+	//   before   grain  the stores end +6; the log names +7329; 7323 unnamed
+	//   after    grain  the stores end +6; the log names    +6;    0 unnamed
+	//
+	// Grain, cloth and tools now balance to the unit. What a region ate, what
+	// spoiled in its stores, what it burnt, wove, forged and wore out - the log
+	// holds all of it.
+	//
+	// WHAT IS LEFT IS NOT PRODUCTION, AND SAYING SO IS THE POINT OF THIS TEST.
+	// Ore and timber still miss, and they miss in the direction that gives it
+	// away: the stores end unchanged while the log names a NET LOSS, so
+	// something put goods in that no event names. That something is 06.04.
+	// `GoodsCarriedEvent` carries `TradePayload{Route, From, To, Amount}` and
+	// there is no Good in it - the log can say that thirty-seven units crossed
+	// a road and cannot say what they were. So the ledger of a region that
+	// trades cannot close, however honest 06.02 becomes. ADR-0131.
+	//
+	// Hence two assertions rather than one, and they say different things.
+	const int64 DarkMade = Missing[static_cast<usize>(Good::Grain)] + Missing[static_cast<usize>(Good::Cloth)] +
+						   Missing[static_cast<usize>(Good::Tools)];
+	VT_CHECK_MSG(DarkMade == 0, "everything 06.02 makes, eats, spoils and wears is named by the log, to the unit");
+	VT_CHECK_MSG(Dark > 0, "and what is still unnamed is what 06.04 carried, because GoodsCarried has no Good in it");
+	VT_CHECK_MSG(Carried > 0, "which is only a finding while this region actually trades");
 }

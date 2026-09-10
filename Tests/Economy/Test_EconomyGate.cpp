@@ -57,10 +57,10 @@ using namespace Vaelen::WorldGen;
 // component the military writes and 05.02 reads. Declaring it changes the type
 // registry and so the state digest, though nothing here writes one. Every
 // invariant of the gate is unchanged.
-#define VAELEN_ECOGATE_FROZEN_256_250 0xc2091e39700e9ad1ull
-#define VAELEN_ECOGATE_FROZEN_256_500 0x579ca67fa1ecd4c0ull
-#define VAELEN_ECOGATE_LOG_256_500 0x132c787a26eb8c9cull
-#define VAELEN_ECOGATE_TEXT_256_500 0xa182216777ea59e5ull
+#define VAELEN_ECOGATE_FROZEN_256_250 0x7023dab1da711d30ull
+#define VAELEN_ECOGATE_FROZEN_256_500 0x0679de8554e476acull
+#define VAELEN_ECOGATE_LOG_256_500 0xffd0cf1c020217a1ull
+#define VAELEN_ECOGATE_TEXT_256_500 0xabbefc9e969a128full
 
 namespace
 {

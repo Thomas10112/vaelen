@@ -1,15 +1,17 @@
-# Three things AELVOR did that nobody had decided were right
+# Things AELVOR did that nobody had decided were right
 
-**All three were settled on 2026-09-10.** Two are applied, one is decided and
-deliberately unchanged. This page is kept as the record of what was chosen and
-why, and it has one new question at the bottom that applying the first turned up.
+**The three that were open on the morning of 2026-09-10 are all settled.** Two
+were fixed, one was decided and deliberately left alone. Fixing them turned up
+two more, which are open, and that is the honest shape of the day: every defect
+closed here was found by looking at what the last one uncovered.
 
 | | what happened | where |
 |---|---|---|
 | **ADR-0120** twin roads | **fixed**, and it was three fixes, not one | applied |
 | **ADR-0118** towns in empty regions | **decided: the rule is intended.** No code change | decided |
-| **ADR-0111** nothing is ever eaten | **open** — see below | open |
-| **ADR-0129** a road cannot be abandoned | **new**, found by fixing 0120 | open |
+| **ADR-0111** nothing is ever eaten | **fixed.** The ledger closes for everything 06.02 touches | applied |
+| **ADR-0129** a road cannot be abandoned | found by fixing 0120 | open |
+| **ADR-0131** the log says how much crossed a road, not what | found by fixing 0111 | open |
 
 ---
 
@@ -87,7 +89,7 @@ Three reasons this is a decision and not a shrug:
 
 ---
 
-## 3. The world cannot say anything was eaten — ADR-0111 — STILL OPEN
+## 3. The world cannot say anything was eaten — ADR-0111 — FIXED
 
 One ordinary year, busiest region of a 128 world, 1460 people:
 
@@ -104,15 +106,32 @@ directly in about twenty places and publishes exactly two events. `AddStock`
 already exists, already publishes `StockAdded`/`StockTaken` with a cause, and
 already has the right signature. Routing the writes through it is mechanical.
 
-**Why it is still open: the granularity is the decision, and it is not small.**
-One event per good per region per year at 256 is roughly a thousand a year —
-420 000 over a run, against the ADR's original estimate of four hundred a year.
-Per house it is far larger. That is a change to how much the event log holds,
-which is a question about the shape of the project, and it wants its own
-measurement before it is taken rather than during.
+### What was done
 
-**Recommendation: do it, as its own deliberate pass, with a measured answer to
-the volume question first.**
+**Not through `AddStock`.** Its lookup is a pass over a pool per call — nothing
+at 11.03's rate, quadratic at 06.02's. So `AddStock` was split: `MoveStock` does
+the move and publishes on a stock the caller already found, and `AddStock` is a
+lookup in front of it. One place where a stock changes, one place where the log
+is told.
+
+The harvest keeps its direct writes on purpose — `HarvestEvent` already names
+it, and naming it twice would make the ledger count it twice.
+
+```
+                        before                          after
+grain    stores +6;  log +7329;  7323 unnamed    stores +6;  log +6;  0 unnamed
+cloth    stores +15; log    +0;    15 unnamed    stores +15; log +15; 0 unnamed
+tools    stores +8;  log    +0;     8 unnamed    stores +8;  log  +8; 0 unnamed
+```
+
+**The volume question, which is why this waited, answered:** 38.42 s at 256 over
+720 years against 37.6-39.8 s before, and the world identical to the digit. The
+fear was misplaced.
+
+**And the proof no call site was missed came from the compiler.** The file's
+`Take` helper — which moved grain and told nobody — went unused the moment the
+last site was converted, and `-Werror=unused-function` refused to build until it
+was deleted.
 
 ---
 
@@ -131,5 +150,26 @@ hunch.
 
 ---
 
+## 5. NEW — The log says how much crossed a road, not what it was — ADR-0131
+
+`GoodsCarriedEvent` is one event per route per year carrying
+`TradePayload{Route, From, To, Amount}` — the sum of every good that crossed,
+with no `Good` in it. It says *thirty-seven units moved between these two
+regions* and nothing more.
+
+While 06.02 was silent this was invisible. Now that a region's ledger closes for
+everything it makes and eats, trade is the only thing left that moves goods
+without saying which, and ore and timber are the two that still do not balance.
+
+Two shapes: an event per good per route (the ledger closes; a few thousand more
+events a year at 256), or one event carrying six amounts (no new events, but
+`TradePayload` is a flat 16 bytes with no room, so it means a second payload
+type). **I lean to the first** — ADR-0111 has just shown this class of event
+costs nothing measurable. But it moves the event-log digest across eleven gates
+for the third time in one day, and three deliberate re-freezes in a day is how
+ADR-0095 happens by accident.
+
+---
+
 The full reasoning and the raw numbers are in `Docs/DECISIONS.md` under
-ADR-0111, ADR-0118, ADR-0120 and ADR-0129.
+ADR-0111, ADR-0118, ADR-0120, ADR-0129 and ADR-0131.

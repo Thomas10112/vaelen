@@ -22,6 +22,7 @@
 #include "Vaelen/Core/Log.h"
 #include "VaelenTest.h"
 
+#include <algorithm>
 #include <memory>
 #include <vector>
 
@@ -216,8 +217,31 @@ namespace
 		/// Units of ore ADDED to a region's common stock, read off the log. The
 		/// stock itself is no ledger of the mine: 06.02 spends ore on tools, so a
 		/// region's holding falls while the mine still gives.
+		/// Ore credited to a region's common stock BY THE MINE, told from ore
+		/// credited by anything else by the cause each event carries.
+		///
+		/// It used to sum every StockAdded of ore in the region, on the stated
+		/// grounds that "every unit lifted entered the world through AddStock
+		/// and through nothing else". That was true only because 06.02's yearly
+		/// extraction wrote the common stock directly and told nobody - so this
+		/// number was right by the silence of the other source rather than by
+		/// its own construction. ADR-0111 gave 06.02 a voice and the sum went
+		/// from 957 to 14332 without a single unit of ore moving differently.
+		///
+		/// The cause is what separates them, and it is why 11.03 insisted on it:
+		/// MiningSystem publishes OreLifted and hands that event's id to
+		/// AddStock, so the mine's credits are the ones caused by a lift.
 		uint64 OreAdded(uint32 Region) const
 		{
+			std::vector<uint64> Lifts;
+			for (const Event& E : Instance.Log().All())
+			{
+				if (E.Is(Colony::OreLiftedEvent))
+				{
+					Lifts.push_back(E.Id.Value);
+				}
+			}
+			std::sort(Lifts.begin(), Lifts.end());
 			uint64 Sum = 0;
 			for (const Event& E : Instance.Log().All())
 			{
@@ -226,7 +250,8 @@ namespace
 					continue;
 				}
 				const StockPayload& P = E.Get<StockPayload>();
-				if (P.Region == Region && P.House == 0 && P.Good == static_cast<uint32>(Good::Ore))
+				if (P.Region == Region && P.House == 0 && P.Good == static_cast<uint32>(Good::Ore) &&
+					std::binary_search(Lifts.begin(), Lifts.end(), E.Cause.Value))
 				{
 					Sum += P.Amount;
 				}
@@ -288,10 +313,14 @@ VAELEN_TEST(Mining, AColonyLiftsOreAndTheStockHasExactlyWhatWasLifted)
 	VT_CHECK_MSG(S.Hands > 0, "somebody is on the rock");
 	VT_CHECK_MSG(S.Taken > 0, "and the rock gave");
 	VT_CHECK_MSG(S.Lifts > 0, "every lift is in the log");
-	// Every unit lifted entered the world through AddStock and through nothing
-	// else, so the log holds exactly what the seams gave. The stock itself is
+	// Every unit lifted entered the world through AddStock with the lift as its
+	// cause, so the log holds exactly what the seams gave. The stock itself is
 	// not the measure: 06.02 goes on spending ore on tools, and an earlier
 	// version of this test read that spending as ore that never arrived.
+	//
+	// Nor is "every StockAdded of ore here" the measure, which is what this line
+	// used to compare against and what ADR-0111 exposed: 06.02's own yearly
+	// extraction credits ore too, and used to do it in silence. See OreAdded.
 	VT_CHECK_EQ(W.OreAdded(Where), uint64{S.Taken});
 	// Not "richer in ore than before": since 11.06 the colony farms as well as
 	// mines, so it has more people, makes more tools, and spends ore faster than

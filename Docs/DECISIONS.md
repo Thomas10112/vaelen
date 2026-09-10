@@ -6585,6 +6585,12 @@ a glance whether the digests are frozen, which a preprocessor guard says and a
 
 ## ADR-0111: The chronicle can say what a region grew, and not what it ate
 
+**Status: ACCEPTED and APPLIED 2026-09-10.** Everything below was written while
+this was a proposal and is left as it was. What applying it did is at the end,
+under **Applied**, and the short version is that the title is now out of date:
+the chronicle can say what a region ate. What it still cannot say is what a
+region CARRIED, which is a different defect and is ADR-0131.
+
 ### Context
 
 11.03 established the rule and the project paid for it there: a colony's ore is
@@ -6685,6 +6691,156 @@ and meals through `AddStock` is what would let the chronicle say where a harvest
 went, and without it the causal chain the README promises stops one link short
 of every famine this world has ever had - offering, as the reason people
 starved, the fact that they grew food.
+
+### Applied (2026-09-10)
+
+The decision above was "record it; do not fix it unilaterally". The project
+owner said to do all three open decisions, so it was done.
+
+**Not through `AddStock`, and the reason is worth keeping.** The entry above
+proposed routing 06.02's consumption through `AddStock`, which is what 11.03
+requires. `AddStock` *finds* the stock by walking the region or the family pool
+— one pass over a pool per call. That is nothing at the rate 11.03 calls it and
+quadratic at the rate 06.02 would, and 06.02 already holds a pointer to every
+stock it touches.
+
+So `AddStock` was split. `MoveStock` does the move and publishes the event on a
+stock the caller has already found; `AddStock` is now a lookup in front of it.
+One place where a stock changes, one place where the log is told, and no pass
+over a pool inside a yearly loop.
+
+**The harvest keeps its direct writes**, deliberately. `HarvestEvent` already
+names it, and naming it twice would make the ledger count it twice. What was
+routed is precisely the movement nothing named: spoilage, meals, extraction,
+burning, weaving, forging and wear, for the common stock and for every house.
+
+**The result, `Tests/Economy/Test_Ledger.cpp`, one year of a region of 1460:**
+
+```
+                        before                          after
+grain    stores +6;  log +7329;  7323 unnamed    stores +6;  log +6;  0 unnamed
+cloth    stores +15; log    +0;    15 unnamed    stores +15; log +15; 0 unnamed
+tools    stores +8;  log    +0;     8 unnamed    stores +8;  log  +8; 0 unnamed
+```
+
+**It costs nothing measurable.** AELVOR at 256 over 720 years: 38.42 s against
+37.6-39.8 s before, and the world is identical to the digit — 206710 living,
+84 roads open of 184. `MoveStock` clamps at zero and saturates at the top
+exactly as the assignment it replaced did, so not one unit moved differently.
+Only the log grew, and the estimate in the entry above ("roughly four hundred
+events a year") was the right order.
+
+**The proof that no call site was missed is that the compiler found it.** The
+file's `Take(Amount, Wanted)` helper — which moved grain out of a stock and told
+nobody — became unused the moment the last call site was converted, and
+`-Werror=unused-function` refused to build until it was deleted.
+
+**And what is left is not production.** Ore and timber still do not balance, and
+they miss in the direction that gives it away: the stores end unchanged while
+the log names a net loss, so something put goods in that no event names. That is
+06.04. `GoodsCarriedEvent` carries `TradePayload{Route, From, To, Amount}` and
+there is no `Good` in it — the log can say that thirty-seven units crossed a
+road and cannot say what they were. **ADR-0131.**
+
+`Test_Ledger` now asserts both halves separately: that everything 06.02 makes,
+eats, spoils and wears is named to the unit, and that what remains unnamed is
+what 06.04 carried. The second assertion is guarded on the region actually
+trading, because otherwise it would pass for the wrong reason.
+
+### The one test that broke was right to break, and it is the whole ADR in miniature
+
+Nineteen tests failed and eighteen were frozen digests. The nineteenth was
+`Tests/Colony/Test_Mining.cpp`, on a check that had nothing to do with digests:
+
+```
+VT_CHECK_EQ(W.OreAdded(Where), uint64{S.Taken})
+    actual: 14332   expected: 957
+```
+
+Its `OreAdded` summed **every** `StockAdded` of ore in the region, on the stated
+grounds that *"every unit lifted entered the world through AddStock and through
+nothing else"*. `Mining.cpp` said the same thing in a comment, and added the
+reason: *"which 06.02's yearly extraction cannot, because it writes the common
+stock directly."*
+
+That was true, and it was the problem. The number was right **because the other
+source was silent**, not because the test could tell the two apart. Give 06.02 a
+voice and it goes from 957 to 14332 without one unit of ore moving differently.
+
+The fix is the part of 11.03's rule that was doing the real work all along and
+was not the part anybody quoted: **the cause.** `MiningSystem` publishes
+`OreLifted` and hands that event's id to `AddStock`, so the mine's credits are
+exactly the ones caused by a lift. `OreAdded` now asks for that, and the comment
+in `Mining.cpp` has been corrected rather than left standing as a claim the code
+no longer supports.
+
+A test that passes because nothing else is speaking is a test that will break
+the day something does. This one did, on schedule, and said what it was worth.
+
+### And the world did not move
+
+The state digests of eight gates changed. The world did not:
+
+```
+frame digest    0x97f14636a6bc69b4  ->  0x97f14636a6bc69b4   unchanged
+network digest  0x8c5d32e34f88fbc5  ->  0x8c5d32e34f88fbc5   unchanged
+living at 256           206710      ->          206710       unchanged
+```
+
+`ComputeStateDigest` saves a whole snapshot and hashes it, and a snapshot holds
+the event log - so those digests moved because the LOG grew. The one digest that
+covers world state and nothing else, `VAELEN_VIEWGATE_FROZEN_VIEW`, did not move
+at all, while `VAELEN_VIEWGATE_FROZEN_STATE` beside it did.
+
+That distinction is 13.01's, and this is the first time it has earned its keep:
+the view is what the world IS, and it says this change was purely a matter of
+what the world SAYS.
+
+---
+
+## ADR-0131 — The log says how much crossed a road, and not what it was
+
+**Status:** Proposed — the project owner's call
+**Date:** 2026-09-10
+**Phase:** 13 — found by applying ADR-0111
+
+### The gap
+
+`GoodsCarriedEvent` is published once per route per year with
+`TradePayload{Route, From, To, Amount}`, where `Amount` is the sum of every good
+that crossed. There is no `Good` field, so the event says *thirty-seven units
+moved between these two regions* and nothing more.
+
+While 06.02 was silent this was invisible: a region's ledger could not close
+anyway. Now that it closes for everything a region makes and eats, trade is the
+only thing left that moves goods without saying which, and a region that trades
+still cannot balance its books.
+
+### Why it is not fixed here
+
+Two shapes, and choosing between them is a decision about the log, not a repair:
+
+- **One event per good per route.** `TradePayload` gains a `Good` and 06.04
+  publishes inside the per-good loop instead of after it. The ledger closes
+  completely. It multiplies the carried events by up to the number of goods -
+  at 256 that is a few thousand more a year, on top of what ADR-0111 just added.
+- **Keep one event, add the goods to it.** No new events, but `TradePayload` is
+  a fixed 16-byte payload with no room for six amounts, so this means a second
+  payload type or a side table, and events are meant to be flat.
+
+I lean to the first: ADR-0111 has just shown that this class of event costs
+nothing measurable, and "one event per thing that actually moved" is the rule
+the rest of the economy now follows. But it moves the event-log digest across
+eleven gates for the third time in one day, and three deliberate re-freezes in a
+day is how ADR-0095 happens by accident.
+
+### What holds until then
+
+`Test_Ledger` states it as a number rather than leaving it implied, and the
+comment in that file says where to look. Nothing the log holds is false; it is
+incomplete in one named way.
+
+---
 
 ## ADR-0112 — A build target names every module, and the uproject is what makes it build
 

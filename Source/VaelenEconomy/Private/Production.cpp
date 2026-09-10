@@ -30,13 +30,11 @@ namespace Vaelen::Economy
 			return V > 0xffffffffull ? 0xffffffffu : static_cast<uint32>(V);
 		}
 
-		/// Takes up to Wanted from Amount; returns what was taken.
-		uint32 Take(uint32& Amount, uint64 Wanted) noexcept
-		{
-			const uint32 Taken = static_cast<uint32>(std::min<uint64>(Wanted, Amount));
-			Amount -= Taken;
-			return Taken;
-		}
+		// `Take(Amount, Wanted)` used to live here, and its disappearance is the
+		// shape of ADR-0111. It moved grain out of a stock and told nobody. Every
+		// one of its call sites now goes through MoveStock, which does the same
+		// arithmetic and publishes StockTaken, so the compiler removing this as
+		// unused was the proof that none was missed.
 
 		struct House
 		{
@@ -324,13 +322,39 @@ namespace Vaelen::Economy
 					Owed->Owed = Saturate(uint64{Owed->Owed} + Harvest * Owed->PerMille / 1000u);
 				}
 			}
+			// ADR-0111. Everything from here down used to move by direct
+			// assignment and publish nothing, and that is why a region could
+			// harvest 7329 units of grain, end the year six units richer, and
+			// leave the log unable to account for the other 7323. The chronicle
+			// could say what a region GREW and never what it ATE.
+			//
+			// The harvest above keeps its direct writes on purpose: HarvestEvent
+			// already names it, and naming it twice would make the ledger count
+			// it twice. What follows is the movement nothing named.
+			//
+			// MoveStock rather than AddStock because AddStock's lookup is a pass
+			// over the region or family pool per call, and this loop already
+			// holds every pointer it needs - see Stocks.h.
+			const PersistentId Why = Blows[Region].Event;
+			auto Gain = [&](uint32* Amount, EntityHandle Sub, uint32 Of, uint32 G, uint64 Units) -> uint32
+			{
+				return MoveStock(W, Amount, Sub, Region, Of, static_cast<Good>(G),
+								 static_cast<int32>(std::min<uint64>(Units, 0x7fffffffull)), Context.Tick, Why);
+			};
+			auto Lose = [&](uint32* Amount, EntityHandle Sub, uint32 Of, uint32 G, uint64 Units) -> uint32
+			{
+				return MoveStock(W, Amount, Sub, Region, Of, static_cast<Good>(G),
+								 -static_cast<int32>(std::min<uint64>(Units, 0x7fffffffull)), Context.Tick, Why);
+			};
+
 			// 2. Spoilage, then the meals: a house from its own stock, then the common one.
-			Common->Amount[G_GRAIN] -= Saturate(uint64{Common->Amount[G_GRAIN]} * Rules.GrainSpoilPerMille / 1000u);
+			Lose(&Common->Amount[G_GRAIN], RH, 0, G_GRAIN,
+				 uint64{Common->Amount[G_GRAIN]} * Rules.GrainSpoilPerMille / 1000u);
 			uint64 Need = People * Rules.GrainPerPerson;
 			uint64 Short = 0;
 			if (!Fine)
 			{
-				Short = Need - Take(Common->Amount[G_GRAIN], Need);
+				Short = Need - Lose(&Common->Amount[G_GRAIN], RH, 0, G_GRAIN, Need);
 			}
 			else
 			{
@@ -342,15 +366,15 @@ namespace Vaelen::Economy
 					{
 						continue;
 					}
-					Stock->Amount[G_GRAIN] -=
-						Saturate(uint64{Stock->Amount[G_GRAIN]} * Rules.GrainSpoilPerMille / 1000u);
+					Lose(&Stock->Amount[G_GRAIN], Hs.Handle, F->Index, G_GRAIN,
+						 uint64{Stock->Amount[G_GRAIN]} * Rules.GrainSpoilPerMille / 1000u);
 					const uint64 Wanted = uint64{Hs.Members} * Rules.GrainPerPerson;
-					uint64 Left = Wanted - Take(Stock->Amount[G_GRAIN], Wanted);
-					Left -= Take(Common->Amount[G_GRAIN], Left);
+					uint64 Left = Wanted - Lose(&Stock->Amount[G_GRAIN], Hs.Handle, F->Index, G_GRAIN, Wanted);
+					Left -= Lose(&Common->Amount[G_GRAIN], RH, 0, G_GRAIN, Left);
 					Short += Left;
 				}
 				const uint64 Wanted = uint64{Unhoused[Region]} * Rules.GrainPerPerson;
-				Short += Wanted - Take(Common->Amount[G_GRAIN], Wanted);
+				Short += Wanted - Lose(&Common->Amount[G_GRAIN], RH, 0, G_GRAIN, Wanted);
 			}
 			Population::RegionRation Ration;
 			Ration.PerMille = Need == 0 ? 1000u : static_cast<uint32>((Need - Short) * 1000u / Need);
@@ -371,15 +395,14 @@ namespace Vaelen::Economy
 			// 3. The other goods, all in the common stock.
 			if (!OnTheRock && People >= Rules.ExtractFromPeople)
 			{
-				Common->Amount[G_TIMBER] =
-					Saturate(Common->Amount[G_TIMBER] + uint64{Timber[Region]} * Rules.ExtractPerMille / 1000u);
-				Common->Amount[G_ORE] =
-					Saturate(Common->Amount[G_ORE] + uint64{Ore[Region]} * Rules.ExtractPerMille / 1000u);
-				Common->Amount[G_SALT] =
-					Saturate(Common->Amount[G_SALT] + uint64{Salt[Region]} * Rules.ExtractPerMille / 1000u);
+				Gain(&Common->Amount[G_TIMBER], RH, 0, G_TIMBER,
+					 uint64{Timber[Region]} * Rules.ExtractPerMille / 1000u);
+				Gain(&Common->Amount[G_ORE], RH, 0, G_ORE, uint64{Ore[Region]} * Rules.ExtractPerMille / 1000u);
+				Gain(&Common->Amount[G_SALT], RH, 0, G_SALT, uint64{Salt[Region]} * Rules.ExtractPerMille / 1000u);
 			}
-			Take(Common->Amount[G_TIMBER], Rules.TimberPerPersons > 0 ? People / Rules.TimberPerPersons : 0u);
-			Take(Common->Amount[G_SALT], Rules.SaltPerPersons > 0 ? People / Rules.SaltPerPersons : 0u);
+			Lose(&Common->Amount[G_TIMBER], RH, 0, G_TIMBER,
+				 Rules.TimberPerPersons > 0 ? People / Rules.TimberPerPersons : 0u);
+			Lose(&Common->Amount[G_SALT], RH, 0, G_SALT, Rules.SaltPerPersons > 0 ? People / Rules.SaltPerPersons : 0u);
 			uint64 CraftPerMille = 1000;
 			if (Fine)
 			{
@@ -389,13 +412,15 @@ namespace Vaelen::Economy
 			CraftPerMille = CraftPerMille * (1000u + (Built != nullptr ? Built->CraftPerMille : 0u)) / 1000u;
 			const uint64 Cloth =
 				(Rules.ClothPerPersons > 0 ? People / Rules.ClothPerPersons : 0u) * CraftPerMille / 1000u;
-			Common->Amount[G_CLOTH] = Saturate(Common->Amount[G_CLOTH] + Cloth);
+			Gain(&Common->Amount[G_CLOTH], RH, 0, G_CLOTH, Cloth);
 			const uint64 ToolsWanted =
 				(Rules.ToolsPerPersons > 0 ? People / Rules.ToolsPerPersons : 0u) * CraftPerMille / 1000u;
-			const uint32 Made = Take(Common->Amount[G_ORE], ToolsWanted); // one ore each
-			Common->Amount[G_TOOLS] = Saturate(Common->Amount[G_TOOLS] + Made);
-			Take(Common->Amount[G_CLOTH], Rules.ClothWearPerPersons > 0 ? People / Rules.ClothWearPerPersons : 0u);
-			Take(Common->Amount[G_TOOLS], Rules.ToolsWearPerPersons > 0 ? People / Rules.ToolsWearPerPersons : 0u);
+			const uint32 Made = Lose(&Common->Amount[G_ORE], RH, 0, G_ORE, ToolsWanted); // one ore each
+			Gain(&Common->Amount[G_TOOLS], RH, 0, G_TOOLS, Made);
+			Lose(&Common->Amount[G_CLOTH], RH, 0, G_CLOTH,
+				 Rules.ClothWearPerPersons > 0 ? People / Rules.ClothWearPerPersons : 0u);
+			Lose(&Common->Amount[G_TOOLS], RH, 0, G_TOOLS,
+				 Rules.ToolsWearPerPersons > 0 ? People / Rules.ToolsWearPerPersons : 0u);
 		}
 	}
 

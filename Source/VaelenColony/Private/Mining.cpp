@@ -241,10 +241,15 @@ namespace Vaelen::Colony
 				continue; // every seam of this colony is worked out
 			}
 			Info->Lifted += Lifted;
-			// Through AddStock and through nothing else, so the lift is in the log
-			// with a cause and the chronicle of 11.07 can tell where the ore came
-			// from - which 06.02's yearly extraction cannot, because it writes the
-			// common stock directly.
+			// Through AddStock, so the lift is in the log with a cause and the
+			// chronicle of 11.07 can tell where the ore came from.
+			//
+			// This used to say "and through nothing else... which 06.02's yearly
+			// extraction cannot, because it writes the common stock directly".
+			// ADR-0111 made that false: 06.02 now credits its extraction through
+			// MoveStock and the log holds both. What still tells them apart is
+			// the CAUSE - the OreLifted id handed over below - which is the part
+			// of 11.03's rule that was doing the real work all along.
 			const PersistentId Lift = Context.Events->Publish(
 				Context.Tick, OreLiftedEvent, Economy::StockPayload{Region, 0u, G_ORE, Lifted}, Subject);
 			Economy::AddStock(W, Types, Families, Economy, Region, 0u, Economy::Good::Ore, static_cast<int32>(Lifted),

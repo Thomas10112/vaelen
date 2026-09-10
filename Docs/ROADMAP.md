@@ -2596,8 +2596,12 @@ TASK        : 13.08f done — the viewer page is checked by CTest, not by me loo
 CI          : run 148 on 910a99d — 9 of 9 GREEN. ADR-0120's 44 re-frozen digests
               hold on gcc, clang, AppleClang AND MSVC, in debug and release.
               They were recorded from linux-gcc-release alone.
-DECIDED     : ADR-0120 FIXED (and it was three fixes) · ADR-0118 decided, unchanged
-OPEN        : ADR-0111 nothing eaten · ADR-0129 a road cannot be abandoned
+DECIDED     : ADR-0120 FIXED (three fixes) · ADR-0118 decided, unchanged
+              ADR-0111 FIXED - the ledger of a region closes for everything
+              06.02 makes, eats, spoils and wears, and the world did not move
+              a single unit doing it
+OPEN        : ADR-0129 a road cannot be abandoned · ADR-0131 the log says how
+              much crossed a road, not what it was
 13.07c      : COMPILES. 877 lines written with no engine, built first try on
               UE 5.6.1 / MSVC 14.44: 14 modules, 167 actions, Succeeded, 7m25.
               Still NOT SEEN - the exit criterion is a screenshot, and compiling

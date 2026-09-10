@@ -185,10 +185,32 @@ namespace Vaelen::Economy
 	/// stock of a region (House = 0) or a house's, clamped at zero. Returns the
 	/// units actually moved, 0 for an unknown region, house or good; publishes
 	/// StockAdded or StockTaken with the cause when anything moved.
+	///
+	/// It FINDS the stock by walking the region or family pool, which costs a
+	/// pass over that pool per call. That is nothing at the rate 11.03 calls it
+	/// and everything at the rate 06.02 would: see MoveStock below.
 	VAELEN_ECONOMY_API uint32 AddStock(World& W, const History::PreHistoryTypes& Types,
 									   const Population::FamilyTypes& Families, const EconomyTypes& Economy,
 									   uint32 Region, uint32 House, Good G, int32 Delta, SimTick Tick,
 									   PersistentId Cause = {});
+
+	/// The same move, on a stock the caller has ALREADY found.
+	///
+	/// `Amount` is the field to change and `Subject` the entity the event is
+	/// about. Clamps at zero and saturates at the top exactly as AddStock does,
+	/// returns the units actually moved, and publishes the same StockAdded or
+	/// StockTaken with the same payload - because AddStock is now nothing but a
+	/// lookup in front of this function, so there is ONE place where a stock
+	/// moves and one place where the log is told.
+	///
+	/// It exists because AddStock's lookup is a pass over a pool, and 06.02
+	/// already holds pointers to every stock it touches. Routing a region's
+	/// spoilage, meals, extraction, crafting and wear through AddStock would
+	/// have turned a linear yearly pass into a quadratic one; routing them
+	/// through this costs nothing and the log gets the same events either way.
+	/// ADR-0111.
+	VAELEN_ECONOMY_API uint32 MoveStock(World& W, uint32* Amount, EntityHandle Subject, uint32 Region, uint32 House,
+										Good G, int32 Delta, SimTick Tick, PersistentId Cause = {});
 
 	struct StockStats
 	{

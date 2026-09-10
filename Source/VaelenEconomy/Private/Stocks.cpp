@@ -456,7 +456,13 @@ namespace Vaelen::Economy
 						}
 					});
 		}
-		if (Amount == nullptr)
+		return MoveStock(W, Amount, Subject, Region, House, G, Delta, Tick, Cause);
+	}
+
+	uint32 MoveStock(World& W, uint32* Amount, EntityHandle Subject, uint32 Region, uint32 House, Good G, int32 Delta,
+					 SimTick Tick, PersistentId Cause)
+	{
+		if (Amount == nullptr || Delta == 0 || static_cast<uint32>(G) >= GoodCount)
 		{
 			return 0;
 		}
@@ -476,7 +482,8 @@ namespace Vaelen::Economy
 		if (Moved > 0)
 		{
 			W.Events().Publish(Tick, Delta > 0 ? StockAddedEvent : StockTakenEvent,
-							   StockPayload{Region, House, g, Moved}, W.Entities().GetId(Subject), Cause);
+							   StockPayload{Region, House, static_cast<uint32>(G), Moved}, W.Entities().GetId(Subject),
+							   Cause);
 		}
 		return Moved;
 	}
