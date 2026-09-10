@@ -2704,3 +2704,54 @@ python3 Tools/check_kernel_purity.py --root . --verbose                # 12 file
 Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without).
 
 GitHub Actions run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14). Not run: any UBT/engine build.
+
+## 19. Phase 13 - PRESENTATION: task breakdown
+
+**Read this first, because it changes how the phase runs.** Every phase from 00
+to 12 was done in a container with clang, gcc, cmake and ninja and nothing else.
+Phase 13 is the first that cannot be. `VaelenPresentation` is an Unreal module;
+it needs UE 5.6, an editor, a GPU and a person looking at a screen. Thirteen
+phases of engine-side files - eleven `*.Build.cs`, eleven `*Module.cpp`,
+`Vaelen.uproject`, `Config/` - have carried `STATUS: UNVERIFIED` on the promise
+that this phase would pay the debt, and the debt can only be paid on a machine
+with the engine on it.
+
+So the phase splits in two, and the split is not a nicety - it is which of two
+machines does the work:
+
+**Kernel-side (headless, this environment).** Everything that answers "what does
+the renderer need to be told" without knowing what a renderer is. It is ordinary
+kernel work: engine-agnostic, tested under the presets, covered by a gate.
+
+| Task | Content | Test kind |
+|---|---|---|
+| 13.01 | A read-only VIEW of the world for a frame: the state a renderer needs, taken once per frame, never written back. The layering rule of the whole project says PRESENTATION reads and does not touch, and this is the surface that makes that structural rather than a promise | unit, deterministic |
+| 13.02 | What changed since the last frame: a renderer that re-reads a world of a hundred thousand people every frame is not a renderer. The delta, and the proof that applying it to the previous view gives the current one | unit, integration |
+| 13.03 | Level of detail for the eye rather than for the simulation: 01.03's SimLod says how finely the world THINKS, and this says how finely it is SHOWN, which is a different question with a different answer | unit, edge |
+| 13.04 | The view under a snapshot and a reload, because a frame taken across a save must not tear | integration, deterministic |
+| 13.05 | Phase 13 kernel gate: a century at 256 with a view taken every frame of the last year, the deltas applied, and the result identical to the view taken fresh | long-duration, replay |
+
+**Engine-side (needs UE 5.6, another machine).** Nothing here can be written
+honestly from a container without the engine, and writing it anyway is how a
+file ends up marked VALIDATED on the strength of having compiled in somebody's
+head.
+
+| Task | Content | How it is verified |
+|---|---|---|
+| 13.06 | The first UBT build of all eleven kernel modules. This is the task the UNVERIFIED marks have been waiting for since Phase 00 | it builds, or it does not |
+| 13.07 | `VaelenPresentation`: the module, and the world drawn as regions on a map at all | a screenshot |
+| 13.08 | A person, a colony and a road drawn from the view of 13.01 | a screenshot |
+| 13.09 | Phase 13 gate: the editor open on AELVOR at 256, a century running, and the frame rate written down | measured on the machine that has the engine |
+
+**How the two halves meet.** The kernel half is done here, pushed, and green in
+CI. The engine half is done on the machine with UE 5.6, and the standing rule
+for that machine holds: it does not fix anything inside `Source/VaelenCore`,
+`VaelenSim`, `VaelenPopulation`, `VaelenSociety`, `VaelenEconomy`,
+`VaelenPolitics`, `VaelenMilitary`, `VaelenInfrastructure`, `VaelenColony`,
+`VaelenPlayer` or `VaelenGameplay` - those are validated by the headless CI. It
+reports the errors and they are fixed here, where the tests are.
+
+**What must not happen in this phase.** A file marked VALIDATED because it
+looked right. UNVERIFIED is not an embarrassment to be cleared by assertion; it
+is an accurate statement about eleven `Build.cs` files that no compiler has ever
+read, and it stays until one has.
