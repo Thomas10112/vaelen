@@ -2,9 +2,11 @@
 //
 // AELVOR drawn inside Unreal from the view of 13.01 and from nothing else.
 //
-// STATUS: UNVERIFIED - written without an engine. Never compiled by
-// UnrealBuildTool, never dropped in a level, never seen. Treat every number it
-// reports as unmeasured until somebody with UE 5.6 says otherwise.
+// STATUS: PROTOTYPE - compiled and linked by UnrealBuildTool on UE 5.6.1 with
+// MSVC 14.44 on 2026-09-10 (14 modules, 167 actions, Result: Succeeded), and
+// NOT YET RUN. Nothing here has been dropped in a level or looked at, so every
+// claim about what it DRAWS remains unmeasured. What compiling proves is only
+// that it is the shape of a program.
 //
 // WHAT THIS IS FOR, and why it is not simply the atlas actor again.
 //

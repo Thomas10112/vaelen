@@ -2597,9 +2597,10 @@ CI          : run 146 on acbf7fc — 9 of 9 GREEN, and the first run to prove th
               three Viewer entries pass on Windows and macOS too.
 DECIDED     : ADR-0120 FIXED (and it was three fixes) · ADR-0118 decided, unchanged
 OPEN        : ADR-0111 nothing eaten · ADR-0129 a road cannot be abandoned
-NEEDS AN EYE: 13.07c written but never compiled. Source/VaelenPresentation is
-              877 lines nobody has built. UNVERIFIED until a UE 5.6 machine says
-              otherwise, and it will probably say something.
+13.07c      : COMPILES. 877 lines written with no engine, built first try on
+              UE 5.6.1 / MSVC 14.44: 14 modules, 167 actions, Succeeded, 7m25.
+              Still NOT SEEN - the exit criterion is a screenshot, and compiling
+              only proves it is the shape of a program.
 STATUS      : PROTOTYPE (headless) / VALIDATED (UE 5.6, compiles, links and runs)
 
 PROGRESS
@@ -3109,7 +3110,7 @@ head.
 | Task | Content | How it is verified |
 |---|---|---|
 | 13.06 | The first UBT build of all eleven kernel modules. This is the task the UNVERIFIED marks have been waiting for since Phase 00 | it builds, or it does not | **DONE 2026-09-10 - it builds** |
-| 13.07c | `VaelenPresentation`: the UE module, and the world drawn as regions **from that view alone** inside the engine. 13.07b proved the view is sufficient to draw from; this is the same claim in Unreal, and the first place ADR-0113's C4251 decision can be shown to do anything | a screenshot | **WRITTEN 2026-09-10, UNVERIFIED — never compiled** |
+| 13.07c | `VaelenPresentation`: the UE module, and the world drawn as regions **from that view alone** inside the engine. 13.07b proved the view is sufficient to draw from; this is the same claim in Unreal, and the first place ADR-0113's C4251 decision can be shown to do anything | a screenshot | **COMPILES 2026-09-10 (UE 5.6.1, MSVC 14.44, 14/14 DLLs) — NOT YET SEEN** |
 | 13.08b | A person, a colony and a road drawn from the view of 13.01 **inside the engine** | a screenshot |
 | 13.09 | Phase 13 gate: the editor open on AELVOR at 256, a century running, and the frame rate written down | measured on the machine that has the engine |
 

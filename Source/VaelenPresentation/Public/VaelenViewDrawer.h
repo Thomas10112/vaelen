@@ -2,10 +2,14 @@
 //
 // The world drawn from the view, and from nothing else.
 //
-// STATUS: UNVERIFIED - never compiled by UnrealBuildTool, never opened in an
-// editor. Every claim below about what it DRAWS is a claim about code nobody
-// has run. The claim about what it CANNOT REACH is different: that one the
-// compiler checks, and it is the point of the file.
+// STATUS: PROTOTYPE - compiled and linked by UnrealBuildTool on UE 5.6.1 with
+// MSVC 14.44 on 2026-09-10 (14 modules, 167 actions, Result: Succeeded), and
+// NOT YET RUN. Nothing here has been dropped in a level or looked at, so every
+// claim about what it DRAWS remains unmeasured. What compiling proves is only
+// that it is the shape of a program.
+//
+// The claim about what this file CANNOT REACH is checked by the compiler, and
+// that is the point of it - see below.
 //
 // READ THE SIGNATURES. Not one function here takes a World, a TickContext, an
 // EntityHandle, a ComponentType, or anything else that could lead back into the

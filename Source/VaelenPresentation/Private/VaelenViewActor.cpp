@@ -1,6 +1,10 @@
 // VAELEN - VaelenPresentation. Phase 13 task 13.07c.
 //
-// STATUS: UNVERIFIED - never compiled by UnrealBuildTool, never run.
+// STATUS: PROTOTYPE - compiled and linked by UnrealBuildTool on UE 5.6.1 with
+// MSVC 14.44 on 2026-09-10 (14 modules, 167 actions, Result: Succeeded), and
+// NOT YET RUN. Nothing here has been dropped in a level or looked at, so every
+// claim about what it DRAWS remains unmeasured. What compiling proves is only
+// that it is the shape of a program.
 //
 // This is the ONE file of the module that knows what a World is, and it knows
 // it for exactly as long as it takes to take three views of one. Everything

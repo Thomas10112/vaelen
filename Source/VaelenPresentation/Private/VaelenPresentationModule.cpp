@@ -1,7 +1,11 @@
 // VAELEN - VaelenPresentation
 // The module's Unreal entry point. Phase 13 task 13.07c.
 //
-// STATUS: UNVERIFIED - never compiled by UnrealBuildTool.
+// STATUS: PROTOTYPE - compiled and linked by UnrealBuildTool on UE 5.6.1 with
+// MSVC 14.44 on 2026-09-10 (14 modules, 167 actions, Result: Succeeded), and
+// NOT YET RUN. Nothing here has been dropped in a level or looked at, so every
+// claim about what it DRAWS remains unmeasured. What compiling proves is only
+// that it is the shape of a program.
 //
 // Unlike the twelve kernel modules, this is not the module's ONLY Unreal-facing
 // translation unit; every file here is Unreal-facing. That is the difference

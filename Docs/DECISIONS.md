@@ -6843,6 +6843,35 @@ gcc and clang and the local gates would prove exactly nothing about it.
 
 ---
 
+### Measured again on a second machine, and the decision holds (2026-09-10, evening)
+
+13.06 was one build on one machine. 13.07c gave a second, on a different PC
+with a fresh clone, a different MSVC and a bigger project:
+
+```
+UE 5.6.1 (++UE5+Release-5.6, CL 44394996), MSVC 14.44.35207
+14 modules, 167 actions, Result: Succeeded, exit code 0, 7 min 25 s
+14 DLLs of 14 linked
+```
+
+The C4251s are there again, in volume, across `Log.h`, `ComponentType.h`,
+`ComponentStore.h`, `EntityRegistry.h`, `EventBus.h`, `WorldMap.h`, `World.h`.
+And the thing this ADR asserted without proof is now observed: **MSVC emits
+them and UnrealBuildTool does not promote them.** They are warnings, they do
+not stop a translation unit, and the link succeeds with all fourteen DLLs.
+
+One detail worth keeping, because it will mislead the next person who greps a
+build log: that build reported **153 occurrences of the string "error" and zero
+errors.** They are 76 pairs of lines naming a field called `BuildError`
+(`Vaelen::Scheduler::BuildError`) — itself in a C4251 — plus the
+`-WarningsAsErrors` flag on the command line. Counting "error" in a UBT log is
+not a way to tell whether a build failed; the exit code is.
+
+This does not change the decision, and does not make the warning free. It
+narrows it: C4251 is noise on this project's Windows builds today, at a volume
+that will hide a real one. What it is not is a blocker, and 13.07c is the task
+that could finally have shown otherwise and did not.
+
 ## ADR-0114 — The kernel runs inside the editor, and that is a different claim from 13.06's
 
 **Date:** 2026-09-10

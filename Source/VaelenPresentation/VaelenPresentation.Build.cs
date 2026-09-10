@@ -1,9 +1,13 @@
 // VAELEN - VaelenPresentation module rules. Phase 13 task 13.07c.
 //
-// STATUS: UNVERIFIED - written without an engine to compile it. It has never
-// been through UnrealBuildTool and is not covered by the headless CI, because
-// nothing here CAN be: this is the one module that is Unreal all the way down.
-// The first person to build it should expect to find something.
+// STATUS: PROTOTYPE - compiled and linked by UnrealBuildTool on UE 5.6.1 with
+// MSVC 14.44 on 2026-09-10 (14 modules, 167 actions, Result: Succeeded), and
+// NOT YET RUN. Nothing here has been dropped in a level or looked at, so every
+// claim about what it DRAWS remains unmeasured. What compiling proves is only
+// that it is the shape of a program.
+//
+// It is still not covered by the headless CI, and cannot be: nothing here can
+// be built without an engine.
 //
 // THIS MODULE IS NOT LIKE THE OTHER THIRTEEN.
 //
