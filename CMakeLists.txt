@@ -84,6 +84,11 @@ add_subdirectory(Source/VaelenPlayer)
 add_subdirectory(Source/VaelenGameplay)
 add_subdirectory(Source/VaelenView)
 
+# ── Tools ────────────────────────────────────────────────────────────────────
+# VaelenAtlas: generates a world and writes what can be drawn of it. Built
+# always, not only with the tests, because it is how the world gets looked at.
+add_subdirectory(Tools/Atlas)
+
 # ── Tests ────────────────────────────────────────────────────────────────────
 if(VAELEN_BUILD_TESTS)
   enable_testing()

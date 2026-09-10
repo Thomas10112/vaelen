@@ -2591,8 +2591,8 @@ first question Phase 13 or a later gameplay phase should be asked.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (5 of 5) · ENGINE HALF STARTED (13.06 of 4)
-TASK        : 13.06 done — and the kernel has now RUN in the editor
+PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (6 of 6) · ENGINE HALF STARTED (13.06 of 3)
+TASK        : 13.07a done — the ground is in the view, and AELVOR runs with no engine
 STATUS      : PROTOTYPE (headless) / VALIDATED (UE 5.6, compiles, links and runs)
 
 PROGRESS
@@ -2637,13 +2637,38 @@ CURRENTLY
   needed a wider CI matrix, this one needed a toolchain that does not exist on
   Linux at all.
 
-→ **PHASE 13 STILL CANNOT BE CLOSED HERE.** Its remaining three tasks are 13.07
-  VaelenPresentation and the world drawn at all, 13.08 a person and a colony and
-  a road drawn from the view of 13.01, and 13.09 the editor open on AELVOR at
-  256 with a frame rate written down. Every one needs UE 5.6, a GPU and somebody
-  looking at a screen. This container has clang, gcc, cmake and ninja and no
-  engine. Section 19 has the split and the rule for the machine that has the
-  engine: it reports errors in the kernel modules, it does not fix them.
+→ **13.07a IS DONE, AND IT MOVED THE DAILY LOOP OFF THE ENGINE.** Two things,
+  and the first is a finding rather than a file. `AVaelenAtlasActor` reads
+  `Map.GetLayer(Layers.Biome)` straight out of the world because **a WorldView is
+  regions and the coastline is not in it** — ninety-nine cells against six
+  thousand four hundred and fifty-nine land tiles. Presentation cannot be asked
+  to stop reaching past a boundary the boundary does not carry. So the view got
+  the ground: `Vaelen/View/Land.h`, eight bytes a tile, no handle, no way back.
+  ADR-0115.
+
+  And `Tools/Atlas`: AELVOR generated, run and written out as JSON with no
+  engine anywhere, built by all nine CI jobs and run by four CTest entries that
+  read the file back rather than trusting an exit code. ADR-0116.
+
+    Linux, GCC : year 420, 6459 land tiles, 65 peopled, 36374 living
+    Windows, MSVC, inside UE 5.6 : year 420, 6459 land tiles, 65 peopled, 36374 living
+
+  Determinism has been asserted by tests since Phase 00. That is the first time
+  it has been WATCHED across the engine boundary, on two operating systems and
+  two compilers.
+
+→ **PHASE 13 STILL CANNOT BE CLOSED HERE.** Its remaining three tasks are 13.07b
+  VaelenPresentation and the world drawn in the engine, 13.08 a person and a
+  colony and a road drawn from the view of 13.01, and 13.09 the editor open on
+  AELVOR at 256 with a frame rate written down. Every one needs UE 5.6, a GPU and
+  somebody looking at a screen. This container has clang, gcc, cmake and ninja
+  and no engine. Section 19 has the split and the rule for the machine that has
+  the engine: it reports errors in the kernel modules, it does not fix them.
+
+  What 13.09's number will be measured against is already known, because the
+  machine that has the engine measured it: **6.05 s to generate and run AELVOR at
+  256 for 420 years** (6.24 / 6.40 / 6.52 on repeats), against 1.00 s at 128.
+  Four times the tiles, 3.4 times the people, six times the seconds.
 
 WAS
 → Phase 12 GAMEPLAY closed against section 2 with a gate that is full: 14400
@@ -2777,6 +2802,7 @@ kernel work: engine-agnostic, tested under the presets, covered by a gate.
 | 13.03 | Level of detail for the eye rather than for the simulation: 01.03's SimLod says how finely the world THINKS, and this says how finely it is SHOWN, which is a different question with a different answer | unit, edge |
 | 13.04 | The view under a snapshot and a reload, because a frame taken across a save must not tear | integration, deterministic |
 | 13.05 | Phase 13 kernel gate: a century at 256 with a view taken every frame of the last year, the deltas applied, and the result identical to the view taken fresh | long-duration, replay |
+| 13.07a | The GROUND in the view (`Vaelen/View/Land.h`), and `Tools/Atlas`: AELVOR generated, run and written out as numbers, with no engine anywhere | unit, integration, deterministic, edge | **DONE 2026-09-10** |
 
 **Engine-side (needs UE 5.6, another machine).** Nothing here can be written
 honestly from a container without the engine, and writing it anyway is how a
@@ -2786,7 +2812,6 @@ head.
 | Task | Content | How it is verified |
 |---|---|---|
 | 13.06 | The first UBT build of all eleven kernel modules. This is the task the UNVERIFIED marks have been waiting for since Phase 00 | it builds, or it does not | **DONE 2026-09-10 - it builds** |
-| 13.07a | `AVaelenAtlasActor` takes a view of the world it just ran, and logs what it weighs | ViewStats in the editor log |
 | 13.07b | `VaelenPresentation`: the module, and the world drawn as regions **from that view alone** | a screenshot |
 | 13.08 | A person, a colony and a road drawn from the view of 13.01 | a screenshot |
 | 13.09 | Phase 13 gate: the editor open on AELVOR at 256, a century running, and the frame rate written down | measured on the machine that has the engine |
@@ -2897,6 +2922,15 @@ holds, calls `TakeView`, calls `MeasureView`, and writes the result to the log.
 Sixty lines in a file that now compiles, against an API eleven gates verify. It
 proves the world-to-view path inside the editor.
 
+> **Superseded on the same day, and the reason is worth keeping.** What is
+> written above is what 13.07a looked like before anybody counted what a
+> `WorldView` actually contains. It contains regions - ninety-nine of them on
+> AELVOR at 128 - and the coastline the actor draws is six thousand four hundred
+> and fifty-nine land tiles that are not in it. An atlas actor logging ViewStats
+> would have proved the world-to-view path and left the drawing exactly where it
+> was: reading the map directly, because the map is where the ground is. The
+> task 13.07a became is below.
+
 **13.07b** - `VaelenPresentation` as a module, and an actor that draws one slab
 per region from the stored view and from nothing else. It cannot reach the
 simulation even by mistake, because a `WorldView` gives it nothing to reach
@@ -2922,6 +2956,63 @@ for that machine holds: it does not fix anything inside `Source/VaelenCore`,
 `VaelenPolitics`, `VaelenMilitary`, `VaelenInfrastructure`, `VaelenColony`,
 `VaelenPlayer` or `VaelenGameplay` - those are validated by the headless CI. It
 reports the errors and they are fixed here, where the tests are.
+
+### 13.07a done - the ground in the view, and AELVOR with no engine
+
+**The finding first, because it is worth more than the code.** `AVaelenAtlasActor`
+reads `Map.GetLayer(T.World.Layers.Biome)` directly, and thirteen phases of
+layering rule say it should not. Reading both sides together says something
+sharper than "the actor is non-compliant": a `WorldView` is REGIONS, and the
+coast is not in it. The actor reads the world because the world is where the
+coast is.
+
+> A layering rule with nothing behind it is a rule everybody breaks. Before
+> asking a consumer to stop reaching past a boundary, look at what it is
+> reaching for. If the boundary does not carry it, the consumer is not
+> undisciplined - the boundary is incomplete.
+
+**What was built.**
+
+- `Source/VaelenView/Public/Vaelen/View/Land.h` and `Private/Land.cpp`: a
+  `MapView` of `TileView`s, one per tile, eight bytes each - elevation in Q16.16,
+  biome, region, and a byte of ground flags whose first four bits are asserted
+  against `WorldGen::TerrainFlag` so they cannot drift. No pointer, no handle,
+  no way back, exactly as 13.01. ADR-0115.
+- `Tools/Atlas/Main.cpp`: the atlas actor's job minus Unreal. Generates AELVOR,
+  runs its centuries with every system (bondage included - the player of VAELEN
+  starts owned, and a view that cannot say who is bound is missing the number the
+  premise turns on), takes both views, writes them out as JSON. ADR-0116.
+- `Tools/check_atlas_output.py`: reads the file back. Twenty checks, each one
+  proved to fire by `--self-test`, because a tool exiting 0 proves only that it
+  did not crash.
+
+**How it is verified.** `Tests/View/Test_Land.cpp` - five suites, thirty-three
+checks: no way back into the world (compiler-checked), the ground matches the
+world tile for tile across all 9216 tiles of a 96-map, the ground outlives the
+world that made it, one seed gives one ground and two seeds do not, and a world
+with no map says so instead of reading an empty layer by tile index. Plus four
+CTest entries that RUN the tool: `Atlas.Runs`, `Atlas.RunsAgain`,
+`Atlas.Output`, `Atlas.Deterministic`, `Atlas.OutputSelfTest`.
+
+**The number that came free.**
+
+```
+Linux, GCC, headless          : AELVOR 128, year 420,  6459 land, 65 peopled,  36374 living
+Windows, MSVC, inside UE 5.6  : AELVOR 128, year 420,  6459 land, 65 peopled,  36374 living
+Linux, GCC, headless          : AELVOR 256, year 420, 25842 land, 55 peopled, 123600 living  (5.65 s)
+Windows, MSVC, inside UE 5.6  : AELVOR 256, year 420, 25842 land, 55 peopled, 123600 living  (6.05 s)
+```
+
+Two operating systems, two compilers, two build systems, one world. Determinism
+has been asserted by tests since Phase 00; this is the first time it has been
+watched across the engine boundary.
+
+**What it changes about how the project runs.** The daily loop moves off Unreal
+and Unreal stays the target. Every question about the world - does the coast look
+like a coast, does the terrain have ranges or noise, what happened in year 300 -
+used to cost a fifty-seven-second editor start on a machine the engine warns
+about at every launch. It now costs one command. The engine is still where the
+game is, and 13.09 still needs it.
 
 **What must not happen in this phase.** A file marked VALIDATED because it
 looked right. UNVERIFIED is not an embarrassment to be cleared by assertion; it

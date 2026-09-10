@@ -29,3 +29,32 @@ elseif(VAELEN_REQUIRE_PURITY_CHECK)
 else()
   message(WARNING "Python3 not found: Kernel.Purity test is NOT registered (VAELEN_REQUIRE_PURITY_CHECK=OFF)")
 endif()
+
+# ── The atlas tool ───────────────────────────────────────────────────────────
+# Compiling proves nothing about a tool. These run it: once to see it produce a
+# world, twice to see it produce the SAME world, and the checker reads the file
+# back rather than trusting an exit code (Tools/check_atlas_output.py).
+set(VAELEN_ATLAS_A ${CMAKE_CURRENT_BINARY_DIR}/atlas-run-a.json)
+set(VAELEN_ATLAS_B ${CMAKE_CURRENT_BINARY_DIR}/atlas-run-b.json)
+add_test(NAME Atlas.Runs COMMAND VaelenAtlas --size 48 --prehistory 30 --years 10 --out ${VAELEN_ATLAS_A})
+add_test(NAME Atlas.RunsAgain COMMAND VaelenAtlas --size 48 --prehistory 30 --years 10 --out ${VAELEN_ATLAS_B})
+set_tests_properties(Atlas.Runs PROPERTIES FIXTURES_SETUP AtlasA TIMEOUT 900)
+set_tests_properties(Atlas.RunsAgain PROPERTIES FIXTURES_SETUP AtlasB TIMEOUT 900)
+
+if(Python3_Interpreter_FOUND)
+  add_test(NAME Atlas.Output
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_atlas_output.py ${VAELEN_ATLAS_A})
+  set_tests_properties(Atlas.Output PROPERTIES FIXTURES_REQUIRED AtlasA TIMEOUT 300)
+  add_test(NAME Atlas.Deterministic
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_atlas_output.py
+            --same ${VAELEN_ATLAS_A} ${VAELEN_ATLAS_B})
+  set_tests_properties(Atlas.Deterministic PROPERTIES FIXTURES_REQUIRED "AtlasA;AtlasB" TIMEOUT 300)
+  # The checker's own regression suite: proves every rule still fires.
+  add_test(NAME Atlas.OutputSelfTest
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_atlas_output.py --self-test)
+  set_tests_properties(Atlas.OutputSelfTest PROPERTIES TIMEOUT 120)
+elseif(VAELEN_REQUIRE_PURITY_CHECK)
+  message(FATAL_ERROR "Python 3 is required to check what VaelenAtlas writes.")
+else()
+  message(WARNING "Python3 not found: the Atlas.Output tests are NOT registered")
+endif()

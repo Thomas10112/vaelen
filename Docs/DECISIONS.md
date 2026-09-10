@@ -6867,3 +6867,145 @@ way.
 The fourteen files keep their VALIDATED label unchanged: it says "compiled and
 linked by UnrealBuildTool in 13.06; not run in the editor". That is still an
 accurate statement about what 13.06 verified. This ADR is what the editor added.
+
+## ADR-0115 — Presentation cannot stop reading the world until the view carries the ground
+
+**Date:** 2026-09-10
+**Status:** Accepted
+**Phase:** 13 — task 13.07a
+
+### The rule, and the thing the rule could not have
+
+Since Phase 00 the layering rule has said PRESENTATION reads WORLD STATE and does
+not touch it. 13.01 made it structural: a `WorldView` is a flat block of numbers
+with no pointer, no handle and no component type, so a renderer holding one has
+nothing to reach the simulation with.
+
+And `AVaelenAtlasActor` reads `Map.GetLayer(T.World.Layers.Biome)` directly,
+tile by tile, along with the terrain layer, the elevation layer, the river and
+lake layers. ADR-0112's task notes called this the thing 13.07 must fix.
+
+Reading both sides together says something sharper than "the actor is
+non-compliant". **A `WorldView` is regions.** Ninety-nine of them on AELVOR at
+128, fifty-five at 256. The coastline the actor draws — six thousand four
+hundred and fifty-nine land tiles against ten thousand of sea — is not in the
+view and never was. The actor reads the world because the world is where the
+coast is.
+
+### The decision
+
+Give the view the ground: `Vaelen/View/Land.h`, a `MapView` of `TileView`s, one
+per tile, carrying elevation, biome, region and a byte of ground flags. Same
+promise as 13.01 one level down — eight bytes of plain numbers, no handle, no
+way back — and the same test (`Land.TheGroundOutlivesTheWorldItCameFrom`) that
+13.01's design property makes possible.
+
+The general form of the finding, which is worth more than the file:
+
+> **A layering rule with nothing behind it is a rule everybody breaks.** Before
+> asking a consumer to stop reaching past a boundary, look at what it is
+> reaching for. If the boundary does not carry it, the consumer is not
+> undisciplined — the boundary is incomplete.
+
+### What it costs, said out loud
+
+A `WorldView` weighs 5600 bytes on AELVOR at 128 and is meant to be taken sixty
+times a second. A `MapView` weighs 131120 bytes at 128 and 512 KB at 256, and
+**is not a per-frame structure**. The ground changes when the world is generated;
+take it then, keep it, and take a frame for the year-by-year things. The header
+says so where somebody reaching for it will read it.
+
+### Two smaller decisions inside it
+
+- **`GroundFlag` mirrors `WorldGen::TerrainFlag` and `Land.cpp` asserts it.** The
+  first four bits are copied so a renderer needs one byte instead of three
+  layers; copied values drift, asserted values cannot. If Phase 02 renumbers a
+  flag the file stops compiling instead of quietly painting the coast inland.
+- **Elevation is kept in Q16.16, not Fix64 raw.** Shifted right sixteen and
+  saturated, so a tile is eight bytes rather than sixteen, and a mountain past
+  32767 units is clamped rather than wrapped into a trench. The saturation is
+  deliberate and the header says the scale.
+
+### Verified
+
+`Tests/View/Test_Land.cpp`, five suites, thirty-three checks: no way back into
+the world (compiler-checked), the ground matches the world tile for tile across
+every one of 9216 tiles, the ground outlives its world, one seed gives one
+ground and two seeds do not, and a world with no map says so instead of reading
+an empty layer by tile index.
+
+## ADR-0116 — The world gets looked at without an engine, and Unreal stays the target
+
+**Date:** 2026-09-10
+**Status:** Accepted
+**Phase:** 13 — task 13.07a
+
+### The situation this answers
+
+13.06 and ADR-0114 bought something real: the kernel compiles under UBT and runs
+inside UE 5.6. The first image of AELVOR came out of that editor. The image was
+also, honestly, a plate of coloured cubes and a map — thirteen phases of
+simulation and no art, because `Content/` is empty and no phase has yet been
+about pixels.
+
+And the cost of getting to it, on the machine that has UE: a fifty-seven-second
+editor startup, a graphics driver from 2021 that the engine warns about on every
+launch, four gigabytes of VRAM, and a build of the C++ project before anything
+new can be tried at all. Every question about the world — does the coast look
+like a coast, does the terrain have ranges or just noise, what happened in year
+300 — costs that.
+
+### The decision
+
+**Unreal stays the target. It stops being the daily loop.**
+
+The daily loop becomes `Tools/Atlas`: a headless executable, built by all nine CI
+jobs, that generates AELVOR, runs its centuries, takes a `WorldView` and a
+`MapView`, and writes both out as JSON. What draws them is a separate concern —
+and can be anything, because what it is handed is numbers.
+
+### Why this is available at all
+
+Because of 13.01's design property and nothing else. A view holds no pointer, no
+handle and no reference into the world, so **it outlives the world**, serialises
+without a serialiser and crosses any boundary — a thread, a process, a file, a
+browser. That was written down in `Frame.h` as a layering guarantee. It turns out
+to be a portability guarantee as well, and this is the first task that spends it.
+
+### What Unreal is still for, so this is not a retreat
+
+- The game. Everything Phase 14 and after is about — a person on the ground, a
+  camera at eye height, the colony the player wakes up owned in — is engine work,
+  and 13.06 is what makes it possible.
+- The 13.09 gate: the editor open on AELVOR at 256, a century running, a frame
+  rate written down. That needs the engine and a person at a screen.
+- The moment art exists. A tool that writes numbers cannot show a face.
+
+### The measurement that made the call, rather than the mood
+
+Taken on the machine with UE 5.6 (i5-10400, T400 4 GB), Development Editor:
+
+| Map | Land tiles | Living | Simulated |
+|---|---|---|---|
+| 128 x 128 | 6459 | 36374 | 1.00 s |
+| 256 x 256 | 25842 | 123600 | 6.05 s (6.24 / 6.40 / 6.52 on repeats) |
+
+Four times the tiles and 3.4 times the people cost six times the seconds: it
+grows a little faster than linearly and it stays inside what a gate can hold.
+13.09 is reachable. This ADR is about where the day is spent, not about whether
+the engine can carry the world.
+
+### The cross-check that came free
+
+`Tools/Atlas` on Linux with GCC against the editor on Windows with MSVC, same
+seed, both sizes:
+
+| Map | Land tiles | Peopled | Living | Year | UE 5.6 | headless (release) |
+|---|---|---|---|---|---|---|
+| 128 x 128 | 6459 | 65 | 36374 | 420 | 1.00 s | — |
+| 256 x 256 | 25842 | 55 | 123600 | 420 | 6.05 s | 5.65 s |
+
+Every number of the world identical on both sides. Two toolchains, two operating
+systems, two build systems, one world. Determinism has been asserted by tests
+since Phase 00; this is the first time it has been observed across the engine
+boundary.

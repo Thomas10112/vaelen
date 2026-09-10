@@ -1,0 +1,573 @@
+// VAELEN - Tools/Atlas
+// Phase 13 task 13.07a: AELVOR without an engine.
+//
+// This is the atlas actor's job, minus Unreal. It builds a world with the same
+// systems, generates it, runs its centuries, takes a WorldView and a MapView,
+// and writes both out as JSON. Nothing here draws anything: it produces the
+// numbers, and whatever draws them is somebody else's problem - which is the
+// whole point, and is only possible because a view holds no pointer back into
+// the world (Vaelen/View/Frame.h).
+//
+// Why it exists. Thirteen phases of simulation have been seen exactly once, in
+// an editor, on a machine that fights the editor. This runs anywhere a compiler
+// runs, it is compiled by the nine CI jobs, and what it writes can be drawn by
+// anything - which makes the loop between changing the world and looking at it
+// short enough to be used every day.
+//
+// NOT kernel: this file is a tool. It reads the clock and writes a file, and
+// neither is allowed inside Source/Vaelen* (Tools/check_kernel_purity.py).
+//
+// STATUS: PROTOTYPE (Phase 13) - run by the CTest entries Atlas.Runs and Atlas.Output
+#include "Vaelen/Core/Log.h"
+#include "Vaelen/Economy/Markets.h"
+#include "Vaelen/Economy/Production.h"
+#include "Vaelen/Economy/Stocks.h"
+#include "Vaelen/Economy/Trade.h"
+#include "Vaelen/Economy/Wealth.h"
+#include "Vaelen/Politics/Polities.h"
+#include "Vaelen/Population/Families.h"
+#include "Vaelen/Population/Lives.h"
+#include "Vaelen/Population/Lod.h"
+#include "Vaelen/Population/Needs.h"
+#include "Vaelen/Population/Persons.h"
+#include "Vaelen/Population/Traits.h"
+#include "Vaelen/Sim/PreHistory.h"
+#include "Vaelen/Sim/Regions.h"
+#include "Vaelen/Sim/World.h"
+#include "Vaelen/Sim/WorldGen.h"
+#include "Vaelen/Society/Bondage.h"
+#include "Vaelen/Society/Norms.h"
+#include "Vaelen/Society/Organizations.h"
+#include "Vaelen/Society/Standing.h"
+#include "Vaelen/View/Frame.h"
+#include "Vaelen/View/Land.h"
+
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <memory>
+#include <string>
+#include <vector>
+
+using namespace Vaelen;
+using namespace Vaelen::Economy;
+using namespace Vaelen::History;
+using namespace Vaelen::Politics;
+using namespace Vaelen::Population;
+using namespace Vaelen::Society;
+using namespace Vaelen::View;
+using namespace Vaelen::WorldGen;
+
+namespace
+{
+	VAELEN_DEFINE_LOG_CATEGORY(LogAtlas);
+
+	constexpr uint64 AelvorSeed = 0x41454c564f52ull;
+
+	/// Everything the kernel needs to run a world, in the order the Phase 06
+	/// gate settled (ADR-0055). This is deliberately the SAME wiring as
+	/// AVaelenAtlasActor's, with bondage added: the player of VAELEN starts
+	/// owned, and a view that cannot say who is bound is missing the one number
+	/// the premise of the game turns on.
+	struct KernelRun
+	{
+		explicit KernelRun(uint64 InSeed) : Instance(Config(InSeed)), Ages(Instance, PreHistoryRules{})
+		{
+			Persons = PersonTypes::Declare(Instance, Ages);
+			Families = FamilyTypes::Declare(Instance);
+			Needs = NeedTypes::Declare(Instance);
+			Traits = TraitTypes::Declare(Instance);
+			Lod = LodTypes::Declare(Instance);
+			Organizations = OrganizationTypes::Declare(Instance);
+			Standing = StandingTypes::Declare(Instance);
+			Norms = NormTypes::Declare(Instance);
+			Bondage = BondageTypes::Declare(Instance);
+			Economy_ = EconomyTypes::Declare(Instance);
+			Production = ProductionTypes::Declare(Instance);
+			Markets = MarketTypes::Declare(Instance);
+			Trade = TradeTypes::Declare(Instance);
+			Wealth = WealthTypes::Declare(Instance);
+			Polities = PolityTypes::Declare(Instance);
+
+			LifeRules Life;
+			Life.SpouseRequired = 1;
+			Lives = std::make_unique<LifeSystem>(Instance, Ages.Types(), Persons, Life);
+			Houses = std::make_unique<FamilySystem>(Instance, Ages.Types(), Persons, Families, FamilyRules{});
+			Body = std::make_unique<NeedSystem>(Instance, Ages.Types(), Persons, Needs, NeedRules{});
+			Minds = std::make_unique<TraitSystem>(Instance, Ages.Types(), Persons, Traits, TraitRules{});
+			Bridge = std::make_unique<LodSystem>(Instance, Ages.Types(), Persons, Lod, LodRules{});
+			Orgs = std::make_unique<OrganizationSystem>(Instance, Ages.Types(), Persons, Families, Traits,
+														Organizations, OrganizationRules{});
+			Customs = std::make_unique<NormSystem>(Instance, Ages.Types(), Norms, NormRules{});
+			Stocks = std::make_unique<StockSystem>(Instance, Ages.Types(), Persons, Families, Economy_, EconomyRules{});
+			Harvest = std::make_unique<ProductionSystem>(Instance, Ages.Types(), Persons, Families, Economy_,
+														 Production, ProductionRules{});
+			Fair = std::make_unique<MarketSystem>(Instance, Ages.Types(), Persons, Families, Economy_, Markets,
+												  ProductionRules{}, MarketRules{});
+			Roads = std::make_unique<TradeSystem>(Instance, Ages.Types(), Persons, Families, Economy_, Markets, Trade,
+												  ProductionRules{}, MarketRules{}, TradeRules{});
+			Purses = std::make_unique<WealthSystem>(Instance, Ages.Types(), Persons, Families, Economy_, Markets, Norms,
+													Wealth, WealthRules{});
+			Ranks = std::make_unique<StandingSystem>(Instance, Ages.Types(), Persons, Families, Traits, Organizations,
+													 Standing, StandingRules{});
+			Bonds = std::make_unique<BondageSystem>(Instance, Ages.Types(), Persons, Norms, Standing, Bondage,
+													BondageRules{});
+			Rulers =
+				std::make_unique<PolitySystem>(Instance, Ages.Types(), Persons, Organizations, Polities, PolityRules{});
+
+			Houses->RunAfter("Lod");
+			Houses->RunAfter("Norms");
+			Houses->ObserveNorms(Norms.Marriage);
+			Orgs->RunAfter("Lod");
+			Orgs->RunAfter("Traits");
+			Orgs->RunAfter("Needs");
+			Ranks->RunAfter("Wealth");
+			Ranks->ObserveWealth(Wealth.Wealth);
+			Stocks->RunAfter("Lod");
+			Stocks->ObserveHeirs(Wealth.Heir);
+			Harvest->ObserveTraits(Traits.Traits);
+			Body->RunAfter("Production");
+			Body->ObserveRation(Production.Ration);
+			Rulers->RunAfter("Lod");
+
+			Instance.Systems().Add(Lives.get());
+			Instance.Systems().Add(Houses.get());
+			Instance.Systems().Add(Body.get());
+			Instance.Systems().Add(Minds.get());
+			Instance.Systems().Add(Bridge.get());
+			Instance.Systems().Add(Orgs.get());
+			Instance.Systems().Add(Customs.get());
+			Instance.Systems().Add(Stocks.get());
+			Instance.Systems().Add(Harvest.get());
+			Instance.Systems().Add(Fair.get());
+			Instance.Systems().Add(Roads.get());
+			Instance.Systems().Add(Purses.get());
+			Instance.Systems().Add(Ranks.get());
+			Instance.Systems().Add(Bonds.get());
+			Instance.Systems().Add(Rulers.get());
+			Instance.Build();
+		}
+
+		static WorldConfig Config(uint64 InSeed)
+		{
+			WorldConfig C;
+			C.Seed = InSeed;
+			return C;
+		}
+
+		ViewSources Sources() const
+		{
+			ViewSources S;
+			S.Types = Ages.Types();
+			S.Persons = Persons;
+			S.HasBondage = true;
+			S.Bondage = Bondage;
+			S.HasTrade = true;
+			S.Trade = Trade;
+			return S;
+		}
+
+		/// The region with the most people: the one worth simulating person by
+		/// person. Ties go to the lower index, so the choice does not ride on
+		/// pool order.
+		uint32 Busiest() const
+		{
+			uint32 Best = 0;
+			uint32 People = 0;
+			Instance.Components()
+				.GetPool(Ages.Types().World.RegionTypes_.Region)
+				.ForEach(
+					[&](EntityHandle H, const RegionInfo& R)
+					{
+						const RegionPopulation* P =
+							Instance.Components().GetPool(Ages.Types().Population.Population).TryGet(H);
+						if (P != nullptr && (P->Total > People || (P->Total == People && R.Index < Best)))
+						{
+							People = P->Total;
+							Best = R.Index;
+						}
+					});
+			return Best;
+		}
+
+		World Instance;
+		PreHistory Ages;
+		PersonTypes Persons;
+		FamilyTypes Families;
+		NeedTypes Needs;
+		TraitTypes Traits;
+		LodTypes Lod;
+		OrganizationTypes Organizations;
+		StandingTypes Standing;
+		NormTypes Norms;
+		BondageTypes Bondage;
+		EconomyTypes Economy_;
+		ProductionTypes Production;
+		MarketTypes Markets;
+		TradeTypes Trade;
+		WealthTypes Wealth;
+		PolityTypes Polities;
+		std::unique_ptr<LifeSystem> Lives;
+		std::unique_ptr<FamilySystem> Houses;
+		std::unique_ptr<NeedSystem> Body;
+		std::unique_ptr<TraitSystem> Minds;
+		std::unique_ptr<LodSystem> Bridge;
+		std::unique_ptr<OrganizationSystem> Orgs;
+		std::unique_ptr<NormSystem> Customs;
+		std::unique_ptr<StockSystem> Stocks;
+		std::unique_ptr<ProductionSystem> Harvest;
+		std::unique_ptr<MarketSystem> Fair;
+		std::unique_ptr<TradeSystem> Roads;
+		std::unique_ptr<WealthSystem> Purses;
+		std::unique_ptr<StandingSystem> Ranks;
+		std::unique_ptr<BondageSystem> Bonds;
+		std::unique_ptr<PolitySystem> Rulers;
+	};
+
+	// ── JSON, written by hand ────────────────────────────────────────────────
+	// A dependency would have to be vendored, audited and kept; what is needed
+	// here is numbers, arrays and a handful of strings none of which come from
+	// outside this program. Written into one string and flushed once, because
+	// a quarter of a million fprintf calls is most of the tool's runtime.
+	struct Json
+	{
+		std::string Text;
+
+		void Reserve(usize Bytes) { Text.reserve(Bytes); }
+		void Put(const char* S) { Text.append(S); }
+		void Number(int64 V)
+		{
+			char Buffer[24];
+			std::snprintf(Buffer, sizeof(Buffer), "%lld", static_cast<long long>(V));
+			Text.append(Buffer);
+		}
+		void Unsigned(uint64 V)
+		{
+			char Buffer[24];
+			std::snprintf(Buffer, sizeof(Buffer), "%llu", static_cast<unsigned long long>(V));
+			Text.append(Buffer);
+		}
+		void Hex(uint64 V)
+		{
+			char Buffer[24];
+			std::snprintf(Buffer, sizeof(Buffer), "\"0x%016llx\"", static_cast<unsigned long long>(V));
+			Text.append(Buffer);
+		}
+		void Field(const char* Name, uint64 V)
+		{
+			Text.push_back('"');
+			Text.append(Name);
+			Text.append("\":");
+			Unsigned(V);
+		}
+		void Signed(const char* Name, int64 V)
+		{
+			Text.push_back('"');
+			Text.append(Name);
+			Text.append("\":");
+			Number(V);
+		}
+	};
+
+	struct Options
+	{
+		uint32 Size = 128;
+		uint32 PreHistory = 300;
+		uint32 Years = 120;
+		uint64 Seed = AelvorSeed;
+		std::string Out = "aelvor.json";
+		bool Tiles = true;
+	};
+
+	bool ParseUnsigned(const char* Text, uint64& Out)
+	{
+		if (Text == nullptr || *Text == '\0')
+		{
+			return false;
+		}
+		char* End = nullptr;
+		const int Base = (Text[0] == '0' && (Text[1] == 'x' || Text[1] == 'X')) ? 16 : 10;
+		const unsigned long long Value = std::strtoull(Text, &End, Base);
+		if (End == nullptr || *End != '\0')
+		{
+			return false;
+		}
+		Out = static_cast<uint64>(Value);
+		return true;
+	}
+
+	void Usage()
+	{
+		std::fprintf(stderr, "VaelenAtlas - generates AELVOR and writes what can be drawn of it.\n"
+							 "  --size N        map side in tiles (32..512, default 128)\n"
+							 "  --prehistory N  years run by the pre-history (default 300)\n"
+							 "  --years N       years run after it (default 120)\n"
+							 "  --seed V        decimal or 0x hex (default 0x41454c564f52)\n"
+							 "  --out PATH      where to write the JSON (default aelvor.json)\n"
+							 "  --no-tiles      write the regions only, not the ground\n");
+	}
+
+	bool ParseOptions(int Argc, char** Argv, Options& Out)
+	{
+		for (int I = 1; I < Argc; ++I)
+		{
+			const char* Arg = Argv[I];
+			const bool HasValue = (I + 1) < Argc;
+			uint64 Value = 0;
+			if (std::strcmp(Arg, "--no-tiles") == 0)
+			{
+				Out.Tiles = false;
+			}
+			else if (std::strcmp(Arg, "--help") == 0 || std::strcmp(Arg, "-h") == 0)
+			{
+				return false;
+			}
+			else if (std::strcmp(Arg, "--out") == 0 && HasValue)
+			{
+				Out.Out = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--size") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
+			{
+				++I;
+				// The kernel's own limit is 4096 a side; 512 is where a JSON of
+				// the ground stops being a thing a browser opens.
+				Out.Size = static_cast<uint32>(Value < 32 ? 32 : (Value > 512 ? 512 : Value));
+			}
+			else if (std::strcmp(Arg, "--prehistory") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
+			{
+				++I;
+				Out.PreHistory = static_cast<uint32>(Value > 100000 ? 100000 : Value);
+			}
+			else if (std::strcmp(Arg, "--years") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
+			{
+				++I;
+				Out.Years = static_cast<uint32>(Value > 100000 ? 100000 : Value);
+			}
+			else if (std::strcmp(Arg, "--seed") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
+			{
+				++I;
+				Out.Seed = Value;
+			}
+			else
+			{
+				std::fprintf(stderr, "unrecognised argument: %s\n", Arg);
+				return false;
+			}
+		}
+		return true;
+	}
+	int Run(int Argc, char** Argv);
+} // namespace
+
+int main(int Argc, char** Argv)
+{
+	// No sink is installed by default (Vaelen/Core/Log.h), and a tool whose run
+	// cannot be read is a tool nobody can check. Installed before anything that
+	// might report, removed after the last line: the sink is not owned by the
+	// log and must outlive its own registration, which a stack object at the
+	// top of main does by construction.
+	StdioLogSink Console;
+	Log::AddSink(&Console);
+	const int Code = Run(Argc, Argv);
+	Log::RemoveSink(&Console);
+	return Code;
+}
+
+namespace
+{
+	int Run(int Argc, char** Argv)
+	{
+		Options Opt;
+		if (!ParseOptions(Argc, Argv, Opt))
+		{
+			Usage();
+			return 2;
+		}
+
+		const auto Started = std::chrono::steady_clock::now();
+		KernelRun Run(Opt.Seed);
+		WorldGenConfig Gen;
+		Gen.Width = Opt.Size;
+		Gen.Height = Opt.Size;
+		if (!Run.Ages.Generate(Gen, Opt.PreHistory))
+		{
+			std::fprintf(stderr, "AELVOR: generation failed at %u x %u\n", Opt.Size, Opt.Size);
+			return 1;
+		}
+		RequestDetail(Run.Instance, Run.Lod, Run.Busiest());
+		Run.Ages.Run(Opt.Years);
+		const double Seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - Started).count();
+
+		WorldView Frame;
+		MapView Ground;
+		TakeView(Run.Instance, Run.Sources(), Frame);
+		if (Opt.Tiles)
+		{
+			TakeMapView(Run.Instance, Run.Sources(), Ground);
+		}
+		const ViewStats FrameStats = MeasureView(Frame);
+		const MapStats GroundStats = MeasureMapView(Ground);
+
+		Json J;
+		// Four numbers a tile, seven-odd characters each, plus the regions.
+		J.Reserve(Ground.Tiles.size() * 32u + Frame.Regions.size() * 128u + 4096u);
+		J.Put("{\"vaelen\":\"0.0.1\",\"world\":\"AELVOR\",\"schema\":1,\n\"run\":{");
+		J.Put("\"seed\":");
+		J.Hex(Opt.Seed);
+		J.Put(",");
+		J.Field("size", Opt.Size);
+		J.Put(",");
+		J.Field("prehistory", Opt.PreHistory);
+		J.Put(",");
+		J.Field("years", Opt.Years);
+		J.Put(",");
+		J.Field("tick", Frame.Tick);
+		J.Put(",");
+		J.Field("year", Frame.Year);
+		J.Put(",\"seconds\":");
+		{
+			char Buffer[32];
+			std::snprintf(Buffer, sizeof(Buffer), "%.2f", Seconds);
+			J.Put(Buffer);
+		}
+		J.Put("},\n\"frame\":{");
+		J.Field("width", Frame.Width);
+		J.Put(",");
+		J.Field("height", Frame.Height);
+		J.Put(",");
+		J.Field("people", Frame.People);
+		J.Put(",");
+		J.Field("played", Frame.Played);
+		J.Put(",");
+		J.Field("regions", FrameStats.Regions);
+		J.Put(",");
+		J.Field("peopled", FrameStats.Peopled);
+		J.Put(",");
+		J.Field("detailed", FrameStats.Detailed);
+		J.Put(",");
+		J.Field("named", FrameStats.Named);
+		J.Put(",");
+		J.Field("bytes", FrameStats.Bytes);
+		J.Put(",\"digest\":");
+		J.Hex(FrameStats.Digest);
+		J.Put("},\n\"ground\":{");
+		J.Field("width", Ground.Width);
+		J.Put(",");
+		J.Field("height", Ground.Height);
+		J.Put(",");
+		J.Field("tiles", GroundStats.Tiles);
+		J.Put(",");
+		J.Field("land", GroundStats.Land);
+		J.Put(",");
+		J.Field("coast", GroundStats.Coast);
+		J.Put(",");
+		J.Field("water", GroundStats.Water);
+		J.Put(",");
+		J.Field("regions", GroundStats.Regions);
+		J.Put(",");
+		J.Field("bytes", GroundStats.Bytes);
+		J.Put(",\"digest\":");
+		J.Hex(GroundStats.Digest);
+		// Elevation is Fix64 raw shifted right 16, so a value over 65536 is the
+		// height in units. The scale is written down rather than assumed.
+		J.Put(",\"elevationScale\":65536");
+		J.Put("},\n\"regions\":[");
+		for (usize I = 0; I < Frame.Regions.size(); ++I)
+		{
+			const RegionView& R = Frame.Regions[I];
+			J.Put(I == 0 ? "\n" : ",\n");
+			J.Put("{");
+			J.Field("index", R.Index);
+			J.Put(",");
+			J.Field("tile", R.CentroidTile);
+			J.Put(",");
+			J.Field("tiles", R.Tiles);
+			J.Put(",");
+			J.Field("biome", R.Biome);
+			J.Put(",");
+			// Shifted the same 16 bits the ground is, so ONE elevationScale
+			// describes the whole file. A region in Fix64 raw beside tiles in
+			// Q16.16 is two scales in one document and a factor of 65536 waiting
+			// to be drawn as a mountain range.
+			J.Signed("elevation", R.Elevation >> 16);
+			J.Put(",");
+			J.Field("people", R.People);
+			J.Put(",");
+			J.Field("bound", R.Bound);
+			J.Put(",");
+			J.Field("settlement", R.Settlement);
+			J.Put(",");
+			J.Field("roads", R.Roads);
+			J.Put(",");
+			J.Field("names", R.Names);
+			J.Put(",");
+			J.Field("detailed", R.Detailed);
+			J.Put("}");
+		}
+		J.Put("\n],\n\"tiles\":{");
+		// Four parallel arrays in tile order rather than one object per tile: an
+		// object per tile is nine times the bytes and says nothing more.
+		auto Column = [&J, &Ground](const char* Name, int Which)
+		{
+			J.Put("\"");
+			J.Put(Name);
+			J.Put("\":[");
+			for (usize I = 0; I < Ground.Tiles.size(); ++I)
+			{
+				if (I != 0)
+				{
+					J.Put(",");
+				}
+				const TileView& T = Ground.Tiles[I];
+				switch (Which)
+				{
+				case 0:
+					J.Unsigned(T.Biome);
+					break;
+				case 1:
+					J.Unsigned(T.Ground);
+					break;
+				case 2:
+					J.Unsigned(T.Region);
+					break;
+				default:
+					J.Number(T.Elevation);
+					break;
+				}
+			}
+			J.Put("]");
+		};
+		Column("biome", 0);
+		J.Put(",\n");
+		Column("ground", 1);
+		J.Put(",\n");
+		Column("region", 2);
+		J.Put(",\n");
+		Column("elevation", 3);
+		J.Put("}\n}\n");
+
+		std::FILE* File = std::fopen(Opt.Out.c_str(), "wb");
+		if (File == nullptr)
+		{
+			std::fprintf(stderr, "AELVOR: cannot write %s\n", Opt.Out.c_str());
+			return 1;
+		}
+		const usize Written = std::fwrite(J.Text.data(), 1, J.Text.size(), File);
+		const bool Closed = std::fclose(File) == 0;
+		if (Written != J.Text.size() || !Closed)
+		{
+			std::fprintf(stderr, "AELVOR: %s is incomplete (%zu of %zu bytes)\n", Opt.Out.c_str(), Written,
+						 J.Text.size());
+			return 1;
+		}
+
+		VAELEN_LOG_INFO(LogAtlas,
+						"AELVOR %ux%u, seed 0x%llx: year %u, %u land tiles, %u regions (%u peopled, %u detailed), "
+						"%u living, %u bytes to %s. Simulated in %.2f s.",
+						Opt.Size, Opt.Size, static_cast<unsigned long long>(Opt.Seed), Frame.Year, GroundStats.Land,
+						FrameStats.Regions, FrameStats.Peopled, FrameStats.Detailed, Frame.People,
+						static_cast<uint32>(J.Text.size()), Opt.Out.c_str(), Seconds);
+		return 0;
+	}
+} // namespace

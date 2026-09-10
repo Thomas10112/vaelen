@@ -1,0 +1,214 @@
+#!/usr/bin/env python3
+# VAELEN - checks what Tools/Atlas wrote.
+#
+# The tool exiting 0 proves it did not crash. It does not prove the file is a
+# world: an empty tiles array, a coastline of zero, a regions list that lost
+# half its entries all exit 0 just as cheerfully. This reads the file back and
+# holds it to what the view promised.
+#
+# --self-test proves every check below actually fires, because a check nobody
+# has seen fail is a check nobody has.
+#
+# STATUS: VALIDATED - run by the CTest entries Atlas.Output and Atlas.OutputSelfTest
+import argparse
+import json
+import sys
+
+# Vaelen::View::GroundFlag, mirrored. The C++ side asserts these against
+# WorldGen::TerrainFlag; here they are only read back out of the file.
+LAND = 1 << 0
+COAST = 1 << 1
+SHORE = 1 << 2
+BORDER = 1 << 3
+RIVER = 1 << 4
+LAKE = 1 << 5
+KNOWN = LAND | COAST | SHORE | BORDER | RIVER | LAKE
+
+
+def check(doc):
+  """Returns a list of complaints; empty means the document is a world."""
+  bad = []
+
+  def want(condition, message):
+    if not condition:
+      bad.append(message)
+    return condition
+
+  if not want(isinstance(doc, dict), "the document is not an object"):
+    return bad
+  if not want(doc.get("schema") == 1, "schema is not 1"):
+    return bad
+  for key in ("run", "frame", "ground", "regions", "tiles"):
+    if not want(key in doc, "missing section: %s" % key):
+      return bad
+
+  frame, ground, tiles = doc["frame"], doc["ground"], doc["tiles"]
+  width, height = ground.get("width", 0), ground.get("height", 0)
+  expected = width * height
+  want(expected > 0, "the ground has no tiles")
+  want(ground.get("tiles") == expected,
+       "ground.tiles is %r, not width * height = %d" % (ground.get("tiles"), expected))
+  want(frame.get("width") == width and frame.get("height") == height,
+       "the frame and the ground disagree about the size of the map")
+
+  for name in ("biome", "ground", "region", "elevation"):
+    column = tiles.get(name)
+    if not want(isinstance(column, list), "tiles.%s is missing" % name):
+      continue
+    want(len(column) == expected,
+         "tiles.%s has %d entries, not %d" % (name, len(column), expected))
+
+  # A world with no coast is a world with nothing worth drawing on it.
+  land = ground.get("land", 0)
+  want(0 < land < expected, "land is %r of %d tiles: that is not a continent" % (land, expected))
+  want(ground.get("coast", 0) > 0, "the ground has no coastline")
+
+  flags = tiles.get("ground") or []
+  contradictions = sum(1 for f in flags if (f & LAND) and (f & SHORE))
+  want(contradictions == 0, "%d tiles are land AND sea shore at once" % contradictions)
+  unknown = sum(1 for f in flags if f & ~KNOWN)
+  want(unknown == 0, "%d tiles carry a ground bit nothing defines" % unknown)
+  counted = sum(1 for f in flags if f & LAND)
+  want(counted == land, "ground.land says %r, the tiles say %d" % (land, counted))
+
+  regions = doc["regions"]
+  want(len(regions) == frame.get("regions"),
+       "frame.regions says %r, the list has %d" % (frame.get("regions"), len(regions)))
+  want(ground.get("regions") == frame.get("regions"),
+       "the ground mentions %r regions, the frame has %r" % (ground.get("regions"), frame.get("regions")))
+  indices = [r.get("index") for r in regions]
+  want(indices == sorted(indices) and len(set(indices)) == len(indices),
+       "the regions are not in strictly increasing index order")
+  named = set(indices)
+  strays = sorted({r for r in (tiles.get("region") or []) if r != 0 and r not in named})
+  want(not strays, "the ground stands on regions the frame does not have: %s" % strays[:8])
+  offmap = [r.get("index") for r in regions if not 0 <= r.get("tile", -1) < expected]
+  want(not offmap, "regions %s are centred off the map" % offmap[:8])
+  people = sum(r.get("people", 0) for r in regions)
+  want(people == frame.get("people"),
+       "frame.people says %r, the regions add up to %d" % (frame.get("people"), people))
+  bound = sum(r.get("bound", 0) for r in regions)
+  want(bound <= people, "more people are bound (%d) than are alive (%d)" % (bound, people))
+
+  for key, where in (("digest", frame), ("digest", ground)):
+    want(isinstance(where.get(key), str) and where[key] != "0x0000000000000000",
+         "a digest is missing or zero, so nothing can be compared to this run")
+  want(ground.get("elevationScale", 0) > 0, "the elevation scale is not written down")
+  return bad
+
+
+def a_world():
+  """The smallest document that passes: two tiles of land, one shore, one sea.
+
+  The frame digest is left out and added by the caller, so the "missing digest"
+  case can drop it without the two disagreeing about which one it dropped.
+  """
+  return {
+    "schema": 1,
+    "run": {"seed": "0x41454c564f52", "size": 2},
+    "frame": {"width": 2, "height": 2, "people": 3, "regions": 1},
+    "ground": {"width": 2, "height": 2, "tiles": 4, "land": 2, "coast": 1, "regions": 1,
+               "digest": "0x0000000000000001", "elevationScale": 65536},
+    "regions": [{"index": 1, "tile": 0, "people": 3, "bound": 1}],
+    "tiles": {"biome": [1, 1, 0, 0], "ground": [LAND, LAND | COAST, SHORE, 0],
+              "region": [1, 1, 0, 0], "elevation": [10, 20, -5, -9]},
+  }
+
+
+def self_test():
+  """Every check gets a document that breaks it, and only it."""
+  base = a_world()
+  base["frame"]["digest"] = "0x0000000000000002"
+  failures = []
+  if check(base):
+    failures.append("a valid document was rejected: %s" % check(base))
+
+  def breaks(name, mutate):
+    doc = a_world()
+    doc["frame"]["digest"] = "0x0000000000000002"
+    mutate(doc)
+    if not check(doc):
+      failures.append("%s: broken document accepted" % name)
+
+  def drop_column(d):
+    d["tiles"]["biome"] = [1, 1, 0]
+
+  breaks("schema", lambda d: d.update(schema=2))
+  breaks("missing section", lambda d: d.pop("regions"))
+  breaks("short column", drop_column)
+  breaks("no land", lambda d: d["ground"].update(land=0))
+  breaks("all land", lambda d: d["ground"].update(land=4))
+  breaks("no coast", lambda d: d["ground"].update(coast=0))
+  breaks("land and shore at once", lambda d: d["tiles"]["ground"].__setitem__(0, LAND | SHORE))
+  breaks("undefined ground bit", lambda d: d["tiles"]["ground"].__setitem__(0, 1 << 7))
+  breaks("miscounted land", lambda d: d["ground"].update(land=1))
+  breaks("region count", lambda d: d["frame"].update(regions=2))
+  breaks("ground region count", lambda d: d["ground"].update(regions=2))
+  breaks("region order", lambda d: d["regions"].append({"index": 1, "tile": 0}))
+  breaks("stray region on the ground", lambda d: d["tiles"]["region"].__setitem__(0, 7))
+  breaks("centre off the map", lambda d: d["regions"][0].update(tile=99))
+  breaks("people do not add up", lambda d: d["frame"].update(people=4))
+  breaks("more bound than alive", lambda d: d["regions"][0].update(bound=9))
+  breaks("zero digest", lambda d: d["ground"].update(digest="0x0000000000000000"))
+  breaks("missing digest", lambda d: d["frame"].pop("digest"))
+  breaks("no elevation scale", lambda d: d["ground"].pop("elevationScale"))
+  breaks("size disagreement", lambda d: d["frame"].update(width=3))
+
+  for line in failures:
+    print("SELF-TEST: %s" % line, file=sys.stderr)
+  print("self-test: %d checks exercised, %d failures" % (20, len(failures)))
+  return 1 if failures else 0
+
+
+def same(first, second):
+  """Two runs of one seed. The tool is deterministic or it is not a kernel."""
+  bad = 0
+  with open(first, "r", encoding="utf-8") as handle:
+    a = json.load(handle)
+  with open(second, "r", encoding="utf-8") as handle:
+    b = json.load(handle)
+  for section in ("frame", "ground"):
+    if a[section]["digest"] != b[section]["digest"]:
+      print("%s digest: %s then %s" % (section, a[section]["digest"], b[section]["digest"]), file=sys.stderr)
+      bad += 1
+  if a["tiles"] != b["tiles"]:
+    print("the ground itself differs between two runs of one seed", file=sys.stderr)
+    bad += 1
+  if a["regions"] != b["regions"]:
+    print("the regions differ between two runs of one seed", file=sys.stderr)
+    bad += 1
+  if bad == 0:
+    print("%s and %s are the same world (frame %s, ground %s)"
+          % (first, second, a["frame"]["digest"], a["ground"]["digest"]))
+  return 1 if bad else 0
+
+
+def main():
+  parser = argparse.ArgumentParser(description="Checks a VaelenAtlas JSON file.")
+  parser.add_argument("path", nargs="?", help="the file VaelenAtlas wrote")
+  parser.add_argument("--self-test", action="store_true", help="prove every check fires")
+  parser.add_argument("--same", nargs=2, metavar=("A", "B"),
+                      help="two files of the same run: their digests must agree")
+  args = parser.parse_args()
+  if args.self_test:
+    return self_test()
+  if args.same:
+    return same(args.same[0], args.same[1])
+  if not args.path:
+    parser.error("a path is required unless --self-test is given")
+  with open(args.path, "r", encoding="utf-8") as handle:
+    doc = json.load(handle)
+  bad = check(doc)
+  for line in bad:
+    print("%s: %s" % (args.path, line), file=sys.stderr)
+  if bad:
+    return 1
+  ground = doc["ground"]
+  print("%s: %u x %u, %u tiles, %u land, %u coast, %u regions, frame %s, ground %s"
+        % (args.path, ground["width"], ground["height"], ground["tiles"], ground["land"],
+           ground["coast"], ground["regions"], doc["frame"]["digest"], ground["digest"]))
+  return 0
+
+
+if __name__ == "__main__":
+  sys.exit(main())
