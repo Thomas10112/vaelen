@@ -167,28 +167,53 @@ body { color: var(--ink); background: var(--paper); }</style>
 
 def self_test():
   failures = []
+  skipped = []
   if check(GOOD):
     failures.append("a sound page was rejected: %s" % check(GOOD))
 
-  def breaks(name, mutate):
-    if not check(mutate(GOOD)):
-      failures.append("%s: broken page accepted" % name)
+  # A break must be caught BY THE RULE IT IS AIMED AT. The syntax break is
+  # also caught by the `show` rule, which cannot read a half-written object -
+  # so without `saying` this self-test would report the parse rule exercised on
+  # a machine that has no node and never ran it.
+  exercised = [0]
 
-  breaks("no placeholder", lambda p: p.replace(MARK, "{}"))
-  breaks("no title", lambda p: p.replace("<title>A page</title>", ""))
-  breaks("syntax error", lambda p: p.replace("var show = { relief: true };", "var show = { relief: ;"))
-  breaks("missing element", lambda p: p.replace('id="only"', 'id="other"'))
-  breaks("control with no key", lambda p: p.replace('["relief", "Relief"]', '["water", "Water"]'))
+  def breaks(name, mutate, saying=None):
+    exercised[0] += 1
+    said = check(mutate(GOOD))
+    if not said:
+      failures.append("%s: broken page accepted" % name)
+    elif saying is not None and not any(saying in line for line in said):
+      failures.append("%s: caught, but by the wrong rule: %s" % (name, said))
+
+  breaks("no placeholder", lambda p: p.replace(MARK, "{}"), saying="placeholder")
+  breaks("no title", lambda p: p.replace("<title>A page</title>", ""), saying="no <title>")
+  if shutil.which("node"):
+    breaks("syntax error", lambda p: p.replace("var show = { relief: true };", "var show = { relief: ;"),
+           saying="does not parse")
+  else:
+    skipped.append("syntax error (no node on this machine)")
+  breaks("missing element", lambda p: p.replace('id="only"', 'id="other"'),
+         saying="the markup does not have")
+  breaks("control with no key", lambda p: p.replace('["relief", "Relief"]', '["water", "Water"]'),
+         saying="controls name keys")
   breaks("key with no control", lambda p: p.replace("var show = { relief: true };",
-                                                    "var show = { relief: true, water: true };"))
-  breaks("rendered non-ASCII", lambda p: p.replace('"&mdash; fine"', '"— fine"'))
-  breaks("undefined token", lambda p: p.replace("var(--ink)", "var(--nowhere)"))
-  breaks("undeclared assignment", lambda p: p.replace("\tvar el = document", "\tel = document"))
-  breaks("no script", lambda p: re.sub(r"<script>.*?</script>", "", p, flags=re.S))
+                                                    "var show = { relief: true, water: true };"),
+         saying="keys no control offers")
+  breaks("rendered non-ASCII", lambda p: p.replace('"&mdash; fine"', '"— fine"'),
+         saying="renders")
+  breaks("undefined token", lambda p: p.replace("var(--ink)", "var(--nowhere)"),
+         saying="never defined on bare :root")
+  breaks("undeclared assignment", lambda p: p.replace("\tvar el = document", "\tel = document"),
+         saying="nothing declares")
+  breaks("no script", lambda p: re.sub(r"<script>.*?</script>", "", p, flags=re.S),
+         saying="no script block")
 
   for line in failures:
     print("SELF-TEST: %s" % line, file=sys.stderr)
-  print("self-test: %d checks exercised, %d failures" % (10, len(failures)))
+  for line in skipped:
+    print("SELF-TEST: NOT EXERCISED: %s" % line, file=sys.stderr)
+  print("self-test: %d checks exercised%s, %d failures"
+        % (exercised[0], ", %d NOT exercised" % len(skipped) if skipped else "", len(failures)))
   return 1 if failures else 0
 
 
@@ -209,10 +234,14 @@ def main():
   if bad:
     return 1
   body = script_of(page)
-  print("%s: %d lines, %d elements reached, %d controls, script parses"
+  # Say which rules actually ran. A skipped rule that reports nothing is the
+  # green that means nothing, which is the failure this whole file is against.
+  parsed = "script parses" if shutil.which("node") else "SCRIPT NOT PARSED (no node on this machine)"
+  print("%s: %d lines, %d elements reached, %d controls, %s"
         % (args.path, page.count("\n") + 1,
            len(set(re.findall(r'getElementById\("([^"]+)"\)', body))),
-           len(re.findall(r'\["(\w+)",\s*"', re.search(r"var CONTROLS = \[(.*?)\];", body, re.S).group(1)))))
+           len(re.findall(r'\["(\w+)",\s*"', re.search(r"var CONTROLS = \[(.*?)\];", body, re.S).group(1))),
+           parsed))
   return 0
 
 
