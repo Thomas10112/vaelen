@@ -1,6 +1,7 @@
 // VAELEN - VaelenInfrastructure module rules.
 //
-// STATUS: UNVERIFIED - engine-side, newer than the first Unreal build.
+// STATUS: VALIDATED (UE 5.6, 2026-09-10) - compiled and linked by UnrealBuildTool in 13.06;
+// not run in the editor, and not covered by the headless CI.
 //
 // VaelenInfrastructure is the eighth engine-agnostic kernel module (what people
 // build and keep: granaries, mills, smithies and walls over the Phase 06 goods,

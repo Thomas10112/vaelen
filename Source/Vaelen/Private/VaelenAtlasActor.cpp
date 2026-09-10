@@ -1,6 +1,7 @@
 // VAELEN - the world in the viewport.
 //
-// STATUS: UNVERIFIED - engine-side, compiled by UBT only.
+// STATUS: VALIDATED (UE 5.6, 2026-09-10) - compiled and linked by UnrealBuildTool in 13.06;
+// not run in the editor, and not covered by the headless CI.
 
 #include "VaelenAtlasActor.h"
 

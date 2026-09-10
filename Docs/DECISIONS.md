@@ -6641,3 +6641,160 @@ because of what it costs rather than because it is hard:
   numbers appeared. The comment in the test says so, because this is the fourth
   time.
 
+
+---
+
+## ADR-0112 — A build target names every module, and the uproject is what makes it build
+
+**Date:** 2026-09-10
+**Status:** Accepted
+**Phase:** 13.06 — first UBT build
+
+### Context
+
+Thirteen kernel modules exist. Twelve are simulation; the thirteenth, `Vaelen`,
+is the engine bridge. Both build targets said this:
+
+```csharp
+ExtraModuleNames.AddRange(new string[] { "VaelenCore", "VaelenSim",
+    "VaelenPopulation", "VaelenSociety", "VaelenEconomy", "VaelenPolitics",
+    "VaelenMilitary", "Vaelen" });
+```
+
+Seven simulation modules of twelve. `VaelenInfrastructure`, `VaelenColony`,
+`VaelenPlayer`, `VaelenGameplay` and `VaelenView` — everything built in Phases 09
+through 13 — were named nowhere, and no edge in the module graph leads to them
+either: `Vaelen.Build.cs` depends on the kernel only as far as `VaelenPolitics`.
+
+The list was correct when it was written, at the end of Phase 07. Every phase
+since added a module and left the targets alone, because nothing on this machine
+reads them: CMake enumerates `Tools/kernel_modules.txt`, the purity checker walks
+the directory tree, and the nine CI jobs are all CMake.
+
+### What I predicted, and what actually happened
+
+I predicted a hollow build: UBT compiles what the target names plus that
+closure, prints `Build succeeded`, and never opens the other five modules —
+13.06 answering "yes" about five twelfths of a kernel it never read.
+
+**The build was run with the stale targets, and that is not what happened.**
+
+```
+[107/157] Link [x64] UnrealEditor-VaelenInfrastructure.dll
+[117/157] Link [x64] UnrealEditor-VaelenColony.dll
+[129/157] Link [x64] UnrealEditor-VaelenPlayer.dll
+[144/157] Link [x64] UnrealEditor-VaelenGameplay.dll
+[149/157] Link [x64] UnrealEditor-VaelenView.dll
+```
+
+All five compiled and linked. UnrealBuildTool builds the modules a project
+descriptor declares, not only the target's `ExtraModuleNames`, and
+`Vaelen.uproject` has listed all twelve since each was written. The gate was
+full; the list I was reading was not the one holding it up.
+
+### Decision
+
+**Both targets name all thirteen modules anyway**, and the reason is honesty
+rather than necessity: two lists that describe the same set should agree, and a
+reader who opens `VaelenEditor.Target.cs` to learn what the editor builds should
+not be told seven when the answer is thirteen. `ExtraModuleNames` is the
+mechanism for "build this though nothing needs it yet", so it is the right place
+— not `Vaelen.Build.cs` gaining dependencies it does not use, which it will earn
+in 13.07 when `VaelenPresentation` actually consumes `VaelenView`.
+
+### Consequences
+
+- A module added in a later phase is declared in **four** places, and the
+  checklist in ROADMAP section 18 says so: `Tools/kernel_modules.txt`, its
+  `CMakeLists.txt` entry, `Vaelen.uproject`, and both `.Target.cs` files. Only
+  the third is load-bearing for UBT; the fourth is documentation that a target
+  should not lie.
+- **The lesson is about the claim, not the code.** I reasoned from one file to a
+  failure mode, wrote it up as fact, and the toolchain I could not run disagreed
+  within the hour. ADR-0095 says a gate must be full of what it claims to
+  measure; this is the mirror of it — a defect report must be full of what it
+  claims to have found. Reading the file UBT reads is evidence about the file.
+  Only running UBT is evidence about the build.
+- The correction cost nothing because the build was run before the change was
+  pushed. It would have cost a false entry in this document forever if it had
+  not been.
+
+---
+
+## ADR-0113 — C4251 is what exporting a kernel class costs, and 13.06 is not where it is paid
+
+**Date:** 2026-09-10
+**Status:** Accepted
+**Phase:** 13.06 — first UBT build
+
+### Context
+
+The first UnrealBuildTool build of the whole kernel succeeded — thirteen modules,
+157 actions, ninety-two seconds, MSVC 14.51 under UE 5.6, `Result: Succeeded`.
+It produced no errors and several thousand lines of one warning:
+
+```
+Vaelen\Sim\EventBus.h(56,22): warning C4251:
+    'Vaelen::EventLog::Events': 'std::vector<Vaelen::Event,...>'
+    must have dll-interface to be used by clients of 'Vaelen::EventLog'
+```
+
+Every kernel module owns its export macro (`VAELEN_SIM_API` and its eleven
+siblings), and each `Build.cs` turns it on only for a modular link:
+
+```csharp
+if (Target.LinkType == TargetLinkType.Modular)
+{
+    PrivateDefinitions.Add("VAELEN_SIM_EXPORTS=1");
+    PublicDefinitions.Add("VAELEN_SIM_IMPORTS=1");
+}
+```
+
+Seventy-nine classes carry that macro across the twelve modules — 24 in
+VaelenSim alone — and most hold a `std::vector`, a `std::unique_ptr`, a
+`std::string` or a `std::string_view`. MSVC warns once per such member per
+translation unit that sees it, which is where the thousands of lines come from.
+
+### What the warning does and does not mean
+
+It is not noise about nothing. Exporting a class whose layout contains a
+`std::vector` means a client's inlined code manipulates a container the DLL
+allocated. That is safe exactly when both sides share one STL and one CRT, and
+it corrupts the heap when they do not.
+
+Unreal builds every module of a target with one toolchain and one CRT, so this
+is safe today by construction rather than by luck. A monolithic target
+(Shipping, Test) never defines the macros at all and the warning does not exist
+there. It is a modular-editor-build phenomenon.
+
+### Decision
+
+**Record it; do not silence it in 13.06, and do not refactor it either.**
+
+- Silencing C4251 per module is what Unreal's own code does and it would remove
+  three thousand lines of noise. It would also remove the one signal that says
+  which classes cross a DLL boundary by value — and 13.07 is the first task with
+  a real cross-module consumer (`VaelenPresentation` reading `VaelenView`).
+- Refactoring seventy-nine classes to export free functions over opaque handles
+  is a real answer to a problem nobody has yet, and it would move headers that
+  eleven CI gates depend on.
+- 13.06 asked one question — does the kernel compile under UBT — and the answer
+  is yes. Answering a second question badly is not a bonus.
+
+So it goes to 13.07, where a Windows build exists in the same pass that would
+apply the change, which is the only place the change can be verified. Anything
+decided here would be decided blind: this container has no Unreal, so a
+`#pragma warning(disable:4251)` guarded by `_MSC_VER` compiles to nothing under
+gcc and clang and the local gates would prove exactly nothing about it.
+
+### Consequences
+
+- ROADMAP section 19 carries it as a named limit of 13.07 with the two candidate
+  fixes and the measurement above.
+- The eleven `*.Build.cs` files and twelve `*Module.cpp` files lose `STATUS:
+  UNVERIFIED`. They have now been read by the toolchain they were written for.
+  Thirteen phases of engine-side files carried that label on the promise that
+  Phase 13 would pay the debt; this is the payment.
+- What the build did NOT verify stays unverified: nothing ran. `Result:
+  Succeeded` says the kernel compiles and links as twelve DLLs under MSVC. It
+  says nothing about a world ticking inside the editor, which is 13.09's gate.

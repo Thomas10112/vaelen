@@ -1,6 +1,7 @@
 // VAELEN - VaelenMilitary module rules.
 //
-// STATUS: UNVERIFIED - engine-side, newer than the first Unreal build.
+// STATUS: VALIDATED (UE 5.6, 2026-09-10) - compiled and linked by UnrealBuildTool in 13.06;
+// not run in the editor, and not covered by the headless CI.
 //
 // VaelenMilitary is the seventh engine-agnostic kernel module (levies, armies, battle,
 // siege and war over the Phase 07 politics and the Phase 06 economy).

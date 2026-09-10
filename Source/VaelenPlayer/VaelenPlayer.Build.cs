@@ -1,6 +1,7 @@
 // VAELEN - VaelenPlayer module rules.
 //
-// STATUS: UNVERIFIED - engine-side, newer than the first Unreal build.
+// STATUS: VALIDATED (UE 5.6, 2026-09-10) - compiled and linked by UnrealBuildTool in 13.06;
+// not run in the editor, and not covered by the headless CI.
 //
 // VaelenPlayer is the ninth engine-agnostic kernel module (the player as one
 // simulated person, and their intent as commands into the simulation).

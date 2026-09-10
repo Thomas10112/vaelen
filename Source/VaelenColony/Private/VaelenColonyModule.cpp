@@ -2,7 +2,8 @@
 // The ONLY Unreal-facing translation unit of the colony module.
 // Excluded from the headless CMake build (see Source/VaelenColony/CMakeLists.txt).
 //
-// STATUS: UNVERIFIED - engine-side, newer than the first Unreal build.
+// STATUS: VALIDATED (UE 5.6, 2026-09-10) - compiled and linked by UnrealBuildTool in 13.06;
+// not run in the editor, and not covered by the headless CI.
 #include "Modules/ModuleManager.h"
 
 class FVaelenColonyModule : public IModuleInterface

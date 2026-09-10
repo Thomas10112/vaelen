@@ -2591,9 +2591,9 @@ first question Phase 13 or a later gameplay phase should be asked.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (5 of 5) · ENGINE HALF NEEDS UE 5.6
-TASK        : 13.05 — THE PHASE 13 KERNEL GATE — done
-STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
+PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (5 of 5) · ENGINE HALF STARTED (13.06 of 4)
+TASK        : 13.06 — THE FIRST UBT BUILD — done, Result: Succeeded
+STATUS      : PROTOTYPE (headless) / VALIDATED (UE 5.6, compiles and links)
 
 PROGRESS
 █████████████████████████████ 13 of 21 phases closed (00-12) · Phase 13 kernel half done
@@ -2622,14 +2622,28 @@ CURRENTLY
   single-pass re-freeze, and somebody's call rather than mine. ADR-0111 and
   Tests/Economy/Test_Ledger.cpp have the numbers.
 
-→ **PHASE 13 CANNOT BE CLOSED HERE.** Its remaining four tasks are 13.06 the
-  first UBT build of all twelve kernel modules, 13.07 VaelenPresentation and the
-  world drawn at all, 13.08 a person and a colony and a road drawn from the view
-  of 13.01, and 13.09 the editor open on AELVOR at 256 with a frame rate written
-  down. Every one of them needs UE 5.6, a GPU and somebody looking at a screen.
-  This container has clang, gcc, cmake and ninja and no engine. Section 19 has
-  the split and the rule for the machine that has the engine: it reports errors
-  in the kernel modules, it does not fix them.
+→ **13.06 IS DONE AND THE PROJECT HAS NO UNVERIFIED FILE LEFT.** The first
+  UnrealBuildTool build of the whole kernel: 157 actions, 92.52 seconds, MSVC
+  19.51 under UE 5.6, thirteen modules linked as DLLs, Result: Succeeded. The
+  fourteen engine-side files that had carried STATUS: UNVERIFIED since the phase
+  they were written in have been read by the toolchain they were written for.
+  Nothing RAN - that is 13.09's gate - but the code the engine will compile,
+  the engine has now compiled.
+
+  It also refuted me inside an hour. I predicted a hollow build from four-phase
+  stale .Target.cs files; UBT linked all twelve modules anyway because it builds
+  what the uproject declares. ADR-0112 is rewritten against the log. The fourth
+  defect this session found where this machine cannot look - the first three
+  needed a wider CI matrix, this one needed a toolchain that does not exist on
+  Linux at all.
+
+→ **PHASE 13 STILL CANNOT BE CLOSED HERE.** Its remaining three tasks are 13.07
+  VaelenPresentation and the world drawn at all, 13.08 a person and a colony and
+  a road drawn from the view of 13.01, and 13.09 the editor open on AELVOR at
+  256 with a frame rate written down. Every one needs UE 5.6, a GPU and somebody
+  looking at a screen. This container has clang, gcc, cmake and ninja and no
+  engine. Section 19 has the split and the rule for the machine that has the
+  engine: it reports errors in the kernel modules, it does not fix them.
 
 WAS
 → Phase 12 GAMEPLAY closed against section 2 with a gate that is full: 14400
@@ -2685,7 +2699,7 @@ TESTS
   intents, replayed blind to the same state digest, event log and mining digest
 
 BLOCKERS
-∅ (engine-side files stay UNVERIFIED until the first UE 5.6 build, which is Phase 13)
+∅ (13.06 cleared the last UNVERIFIED file; 13.07-13.09 need a GPU and a person at a screen)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ```
@@ -2702,6 +2716,17 @@ and both of my presets called it green. **A task is verified against
 `linux-gcc-debug`, a clang preset AND `linux-gcc-release` from here on** - the
 third build is a couple of minutes and it is the one that reads the code the way
 the compiler will in a release.
+
+**A new module is declared in four places, and only three of them matter.**
+`Tools/kernel_modules.txt`, the module's own `CMakeLists.txt` entry,
+`Vaelen.uproject`, and **both** `Source/*.Target.cs` files. The first three are
+read by something that runs on this machine, so a phase that forgets one fails
+here within the hour. `ExtraModuleNames` in the targets is read by
+UnrealBuildTool alone, and five phases in a row forgot it without consequence -
+13.06 built all twelve modules from the stale targets, because UBT builds what
+the project descriptor declares. Keep the targets current anyway: two lists
+naming one set should agree, and a target that says seven when the answer is
+thirteen misinforms the next reader. ADR-0112.
 
 Commands run on 2026-09-05 (clang++ 18.1.3, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Python 3.11.15, clang-format 18.1.3, Linux x86_64) with the checked-in presets, each into
 `out/build/<preset>`:
@@ -2724,9 +2749,51 @@ python3 Tools/check_kernel_purity.py --root . --verbose                # 12 file
 
 Per-suite counts: Assert 33, CoreTypes 1, Harness 5, Hash 15, Ids 19, Log 23, LogFloor 1, Random 29, Version 7 (133 tests with assertions, 108 without).
 
-GitHub Actions run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14). Not run: any UBT/engine build.
+GitHub Actions run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/actions/runs/33977296696): all 9 jobs green - six Linux presets, clang-format 18, Windows MSVC 19.44 (`windows-msvc-debug`, 14/14 CTest entries), macOS 15 AppleClang (`macos-debug`, 14/14). The UBT/engine build is 13.06, run on 2026-09-10 under UE 5.6 on Win64: 157 actions, 92.52 s, MSVC 19.51, thirteen modules linked, Result: Succeeded, zero errors and several thousand C4251 warnings (ADR-0113).
 
 ## 19. Phase 13 - PRESENTATION: task breakdown
+
+### 13.06 The first UBT build - VALIDATED (UE 5.6, Win64 Development Editor)
+
+```
+Result: Succeeded
+157 actions, 92.52 seconds, MSVC 19.51 (14.51.36231), UE 5.6, Win64 Development Editor
+thirteen modules compiled and linked as DLLs, zero errors
+```
+
+Thirteen phases of engine-side files were written for a toolchain that had never
+run. Fourteen of them carried `STATUS: UNVERIFIED` on the promise that this task
+would pay for it. **The project now contains no UNVERIFIED file at all.**
+
+Two things came out of it that reading the files could not have produced.
+
+**The targets were four phases stale and it did not matter.** Both
+`.Target.cs` files named seven simulation modules of twelve. I predicted a hollow
+build. The build was run before the fix and linked all twelve anyway: UBT builds
+what the project descriptor declares, and `Vaelen.uproject` was complete. The
+targets are complete now because two lists describing one set should agree, not
+because anything depended on it. ADR-0112, rewritten against the log rather than
+against my reasoning.
+
+**Several thousand C4251 warnings, and they are not nothing.** Seventy-nine
+kernel classes carry an export macro and most hold a `std::vector`; MSVC warns
+once per member per translation unit that sees it. Safe today because Unreal
+builds one target with one CRT, absent entirely in a monolithic link, and
+genuinely load-bearing the day two toolchains meet. ADR-0113.
+
+**Named limit carried into 13.07.** The C4251 decision belongs there, because
+13.07 is the first task with a real cross-module consumer AND the first place the
+change can be verified - a `#pragma warning(disable:4251)` guarded by `_MSC_VER`
+compiles to nothing on this container, so the eleven local gates would go green
+having tested none of it. Two candidates: suppress per module the way Unreal's
+own code does and lose the signal, or export free functions over opaque handles
+and move headers eleven gates depend on. Neither is decidable without a Windows
+build in the same pass.
+
+**What it did not verify.** Nothing ran. `Result: Succeeded` says the kernel
+compiles and links as twelve DLLs. Whether a world ticks inside the editor is
+13.09's gate and nothing before it.
+
 
 **Read this first, because it changes how the phase runs.** Every phase from 00
 to 12 was done in a container with clang, gcc, cmake and ninja and nothing else.
@@ -2759,7 +2826,7 @@ head.
 
 | Task | Content | How it is verified |
 |---|---|---|
-| 13.06 | The first UBT build of all eleven kernel modules. This is the task the UNVERIFIED marks have been waiting for since Phase 00 | it builds, or it does not |
+| 13.06 | The first UBT build of all eleven kernel modules. This is the task the UNVERIFIED marks have been waiting for since Phase 00 | it builds, or it does not | **DONE 2026-09-10 - it builds** |
 | 13.07 | `VaelenPresentation`: the module, and the world drawn as regions on a map at all | a screenshot |
 | 13.08 | A person, a colony and a road drawn from the view of 13.01 | a screenshot |
 | 13.09 | Phase 13 gate: the editor open on AELVOR at 256, a century running, and the frame rate written down | measured on the machine that has the engine |
