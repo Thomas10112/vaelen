@@ -7068,3 +7068,104 @@ invented its own colours would show a world that looks different from the one
 the engine shows, and every comparison between the two would then be an argument
 about palettes. Copied values drift, so the reason is written here: when the
 engine's palette changes, this changes with it, deliberately and by hand.
+
+## ADR-0118 — Six towns stand where nobody lives, and the rule that should close them counts the wrong thing
+
+**Date:** 2026-09-10
+**Status:** Proposed — the change is the project owner's call, not mine
+**Phase:** 13 — found by 13.07b, one hour after the viewer existed
+
+### How it was found
+
+By looking. `Tools/Viewer/Atlas.html` had been open for under an hour when a
+count of settlements against region population came back with six settlements
+whose region holds zero people. Thirteen phases of tests never asked that
+question, because no test knew it was a question.
+
+### The measurement, taken from the world and not from the view
+
+A probe linked against the kernel, reading `RegionPopulation::Total` directly on
+the region entity — so this is not a gap in `TakeView`:
+
+```
+settl.   region   people    tiles  traffic  routes   quiet
+#100         75        0      351        0       1       4
+#112         14        0      398       12       3       0
+#115        122        0      105        1       1       0
+#117         20        0      246        4       1       0
+#119         33        0      256        7       2       0
+#121         34        0       59      117       1       0
+```
+
+`Quiet` is the counter that leads to abandonment. Five of the six sit at **zero**
+and are reset every year. Only #100, which receives nothing, is on its way out —
+and that one is the rule working correctly.
+
+The same probe, over every region with no inhabitants, on the goods held in
+common there:
+
+```
+region  85: 9065 units    region  89: 6816    region  80: 5952
+region  47: 5485          region 100: 5474    region 105: 3763
+region  24: 3978          region  45: 3994    region 115: 3921
+```
+
+Nine thousand units of grain, timber, ore and salt sitting in a region where
+nobody is left to eat, burn, forge or salt anything.
+
+### The mechanism
+
+`TradeSystem` (06.04) abandons a settlement after `AbandonAfterQuietYears` years
+without traffic:
+
+```cpp
+Live->Quiet = Traffic[Live->Region] > 0 ? 0u : Live->Quiet + 1u;
+if (Live->Quiet >= Rules.AbandonAfterQuietYears) { Live->Abandoned = Context.Tick; }
+```
+
+and traffic is credited to **both** ends of any route that moved anything:
+
+```cpp
+if (A < N) { Traffic[A] += Units; }
+if (B < N) { Traffic[B] += Units; }
+```
+
+So a region that only ever RECEIVES goods has its `Quiet` reset every year it is
+delivered to. Put plainly:
+
+> **The rule that decides whether a settlement still exists never asks whether
+> anybody lives in it.** It asks whether anything was delivered there. A place
+> nobody lives in, that is still being shipped to, is immortal.
+
+### Why nothing has been changed
+
+Same reason as ADR-0111, and the same person's call. Any of the fixes below
+changes how many settlements stand, which changes the settlement count in the
+frame, which moves the **event-log digest frozen in eleven gates**. That is a
+deliberate single-pass re-freeze and somebody's decision rather than mine.
+
+### The four answers, and they are genuinely different
+
+1. **Abandon when the region empties.** One line. Most obviously "correct", and
+   it makes a settlement mean "a place people live".
+2. **Require traffic AND people.** Keeps the quiet rule and adds the missing
+   half. Slowest to abandon, least disruptive to existing behaviour.
+3. **Count only OUTBOUND traffic as a sign of life.** A place that only consumes
+   is being kept alive from outside; a place that sends something is alive. This
+   is the most interesting economically and the hardest to reason about.
+4. **Change nothing, and rename it.** A depot with no inhabitants, kept alive by
+   the trade passing through it, is not obviously a bug in a world whose whole
+   premise is that systems cause events nobody wrote. It may be a *story* — the
+   warehouse settlement, the caravan stop, the granary that outlived its town —
+   and the actual defect may be that the word for it is "settlement".
+
+My own reading: (4) is the one worth thinking about before reaching for (1). But
+this is a decision about what VAELEN's world MEANS, and that is not mine to take.
+
+### The finding that is not about settlements
+
+The viewer paid for itself in an hour. Thirteen phases of unit, integration,
+determinism, edge and long-duration tests are all tests of things somebody
+already suspected. **Nobody had ever looked at the world**, and the first look
+produced an anomaly no existing gate could have caught, because every gate
+compares the world to what the world did last time.

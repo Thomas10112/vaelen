@@ -2668,6 +2668,24 @@ CURRENTLY
   It is NOT `VaelenPresentation` - that is now 13.07c, engine-side - and
   ADR-0113's C4251 decision stays open, because MSVC never reads a web page.
 
+→ A SECOND open question put to a person rather than decided alone, and this one
+  was found by LOOKING. One hour after the viewer existed: **six settlements
+  stand in regions with zero inhabitants**, and five of them can never be
+  abandoned, because 06.04's rule counts traffic and traffic is credited to both
+  ends of a route. A place nobody lives in that is still being shipped to is
+  immortal. Nine thousand units of goods sit in one such region.
+
+  Fixing it moves the settlement count, which moves the event-log digest frozen
+  in eleven gates - the same class of decision as ADR-0111. And the fix may not
+  be the point: a depot kept alive by the trade passing through it is not
+  obviously a bug in a world whose premise is that systems cause events nobody
+  wrote. ADR-0118 has the measurements and the four answers.
+
+  What it says about the project is larger than the defect. Thirteen phases of
+  tests all test something somebody already suspected. Nobody had ever LOOKED at
+  the world, and the first look found something no gate could catch, because
+  every gate compares the world to what the world did last time.
+
 → **PHASE 13 STILL CANNOT BE CLOSED HERE.** Its remaining three tasks are 13.07c
   VaelenPresentation and the world drawn in the engine, 13.08 a person and a
   colony and a road drawn from the view of 13.01, and 13.09 the editor open on
