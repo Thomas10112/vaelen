@@ -6798,3 +6798,72 @@ gcc and clang and the local gates would prove exactly nothing about it.
 - What the build did NOT verify stays unverified: nothing ran. `Result:
   Succeeded` says the kernel compiles and links as twelve DLLs under MSVC. It
   says nothing about a world ticking inside the editor, which is 13.09's gate.
+
+---
+
+## ADR-0114 — The kernel runs inside the editor, and that is a different claim from 13.06's
+
+**Date:** 2026-09-10
+**Status:** Accepted
+**Phase:** 13 — between 13.06 and 13.07
+
+### What happened
+
+13.06 established that the kernel COMPILES and LINKS under UnrealBuildTool, and
+said explicitly that nothing had run. Twenty minutes later something ran. From
+the editor's console, on a machine with UE 5.6:
+
+```
+Cmd: Vaelen.Atlas
+LogVaelenAtlas: material BasicShapeMaterial: 1 vector parameter(s) — Color
+LogVaelenAtlas: AELVOR 128x128, seed 0x41454c564f52: year 420,
+                6459 land tiles, 65 regions peopled, 36374 living,
+                43 towns, 85 roads, 1 polities standing
+                (region 26 simulated person by person).
+                Simulated in 1.00 s.
+```
+
+And earlier in the same log, at module startup:
+
+```
+LogVaelen: VAELEN 0.0.1 - kernel save format v3 - kernel asserts on - module started
+```
+
+### What this is evidence of, precisely
+
+- **Twelve kernel modules load into a running editor.** `LogPluginManager` found
+  the target receipt, the DLLs mounted, `FVaelenModule::StartupModule` ran and
+  installed the log sink and the assertion handler. The line above is the
+  kernel's own logging arriving through Unreal's, which is the whole point of
+  `VaelenLogSink`.
+- **A world generates, lives four hundred and twenty years, and reports.** Three
+  hundred of pre-history and a hundred and twenty with every system: population,
+  houses, needs, traits, LOD, organisations, norms, stocks, production, markets,
+  trade, wealth, standing, polities. Thirty-six thousand people alive at the end.
+- **With assertions ON.** `kernel asserts on` is in the startup line. This was
+  not an indulgent build that skipped its own checks.
+- **In one second.** 420 years of a 36k-person world, most of it at coarse LOD,
+  inside the editor process.
+
+### What it is NOT evidence of
+
+Nothing was SEEN. The report is a log line; the plate was laid out into a level
+whose camera was eighty-five thousand units away, on top of the Open World
+template's own Landscape. Whether AELVOR is legible on a screen is still 13.07b
+and 13.09, and this ADR does not anticipate them.
+
+Nor is it a frame rate. "Simulated in 1.00 s" is the cost of building the world
+once, not the cost of a frame, and 13.09's gate asks the second question.
+
+### Why this is worth an ADR rather than a line in the roadmap
+
+Because 13.06's commit message went out of its way to say "Nothing RAN" and to
+put that limit on fourteen files. Twenty minutes later the limit was gone. A
+project that writes down what it has not yet proved has to be equally quick to
+write down when it proves it, or the labels drift into pessimism and stop
+meaning anything - which is the same failure as ADR-0112's, pointed the other
+way.
+
+The fourteen files keep their VALIDATED label unchanged: it says "compiled and
+linked by UnrealBuildTool in 13.06; not run in the editor". That is still an
+accurate statement about what 13.06 verified. This ADR is what the editor added.

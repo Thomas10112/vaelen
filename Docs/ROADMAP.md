@@ -2592,8 +2592,8 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (5 of 5) · ENGINE HALF STARTED (13.06 of 4)
-TASK        : 13.06 — THE FIRST UBT BUILD — done, Result: Succeeded
-STATUS      : PROTOTYPE (headless) / VALIDATED (UE 5.6, compiles and links)
+TASK        : 13.06 done — and the kernel has now RUN in the editor
+STATUS      : PROTOTYPE (headless) / VALIDATED (UE 5.6, compiles, links and runs)
 
 PROGRESS
 █████████████████████████████ 13 of 21 phases closed (00-12) · Phase 13 kernel half done
@@ -2831,6 +2831,36 @@ build in the same pass.
 **What it did not verify.** Nothing ran. `Result: Succeeded` says the kernel
 compiles and links as twelve DLLs. Whether a world ticks inside the editor is
 13.09's gate and nothing before it.
+
+### The kernel runs in the editor - 2026-09-10, between 13.06 and 13.07
+
+Not a task. It happened because the atlas actor was already there and somebody
+typed a console command.
+
+```
+Cmd: Vaelen.Atlas
+LogVaelenAtlas: AELVOR 128x128, seed 0x41454c564f52: year 420,
+                6459 land tiles, 65 regions peopled, 36374 living,
+                43 towns, 85 roads, 1 polities standing
+                (region 26 simulated person by person).
+                Simulated in 1.00 s.
+
+LogVaelen: VAELEN 0.0.1 - kernel save format v3 - kernel asserts on - module started
+```
+
+Twelve modules loaded into a running editor, the log sink carried the kernel's
+own logging into Unreal's, a world generated and lived four hundred and twenty
+years with every system on, and it did it in one second **with assertions
+enabled**. No crash, no assertion, nothing in the log after the report line.
+
+**What it does not settle.** Nothing was seen - the plate went into a level whose
+camera was eighty-five thousand units away, on top of the Open World template's
+Landscape. Legibility is 13.07b. And "Simulated in 1.00 s" is the cost of
+building the world once, not the cost of a frame, which is 13.09's question.
+
+ADR-0114, which exists because 13.06 put "nothing RAN" on fourteen files twenty
+minutes earlier: a project that records what it has not proved has to be as
+quick to record when it proves it.
 
 ### 13.07 broken down - and why reading the repository changed it
 
