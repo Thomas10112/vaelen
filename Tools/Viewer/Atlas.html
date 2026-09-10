@@ -349,7 +349,13 @@
 		];
 		var SEA = [26, 50, 90], SHOREC = [50, 86, 132], LAKEC = [58, 106, 152], RIVERC = [70, 124, 170];
 
-		var show = { relief: true, water: true, borders: false, towns: true, height: false };
+		// Files written before 13.08a have no network in them; the page reads what
+		// is there and says nothing about what is not.
+		var ROUTES = D.routes || [];
+		var COLONIES = D.colonies || [];
+		var NET = D.network || {};
+
+		var show = { relief: true, water: true, borders: false, towns: true, height: false, roads: true, closed: false };
 
 		// ── the readings ─────────────────────────────────────────────────────
 		var regionsByIndex = {};
@@ -391,8 +397,15 @@
 			["Living", n(D.frame.people)],
 			["Of them, bound", n(bound)],
 			["Settlements", n(towns)],
-			["Open routes", n(roads / 2 | 0)]
+			["Roads open", n(NET.open || 0) + " of " + n(NET.routes || 0)],
+			["Colonies", n(COLONIES.length)]
 		];
+		if (COLONIES.length) {
+			var hands = 0, lifted = 0, k;
+			for (k = 0; k < COLONIES.length; k++) { hands += COLONIES[k].hands; lifted += COLONIES[k].lifted; }
+			runRows.push(["&mdash; hands on the rock", n(hands)]);
+			runRows.push(["&mdash; ore lifted", n(lifted)]);
+		}
 		var runEl = document.getElementById("run"), html = "";
 		for (i = 0; i < runRows.length; i++) {
 			html += "<dt>" + runRows[i][0] + "</dt><dd>" + runRows[i][1] + "</dd>";
@@ -413,6 +426,8 @@
 			["height", "Height instead of biome"],
 			["water", "Rivers and lakes"],
 			["borders", "Region borders"],
+			["roads", "Trade roads"],
+			["closed", "Roads that closed"],
 			["towns", "Settlements and seats"]
 		];
 		var cEl = document.getElementById("controls");
@@ -424,7 +439,13 @@
 		cEl.innerHTML = html;
 		cEl.addEventListener("change", function (e) {
 			var key = e.target.getAttribute("data-key");
-			if (key) { show[key] = e.target.checked; paint(); draw(); }
+			if (!key) { return; }
+			show[key] = e.target.checked;
+			// Only the first four touch the pixels; roads, closed roads and towns
+			// are drawn over them, and repainting 65536 tiles to toggle a line is
+			// a fifth of a second nobody has to spend.
+			if (key !== "roads" && key !== "closed" && key !== "towns") { paint(); }
+			draw();
 		});
 
 		// ── legend ───────────────────────────────────────────────────────────
@@ -439,6 +460,8 @@
 		}
 		html += '<span class="swatch"><i style="background:rgb(70,124,170)"></i>River</span>';
 		html += '<span class="swatch"><i style="background:rgb(26,50,90)"></i>Sea</span>';
+		html += '<span class="swatch"><i style="background:rgb(232,205,150)"></i>Trade road</span>';
+		if (COLONIES.length) { html += '<span class="swatch"><i style="background:rgb(30,34,44)"></i>Colony</span>'; }
 		legend.innerHTML = html;
 
 		// ── the plate ────────────────────────────────────────────────────────
@@ -549,8 +572,69 @@
 			var span = size * zoom;
 			ctx.drawImage(tiles, panX, panY, span, span);
 
-			if (!show.towns) { return; }
 			var per = span / W;
+
+			if (show.roads || show.closed) {
+				// Roads first, under the marks: a line that crosses a town should
+				// pass behind it, the way a road on a map does.
+				var most = 1, q;
+				for (q = 0; q < ROUTES.length; q++) {
+					if (ROUTES[q].carried > most) { most = ROUTES[q].carried; }
+				}
+				for (q = 0; q < ROUTES.length; q++) {
+					var road = ROUTES[q];
+					if (road.open ? !show.roads : !show.closed) { continue; }
+					var a = regionsByIndex[road.from], b = regionsByIndex[road.to];
+					if (!a || !b) { continue; }
+					var ax = panX + ((a.tile % W) + 0.5) * per, ay = panY + (((a.tile / W) | 0) + 0.5) * per;
+					var bx = panX + ((b.tile % W) + 0.5) * per, by = panY + (((b.tile / W) | 0) + 0.5) * per;
+					// Weight by what the road has actually carried over its life,
+					// on a cube root so a route that moved a hundred times more
+					// is three times heavier and not a hundred times.
+					var weight = Math.pow(road.carried / most, 1 / 3);
+					ctx.beginPath();
+					ctx.moveTo(ax, ay);
+					ctx.lineTo(bx, by);
+					if (road.open) {
+						ctx.lineWidth = 0.9 + 3.0 * weight;
+						ctx.strokeStyle = "rgba(236,208,148," + (0.42 + 0.5 * weight).toFixed(3) + ")";
+					} else {
+						ctx.lineWidth = 0.6;
+						ctx.setLineDash([3, 4]);
+						ctx.strokeStyle = "rgba(150,160,175,0.32)";
+					}
+					ctx.stroke();
+					ctx.setLineDash([]);
+				}
+			}
+
+			if (show.towns) {
+				drawMarks(per, span);
+			}
+		}
+
+		function drawMarks(per, span) {
+			var k;
+			drawTowns(per, span);
+			// The colony goes ON TOP, and larger: it is a place people were PUT,
+			// not a place that grew, and on AELVOR it sits on the one region the
+			// world simulates person by person - whose ring would otherwise hide
+			// it completely.
+			for (k = 0; k < COLONIES.length; k++) {
+				var col = regionsByIndex[COLONIES[k].region];
+				if (!col) { continue; }
+				var mx = panX + ((col.tile % W) + 0.5) * per, my = panY + (((col.tile / W) | 0) + 0.5) * per;
+				ctx.beginPath();
+				ctx.rect(mx - 7, my - 7, 14, 14);
+				ctx.fillStyle = "rgba(30,34,44,0.85)";
+				ctx.fill();
+				ctx.lineWidth = 2;
+				ctx.strokeStyle = "rgba(216,226,240,0.92)";
+				ctx.stroke();
+			}
+		}
+
+		function drawTowns(per, span) {
 			for (var k = 0; k < D.regions.length; k++) {
 				var reg = D.regions[k];
 				if (!reg.settlement && !reg.detailed) { continue; }
@@ -605,6 +689,13 @@
 				if (reg.settlement) { lines += '<span class="dim">settlement</span> #' + reg.settlement + " "; }
 				if (reg.roads) { lines += '<span class="dim">routes</span> ' + reg.roads + " "; }
 				if (reg.detailed) { lines += "<br><b>simulated person by person</b>"; }
+				var pit = null;
+				for (var c = 0; c < COLONIES.length; c++) {
+					if (COLONIES[c].region === reg.index) { pit = COLONIES[c]; }
+				}
+				if (pit) {
+					lines += "<br><b>colony</b> " + n(pit.hands) + " on the rock, " + n(pit.lifted) + " lifted";
+				}
 			} else if (TR[t.i]) {
 				lines += '<span class="dim">region ' + TR[t.i] + "</span>";
 			} else {

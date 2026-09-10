@@ -23,6 +23,7 @@
 
 #include "Vaelen/Core/CoreTypes.h"
 #include "Vaelen/Core/Hash.h"
+#include "Vaelen/Colony/Mining.h"
 #include "Vaelen/Economy/Trade.h"
 #include "Vaelen/Gameplay/Fame.h"
 #include "Vaelen/Infrastructure/Roads.h"
@@ -100,6 +101,8 @@ namespace Vaelen::View
 		Gameplay::FameTypes Fame;
 		bool HasPlayer = false;
 		Player::PlayerTypes Played;
+		bool HasColony = false;
+		Colony::ColonyTypes Colony_;
 	};
 
 	/// Takes the frame. Const world in, numbers out: the signature is the

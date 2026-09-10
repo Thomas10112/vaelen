@@ -18,6 +18,7 @@
 // neither is allowed inside Source/Vaelen* (Tools/check_kernel_purity.py).
 //
 // STATUS: PROTOTYPE (Phase 13) - run by the CTest entries Atlas.Runs and Atlas.Output
+#include "Vaelen/Colony/Mining.h"
 #include "Vaelen/Core/Log.h"
 #include "Vaelen/Economy/Markets.h"
 #include "Vaelen/Economy/Production.h"
@@ -32,6 +33,7 @@
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Population/Traits.h"
 #include "Vaelen/Sim/PreHistory.h"
+#include "Vaelen/Sim/Deposits.h"
 #include "Vaelen/Sim/Regions.h"
 #include "Vaelen/Sim/World.h"
 #include "Vaelen/Sim/WorldGen.h"
@@ -41,7 +43,9 @@
 #include "Vaelen/Society/Standing.h"
 #include "Vaelen/View/Frame.h"
 #include "Vaelen/View/Land.h"
+#include "Vaelen/View/Net.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -51,6 +55,7 @@
 #include <vector>
 
 using namespace Vaelen;
+using namespace Vaelen::Colony;
 using namespace Vaelen::Economy;
 using namespace Vaelen::History;
 using namespace Vaelen::Politics;
@@ -72,7 +77,8 @@ namespace
 	/// the premise of the game turns on.
 	struct KernelRun
 	{
-		explicit KernelRun(uint64 InSeed) : Instance(Config(InSeed)), Ages(Instance, PreHistoryRules{})
+		KernelRun(uint64 InSeed, bool InWithColony)
+			: WithColony(InWithColony), Instance(Config(InSeed)), Ages(Instance, PreHistoryRules{})
 		{
 			Persons = PersonTypes::Declare(Instance, Ages);
 			Families = FamilyTypes::Declare(Instance);
@@ -89,6 +95,14 @@ namespace
 			Trade = TradeTypes::Declare(Instance);
 			Wealth = WealthTypes::Declare(Instance);
 			Polities = PolityTypes::Declare(Instance);
+			// Declared only when asked. ColonyTypes::Declare also declares
+			// Economy::RegionMined, so a world that is not told to have a colony
+			// carries no trace of one and its digests are the digests it had
+			// before this file knew what a colony was.
+			if (WithColony)
+			{
+				Pit = ColonyTypes::Declare(Instance);
+			}
 
 			LifeRules Life;
 			Life.SpouseRequired = 1;
@@ -115,6 +129,12 @@ namespace
 													BondageRules{});
 			Rulers =
 				std::make_unique<PolitySystem>(Instance, Ages.Types(), Persons, Organizations, Polities, PolityRules{});
+			if (WithColony)
+			{
+				Rock = std::make_unique<MiningSystem>(Instance, Ages.Types(), Persons, Families, Economy_, Pit,
+													  MiningRules{});
+				Rock->ObserveTraits(Traits.Traits);
+			}
 
 			Houses->RunAfter("Lod");
 			Houses->RunAfter("Norms");
@@ -146,6 +166,10 @@ namespace
 			Instance.Systems().Add(Ranks.get());
 			Instance.Systems().Add(Bonds.get());
 			Instance.Systems().Add(Rulers.get());
+			if (Rock != nullptr)
+			{
+				Instance.Systems().Add(Rock.get());
+			}
 			Instance.Build();
 		}
 
@@ -165,6 +189,8 @@ namespace
 			S.Bondage = Bondage;
 			S.HasTrade = true;
 			S.Trade = Trade;
+			S.HasColony = WithColony;
+			S.Colony_ = Pit;
 			return S;
 		}
 
@@ -180,6 +206,58 @@ namespace
 				.ForEach(
 					[&](EntityHandle H, const RegionInfo& R)
 					{
+						const RegionPopulation* P =
+							Instance.Components().GetPool(Ages.Types().Population.Population).TryGet(H);
+						if (P != nullptr && (P->Total > People || (P->Total == People && R.Index < Best)))
+						{
+							People = P->Total;
+							Best = R.Index;
+						}
+					});
+			return Best;
+		}
+
+		bool WithColony = false;
+		/// The peopled region with the most people that has ORE under it.
+		///
+		/// A colony is people put on rock. Put on ground with no seam it lifts
+		/// nothing and puts nobody on anything, which is exactly what the first
+		/// run of --colony reported: one colony, region 42, zero hands, zero
+		/// lifted. The predicate is copied from Colony/Mining.cpp and
+		/// Player/Start.cpp, which each keep their own; a tool duplicating a
+		/// five-line rule is cheaper than a public API nobody else wants.
+		uint32 BusiestWithOre() const
+		{
+			std::vector<uint32> Ore;
+			Instance.Components()
+				.GetPool(Ages.Types().World.DepositTypes_.Deposit)
+				.ForEach(
+					[&](EntityHandle, const WorldGen::DepositInfo& D)
+					{
+						const bool Seam = D.Kind == static_cast<uint32>(WorldGen::ResourceKind::IronOre) ||
+										  D.Kind == static_cast<uint32>(WorldGen::ResourceKind::CopperOre);
+						if (D.Region != 0 && Seam)
+						{
+							Ore.push_back(D.Region);
+						}
+					});
+			std::sort(Ore.begin(), Ore.end());
+			Ore.erase(std::unique(Ore.begin(), Ore.end()), Ore.end());
+			if (Ore.empty())
+			{
+				return 0;
+			}
+			uint32 Best = 0;
+			uint32 People = 0;
+			Instance.Components()
+				.GetPool(Ages.Types().World.RegionTypes_.Region)
+				.ForEach(
+					[&](EntityHandle H, const RegionInfo& R)
+					{
+						if (!std::binary_search(Ore.begin(), Ore.end(), R.Index))
+						{
+							return;
+						}
 						const RegionPopulation* P =
 							Instance.Components().GetPool(Ages.Types().Population.Population).TryGet(H);
 						if (P != nullptr && (P->Total > People || (P->Total == People && R.Index < Best)))
@@ -208,6 +286,7 @@ namespace
 		TradeTypes Trade;
 		WealthTypes Wealth;
 		PolityTypes Polities;
+		ColonyTypes Pit;
 		std::unique_ptr<LifeSystem> Lives;
 		std::unique_ptr<FamilySystem> Houses;
 		std::unique_ptr<NeedSystem> Body;
@@ -223,6 +302,7 @@ namespace
 		std::unique_ptr<StandingSystem> Ranks;
 		std::unique_ptr<BondageSystem> Bonds;
 		std::unique_ptr<PolitySystem> Rulers;
+		std::unique_ptr<MiningSystem> Rock;
 	};
 
 	// ── JSON, written by hand ────────────────────────────────────────────────
@@ -278,6 +358,7 @@ namespace
 		uint64 Seed = AelvorSeed;
 		std::string Out = "aelvor.json";
 		bool Tiles = true;
+		bool Colony = false;
 	};
 
 	bool ParseUnsigned(const char* Text, uint64& Out)
@@ -305,7 +386,8 @@ namespace
 							 "  --years N       years run after it (default 120)\n"
 							 "  --seed V        decimal or 0x hex (default 0x41454c564f52)\n"
 							 "  --out PATH      where to write the JSON (default aelvor.json)\n"
-							 "  --no-tiles      write the regions only, not the ground\n");
+							 "  --no-tiles      write the regions only, not the ground\n"
+							 "  --colony        found a mining colony on the busiest region\n");
 	}
 
 	bool ParseOptions(int Argc, char** Argv, Options& Out)
@@ -318,6 +400,10 @@ namespace
 			if (std::strcmp(Arg, "--no-tiles") == 0)
 			{
 				Out.Tiles = false;
+			}
+			else if (std::strcmp(Arg, "--colony") == 0)
+			{
+				Out.Colony = true;
 			}
 			else if (std::strcmp(Arg, "--help") == 0 || std::strcmp(Arg, "-h") == 0)
 			{
@@ -386,7 +472,7 @@ namespace
 		}
 
 		const auto Started = std::chrono::steady_clock::now();
-		KernelRun Run(Opt.Seed);
+		KernelRun Run(Opt.Seed, Opt.Colony);
 		WorldGenConfig Gen;
 		Gen.Width = Opt.Size;
 		Gen.Height = Opt.Size;
@@ -395,23 +481,43 @@ namespace
 			std::fprintf(stderr, "AELVOR: generation failed at %u x %u\n", Opt.Size, Opt.Size);
 			return 1;
 		}
-		RequestDetail(Run.Instance, Run.Lod, Run.Busiest());
+		// Detail goes where the colony will be when one is asked for, and to the
+		// busiest region otherwise. Only --colony changes it, so a run without
+		// the flag simulates exactly the world every run before this one did.
+		uint32 Detail = Run.Busiest();
+		if (Opt.Colony)
+		{
+			const uint32 Seamed = Run.BusiestWithOre();
+			Detail = Seamed != 0 ? Seamed : Detail;
+		}
+		RequestDetail(Run.Instance, Run.Lod, Detail);
+		// The colony goes where the people are, and on the region the world is
+		// already simulating person by person - a colony of aggregates has no
+		// hands on the rock, and 13.08a's test paid for that lesson.
+		uint32 Dug = 0;
+		if (Opt.Colony && Detail != 0 && FoundColony(Run.Instance, Run.Ages.Types(), Run.Pit, Detail))
+		{
+			Dug = Detail;
+		}
 		Run.Ages.Run(Opt.Years);
 		const double Seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - Started).count();
 
 		WorldView Frame;
 		MapView Ground;
+		NetView Net;
 		TakeView(Run.Instance, Run.Sources(), Frame);
+		TakeNetView(Run.Instance, Run.Sources(), Net);
 		if (Opt.Tiles)
 		{
 			TakeMapView(Run.Instance, Run.Sources(), Ground);
 		}
 		const ViewStats FrameStats = MeasureView(Frame);
 		const MapStats GroundStats = MeasureMapView(Ground);
+		const NetStats NetStats_ = MeasureNetView(Net);
 
 		Json J;
 		// Four numbers a tile, seven-odd characters each, plus the regions.
-		J.Reserve(Ground.Tiles.size() * 32u + Frame.Regions.size() * 128u + 4096u);
+		J.Reserve(Ground.Tiles.size() * 32u + Frame.Regions.size() * 128u + Net.Routes.size() * 96u + 4096u);
 		J.Put("{\"vaelen\":\"0.0.1\",\"world\":\"AELVOR\",\"schema\":1,\n\"run\":{");
 		J.Put("\"seed\":");
 		J.Hex(Opt.Seed);
@@ -472,6 +578,18 @@ namespace
 		// Elevation is Fix64 raw shifted right 16, so a value over 65536 is the
 		// height in units. The scale is written down rather than assumed.
 		J.Put(",\"elevationScale\":65536");
+		J.Put("},\n\"network\":{");
+		J.Field("routes", NetStats_.Routes);
+		J.Put(",");
+		J.Field("open", NetStats_.Open);
+		J.Put(",");
+		J.Field("colonies", NetStats_.Colonies);
+		J.Put(",");
+		J.Field("hands", NetStats_.Hands);
+		J.Put(",");
+		J.Field("bytes", NetStats_.Bytes);
+		J.Put(",\"digest\":");
+		J.Hex(NetStats_.Digest);
 		J.Put("},\n\"regions\":[");
 		for (usize I = 0; I < Frame.Regions.size(); ++I)
 		{
@@ -503,6 +621,40 @@ namespace
 			J.Field("names", R.Names);
 			J.Put(",");
 			J.Field("detailed", R.Detailed);
+			J.Put("}");
+		}
+		J.Put("\n],\n\"routes\":[");
+		for (usize I = 0; I < Net.Routes.size(); ++I)
+		{
+			const RouteView& R = Net.Routes[I];
+			J.Put(I == 0 ? "\n" : ",\n");
+			J.Put("{");
+			J.Field("index", R.Index);
+			J.Put(",");
+			J.Field("from", R.From);
+			J.Put(",");
+			J.Field("to", R.To);
+			J.Put(",");
+			J.Field("open", R.Open);
+			J.Put(",");
+			J.Field("idle", R.Idle);
+			J.Put(",");
+			J.Field("openings", R.Openings);
+			J.Put(",");
+			J.Field("carried", R.Carried);
+			J.Put("}");
+		}
+		J.Put("\n],\n\"colonies\":[");
+		for (usize I = 0; I < Net.Colonies.size(); ++I)
+		{
+			const ColonyView& C = Net.Colonies[I];
+			J.Put(I == 0 ? "\n" : ",\n");
+			J.Put("{");
+			J.Field("region", C.Region);
+			J.Put(",");
+			J.Field("hands", C.Hands);
+			J.Put(",");
+			J.Field("lifted", C.Lifted);
 			J.Put("}");
 		}
 		J.Put("\n],\n\"tiles\":{");
@@ -564,10 +716,12 @@ namespace
 
 		VAELEN_LOG_INFO(LogAtlas,
 						"AELVOR %ux%u, seed 0x%llx: year %u, %u land tiles, %u regions (%u peopled, %u detailed), "
-						"%u living, %u bytes to %s. Simulated in %.2f s.",
+						"%u living, %u roads open of %u, %u colonies (%u hands on region %u), %u bytes to %s. "
+						"Simulated in %.2f s.",
 						Opt.Size, Opt.Size, static_cast<unsigned long long>(Opt.Seed), Frame.Year, GroundStats.Land,
-						FrameStats.Regions, FrameStats.Peopled, FrameStats.Detailed, Frame.People,
-						static_cast<uint32>(J.Text.size()), Opt.Out.c_str(), Seconds);
+						FrameStats.Regions, FrameStats.Peopled, FrameStats.Detailed, Frame.People, NetStats_.Open,
+						NetStats_.Routes, NetStats_.Colonies, NetStats_.Hands, Dug, static_cast<uint32>(J.Text.size()),
+						Opt.Out.c_str(), Seconds);
 		return 0;
 	}
 } // namespace

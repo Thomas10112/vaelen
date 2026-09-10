@@ -7243,3 +7243,141 @@ fits. Both, or neither.
 > A test budget is not a limit on how long the suite may take. It is a claim
 > about the worst packing. When a job routinely finishes within five per cent of
 > its timeout, it is already failing — it just has not been unlucky yet.
+
+## ADR-0120 — A pair of regions does not identify a road, and 06.04 meant it to
+
+**Date:** 2026-09-10
+**Status:** Proposed — the fix is the project owner's call, not mine
+**Phase:** 13 — found by 13.08a
+
+### How it was found
+
+By writing the obvious test. `Test_Net.cpp` looked each route up by its pair of
+regions and compared it to the world. It failed on **96 of 254 routes**, and the
+first four mismatches said the whole thing:
+
+```
+world #120 19->23 carried     0 idle 5 open 0
+view  #21  19->23 carried 13468 idle 0 open 1
+```
+
+Two route entities, one pair of regions. On AELVOR at 256 it is **105 of 275**.
+
+### The mechanism, and it is four lines
+
+`TradeSystem::Tick` sorts every route into `Open` or `Closed` **once, at the top
+of the tick**:
+
+```cpp
+(R.Closed == 0 ? Open : Closed).push_back(Route{H, R});
+```
+
+Step 1 then closes the routes that have gone idle, mutating the copy in place:
+
+```cpp
+Live->Closed = Context.Tick;
+Rt.Info.Closed = Context.Tick;   // in `Open`, which is where it stays
+```
+
+Step 2 reopens roads, and looks for the old entity in `Closed` only:
+
+```cpp
+for (const Route& Old : Closed) { if (Old.Info.From == A && Old.Info.To == B) { ... } }
+```
+
+A road closed in tick T and warranted again in tick T is therefore not found —
+so a **new entity** is created for a pair that already has one. The comment
+directly above that loop states the intent the code misses:
+
+> *A road once built is reopened rather than built again.*
+
+### Why nobody saw it
+
+`RouteStats::Twice` counts pairs carrying two OPEN routes, and that has never
+fired — correctly, because `IsOpen` does prevent it. Every twin is one open road
+and one closed one, which is precisely the case the only check does not look at.
+It took reading the routes out of the world and comparing them one by one.
+
+### What it costs
+
+- Entities and memory, in proportion: 38 per cent of routes are twins.
+- **The history of a road.** `Openings` counts how many times a road has been
+  reopened; a twin starts again from one, so a road opened five times reads as
+  five different roads and no chronicle can say "the road to X opened again".
+- **`Identity` stops identifying.** It is `LatticeHash(seed, A, B)`, so both
+  twins carry the same one, and a hash meant to name a thing names two.
+
+### The fix, which is small
+
+Either move the entry from `Open` into `Closed` when it is closed, or search
+both lists for the reuse. One line and a comment. It is not applied here for the
+usual reason: it changes the route count, which moves the event-log digest
+frozen in eleven gates. Same class as ADR-0111 and ADR-0118, same person's call.
+
+### What the view does in the meantime
+
+It reports the world as it is. `RouteView::Index` is the identity, `RouteOf`
+looks a route up by it, and `RouteBetween` returns the OPEN road for a pair when
+there is one - because that is the road that exists. A view that quietly kept
+one twin and dropped the other would have made the defect invisible again, and
+`Test_Net.cpp` has a suite whose whole job is to fail if anyone tries.
+
+## ADR-0121 — The network is not part of the frame, because the frame is diffed
+
+**Date:** 2026-09-10
+**Status:** Accepted
+**Phase:** 13 — task 13.08a
+
+### What was added
+
+`Vaelen/View/Net.h`: `RouteView` (32 bytes) and `ColonyView` (16), a `NetView`
+holding both in stable order, `TakeNetView`, `RouteOf`, `RouteBetween`,
+`ColonyIn` and `MeasureNetView`. Same promise as 13.01 and 13.07a - flat numbers,
+no handle, no way back, and it outlives the world it was taken from.
+
+Why it was needed: `RegionView::Roads` is a COUNT. It says a region is touched by
+three routes and not which three, so a map drawn from a frame has fifty-two towns
+on it and not one line between them. The whole economy of the world was
+undrawable.
+
+### The decision, and it is the interesting part
+
+**It is not a field on `WorldView`.** Adding `std::vector<RouteView> Routes` to
+the frame would have been the obvious move and would have been a trap:
+
+> 13.02's `Delta` diffs a `WorldView` **region by region**. A vector of routes
+> living inside that struct would be carried by the view, ignored by the diff,
+> and silently missing from every screen rebuilt from a delta - right on the
+> first frame and stale forever after.
+
+The general rule, which is worth more than this file:
+
+> **A structure the diff does not know about must not live inside the thing the
+> diff claims to describe.** Either the diff learns it, or it lives outside where
+> its absence is visible.
+
+13.05's gate would not have caught it either: it compares a rebuilt screen to a
+fresh frame and both would carry routes from the same source.
+
+### The colony, and why the tool asks before founding one
+
+VAELEN opens with the player owned, inside a mining colony. A view that cannot
+say where the colony is cannot draw the place the game begins, so `ColonyView`
+is here.
+
+`Tools/Atlas` founds one only under `--colony`. Without the flag it declares no
+colony types and adds no mining system, so the world it simulates is the world
+every run before this change simulated - **verified, not asserted**: the default
+run at 256 still reports frame `0xd0407d9684ab4f5a` and ground
+`0x1faebda9e6c61a5b`, the digests published before this task existed.
+
+### Two things measurement caught that reading would not have
+
+- **A colony needs rock.** The first `--colony` run reported one colony, region
+  42, zero hands, zero lifted. `MiningSystem` works the ORE seams of its region
+  and that region had none worth taking, so the tool now puts the colony on the
+  busiest region that has ore under it. With that: 5689 hands, 990 units lifted.
+- **A system nobody added does nothing.** The run before that reported zero
+  hands because the `MiningSystem` was never constructed - an edit whose anchor
+  had moved, applied without an assertion that it had matched. The build was
+  green, the tests were green, and the number was zero. Only running it said so.

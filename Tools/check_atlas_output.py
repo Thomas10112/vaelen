@@ -90,6 +90,52 @@ def check(doc):
   bound = sum(r.get("bound", 0) for r in regions)
   want(bound <= people, "more people are bound (%d) than are alive (%d)" % (bound, people))
 
+  # ── the network ────────────────────────────────────────────────────────────
+  net = doc.get("network")
+  routes = doc.get("routes")
+  colonies = doc.get("colonies")
+  if want(isinstance(net, dict), "missing section: network") and \
+     want(isinstance(routes, list), "missing section: routes") and \
+     want(isinstance(colonies, list), "missing section: colonies"):
+    want(net.get("routes") == len(routes),
+         "network.routes says %r, the list has %d" % (net.get("routes"), len(routes)))
+    want(net.get("colonies") == len(colonies),
+         "network.colonies says %r, the list has %d" % (net.get("colonies"), len(colonies)))
+    opened = sum(1 for r in routes if r.get("open"))
+    want(net.get("open") == opened, "network.open says %r, %d routes are open" % (net.get("open"), opened))
+    hands = sum(c.get("hands", 0) for c in colonies)
+    want(net.get("hands") == hands, "network.hands says %r, the colonies hold %d" % (net.get("hands"), hands))
+    want(isinstance(net.get("digest"), str) and net["digest"] != "0x0000000000000000",
+         "the network digest is missing or zero")
+
+    order = [r.get("index") for r in routes]
+    want(order == sorted(order) and len(set(order)) == len(order),
+         "the routes are not in strictly increasing index order")
+    ends = [r for r in routes if not (0 < r.get("from", 0) < r.get("to", 0))]
+    want(not ends, "%d routes do not run from a lower region index to a higher one" % len(ends))
+    off = [r.get("index") for r in routes if r.get("from") not in named or r.get("to") not in named]
+    want(not off, "routes %s run to a region the frame does not have" % off[:8])
+    flags = [r.get("index") for r in routes if r.get("open") not in (0, 1)]
+    want(not flags, "routes %s are neither open nor closed" % flags[:8])
+
+    # A PAIR DOES NOT IDENTIFY A ROUTE (ADR-0120): 06.04 builds a second entity
+    # when it reopens a road it closed earlier in the same tick, so twins are
+    # expected and are NOT an error here. Two OPEN roads on one pair would be:
+    # goods would cross twice. That is the invariant, and it is checked.
+    live = {}
+    twins = 0
+    for r in routes:
+      key = (r.get("from"), r.get("to"))
+      if r.get("open"):
+        twins += 1 if key in live else 0
+        live[key] = 1
+    want(twins == 0, "%d pairs of regions carry two OPEN roads" % twins)
+
+    stray = sorted({c.get("region") for c in colonies if c.get("region") not in named})
+    want(not stray, "colonies sit on regions the frame does not have: %s" % stray[:8])
+    idle = [c.get("region") for c in colonies if c.get("hands", 0) == 0 and c.get("lifted", 0) > 0]
+    want(not idle, "colonies %s lifted ore with nobody on the rock" % idle[:8])
+
   for key, where in (("digest", frame), ("digest", ground)):
     want(isinstance(where.get(key), str) and where[key] != "0x0000000000000000",
          "a digest is missing or zero, so nothing can be compared to this run")
@@ -106,12 +152,17 @@ def a_world():
   return {
     "schema": 1,
     "run": {"seed": "0x41454c564f52", "size": 2},
-    "frame": {"width": 2, "height": 2, "people": 3, "regions": 1},
-    "ground": {"width": 2, "height": 2, "tiles": 4, "land": 2, "coast": 1, "regions": 1,
+    "frame": {"width": 2, "height": 2, "people": 3, "regions": 2},
+    "ground": {"width": 2, "height": 2, "tiles": 4, "land": 2, "coast": 1, "regions": 2,
                "digest": "0x0000000000000001", "elevationScale": 65536},
-    "regions": [{"index": 1, "tile": 0, "people": 3, "bound": 1}],
+    "regions": [{"index": 1, "tile": 0, "people": 2, "bound": 1},
+                {"index": 2, "tile": 1, "people": 1, "bound": 0}],
+    "network": {"routes": 1, "open": 1, "colonies": 1, "hands": 2, "bytes": 64,
+                "digest": "0x0000000000000003"},
+    "routes": [{"index": 1, "from": 1, "to": 2, "open": 1, "idle": 0, "openings": 1, "carried": 5}],
+    "colonies": [{"region": 1, "hands": 2, "lifted": 7}],
     "tiles": {"biome": [1, 1, 0, 0], "ground": [LAND, LAND | COAST, SHORE, 0],
-              "region": [1, 1, 0, 0], "elevation": [10, 20, -5, -9]},
+              "region": [1, 2, 0, 0], "elevation": [10, 20, -5, -9]},
   }
 
 
@@ -142,8 +193,8 @@ def self_test():
   breaks("land and shore at once", lambda d: d["tiles"]["ground"].__setitem__(0, LAND | SHORE))
   breaks("undefined ground bit", lambda d: d["tiles"]["ground"].__setitem__(0, 1 << 7))
   breaks("miscounted land", lambda d: d["ground"].update(land=1))
-  breaks("region count", lambda d: d["frame"].update(regions=2))
-  breaks("ground region count", lambda d: d["ground"].update(regions=2))
+  breaks("region count", lambda d: d["frame"].update(regions=3))
+  breaks("ground region count", lambda d: d["ground"].update(regions=3))
   breaks("region order", lambda d: d["regions"].append({"index": 1, "tile": 0}))
   breaks("stray region on the ground", lambda d: d["tiles"]["region"].__setitem__(0, 7))
   breaks("centre off the map", lambda d: d["regions"][0].update(tile=99))
@@ -153,10 +204,21 @@ def self_test():
   breaks("missing digest", lambda d: d["frame"].pop("digest"))
   breaks("no elevation scale", lambda d: d["ground"].pop("elevationScale"))
   breaks("size disagreement", lambda d: d["frame"].update(width=3))
+  breaks("missing network", lambda d: d.pop("network"))
+  breaks("route count", lambda d: d["network"].update(routes=2))
+  breaks("open count", lambda d: d["network"].update(open=0))
+  breaks("hands count", lambda d: d["network"].update(hands=9))
+  breaks("zero network digest", lambda d: d["network"].update(digest="0x0000000000000000"))
+  breaks("route order", lambda d: d["routes"].append(dict(d["routes"][0])))
+  breaks("route ends", lambda d: d["routes"][0].update(**{"from": 2, "to": 1}))
+  breaks("route off the map", lambda d: d["routes"][0].update(to=9))
+  breaks("route neither open nor closed", lambda d: d["routes"][0].update(open=2))
+  breaks("colony off the map", lambda d: d["colonies"][0].update(region=9))
+  breaks("ore with no hands", lambda d: d["colonies"][0].update(hands=0))
 
   for line in failures:
     print("SELF-TEST: %s" % line, file=sys.stderr)
-  print("self-test: %d checks exercised, %d failures" % (20, len(failures)))
+  print("self-test: %d checks exercised, %d failures" % (32, len(failures)))
   return 1 if failures else 0
 
 
@@ -204,9 +266,18 @@ def main():
   if bad:
     return 1
   ground = doc["ground"]
-  print("%s: %u x %u, %u tiles, %u land, %u coast, %u regions, frame %s, ground %s"
+  net = doc.get("network", {})
+  pairs = {}
+  twins = 0
+  for r in doc.get("routes", []):
+    key = (r.get("from"), r.get("to"))
+    twins += 1 if key in pairs else 0
+    pairs[key] = 1
+  print("%s: %u x %u, %u tiles, %u land, %u coast, %u regions, %u roads (%u open, %u twinned), "
+        "%u colonies, frame %s, ground %s, network %s"
         % (args.path, ground["width"], ground["height"], ground["tiles"], ground["land"],
-           ground["coast"], ground["regions"], doc["frame"]["digest"], ground["digest"]))
+           ground["coast"], ground["regions"], net.get("routes", 0), net.get("open", 0), twins,
+           net.get("colonies", 0), doc["frame"]["digest"], ground["digest"], net.get("digest", "-")))
   return 0
 
 

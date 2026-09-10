@@ -2591,8 +2591,8 @@ first question Phase 13 or a later gameplay phase should be asked.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (7 of 7) · ENGINE HALF STARTED (13.06 of 3)
-TASK        : 13.07b done — AELVOR has been SEEN, drawn from the view and nothing else
+PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (8 of 8) · ENGINE HALF STARTED (13.06 of 3)
+TASK        : 13.08a done — the roads are in the view, and the colony with them
 STATUS      : PROTOTYPE (headless) / VALIDATED (UE 5.6, compiles, links and runs)
 
 PROGRESS
@@ -2667,6 +2667,32 @@ CURRENTLY
 
   It is NOT `VaelenPresentation` - that is now 13.07c, engine-side - and
   ADR-0113's C4251 decision stays open, because MSVC never reads a web page.
+
+→ **13.08a IS DONE, AND THE OBVIOUS TEST FOUND A DEFECT.** `RegionView::Roads`
+  is a COUNT - three routes touch this region, and not which three - so a map
+  drawn from a frame had fifty-two towns on it and no lines between them.
+  `Vaelen/View/Net.h` carries the roads themselves and the colony with them,
+  and the page draws both. ADR-0121, including the reason the network is NOT a
+  field on `WorldView`: 13.02's Delta diffs a frame REGION BY REGION, so routes
+  living in that struct would be carried, ignored by the diff, and stale in
+  every screen rebuilt from a delta. A structure the diff does not know about
+  must not live inside the thing the diff claims to describe.
+
+  Then the test that compared each route to the world **failed on 96 of 254**.
+  06.04 sorts routes into open and closed once at the top of a tick; a road
+  closed during that tick stays in the open list, so the reuse pass cannot find
+  it and builds a SECOND entity for a pair that already has one. 105 of 275 at
+  256. It has never been seen because the only check that looks for duplicate
+  pairs counts pairs with two OPEN roads, and every twin is one open and one
+  closed. `Openings` restarts at one on the twin, so a road opened five times
+  reads as five roads. ADR-0120: proposed, not applied - it moves the frozen
+  digest, like ADR-0111 and ADR-0118.
+
+  Two things measuring caught that reading would not: a colony on ground with no
+  ore seam lifts nothing and puts nobody on anything, and a MiningSystem that
+  was never CONSTRUCTED (an edit whose anchor had moved, applied without an
+  assertion that it matched) is green in the build, green in the tests, and
+  reports zero. Only running it says so.
 
 → CI: run 140 came back **7 of 9 green**, Windows MSVC and macOS included, and
   the two debug legs were CANCELLED at 117 minutes by a 120-minute timeout. Not
@@ -2846,6 +2872,7 @@ kernel work: engine-agnostic, tested under the presets, covered by a gate.
 | 13.05 | Phase 13 kernel gate: a century at 256 with a view taken every frame of the last year, the deltas applied, and the result identical to the view taken fresh | long-duration, replay |
 | 13.07a | The GROUND in the view (`Vaelen/View/Land.h`), and `Tools/Atlas`: AELVOR generated, run and written out as numbers, with no engine anywhere | unit, integration, deterministic, edge | **DONE 2026-09-10** |
 | 13.07b | The world DRAWN from that view and from nothing else (`Tools/Viewer/Atlas.html`): relief, biomes, rivers, regions, settlements, every tile readable | rendered headless, checked against the run | **DONE 2026-09-10** |
+| 13.08a | The NETWORK in the view (`Vaelen/View/Net.h`): roads as roads and not as a count, and the colony. Drawn on the same page | unit, integration, deterministic, edge | **DONE 2026-09-10** |
 
 **Engine-side (needs UE 5.6, another machine).** Nothing here can be written
 honestly from a container without the engine, and writing it anyway is how a
@@ -2856,7 +2883,7 @@ head.
 |---|---|---|
 | 13.06 | The first UBT build of all eleven kernel modules. This is the task the UNVERIFIED marks have been waiting for since Phase 00 | it builds, or it does not | **DONE 2026-09-10 - it builds** |
 | 13.07c | `VaelenPresentation`: the UE module, and the world drawn as regions **from that view alone** inside the engine. 13.07b proved the view is sufficient to draw from; this is the same claim in Unreal, and the first place ADR-0113's C4251 decision can be shown to do anything | a screenshot |
-| 13.08 | A person, a colony and a road drawn from the view of 13.01 | a screenshot |
+| 13.08b | A person, a colony and a road drawn from the view of 13.01 **inside the engine** | a screenshot |
 | 13.09 | Phase 13 gate: the editor open on AELVOR at 256, a century running, and the frame rate written down | measured on the machine that has the engine |
 
 ### 13.06 The first UBT build - VALIDATED (UE 5.6, Win64 Development Editor)
@@ -3088,6 +3115,48 @@ convincingly is worse than one that will not open.
 now calls that 13.07c. Drawing AELVOR in a browser proves the view carries
 enough to draw from; it proves nothing about Unreal, and ADR-0113's C4251
 decision stays open because MSVC never reads this page.
+
+### 13.08a done - the roads as roads, and the obvious test that found a defect
+
+**What was missing.** `RegionView::Roads` is a count. A renderer holding a frame
+knows a region is touched by three routes and not which three, so the first
+picture of AELVOR had fifty-two towns on it and not one line between them: the
+whole economy of the world was undrawable.
+
+`Vaelen/View/Net.h` carries `RouteView` (32 bytes, no padding) and `ColonyView`
+(16), in stable order, with `RouteOf` for the unambiguous lookup by index and
+`RouteBetween` for the pair. `Tools/Atlas` writes both out; `Tools/Viewer` draws
+the roads weighted by what they have carried, and the colony on top of them.
+
+**The decision worth keeping** is the one about where it does NOT live:
+
+> 13.02's `Delta` diffs a `WorldView` region by region. A vector of routes added
+> to that struct would be carried by the view, ignored by the diff, and silently
+> missing from every screen rebuilt from a delta. **A structure the diff does not
+> know about must not live inside the thing the diff claims to describe.**
+
+**And then the obvious test failed.** Comparing each route in the view to the
+route in the world, keyed on the pair of regions, failed on 96 of 254 - because
+a pair does not identify a road. 06.04 builds a second entity when it reopens a
+road it closed earlier in the same tick. 105 of 275 at 256. ADR-0120 has the
+four lines that do it and the one-line fix, which is not applied because it
+moves a digest eleven gates have frozen.
+
+**The colony.** `--colony` founds one on the busiest region that has ore under
+it; without the flag the tool declares no colony types at all, so its digests
+are provably the digests of every run before this task - checked against the
+published numbers rather than asserted.
+
+```
+AELVOR 256, --colony : 5689 hands on the rock, 990 units of ore lifted,
+                       78 roads open of 275, 105 of them twinned
+AELVOR 256, plain    : frame 0xd0407d9684ab4f5a, ground 0x1faebda9e6c61a5b - unmoved
+```
+
+**What it cost to learn twice.** A colony on ground with no ore seam lifts
+nothing. And a system that is never constructed - an edit whose anchor had moved,
+applied without asserting it matched - builds green, tests green, and reports
+zero hands. Both were found by running the thing and reading the number.
 
 **What must not happen in this phase.** A file marked VALIDATED because it
 looked right. UNVERIFIED is not an embarrassment to be cleared by assertion; it
