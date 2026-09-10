@@ -13,6 +13,9 @@
 
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/World.h"
+#include "EngineUtils.h"
+#include "HAL/IConsoleManager.h"
 #include "UObject/ConstructorHelpers.h"
 
 // The kernel. Nothing above this line knows about it, nothing below knows about
@@ -330,3 +333,59 @@ void AVaelenViewActor::BuildFromView()
 	}
 	UE_LOG(LogVaelenView, Display, TEXT("%s"), *Report);
 }
+
+namespace
+{
+	/// A console command, so that the view can be drawn without an editor
+	/// viewport: `Vaelen.View [size] [years]`.
+	///
+	/// It exists because the GUI is not always available and should not be the
+	/// only way in. The first machine to try 13.07c could run
+	/// `UnrealEditor-Cmd -ExecCmds="Vaelen.Atlas 128" -nullrhi` perfectly well
+	/// and could not open the editor at all - a fresh install with an empty
+	/// derived-data cache, several thousand shaders to compile. The atlas actor
+	/// had a console command and was reachable; this one did not and was not.
+	///
+	/// Under -nullrhi nothing is DRAWN, and the instances go nowhere. What still
+	/// happens is everything that matters for checking the work: the world is
+	/// built, the three views are taken, the world is destroyed, and the tally
+	/// and the report are computed from what outlived it. The numbers can be
+	/// compared to the headless tool without a single pixel.
+	void DrawFromView(const TArray<FString>& Args, UWorld* World_)
+	{
+		if (World_ == nullptr)
+		{
+			UE_LOG(LogVaelenView, Error, TEXT("Vaelen.View: no world"));
+			return;
+		}
+		AVaelenViewActor* View = nullptr;
+		for (TActorIterator<AVaelenViewActor> It(World_); It; ++It)
+		{
+			View = *It;
+			break;
+		}
+		if (View == nullptr)
+		{
+			View = World_->SpawnActor<AVaelenViewActor>();
+		}
+		if (View == nullptr)
+		{
+			UE_LOG(LogVaelenView, Error, TEXT("Vaelen.View: could not spawn the actor"));
+			return;
+		}
+		if (Args.Num() > 0)
+		{
+			View->WorldSize = FCString::Atoi(*Args[0]);
+		}
+		if (Args.Num() > 1)
+		{
+			View->Years = FCString::Atoi(*Args[1]);
+		}
+		View->BuildFromView();
+	}
+
+	FAutoConsoleCommandWithWorldAndArgs GDrawFromView(
+		TEXT("Vaelen.View"),
+		TEXT("Draw AELVOR from the view of 13.01 alone, the world dropped first. Vaelen.View [size] [years]"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&DrawFromView));
+} // namespace
