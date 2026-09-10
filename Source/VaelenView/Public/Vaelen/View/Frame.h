@@ -57,8 +57,8 @@ namespace Vaelen::View
 		uint32 Roads = 0;		 ///< open routes touching it
 		uint32 Names = 0;		 ///< names the place carries (12.05)
 		uint32 Detailed = 0;	 ///< 1 when the world simulates it person by person
-		uint32 Reserved = 0;	 //
-		uint32 Reserved2 = 0;	 ///< keeps the count of 32-bit fields even, which is what removes the padding
+		uint32 Grain_ = 0;		 ///< View::Grain - how finely to draw it, filled by 13.03 and 0 (Near) otherwise
+		uint32 Reserved = 0;	 ///< keeps the count of 32-bit fields even, which is what removes the padding
 	};
 	// NOT sizeof == 56 on its own, which is what this said first and was wrong.
 	// The eleven 32-bit fields came to 52 bytes and the compiler rounded the

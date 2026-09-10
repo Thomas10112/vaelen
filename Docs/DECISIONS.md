@@ -6357,3 +6357,54 @@ renderer.
   needs the field-sum assertion, not a size assertion. The kernel's component
   types get this from `PlainData`'s no-padding check; a view struct is not a
   component and got nothing until now.
+
+## ADR-0106: How finely the world thinks and how finely it is shown are different questions
+
+### Context
+
+01.03's `SimLod` says how much computation a corner of the world is worth: Full,
+Detailed, Aggregate, Statistic, World, on periods of 1, 4, 24, 720 and 8640
+ticks. It is tempting to reuse it for drawing, because it is already there and
+it already says "detail".
+
+### Decision
+
+1. **They are not the same question and must not share an answer.** How finely a
+   place is SHOWN depends on where somebody is looking, and the world has no
+   idea where anybody is looking. Measured on one world at one moment: a region
+   the simulation runs person by person, nine borders from the eye, left out of
+   the frame entirely; and a region the simulation only counts, directly under
+   the eye and drawn finely. If those two ever agreed, `SimLod` would have been
+   enough and this task would not exist.
+
+2. **The eye is an INPUT to the view, never a property of the world.** Nothing
+   in 13.03 writes anything. Two people looking from two places get two frames
+   and the world stays one world - checked by state digest and log digest, not
+   asserted.
+
+3. **The graph cache belongs to the caller.** Building the region graph is a
+   walk of the whole map and a frame is taken sixty times a second, so the cost
+   is put where somebody can see it rather than hidden in a static - the same
+   choice 10.05's `Doings` made for the same reason.
+
+4. **Grain first, budget second.** A budget applied before the grain was worked
+   out would drop near ground to keep far ground it happened to reach first.
+   Within a ring the cut is by index, so a budget that bites mid-ring bites the
+   same way every frame and the screen does not flicker between two regions at
+   equal distance.
+
+5. **`Unreached` is not "far away".** An island with no chain of borders to the
+   eye is not a long way off, it is not reachable, and a renderer wants the
+   difference.
+
+### Consequences
+
+- Measured: looking from region 88 with a reach of one, 3 regions drawn of 99 -
+  224 bytes against 5600 for the whole world. Reach 0 through 4 gives 1, 9, 20,
+  34 and 50 regions, and exactly one region is the subject at every reach.
+- The frame's header counts what is in the FRAME and not what is in the world. A
+  renderer showing 40000 people while drawing four regions would be lying about
+  both.
+- An eye looking nowhere in particular gets the whole world, which is what 13.01
+  gave and stays the default. A renderer that does not care about level of
+  detail never has to know this task happened.

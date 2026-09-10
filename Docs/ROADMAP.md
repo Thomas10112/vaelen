@@ -2591,8 +2591,8 @@ first question Phase 13 or a later gameplay phase should be asked.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 13 — PRESENTATION — 2 of 9 (kernel half)
-TASK        : 13.02 — WHAT CHANGED SINCE THE LAST FRAME — done
+PHASE       : 13 — PRESENTATION — 3 of 9 (kernel half)
+TASK        : 13.03 — LEVEL OF DETAIL FOR THE EYE — done
 STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
@@ -2628,6 +2628,17 @@ CURRENTLY
   green in two presets, failing in the third, on the same source. The assertion
   compares the size against the SUM OF THE FIELDS now, because
   static_assert(sizeof(T) == 56) passes happily on a padded struct. ADR-0105.
+
+  13.03 separated how finely the world THINKS from how finely it is SHOWN, and
+  proved they differ on one world at one moment: a region simulated person by
+  person, nine borders from the eye, left out of the frame; and a region the
+  simulation only counts, under the eye and drawn finely.
+
+    looking from region 88, reach 1 — 3 regions of 99, 224 bytes against 5600
+    reach 0..4 — 1, 9, 20, 34, 50 regions, one subject at every reach
+    two eyes on one world — two frames, and the state and log digests unmoved
+
+  The eye is an input to the view and never a property of the world. ADR-0106.
 
   Phase 13 is the first phase that cannot be finished here: section 19 splits it
   into five kernel tasks (this environment) and four engine tasks that need
@@ -2665,6 +2676,7 @@ COMPLETED
 ✓ 12.06 what the world does about a name · 12.07 gameplay in the chronicle
 ✓ 12.08 the phase gate — a century of a lived colony, full and replayed
 ✓ 13.01 a read-only view of the world for a frame · 13.02 what changed since the last frame
+✓ 13.03 level of detail for the eye
 
 NEXT
 → 12.06 — consequences: what a polity, an organisation or a family does about somebody whose repute

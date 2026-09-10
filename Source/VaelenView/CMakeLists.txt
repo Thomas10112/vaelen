@@ -5,11 +5,13 @@ set(VAELEN_VIEW_PUBLIC_HEADERS
   Public/Vaelen/View/ViewApi.h
   Public/Vaelen/View/Frame.h
   Public/Vaelen/View/Delta.h
+  Public/Vaelen/View/Eye.h
 )
 
 set(VAELEN_VIEW_SOURCES
   Private/Frame.cpp
   Private/Delta.cpp
+  Private/Eye.cpp
 )
 
 add_library(VaelenView STATIC ${VAELEN_VIEW_SOURCES} ${VAELEN_VIEW_PUBLIC_HEADERS})
