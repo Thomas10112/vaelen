@@ -136,7 +136,7 @@ yet. Later kernel modules follow the same pattern with their own `VAELEN_<MODULE
 | `VaelenColony` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 11 | SIMULATION (the mining colony as a place: hands on the seams of 02.07, the ore credited through 06.01) | UBT: `Core`, `VaelenCore`, `VaelenSim`, `VaelenPopulation`, `VaelenSociety`, `VaelenEconomy`, `VaelenPolitics`, `VaelenMilitary`, `VaelenInfrastructure`. CMake: `Vaelen::Infrastructure` and below. | PROTOTYPE headless (11.03); UNVERIFIED under UBT |
 | `VaelenGameplay` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 12 | SIMULATION (what a person nobody plays does, and what the world BELIEVES: opinions, hearsay, documents, maps, and a name that travels the routes of 06.04) | UBT: `Core`, `VaelenCore`, `VaelenSim`, `VaelenPopulation`, `VaelenSociety`, `VaelenEconomy`, `VaelenPolitics`, `VaelenMilitary`, `VaelenInfrastructure`, `VaelenColony`, `VaelenPlayer`. CMake: `Vaelen::Player` and below. | PROTOTYPE headless (12.01-12.08, phase closed); UNVERIFIED under UBT |
 | `VaelenPlayer` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 10 | SIMULATION (the player as one simulated person, and their intent as commands) | UBT: `Core`, `VaelenCore`, `VaelenSim`, `VaelenPopulation`, `VaelenSociety`, `VaelenEconomy`, `VaelenPolitics`, `VaelenMilitary`, `VaelenInfrastructure`. CMake: `Vaelen::Infrastructure` and below. | VALIDATED headless (CI run 108: nine jobs green, Windows MSVC and macOS AppleClang included); UNVERIFIED under UBT |
-| `VaelenPolitics` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 07 | SIMULATION (polities, law, authority, succession, diplomacy) | UBT: `Core`, `VaelenCore`, `VaelenSim`, `VaelenPopulation`, `VaelenSociety`, `VaelenEconomy`. CMake: `Vaelen::Economy`, `Vaelen::Society`, `Vaelen::Population`, `Vaelen::Sim`, `Vaelen::Core`. | 07.01 VALIDATED headless; UNVERIFIED under UBT (newer than the first Unreal build) |
+| `VaelenView` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 13 | The boundary between WORLD STATE and PRESENTATION: what a renderer needs to be told, taken once per frame and never written back. A view holds no pointer, handle or component type, so a renderer cannot reach the simulation even by accident (ADR-0104). | UBT: `Core`, `VaelenCore`, `VaelenSim`, `VaelenPopulation`, `VaelenSociety`, `VaelenEconomy`, `VaelenPolitics`, `VaelenMilitary`, `VaelenInfrastructure`, `VaelenColony`, `VaelenPlayer`, `VaelenGameplay`. CMake: `Vaelen::Gameplay` and below. | PROTOTYPE headless (13.01); UNVERIFIED under UBT |
 | `Vaelen` | Unreal primary game module (`IMPLEMENT_PRIMARY_GAME_MODULE`, Runtime, `Default`) | Engine bridge (PRESENTATION side) | `Core`, `CoreUObject`, `Engine`, `InputCore`, `VaelenCore` | VALIDATED (UE 5.6, 2026-09-07): built and started in the editor |
 
 `Vaelen` installs a kernel log sink (`FVaelenLogSink`, routes `Vaelen::LogRecord` to
@@ -192,6 +192,7 @@ flowchart BT
         ColonyMod["VaelenColony (Phase 11)"]
         PlayerMod["VaelenPlayer (Phase 10)"]
         GameplayMod["VaelenGameplay (Phase 12)"]
+        ViewMod["VaelenView (Phase 13)"]
         Persistence["VaelenPersistence (PLANNED)"]
         DevTools["VaelenDevTools (PLANNED)"]
         Modding["VaelenModding (PLANNED)"]
@@ -218,6 +219,7 @@ flowchart BT
     ColonyMod --> Infrastructure
     PlayerMod --> ColonyMod
     GameplayMod --> PlayerMod
+    ViewMod --> GameplayMod
     Persistence --> Military
     Persistence --> Infrastructure
     DevTools --> Persistence
@@ -295,6 +297,7 @@ military, 50-51 knowledge (Phase 12). Values are part of the save format: append
     VaelenColony/                 KERNEL MODULE (Phase 11): Public/Vaelen/Colony/*.h, Private/*.cpp, VaelenColony.Build.cs, CMakeLists.txt
     VaelenPlayer/                 KERNEL MODULE (Phase 10): Public/Vaelen/Player/*.h, Private/*.cpp, VaelenPlayer.Build.cs, CMakeLists.txt
     VaelenGameplay/               KERNEL MODULE (Phase 12): Public/Vaelen/Gameplay/*.h, Private/*.cpp, VaelenGameplay.Build.cs, CMakeLists.txt
+    VaelenView/                   KERNEL MODULE (Phase 13): Public/Vaelen/View/*.h, Private/*.cpp, VaelenView.Build.cs, CMakeLists.txt
       Public/Vaelen/Core/         CoreTypes.h Version.h Assert.h Log.h Hash.h Random.h Ids.h
       Private/                    Assert.cpp Log.cpp Random.cpp Ids.cpp Version.cpp
                                   VaelenCoreModule.cpp (Unreal-facing, UBT only)

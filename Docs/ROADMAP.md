@@ -2591,35 +2591,39 @@ first question Phase 13 or a later gameplay phase should be asked.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 12 — GAMEPLAY — CLOSED
-TASK        : next is 13.01 — the first UE 5.6 build
-STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
+PHASE       : 13 — PRESENTATION — 1 of 9 (kernel half)
+TASK        : 13.01 — A READ-ONLY VIEW OF THE WORLD FOR A FRAME — done
+STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
 █████████████████████████████ 13 of 21 phases closed (00-12)
 
 CURRENTLY
-→ Phase 12 GAMEPLAY closed against section 2. Eight tasks, ADR-0096 to ADR-0103,
-  an eleventh kernel module, and a gate that is FULL:
+→ 13.01 made "PRESENTATION reads and does not touch" structural instead of
+  remembered. A WorldView holds no pointer, no handle, no component type and no
+  reference to the world it came from, so a renderer that has one cannot reach
+  the simulation even by accident - and the test asserts
+  std::is_trivially_copyable on it, so the day somebody adds an EntityHandle the
+  build stops rather than a reviewer having to notice.
 
-    14400 played intents over two lives, on every one of the 14400 days
-    327267 acts in all, 67769 given, 1175 taken
-    6939 people thought of, 55074 opinions held, 81911 tellings
-    best 175, worst -92 — a world that thinks ill of somebody, at last
-    96 names carried in 12 places, 88 from abroad, 3 roads at the furthest
-    21 condemned, 1 pardoned, 10 still bound
-    82647 events of belief, every one of them with a sentence
+    99 regions, 19781 people — 5600 bytes for the whole frame
+    sixty frames taken: 13747 events before, 13747 after
+    a world told only about its map and its people: 0 roads, 0 bound,
+      rather than refusing to be looked at
 
-  Replayed into a fresh world of the same seed from the founding, the binding,
-  the lively ground, the takings and the intents alone: 14400 of 14400 intents
-  answered identically, and the state, the log, the mining, the fame, the
-  repute, the judgement and the belief digests all matched.
+  VaelenView is the twelfth kernel module. ADR-0104.
 
-  It was hollow on its first run - 0 taken, 0 condemned, every invariant true -
-  because the colony's ground was never marked lively. That is the second hollow
-  gate this project has built and the volume assertions of ADR-0095 are what
-  caught it. Colony.ColonyGate and Gameplay.GameplayGate are in run_gates.sh
-  now; they had been missing for two whole phases.
+  Phase 13 is the first phase that cannot be finished here: section 19 splits it
+  into five kernel tasks (this environment) and four engine tasks that need
+  UE 5.6, a GPU and somebody looking at a screen. Eleven Build.cs files have
+  carried UNVERIFIED since Phase 00 and only a compiler reading them clears it.
+
+WAS
+→ Phase 12 GAMEPLAY closed against section 2 with a gate that is full: 14400
+  played intents over two lives, 327267 acts, 6939 people thought of, 96 names
+  in 12 places, 21 condemned, 82647 events of belief every one with a sentence,
+  and a replay identical down to seven digests. It was hollow on its first run
+  and the volume assertions of ADR-0095 caught it.
 
 WAS
 → Phase 11 closed against section 2 on CI run 113: nine jobs green at 6be319f, the eight phase gates
@@ -2644,6 +2648,7 @@ COMPLETED
 ✓ 12.03 the documents · 12.04 the maps · 12.05 a name that travels
 ✓ 12.06 what the world does about a name · 12.07 gameplay in the chronicle
 ✓ 12.08 the phase gate — a century of a lived colony, full and replayed
+✓ 13.01 a read-only view of the world for a frame
 
 NEXT
 → 12.06 — consequences: what a polity, an organisation or a family does about somebody whose repute

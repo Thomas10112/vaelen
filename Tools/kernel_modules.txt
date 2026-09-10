@@ -19,3 +19,4 @@ VaelenInfrastructure
 VaelenPlayer
 VaelenColony
 VaelenGameplay
+VaelenView

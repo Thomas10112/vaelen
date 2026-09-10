@@ -82,6 +82,7 @@ add_subdirectory(Source/VaelenInfrastructure)
 add_subdirectory(Source/VaelenColony)
 add_subdirectory(Source/VaelenPlayer)
 add_subdirectory(Source/VaelenGameplay)
+add_subdirectory(Source/VaelenView)
 
 # ── Tests ────────────────────────────────────────────────────────────────────
 if(VAELEN_BUILD_TESTS)

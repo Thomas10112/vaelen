@@ -6259,3 +6259,54 @@ measure - read the volume before the verdict.**
   the belief digest all identical.
 - The gate takes 12m53s under gcc-debug, which makes it the second-slowest thing
   in the project after the Colony gate. That is the price of a gate that is full.
+
+## ADR-0104: The view is a block of numbers, so that read-only stops being a promise
+
+### Context
+
+The layering rule of this project has said since Phase 00 that PRESENTATION
+reads WORLD STATE and does not touch it. For thirteen phases nothing enforced
+that, because nothing rendered anything: it was a rule kept by everybody
+remembering it, and the first time a renderer exists it will be kept by whoever
+writes the renderer remembering it too.
+
+### Decision
+
+1. **A `WorldView` holds no pointer, no handle, no component type and no
+   reference to the world it came from.** A renderer that has one cannot reach
+   the simulation even by mistake, because there is nothing in its hand to reach
+   with. That is the whole design and everything else follows: the view is taken
+   by value, copied, kept, compared with the previous one, and handed to another
+   thread without the world caring.
+
+2. **The compiler checks it, not a comment.** The test asserts
+   `std::is_trivially_copyable<RegionView>` and `std::is_standard_layout`, so the
+   day somebody adds an `EntityHandle` or a `std::string` to a view struct, the
+   build stops. A rule that only a reviewer can enforce is the rule that gets
+   broken in Phase 16.
+
+3. **`TakeView` takes a `const World&`.** The signature is the promise, and the
+   test proves the other half of it that a const reference cannot: sixty frames
+   taken in a row leave the state digest, the event log digest and the event
+   count all identical.
+
+4. **Every source past the map and the people is optional.** A world with no
+   trade gives a view that says 0 roads rather than refusing to be looked at.
+   For most of this project's life the world was half-built, and a renderer that
+   only works against a finished one is a renderer nobody can develop against.
+
+### Consequences
+
+- Measured: a world of 99 regions and 19781 people is 5600 bytes of view - the
+  whole frame, everything a renderer needs. Sixty frames left 13747 events
+  before and 13747 after.
+- The regions come out in index order every time, never in pool order, so a
+  renderer can keep its own array in step with the view's across frames.
+- A region the world simulates person by person reports the heads actually
+  standing there; one it does not reports the aggregate count of 04.02. A
+  renderer must never draw an empty region because the simulation stopped
+  tracking heads, and the view says which of the two it is.
+- **This is not a snapshot and not a query.** 03.06 owns snapshots and they are
+  the whole world including everything nobody can see; 03.07 answers questions.
+  This is one frame's worth of what can be drawn, small enough to take sixty
+  times a second.
