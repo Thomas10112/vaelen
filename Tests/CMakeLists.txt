@@ -39,9 +39,9 @@ set(VAELEN_ATLAS_B ${CMAKE_CURRENT_BINARY_DIR}/atlas-run-b.json)
 # --every exercises the timeline path, and --colony the mining one, so CI runs
 # the tool the way it is actually used rather than only its simplest shape.
 add_test(NAME Atlas.Runs
-  COMMAND VaelenAtlas --size 48 --prehistory 30 --years 10 --every 5 --colony --out ${VAELEN_ATLAS_A})
+  COMMAND VaelenAtlas --size 48 --prehistory 30 --years 10 --every 5 --colony --chronicle --out ${VAELEN_ATLAS_A})
 add_test(NAME Atlas.RunsAgain
-  COMMAND VaelenAtlas --size 48 --prehistory 30 --years 10 --every 5 --colony --out ${VAELEN_ATLAS_B})
+  COMMAND VaelenAtlas --size 48 --prehistory 30 --years 10 --every 5 --colony --chronicle --out ${VAELEN_ATLAS_B})
 set_tests_properties(Atlas.Runs PROPERTIES FIXTURES_SETUP AtlasA TIMEOUT 900)
 set_tests_properties(Atlas.RunsAgain PROPERTIES FIXTURES_SETUP AtlasB TIMEOUT 900)
 

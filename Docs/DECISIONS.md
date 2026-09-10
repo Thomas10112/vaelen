@@ -7451,3 +7451,77 @@ its stride, every frame's regions and routes are ones the document has, and each
 frame's own totals add up - each proved to fire by `--self-test`, now 42 checks.
 The CTest runs use `--every 5 --colony`, so CI exercises the tool the way it is
 actually used rather than only its simplest shape.
+
+## ADR-0123 — The world already knew how to tell its own history; nothing had ever asked it
+
+**Date:** 2026-09-10
+**Status:** Accepted
+**Phase:** 13 — task 13.08d
+
+### What was found
+
+Phases 04 to 11 each built a chronicle listener and a describer: `PersonChronicle`,
+`SocietyChronicle`, `EconomyChronicle`, `PoliticsChronicle`, `MilitaryChronicle`,
+`LifeChronicle`, `ColonyChronicle`. Every one turns the events that matter into
+`RecordInfo` documents and every one can put a sentence on them **in the words of
+the world**. They are covered by tests, they are green in eleven gates, and until
+today nothing outside a test had ever read one.
+
+The wiring is three listeners and one describer, because the topmost layer speaks
+for every layer under it (06.07). What comes out:
+
+```
+Year 0, age of Divik: the Oldegedim first settled Edavaken.
+Year 21, age of Ubu: a great eruption struck Miogu.
+Year 21, age of Ubu: The road from Kiodanam to Entam was opened.
+Year 419, age of Okerdun: Kudihumho was enslaved by debt in Edavaken.
+Year 419, age of Okerdun: Arord was freed by manumission in Edavaken.
+```
+
+Named cultures, named places, named people, named eras, dated. AELVOR at 256
+remembers **8158 things** over four centuries.
+
+### What the tally says about the world
+
+```
+freed 1697 · died 1628 · enslaved 1473 · married 1114 · roads 937 · towns 71 · settled 59
+```
+
+After death, **bondage is the most recorded fact of this world** - three thousand
+one hundred and seventy entries about people being owned and people ceasing to
+be owned. Nobody wrote that. The README's premise ("the player starts enslaved")
+is not a story laid over the simulation; it is what the simulation does most.
+
+### The decisions
+
+- **`--chronicle` is opt-in, and that is not caution.** The listeners create
+  `RecordInfo` entities: a world nobody asked to remember carries no memory. With
+  the flag off, the digests are the digests of every run before this - frame
+  `0x1ad9b6c934b65257`, ground `0x8f7f4948f49b6e86`, network `0x7f0e8fbdef66b895`
+  at 128, checked rather than assumed. With it ON they are also unchanged, which
+  is the stronger result: **the chronicle observes without touching.**
+- **The tool walks the records rather than calling `ExportChronicleWithEconomy`.**
+  The kernel's exporter writes the same sentences as one block of text, and a
+  page that puts a line on a timeline needs the year and the region of each. Same
+  describer, one level lower.
+- **Economy is the top describer, not Politics.** `PoliticsContext` needs law,
+  reach, succession, faction and diplomacy types this tool does not declare.
+  Roads and towns therefore get their own sentences and a polity's rise gets the
+  plainer one - stated here rather than left as a silent limit.
+- **JSON strings are escaped by the rules.** The chronicle is written by the
+  world, so it holds whatever the namer of a place put in it. `Json::Str` escapes
+  quotes, backslashes and control bytes and passes UTF-8 through.
+
+### What the page says out loud
+
+Person-level events exist only where the world simulates person by person - one
+region of a hundred and twenty-six - so the last decades of the panel are full of
+one town's marriages and extinct houses. That is not a hole in the record; it is
+the shape of the LOD design, and the page carries a line saying so rather than
+letting the reader conclude the rest of the world is empty.
+
+### The rule this leaves behind
+
+> Eleven phases of capability were built and verified and never used. A test
+> proves a thing works; only a reader proves it is worth anything. **Ask the
+> systems you already have what they know before building another one.**

@@ -2591,8 +2591,8 @@ first question Phase 13 or a later gameplay phase should be asked.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (9 of 9) · ENGINE HALF STARTED (13.06 of 3)
-TASK        : 13.08c done — four centuries of AELVOR, scrubbable
+PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (10 of 10) · ENGINE HALF STARTED (13.06 of 3)
+TASK        : 13.08d done — the world tells its own history, in its own words
 STATUS      : PROTOTYPE (headless) / VALIDATED (UE 5.6, compiles, links and runs)
 
 PROGRESS
@@ -2667,6 +2667,28 @@ CURRENTLY
 
   It is NOT `VaelenPresentation` - that is now 13.07c, engine-side - and
   ADR-0113's C4251 decision stays open, because MSVC never reads a web page.
+
+→ **13.08d IS DONE, AND IT WAS NOT NEW WORK.** Phases 04 to 11 each built a
+  chronicle listener and a describer that puts a sentence on an event in the
+  words of the world. Every one is tested, every one is green in eleven gates,
+  and until today nothing outside a test had ever read one. Three listeners and
+  one describer later:
+
+    Year 0, age of Divik: the Oldegedim first settled Edavaken.
+    Year 21, age of Ubu: a great eruption struck Miogu.
+    Year 21, age of Ubu: The road from Kiodanam to Entam was opened.
+    Year 419, age of Okerdun: Kudihumho was enslaved by debt in Edavaken.
+    Year 419, age of Okerdun: Arord was freed by manumission in Edavaken.
+
+  AELVOR at 256 remembers 8158 things over four centuries, and the tally is the
+  finding: freed 1697, died 1628, enslaved 1473, married 1114, roads 937, towns
+  71. **After death, bondage is the most recorded fact of this world** - 3170
+  entries about people being owned and ceasing to be owned. Nobody wrote that.
+  The premise in the README is not a story laid over the simulation; it is what
+  the simulation does most. ADR-0123.
+
+  And the digests do not move with `--chronicle` on: the chronicle observes
+  without touching.
 
 → **13.08c IS DONE: THE WORLD MOVES.** `--every N` keeps a frame; the page has a
   slider and every reading on it comes from the chosen year. 42 frames at 256,
@@ -2891,6 +2913,7 @@ kernel work: engine-agnostic, tested under the presets, covered by a gate.
 | 13.07b | The world DRAWN from that view and from nothing else (`Tools/Viewer/Atlas.html`): relief, biomes, rivers, regions, settlements, every tile readable | rendered headless, checked against the run | **DONE 2026-09-10** |
 | 13.08a | The NETWORK in the view (`Vaelen/View/Net.h`): roads as roads and not as a count, and the colony. Drawn on the same page | unit, integration, deterministic, edge | **DONE 2026-09-10** |
 | 13.08c | The world IN TIME: `--every N` keeps a frame, the page scrubs four centuries, and the pre-history stops being a black box | deterministic (a timelined run is the same run), checked output | **DONE 2026-09-10** |
+| 13.08d | What HAPPENED: the chronicle listeners of Phases 04-11 wired for the first time outside a test, and the world's own sentences on the page beside the year | deterministic (the chronicle observes without touching), checked output | **DONE 2026-09-10** |
 
 **Engine-side (needs UE 5.6, another machine).** Nothing here can be written
 honestly from a container without the engine, and writing it anyway is how a
@@ -3207,6 +3230,47 @@ only year the page knows there is one is the last. The marker appears in that
 year alone and the panel says `Colony (at year 420)`, because a mine on the map
 at year 10 - three centuries before anybody dug it - is the confident wrong
 picture this whole layer exists to prevent.
+
+### 13.08d done - the world already knew how to tell its own history
+
+Phases 04 to 11 each built a chronicle listener and a describer - `PersonChronicle`,
+`SocietyChronicle`, `EconomyChronicle`, `PoliticsChronicle`, `MilitaryChronicle`,
+`LifeChronicle`, `ColonyChronicle`. Each turns the events that matter into
+`RecordInfo` documents and can put a sentence on one in the words of the world.
+Every one is tested and green in eleven gates. **Nothing outside a test had ever
+read one.**
+
+Wiring three of them into `Tools/Atlas` behind `--chronicle` is a page of code.
+What comes out of it is the thing this project has been building for thirteen
+phases and had never looked at:
+
+```
+Year 0, age of Divik: the Oldegedim first settled Edavaken.
+Year 21, age of Ubu: a great eruption struck Miogu.
+Year 21, age of Ubu: The road from Kiodanam to Entam was opened.
+Year 419, age of Okerdun: Kudihumho was enslaved by debt in Edavaken.
+Year 419, age of Okerdun: Arord was freed by manumission in Edavaken.
+```
+
+**The tally is the finding.** 8158 records over four centuries at 256:
+
+```
+freed 1697 · died 1628 · enslaved 1473 · married 1114 · roads 937 · towns 71 · settled 59
+```
+
+After death, bondage is the most recorded fact of this world. Three thousand one
+hundred and seventy entries about people being owned and ceasing to be owned,
+and nobody wrote a line of it as content.
+
+**What the page says out loud.** Person-level events exist only where the world
+runs person by person - one region of a hundred and twenty-six - so the panel's
+late decades are one town's marriages and extinct houses. That is the shape of
+the LOD design and not a hole in the record, and the page carries a line saying
+so rather than letting a reader conclude the rest of the world is empty.
+
+**The rule.** Eleven phases of capability, built and verified and never used. A
+test proves a thing works; only a reader proves it is worth anything. Ask the
+systems you already have what they know before building another one.
 
 **What must not happen in this phase.** A file marked VALIDATED because it
 looked right. UNVERIFIED is not an embarrassment to be cleared by assertion; it

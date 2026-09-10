@@ -21,6 +21,7 @@
 #include "Vaelen/Colony/Mining.h"
 #include "Vaelen/Core/Log.h"
 #include "Vaelen/Economy/Markets.h"
+#include "Vaelen/Economy/EconomyHistory.h"
 #include "Vaelen/Economy/Production.h"
 #include "Vaelen/Economy/Stocks.h"
 #include "Vaelen/Economy/Trade.h"
@@ -30,16 +31,19 @@
 #include "Vaelen/Population/Lives.h"
 #include "Vaelen/Population/Lod.h"
 #include "Vaelen/Population/Needs.h"
+#include "Vaelen/Population/PersonHistory.h"
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Population/Traits.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/Deposits.h"
+#include "Vaelen/Sim/HistoryText.h"
 #include "Vaelen/Sim/Regions.h"
 #include "Vaelen/Sim/World.h"
 #include "Vaelen/Sim/WorldGen.h"
 #include "Vaelen/Society/Bondage.h"
 #include "Vaelen/Society/Norms.h"
 #include "Vaelen/Society/Organizations.h"
+#include "Vaelen/Society/SocietyHistory.h"
 #include "Vaelen/Society/Standing.h"
 #include "Vaelen/View/Frame.h"
 #include "Vaelen/View/Land.h"
@@ -77,8 +81,9 @@ namespace
 	/// the premise of the game turns on.
 	struct KernelRun
 	{
-		KernelRun(uint64 InSeed, bool InWithColony)
-			: WithColony(InWithColony), Instance(Config(InSeed)), Ages(Instance, PreHistoryRules{})
+		KernelRun(uint64 InSeed, bool InWithColony, bool InWithChronicle)
+			: WithColony(InWithColony), WithChronicle(InWithChronicle), Instance(Config(InSeed)),
+			  Ages(Instance, PreHistoryRules{})
 		{
 			Persons = PersonTypes::Declare(Instance, Ages);
 			Families = FamilyTypes::Declare(Instance);
@@ -102,6 +107,15 @@ namespace
 			if (WithColony)
 			{
 				Pit = ColonyTypes::Declare(Instance);
+			}
+			// The chronicle turns events into RecordInfo entities. Declared only
+			// when asked, so a world nobody asked to remember carries no memory
+			// and its digests are the digests it had before.
+			if (WithChronicle)
+			{
+				PersonRecords = PersonChronicleTypes::Declare(Instance);
+				SocietyRecords = SocietyChronicleTypes::Declare(Instance);
+				EconomyRecords = EconomyChronicleTypes::Declare(Instance);
 			}
 
 			LifeRules Life;
@@ -134,6 +148,24 @@ namespace
 				Rock = std::make_unique<MiningSystem>(Instance, Ages.Types(), Persons, Families, Economy_, Pit,
 													  MiningRules{});
 				Rock->ObserveTraits(Traits.Traits);
+			}
+			if (WithChronicle)
+			{
+				// Three listeners, one describer. The economy's text speaks for
+				// the society under it and the persons under that (06.07): the
+				// topmost layer describes every layer below, or a world's
+				// chronicle loses the words of its middle. Politics would be the
+				// layer above, and needs seven more type sets than this tool
+				// declares - so the roads and the towns get their own sentences
+				// and a polity's rise gets the plainer one.
+				Society_ = SocietyContext{Persons, Families, Organizations};
+				Trades = EconomyContext{Persons, Families, Trade, Markets, MarketRules{}, &Society_};
+				PersonScribe = std::make_unique<PersonChronicle>(Instance, Ages.Types(), Persons, Families,
+																 PersonRecords, PersonChronicleRules{});
+				SocietyScribe = std::make_unique<SocietyChronicle>(Instance, Ages.Types(), Society_, SocietyRecords,
+																   SocietyChronicleRules{});
+				EconomyScribe = std::make_unique<EconomyChronicle>(Instance, Ages.Types(), Trades, EconomyRecords,
+																   EconomyChronicleRules{});
 			}
 
 			Houses->RunAfter("Lod");
@@ -169,6 +201,12 @@ namespace
 			if (Rock != nullptr)
 			{
 				Instance.Systems().Add(Rock.get());
+			}
+			if (WithChronicle)
+			{
+				PersonScribe->Attach();
+				SocietyScribe->Attach();
+				EconomyScribe->Attach();
 			}
 			Instance.Build();
 		}
@@ -218,6 +256,7 @@ namespace
 		}
 
 		bool WithColony = false;
+		bool WithChronicle = false;
 		/// The peopled region with the most people that has ORE under it.
 		///
 		/// A colony is people put on rock. Put on ground with no seam it lifts
@@ -287,6 +326,16 @@ namespace
 		WealthTypes Wealth;
 		PolityTypes Polities;
 		ColonyTypes Pit;
+		PersonChronicleTypes PersonRecords;
+		SocietyChronicleTypes SocietyRecords;
+		EconomyChronicleTypes EconomyRecords;
+		// Trades holds a pointer to Society_, so the two must not be reordered
+		// and this struct must not be copied. It is neither.
+		SocietyContext Society_;
+		EconomyContext Trades;
+		std::unique_ptr<PersonChronicle> PersonScribe;
+		std::unique_ptr<SocietyChronicle> SocietyScribe;
+		std::unique_ptr<EconomyChronicle> EconomyScribe;
 		std::unique_ptr<LifeSystem> Lives;
 		std::unique_ptr<FamilySystem> Houses;
 		std::unique_ptr<NeedSystem> Body;
@@ -334,6 +383,34 @@ namespace
 			std::snprintf(Buffer, sizeof(Buffer), "\"0x%016llx\"", static_cast<unsigned long long>(V));
 			Text.append(Buffer);
 		}
+		/// A JSON string. The chronicle is written by the world, so it can hold
+		/// anything the namer of a place put in it: quotes, backslashes and any
+		/// byte of UTF-8. Escaped by the rules rather than by hope.
+		void Str(const std::string& Words)
+		{
+			Text.push_back('"');
+			for (const char C : Words)
+			{
+				const unsigned char U = static_cast<unsigned char>(C);
+				if (C == '"' || C == '\\')
+				{
+					Text.push_back('\\');
+					Text.push_back(C);
+				}
+				else if (U < 0x20)
+				{
+					char Buffer[8];
+					std::snprintf(Buffer, sizeof(Buffer), "\\u%04x", static_cast<unsigned>(U));
+					Text.append(Buffer);
+				}
+				else
+				{
+					Text.push_back(C);
+				}
+			}
+			Text.push_back('"');
+		}
+
 		void Field(const char* Name, uint64 V)
 		{
 			Text.push_back('"');
@@ -368,6 +445,7 @@ namespace
 		std::string Out = "aelvor.json";
 		bool Tiles = true;
 		bool Colony = false;
+		bool Chronicle = false;
 		uint32 Every = 0; ///< years between kept frames; 0 = keep only the last
 	};
 
@@ -424,7 +502,8 @@ namespace
 							 "  --out PATH      where to write the JSON (default aelvor.json)\n"
 							 "  --no-tiles      write the regions only, not the ground\n"
 							 "  --colony        found a mining colony on the busiest region\n"
-							 "  --every N       also keep a frame every N years, for a timeline\n");
+							 "  --every N       also keep a frame every N years, for a timeline\n"
+							 "  --chronicle     remember what happened, and write it out in words\n");
 	}
 
 	bool ParseOptions(int Argc, char** Argv, Options& Out)
@@ -441,6 +520,10 @@ namespace
 			else if (std::strcmp(Arg, "--colony") == 0)
 			{
 				Out.Colony = true;
+			}
+			else if (std::strcmp(Arg, "--chronicle") == 0)
+			{
+				Out.Chronicle = true;
 			}
 			else if (std::strcmp(Arg, "--help") == 0 || std::strcmp(Arg, "-h") == 0)
 			{
@@ -518,7 +601,7 @@ namespace
 
 		const auto Started = std::chrono::steady_clock::now();
 		std::vector<Kept> Timeline;
-		KernelRun Run(Opt.Seed, Opt.Colony);
+		KernelRun Run(Opt.Seed, Opt.Colony, Opt.Chronicle);
 		WorldGenConfig Gen;
 		Gen.Width = Opt.Size;
 		Gen.Height = Opt.Size;
@@ -570,6 +653,45 @@ namespace
 		{
 			TakeMapView(Run.Instance, Run.Sources(), Ground);
 		}
+		// The chronicle, as lines with a year and a place on them. The kernel's
+		// own ExportChronicleWithEconomy writes the same sentences as one block
+		// of text; this walks the records instead, because a page that puts a
+		// line on a timeline needs to know which year it belongs to.
+		struct Told
+		{
+			uint32 Year = 0;
+			uint32 Region = 0;
+			std::string Line;
+		};
+		std::vector<Told> Chronicle;
+		if (Opt.Chronicle)
+		{
+			std::vector<History::RecordInfo> Records;
+			Run.Instance.Components()
+				.GetPool(Run.Ages.Types().History.Record)
+				.ForEach([&](EntityHandle, const History::RecordInfo& R) { Records.push_back(R); });
+			std::sort(Records.begin(), Records.end(), [](const History::RecordInfo& A, const History::RecordInfo& B)
+					  { return A.Tick != B.Tick ? A.Tick < B.Tick : A.Event < B.Event; });
+			const PersonIndex Index = BuildPersonIndex(Run.Instance, Run.Persons);
+			Chronicle.reserve(Records.size());
+			for (const History::RecordInfo& R : Records)
+			{
+				Told T;
+				T.Year = static_cast<uint32>(R.Tick / History::TicksPerYear);
+				T.Region = R.Region;
+				const Event* E = History::FindEvent(Run.Instance.Log(), PersistentId{R.Event});
+				if (E != nullptr)
+				{
+					DescribeEconomyEvent(Run.Instance, Run.Ages.Types(), Run.Trades, *E, T.Line, &Index);
+				}
+				else
+				{
+					History::DescribeRecord(Run.Instance, Run.Ages.Types(), R, T.Line);
+				}
+				Chronicle.push_back(std::move(T));
+			}
+		}
+
 		const ViewStats FrameStats = MeasureView(Frame);
 		const MapStats GroundStats = MeasureMapView(Ground);
 		const NetStats NetStats_ = MeasureNetView(Net);
@@ -769,7 +891,19 @@ namespace
 			}
 			J.Put("]}");
 		}
-		J.Put("\n]},\n\"tiles\":{");
+		J.Put("\n]},\n\"chronicle\":[");
+		for (usize C = 0; C < Chronicle.size(); ++C)
+		{
+			J.Put(C == 0 ? "\n" : ",\n");
+			J.Put("{");
+			J.Field("year", Chronicle[C].Year);
+			J.Put(",");
+			J.Field("region", Chronicle[C].Region);
+			J.Put(",\"said\":");
+			J.Str(Chronicle[C].Line);
+			J.Put("}");
+		}
+		J.Put("\n],\n\"tiles\":{");
 		// Four parallel arrays in tile order rather than one object per tile: an
 		// object per tile is nine times the bytes and says nothing more.
 		auto Column = [&J, &Ground](const char* Name, int Which)
@@ -829,12 +963,12 @@ namespace
 		VAELEN_LOG_INFO(LogAtlas,
 						"AELVOR %ux%u, seed 0x%llx: year %u, %u land tiles, %u regions (%u peopled, %u detailed), "
 						"%u living, %u roads open of %u, %u colonies (%u hands on region %u), %u frames kept, "
-						"%u bytes to %s. Simulated in %.2f s.",
+						"%u things remembered, %u bytes to %s. Simulated in %.2f s.",
 						Opt.Size, Opt.Size, static_cast<unsigned long long>(Opt.Seed), Frame.Year, GroundStats.Land,
 						FrameStats.Regions, FrameStats.Peopled, FrameStats.Detailed, Frame.People, NetStats_.Open,
 						NetStats_.Routes, NetStats_.Colonies, NetStats_.Hands, Dug,
-						static_cast<uint32>(Timeline.size()), static_cast<uint32>(J.Text.size()), Opt.Out.c_str(),
-						Seconds);
+						static_cast<uint32>(Timeline.size()), static_cast<uint32>(Chronicle.size()),
+						static_cast<uint32>(J.Text.size()), Opt.Out.c_str(), Seconds);
 		return 0;
 	}
 } // namespace

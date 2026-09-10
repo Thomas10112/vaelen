@@ -220,6 +220,32 @@
 		color: var(--ink-faint);
 	}
 
+	.told {
+		max-height: 300px;
+		overflow-y: auto;
+		font-family: var(--display);
+		font-size: 13.5px;
+		font-weight: 300;
+		line-height: 1.5;
+	}
+
+	.told p {
+		margin: 0 0 7px;
+		text-wrap: pretty;
+	}
+
+	.told .when {
+		font-family: var(--mono);
+		font-size: 10.5px;
+		color: var(--ink-faint);
+		margin-right: 6px;
+	}
+
+	.told .none, .told .more {
+		color: var(--ink-faint);
+		font-style: italic;
+	}
+
 	.controls { display: flex; flex-direction: column; gap: 7px; }
 
 	label.toggle {
@@ -327,6 +353,14 @@
 				<button class="reset" id="play" type="button">Run the centuries</button>
 			</div>
 
+			<div class="block" id="toldBlock" hidden>
+				<h2>What happened</h2>
+				<div class="told" id="told"></div>
+				<p class="note" style="margin:10px 0 0">Only the one region the world runs <em>person by
+				person</em> remembers people by name. Everywhere else it remembers roads, towns, harvests and
+				seasons &mdash; which is not a gap in the record but the shape of what is being simulated.</p>
+			</div>
+
 			<div class="block">
 				<h2>Drawn from</h2>
 				<div class="controls" id="controls"></div>
@@ -391,6 +425,7 @@
 		// Files written before 13.08c hold one moment. Where a timeline is
 		// present, EVERY reading on this page comes from the chosen frame, so
 		// the panel and the map can never disagree about which year they show.
+		var TOLD = D.chronicle || [];
 		var TL = D.timeline || {};
 		var KEEP = TL.keep || [];
 		var RS = TL.regionStride || 5, TS = TL.routeStride || 3;
@@ -449,6 +484,44 @@
 			"  &middot;  " + D.run.seconds.toFixed(2) + " s to simulate";
 
 		var runEl = document.getElementById("run");
+
+		var toldEl = document.getElementById("told");
+		var MOST_TOLD = 140;
+
+		function escapeText(t) {
+			return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+		}
+
+		function told() {
+			// The lines of the span that ENDS at the chosen year: what happened
+			// since the frame before it. With no timeline there is one span and it
+			// is the whole history.
+			if (!TOLD.length) { return; }
+			var from = 0, to = D.run.year;
+			if (at >= 0) {
+				to = frameAt(at).year;
+				from = at > 0 ? frameAt(at - 1).year + 1 : 0;
+			}
+			var out = "", shown = 0, total = 0, k, x;
+			for (k = 0; k < TOLD.length; k++) {
+				x = TOLD[k];
+				if (x.year < from || x.year > to) { continue; }
+				total++;
+				if (shown >= MOST_TOLD) { continue; }
+				shown++;
+				// The sentence already opens with its own year; the tag says it
+				// better and shorter, so the words start at the era.
+				var said = x.said.replace(/^Year\s+\d+,\s*/, "");
+				out += '<p><span class="when">' + x.year + "</span>" + escapeText(said) + "</p>";
+			}
+			if (!total) {
+				out = '<p class="none">Nothing the world thought worth remembering.</p>';
+			} else if (total > shown) {
+				out += '<p class="more">and ' + n(total - shown) + " more in these years.</p>";
+			}
+			toldEl.innerHTML = out;
+			toldEl.scrollTop = 0;
+		}
 
 		function readings() {
 			// The ground is the ground in every year; everything else is read off
@@ -901,6 +974,7 @@
 			scrub.value = String(i);
 			document.getElementById("yearNow").textContent = "year " + n(frameAt(at).year);
 			readings();
+			told();
 			if (show.people) { paint(); }
 			draw();
 		}
@@ -931,8 +1005,11 @@
 			document.getElementById("yearNow").textContent = "year " + n(frameAt(at).year);
 		}
 
+		if (TOLD.length) { document.getElementById("toldBlock").hidden = false; }
+
 		window.addEventListener("resize", fit);
 		readings();
+		told();
 		paint();
 		fit();
 	}());

@@ -174,6 +174,18 @@ def check(doc):
           bad_frames.append(("open", f.get("year")))
       want(not bad_frames, "kept frames disagree with the document: %s" % bad_frames[:6])
 
+  # ── what the world remembers ───────────────────────────────────────────────
+  told = doc.get("chronicle")
+  if want(isinstance(told, list), "missing section: chronicle"):
+    years = [t.get("year") for t in told]
+    want(years == sorted(years), "the chronicle is not in year order")
+    late = [y for y in years if y > doc["run"].get("year", 0)]
+    want(not late, "%d lines are dated after the run ended" % len(late))
+    strayr = sorted({t.get("region") for t in told if t.get("region") and t.get("region") not in named})
+    want(not strayr, "the chronicle speaks of regions the frame does not have: %s" % strayr[:8])
+    mute = sum(1 for t in told if not (t.get("said") or "").strip())
+    want(mute == 0, "%d chronicle lines say nothing" % mute)
+
   for key, where in (("digest", frame), ("digest", ground)):
     want(isinstance(where.get(key), str) and where[key] != "0x0000000000000000",
          "a digest is missing or zero, so nothing can be compared to this run")
@@ -199,6 +211,8 @@ def a_world():
                 "digest": "0x0000000000000003"},
     "routes": [{"index": 1, "from": 1, "to": 2, "open": 1, "idle": 0, "openings": 1, "carried": 5}],
     "colonies": [{"region": 1, "hands": 2, "lifted": 7}],
+    "chronicle": [{"year": 5, "region": 1, "said": "Year 5: a road was opened."},
+                  {"year": 9, "region": 0, "said": "Year 9: an era closed."}],
     "timeline": {"every": 5, "frames": 2, "regionStride": 5, "routeStride": 3, "keep": [
       {"year": 5, "people": 1, "open": 0, "regions": [1, 1, 0, 0, 0, 2, 0, 0, 0, 0], "routes": [1, 0, 0]},
       {"year": 10, "people": 3, "open": 1, "regions": [1, 2, 1, 1, 1, 2, 1, 0, 0, 1], "routes": [1, 1, 5]}]},
@@ -266,10 +280,15 @@ def self_test():
   breaks("frame people", lambda d: d["timeline"]["keep"][0].update(people=9))
   breaks("frame route off the map", lambda d: d["timeline"]["keep"][0]["routes"].__setitem__(0, 9))
   breaks("frame open count", lambda d: d["timeline"]["keep"][0].update(open=1))
+  breaks("missing chronicle", lambda d: d.pop("chronicle"))
+  breaks("chronicle order", lambda d: d["chronicle"].reverse())
+  breaks("chronicle after the end", lambda d: d["chronicle"][1].update(year=99))
+  breaks("chronicle off the map", lambda d: d["chronicle"][0].update(region=9))
+  breaks("chronicle says nothing", lambda d: d["chronicle"][0].update(said="  "))
 
   for line in failures:
     print("SELF-TEST: %s" % line, file=sys.stderr)
-  print("self-test: %d checks exercised, %d failures" % (42, len(failures)))
+  print("self-test: %d checks exercised, %d failures" % (47, len(failures)))
   return 1 if failures else 0
 
 
@@ -292,6 +311,9 @@ def same(first, second):
     bad += 1
   if a.get("timeline") != b.get("timeline"):
     print("the centuries differ between two runs of one seed", file=sys.stderr)
+    bad += 1
+  if a.get("chronicle") != b.get("chronicle"):
+    print("the two runs of one seed remember different things", file=sys.stderr)
     bad += 1
   if bad == 0:
     print("%s and %s are the same world (frame %s, ground %s)"
@@ -330,10 +352,11 @@ def main():
   keep = doc.get("timeline", {}).get("keep", [])
   span = ("years %u-%u in %u frames" % (keep[0]["year"], keep[-1]["year"], len(keep))) if keep else "one moment"
   print("%s: %u x %u, %u tiles, %u land, %u coast, %u regions, %u roads (%u open, %u twinned), "
-        "%u colonies, %s, frame %s, ground %s, network %s"
+        "%u colonies, %s, %u remembered, frame %s, ground %s, network %s"
         % (args.path, ground["width"], ground["height"], ground["tiles"], ground["land"],
            ground["coast"], ground["regions"], net.get("routes", 0), net.get("open", 0), twins,
-           net.get("colonies", 0), span, doc["frame"]["digest"], ground["digest"], net.get("digest", "-")))
+           net.get("colonies", 0), span, len(doc.get("chronicle", [])), doc["frame"]["digest"],
+           ground["digest"], net.get("digest", "-")))
   return 0
 
 
