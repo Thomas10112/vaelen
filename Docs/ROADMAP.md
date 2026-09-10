@@ -2591,8 +2591,8 @@ first question Phase 13 or a later gameplay phase should be asked.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (6 of 6) · ENGINE HALF STARTED (13.06 of 3)
-TASK        : 13.07a done — the ground is in the view, and AELVOR runs with no engine
+PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (7 of 7) · ENGINE HALF STARTED (13.06 of 3)
+TASK        : 13.07b done — AELVOR has been SEEN, drawn from the view and nothing else
 STATUS      : PROTOTYPE (headless) / VALIDATED (UE 5.6, compiles, links and runs)
 
 PROGRESS
@@ -2657,7 +2657,18 @@ CURRENTLY
   it has been WATCHED across the engine boundary, on two operating systems and
   two compilers.
 
-→ **PHASE 13 STILL CANNOT BE CLOSED HERE.** Its remaining three tasks are 13.07b
+→ **13.07b IS DONE, AND AELVOR HAS BEEN LOOKED AT.** `Tools/Viewer/Atlas.html`
+  draws the world from the JSON of 13.07a and from nothing else - relief by
+  slope shading, biomes, rivers, the shelf, region borders, settlements, every
+  tile readable on hover. The first screenshot of this project was cubes on a
+  plate. This is a continent with ice caps, mountain ranges that run, biome
+  bands by latitude, an eastern archipelago and fifty-two towns on it. The open
+  question about the generator is answered: **the terrain has shape.**
+
+  It is NOT `VaelenPresentation` - that is now 13.07c, engine-side - and
+  ADR-0113's C4251 decision stays open, because MSVC never reads a web page.
+
+→ **PHASE 13 STILL CANNOT BE CLOSED HERE.** Its remaining three tasks are 13.07c
   VaelenPresentation and the world drawn in the engine, 13.08 a person and a
   colony and a road drawn from the view of 13.01, and 13.09 the editor open on
   AELVOR at 256 with a frame rate written down. Every one needs UE 5.6, a GPU and
@@ -2803,6 +2814,7 @@ kernel work: engine-agnostic, tested under the presets, covered by a gate.
 | 13.04 | The view under a snapshot and a reload, because a frame taken across a save must not tear | integration, deterministic |
 | 13.05 | Phase 13 kernel gate: a century at 256 with a view taken every frame of the last year, the deltas applied, and the result identical to the view taken fresh | long-duration, replay |
 | 13.07a | The GROUND in the view (`Vaelen/View/Land.h`), and `Tools/Atlas`: AELVOR generated, run and written out as numbers, with no engine anywhere | unit, integration, deterministic, edge | **DONE 2026-09-10** |
+| 13.07b | The world DRAWN from that view and from nothing else (`Tools/Viewer/Atlas.html`): relief, biomes, rivers, regions, settlements, every tile readable | rendered headless, checked against the run | **DONE 2026-09-10** |
 
 **Engine-side (needs UE 5.6, another machine).** Nothing here can be written
 honestly from a container without the engine, and writing it anyway is how a
@@ -2812,7 +2824,7 @@ head.
 | Task | Content | How it is verified |
 |---|---|---|
 | 13.06 | The first UBT build of all eleven kernel modules. This is the task the UNVERIFIED marks have been waiting for since Phase 00 | it builds, or it does not | **DONE 2026-09-10 - it builds** |
-| 13.07b | `VaelenPresentation`: the module, and the world drawn as regions **from that view alone** | a screenshot |
+| 13.07c | `VaelenPresentation`: the UE module, and the world drawn as regions **from that view alone** inside the engine. 13.07b proved the view is sufficient to draw from; this is the same claim in Unreal, and the first place ADR-0113's C4251 decision can be shown to do anything | a screenshot |
 | 13.08 | A person, a colony and a road drawn from the view of 13.01 | a screenshot |
 | 13.09 | Phase 13 gate: the editor open on AELVOR at 256, a century running, and the frame rate written down | measured on the machine that has the engine |
 
@@ -2945,9 +2957,12 @@ the editor and pressing Build AELVOR on a world nobody has ever seen run. Code
 first, image second is the wrong order when the code cannot be compiled here and
 the image can be produced there today.
 
-**The C4251 decision (ADR-0113) resolves in 13.07b**, which is the first task
-with a real cross-module consumer and the first place a `#pragma` guarded by
-`_MSC_VER` can be shown to do anything at all.
+**The C4251 decision (ADR-0113) resolves in 13.07c**, which is the first task
+with a real cross-module consumer INSIDE UNREAL and the first place a `#pragma`
+guarded by `_MSC_VER` can be shown to do anything at all. It did not resolve in
+13.07b: that task draws the world from a page, MSVC never reads it, and saying
+otherwise would be claiming a warning was dealt with because a different
+compiler never emitted it.
 
 **How the two halves meet.** The kernel half is done here, pushed, and green in
 CI. The engine half is done on the machine with UE 5.6, and the standing rule
@@ -3013,6 +3028,35 @@ like a coast, does the terrain have ranges or noise, what happened in year 300 -
 used to cost a fifty-seven-second editor start on a machine the engine warns
 about at every launch. It now costs one command. The engine is still where the
 game is, and 13.09 still needs it.
+
+### 13.07b done - the world drawn from the view and from nothing else
+
+`Tools/Viewer/Atlas.html` reads one thing: the JSON `Tools/Atlas` writes. No
+World, no kernel header, no way to ask the simulation anything - and by the time
+the page opens, the world that made the numbers has been destroyed. Thirteen
+phases of layering rule, finally load-bearing rather than remembered.
+
+What it draws, all of it out of the two views:
+
+- the ground, one pixel a tile, in the kernel's own palette
+  (`AVaelenAtlasActor::PaintColour`, copied so page and engine agree)
+- **relief by slope shading**, light from the north-west. This is the toggle
+  that closes a question open since the first screenshot: does the terrain have
+  SHAPE, or is it flat noise with colour on it? AELVOR has ranges, and they run.
+- height alone on a single ramp, for when biome colour answers first
+- rivers, lakes, the shelf darkening with depth, shore water apart from open sea
+- region borders, settlements, and the one region simulated person by person
+- every tile readable on hover: what it is, how high, whose region, how many
+  live there, how many of them are bound
+
+`Tools/Viewer/build_viewer.py` inlines a run into the page and refuses to do it
+for a file `check_atlas_output.py` rejects. A viewer that draws a broken world
+convincingly is worse than one that will not open.
+
+**What this is NOT.** It is not `VaelenPresentation`, and the engine-side table
+now calls that 13.07c. Drawing AELVOR in a browser proves the view carries
+enough to draw from; it proves nothing about Unreal, and ADR-0113's C4251
+decision stays open because MSVC never reads this page.
 
 **What must not happen in this phase.** A file marked VALIDATED because it
 looked right. UNVERIFIED is not an embarrassment to be cleared by assertion; it

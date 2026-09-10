@@ -1,0 +1,671 @@
+<title>Atlas of AELVOR</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,500;0,600;1,300&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400&display=swap">
+<style>
+	:root {
+		--ink: #10161f;
+		--ink-soft: #3c4757;
+		--ink-faint: #6d7889;
+		--paper: #e9ecef;
+		--panel: #f6f7f9;
+		--rule: #c8cdd6;
+		--chart: #0d1420;
+		--accent: #9a5b3c;
+		--accent-soft: #b8785a;
+		--good: #3f6b4a;
+		--display: "Spectral", "Iowan Old Style", Palatino, Georgia, serif;
+		--sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+		--mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+	}
+
+	:root:not([data-theme="light"]) {
+		color-scheme: light;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		:root:not([data-theme="light"]) {
+			--ink: #e6eaf0;
+			--ink-soft: #a4aebd;
+			--ink-faint: #6e7a8b;
+			--paper: #0b0f16;
+			--panel: #141a24;
+			--rule: #253040;
+			--chart: #070a10;
+			--accent: #d99a72;
+			--accent-soft: #b8785a;
+			--good: #7fb28c;
+			color-scheme: dark;
+		}
+	}
+
+	:root[data-theme="dark"] {
+		--ink: #e6eaf0;
+		--ink-soft: #a4aebd;
+		--ink-faint: #6e7a8b;
+		--paper: #0b0f16;
+		--panel: #141a24;
+		--rule: #253040;
+		--chart: #070a10;
+		--accent: #d99a72;
+		--accent-soft: #b8785a;
+		--good: #7fb28c;
+		color-scheme: dark;
+	}
+
+	* { box-sizing: border-box; }
+
+	body {
+		margin: 0;
+		background: var(--paper);
+		color: var(--ink);
+		font-family: var(--sans);
+		font-size: 14px;
+		line-height: 1.5;
+	}
+
+	.sheet {
+		max-width: 1400px;
+		margin: 0 auto;
+		padding-inline: 20px;
+		padding-block: 28px 56px;
+	}
+
+	header {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 8px 20px;
+		border-bottom: 1px solid var(--rule);
+		padding-bottom: 14px;
+		margin-bottom: 22px;
+	}
+
+	h1 {
+		font-family: var(--display);
+		font-weight: 500;
+		font-size: clamp(30px, 5vw, 46px);
+		letter-spacing: 0.14em;
+		margin: 0;
+		text-wrap: balance;
+	}
+
+	.subtitle {
+		font-family: var(--display);
+		font-style: italic;
+		font-weight: 300;
+		color: var(--ink-soft);
+		font-size: 16px;
+	}
+
+	.spacer { flex: 1 1 40px; }
+
+	.stamp {
+		font-family: var(--mono);
+		font-size: 11px;
+		color: var(--ink-faint);
+		white-space: nowrap;
+	}
+
+	.layout {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 300px;
+		gap: 22px;
+		align-items: start;
+	}
+
+	@media (max-width: 900px) {
+		.layout { grid-template-columns: minmax(0, 1fr); }
+	}
+
+	.plate {
+		position: relative;
+		background: var(--chart);
+		border: 1px solid var(--rule);
+		overflow: hidden;
+		aspect-ratio: 1;
+		/* The whole map has to be in the first frame: a square plate as wide as
+		   the column is taller than the screen, and a world you have to scroll
+		   to see the bottom of is a world you never see at once. */
+		max-height: calc(100vh - 210px);
+		max-width: min(100%, calc(100vh - 210px));
+		margin-inline: auto;
+		touch-action: none;
+	}
+
+	canvas {
+		display: block;
+		width: 100%;
+		height: 100%;
+		cursor: crosshair;
+	}
+
+	.readout {
+		position: absolute;
+		left: 10px;
+		bottom: 10px;
+		background: color-mix(in srgb, var(--chart) 86%, transparent);
+		border: 1px solid color-mix(in srgb, var(--rule) 70%, transparent);
+		color: #dfe5ee;
+		font-family: var(--mono);
+		font-size: 11px;
+		line-height: 1.6;
+		padding: 8px 11px;
+		pointer-events: none;
+		max-width: min(280px, calc(100% - 20px));
+	}
+
+	.readout b { color: #fff; font-weight: 400; }
+	.readout .dim { color: #8b96a6; }
+
+	.rose {
+		position: absolute;
+		right: 12px;
+		top: 10px;
+		font-family: var(--display);
+		font-size: 11px;
+		letter-spacing: 0.2em;
+		color: #7d8899;
+		pointer-events: none;
+	}
+
+	aside { display: flex; flex-direction: column; gap: 18px; }
+
+	.block {
+		background: var(--panel);
+		border: 1px solid var(--rule);
+		padding: 14px 15px;
+	}
+
+	.block h2 {
+		font-family: var(--display);
+		font-size: 12px;
+		font-weight: 600;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: var(--ink-soft);
+		margin: 0 0 10px;
+	}
+
+	.rows { display: grid; grid-template-columns: 1fr auto; gap: 3px 12px; }
+
+	.rows dt { color: var(--ink-soft); font-size: 13px; }
+
+	.rows dd {
+		margin: 0;
+		font-family: var(--mono);
+		font-size: 12.5px;
+		font-variant-numeric: tabular-nums;
+		text-align: right;
+	}
+
+	.controls { display: flex; flex-direction: column; gap: 7px; }
+
+	label.toggle {
+		display: flex;
+		align-items: center;
+		gap: 9px;
+		cursor: pointer;
+		font-size: 13.5px;
+		user-select: none;
+	}
+
+	label.toggle input { accent-color: var(--accent); margin: 0; }
+
+	.legend { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; }
+
+	.swatch { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ink-soft); }
+
+	.swatch i {
+		width: 13px;
+		height: 13px;
+		flex: 0 0 13px;
+		border: 1px solid rgba(0, 0, 0, 0.25);
+	}
+
+	.digest {
+		font-family: var(--mono);
+		font-size: 10.5px;
+		color: var(--ink-faint);
+		word-break: break-all;
+		line-height: 1.7;
+	}
+
+	.note {
+		font-family: var(--display);
+		font-size: 13.5px;
+		font-weight: 300;
+		color: var(--ink-soft);
+		line-height: 1.62;
+	}
+
+	.note em { color: var(--ink); font-style: italic; }
+
+	.hint { font-size: 12px; color: var(--ink-faint); margin-top: 9px; }
+
+	button.reset {
+		font-family: var(--sans);
+		font-size: 12.5px;
+		color: var(--ink);
+		background: transparent;
+		border: 1px solid var(--rule);
+		padding: 5px 10px;
+		cursor: pointer;
+		align-self: flex-start;
+		margin-top: 4px;
+	}
+
+	button.reset:hover { border-color: var(--accent); color: var(--accent); }
+
+	footer {
+		margin-top: 30px;
+		padding-top: 14px;
+		border-top: 1px solid var(--rule);
+		font-family: var(--display);
+		font-size: 13px;
+		font-weight: 300;
+		font-style: italic;
+		color: var(--ink-faint);
+		text-wrap: balance;
+	}
+
+	:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+	@media (prefers-reduced-motion: reduce) {
+		* { transition: none !important; }
+	}
+</style>
+
+<div class="sheet">
+	<header>
+		<h1>AELVOR</h1>
+		<span class="subtitle" id="era"></span>
+		<span class="spacer"></span>
+		<span class="stamp" id="stamp"></span>
+	</header>
+
+	<div class="layout">
+		<div class="plate" id="plate">
+			<canvas id="map"></canvas>
+			<div class="rose">N &uarr;</div>
+			<div class="readout" id="readout"><span class="dim">move over the map</span></div>
+		</div>
+
+		<aside>
+			<div class="block">
+				<h2>The run</h2>
+				<dl class="rows" id="run"></dl>
+			</div>
+
+			<div class="block">
+				<h2>Drawn from</h2>
+				<div class="controls" id="controls"></div>
+				<button class="reset" id="reset" type="button">Reset the view</button>
+				<p class="hint">Scroll to zoom, drag to pan.</p>
+			</div>
+
+			<div class="block">
+				<h2>The ground</h2>
+				<div class="legend" id="legend"></div>
+			</div>
+
+			<div class="block">
+				<h2>Digests</h2>
+				<div class="digest" id="digests"></div>
+				<p class="note" style="margin-bottom:0">Two runs of one seed produce these same two numbers, on any compiler. That is what makes this a world and not a picture.</p>
+			</div>
+		</aside>
+	</div>
+
+	<footer id="footer"></footer>
+</div>
+
+<script id="aelvor" type="application/json">__AELVOR_DATA__</script>
+<script>
+	(function () {
+		"use strict";
+
+		var D = JSON.parse(document.getElementById("aelvor").textContent);
+		var W = D.ground.width, H = D.ground.height;
+		var TB = D.tiles.biome, TG = D.tiles.ground, TR = D.tiles.region, TE = D.tiles.elevation;
+		var SCALE = D.ground.elevationScale || 65536;
+
+		// Vaelen::View::GroundFlag
+		var LAND = 1, COAST = 2, SHORE = 4, BORDER = 8, RIVER = 16, LAKE = 32;
+
+		// The kernel's own palette (AVaelenAtlasActor::PaintColour), so the map
+		// on this page is coloured the way the engine colours it.
+		var BIOME = [
+			[26, 50, 90, "Ocean"],
+			[233, 238, 244, "Ice"],
+			[159, 169, 157, "Tundra"],
+			[55, 80, 59, "Boreal forest"],
+			[147, 149, 109, "Cold steppe"],
+			[67, 106, 57, "Temperate forest"],
+			[135, 157, 85, "Grassland"],
+			[157, 143, 93, "Scrubland"],
+			[38, 93, 50, "Tropical forest"],
+			[175, 159, 85, "Savanna"],
+			[211, 193, 137, "Desert"],
+			[167, 165, 169, "Alpine"]
+		];
+		var SEA = [26, 50, 90], SHOREC = [50, 86, 132], LAKEC = [58, 106, 152], RIVERC = [70, 124, 170];
+
+		var show = { relief: true, water: true, borders: false, towns: true, height: false };
+
+		// ── the readings ─────────────────────────────────────────────────────
+		var regionsByIndex = {};
+		var i, r;
+		for (i = 0; i < D.regions.length; i++) { regionsByIndex[D.regions[i].index] = D.regions[i]; }
+
+		var bound = 0, towns = 0, roads = 0;
+		for (i = 0; i < D.regions.length; i++) {
+			r = D.regions[i];
+			bound += r.bound;
+			if (r.settlement) { towns++; }
+			roads += r.roads;
+		}
+
+		function n(v) {
+			// Grouped by hand with a plain space. toLocaleString's separator is not
+			// the same character in every engine, and this page has to read correctly
+			// opened straight off the disk as well as served with a charset.
+			var t = String(v), out = "";
+			for (var k = 0; k < t.length; k++) {
+				if (k > 0 && (t.length - k) % 3 === 0) { out += " "; }
+				out += t.charAt(k);
+			}
+			return out;
+		}
+
+		document.getElementById("era").textContent = "year " + n(D.run.year) + " of the world";
+		document.getElementById("stamp").innerHTML = "seed " + D.run.seed + "  &middot;  " + W + "&times;" + H +
+			"  &middot;  " + D.run.seconds.toFixed(2) + " s to simulate";
+
+		var runRows = [
+			["Land", n(D.ground.land) + " tiles"],
+			["Sea", n(D.ground.tiles - D.ground.land) + " tiles"],
+			["Coastline", n(D.ground.coast) + " tiles"],
+			["Rivers and lakes", n(D.ground.water) + " tiles"],
+			["Regions", n(D.ground.regions)],
+			["&mdash; with people", n(D.frame.peopled)],
+			["&mdash; person by person", n(D.frame.detailed)],
+			["Living", n(D.frame.people)],
+			["Of them, bound", n(bound)],
+			["Settlements", n(towns)],
+			["Open routes", n(roads / 2 | 0)]
+		];
+		var runEl = document.getElementById("run"), html = "";
+		for (i = 0; i < runRows.length; i++) {
+			html += "<dt>" + runRows[i][0] + "</dt><dd>" + runRows[i][1] + "</dd>";
+		}
+		runEl.innerHTML = html;
+
+		document.getElementById("digests").innerHTML =
+			"frame&nbsp;&nbsp;" + D.frame.digest + "<br>ground&nbsp;" + D.ground.digest;
+
+		document.getElementById("footer").innerHTML =
+			"Every number on this page was produced by the simulation kernel and read through a view that holds no pointer " +
+			"back into it &mdash; which is why the world could be destroyed before this file was written. " +
+			"Nothing here is drawn by hand.";
+
+		// ── controls ─────────────────────────────────────────────────────────
+		var CONTROLS = [
+			["relief", "Relief (hill shading)"],
+			["height", "Height instead of biome"],
+			["water", "Rivers and lakes"],
+			["borders", "Region borders"],
+			["towns", "Settlements and seats"]
+		];
+		var cEl = document.getElementById("controls");
+		html = "";
+		for (i = 0; i < CONTROLS.length; i++) {
+			html += '<label class="toggle"><input type="checkbox" data-key="' + CONTROLS[i][0] + '"' +
+				(show[CONTROLS[i][0]] ? " checked" : "") + "> " + CONTROLS[i][1] + "</label>";
+		}
+		cEl.innerHTML = html;
+		cEl.addEventListener("change", function (e) {
+			var key = e.target.getAttribute("data-key");
+			if (key) { show[key] = e.target.checked; paint(); draw(); }
+		});
+
+		// ── legend ───────────────────────────────────────────────────────────
+		var seen = {};
+		for (i = 0; i < TB.length; i++) { if (TG[i] & LAND) { seen[TB[i]] = 1; } }
+		var legend = document.getElementById("legend");
+		html = "";
+		for (var b = 0; b < BIOME.length; b++) {
+			if (!seen[b]) { continue; }
+			html += '<span class="swatch"><i style="background:rgb(' + BIOME[b][0] + "," + BIOME[b][1] + "," +
+				BIOME[b][2] + ')"></i>' + BIOME[b][3] + "</span>";
+		}
+		html += '<span class="swatch"><i style="background:rgb(70,124,170)"></i>River</span>';
+		html += '<span class="swatch"><i style="background:rgb(26,50,90)"></i>Sea</span>';
+		legend.innerHTML = html;
+
+		// ── the plate ────────────────────────────────────────────────────────
+		var tiles = document.createElement("canvas");
+		tiles.width = W;
+		tiles.height = H;
+		var tctx = tiles.getContext("2d");
+		var image = tctx.createImageData(W, H);
+
+		var maxUp = 1, maxDown = -1;
+		for (i = 0; i < TE.length; i++) {
+			if (TG[i] & LAND) { if (TE[i] > maxUp) { maxUp = TE[i]; } }
+			else if (TE[i] < maxDown) { maxDown = TE[i]; }
+		}
+
+		function heightAt(x, y) {
+			if (x < 0) { x = 0; } else if (x >= W) { x = W - 1; }
+			if (y < 0) { y = 0; } else if (y >= H) { y = H - 1; }
+			return TE[y * W + x];
+		}
+
+		function paint() {
+			var px = image.data;
+			for (var y = 0; y < H; y++) {
+				for (var x = 0; x < W; x++) {
+					var idx = y * W + x, o = idx * 4;
+					var g = TG[idx], e = TE[idx], col;
+
+					if (g & LAND) {
+						if (show.height) {
+							var t = Math.max(0, Math.min(1, e / maxUp));
+							// A single ramp from low ground to high, so the
+							// question "does this terrain have shape" is asked
+							// without biome colour answering it first.
+							col = [40 + 200 * t, 55 + 175 * t, 70 + 120 * t];
+						} else {
+							var bi = BIOME[TB[idx]] || BIOME[6];
+							col = [bi[0], bi[1], bi[2]];
+						}
+					} else {
+						// Deeper sea, darker: the shelf reads as a shelf.
+						var d = maxDown < 0 ? Math.max(0, Math.min(1, e / maxDown)) : 0;
+						col = [SEA[0] * (1 - 0.55 * d), SEA[1] * (1 - 0.5 * d), SEA[2] * (1 - 0.4 * d)];
+						if (g & SHORE) { col = [SHOREC[0], SHOREC[1], SHOREC[2]]; }
+					}
+
+					if (show.water && (g & LAKE)) { col = [LAKEC[0], LAKEC[1], LAKEC[2]]; }
+					if (show.water && (g & RIVER)) { col = [RIVERC[0], RIVERC[1], RIVERC[2]]; }
+
+					if (show.relief && (g & LAND)) {
+						// Slope shading, light from the north-west. The whole
+						// point of the exercise: flat noise and a mountain range
+						// look identical in flat colour and nothing alike here.
+						var dzdx = (heightAt(x + 1, y) - heightAt(x - 1, y)) / (2 * SCALE);
+						var dzdy = (heightAt(x, y + 1) - heightAt(x, y - 1)) / (2 * SCALE);
+						var lit = 1 + 0.055 * (dzdx + dzdy);
+						if (lit < 0.55) { lit = 0.55; } else if (lit > 1.5) { lit = 1.5; }
+						col[0] *= lit; col[1] *= lit; col[2] *= lit;
+					}
+
+					if (show.borders) {
+						var here = TR[idx];
+						var right = x + 1 < W ? TR[idx + 1] : here;
+						var down = y + 1 < H ? TR[idx + W] : here;
+						if ((here !== right && (here || right)) || (here !== down && (here || down))) {
+							col[0] = col[0] * 0.45 + 20;
+							col[1] = col[1] * 0.45 + 16;
+							col[2] = col[2] * 0.45 + 14;
+						}
+					}
+
+					px[o] = col[0] < 0 ? 0 : col[0] > 255 ? 255 : col[0];
+					px[o + 1] = col[1] < 0 ? 0 : col[1] > 255 ? 255 : col[1];
+					px[o + 2] = col[2] < 0 ? 0 : col[2] > 255 ? 255 : col[2];
+					px[o + 3] = 255;
+				}
+			}
+			tctx.putImageData(image, 0, 0);
+		}
+
+		var view = document.getElementById("map");
+		var ctx = view.getContext("2d");
+		var plate = document.getElementById("plate");
+		var zoom = 1, panX = 0, panY = 0, size = 1;
+
+		function fit() {
+			var rect = plate.getBoundingClientRect();
+			var dpr = window.devicePixelRatio || 1;
+			size = Math.max(1, Math.round(rect.width));
+			view.width = Math.round(size * dpr);
+			view.height = Math.round(size * dpr);
+			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+			draw();
+		}
+
+		function clampPan() {
+			var span = size * zoom;
+			var slack = span - size;
+			if (slack <= 0) { panX = panY = 0; return; }
+			if (panX > 0) { panX = 0; } else if (panX < -slack) { panX = -slack; }
+			if (panY > 0) { panY = 0; } else if (panY < -slack) { panY = -slack; }
+		}
+
+		function draw() {
+			clampPan();
+			ctx.imageSmoothingEnabled = false;
+			ctx.clearRect(0, 0, size, size);
+			var span = size * zoom;
+			ctx.drawImage(tiles, panX, panY, span, span);
+
+			if (!show.towns) { return; }
+			var per = span / W;
+			for (var k = 0; k < D.regions.length; k++) {
+				var reg = D.regions[k];
+				if (!reg.settlement && !reg.detailed) { continue; }
+				var tx = reg.tile % W, ty = (reg.tile / W) | 0;
+				var cx = panX + (tx + 0.5) * per, cy = panY + (ty + 0.5) * per;
+				if (cx < -12 || cy < -12 || cx > size + 12 || cy > size + 12) { continue; }
+				var big = reg.detailed ? 1 : 0;
+				ctx.beginPath();
+				ctx.arc(cx, cy, big ? 6 : 3.2, 0, 6.2832);
+				ctx.fillStyle = big ? "rgba(232,190,92,0.95)" : "rgba(196,62,40,0.95)";
+				ctx.fill();
+				ctx.lineWidth = 1.2;
+				ctx.strokeStyle = "rgba(8,12,18,0.75)";
+				ctx.stroke();
+				if (big) {
+					ctx.beginPath();
+					ctx.arc(cx, cy, 11, 0, 6.2832);
+					ctx.strokeStyle = "rgba(232,190,92,0.5)";
+					ctx.stroke();
+				}
+			}
+		}
+
+		// ── reading a tile ───────────────────────────────────────────────────
+		var readout = document.getElementById("readout");
+
+		function tileAt(clientX, clientY) {
+			var rect = view.getBoundingClientRect();
+			var span = size * zoom, per = span / W;
+			var x = Math.floor((clientX - rect.left - panX) / per);
+			var y = Math.floor((clientY - rect.top - panY) / per);
+			if (x < 0 || y < 0 || x >= W || y >= H) { return null; }
+			return { x: x, y: y, i: y * W + x };
+		}
+
+		function describe(t) {
+			if (!t) {
+				readout.innerHTML = '<span class="dim">move over the map</span>';
+				return;
+			}
+			var g = TG[t.i], reg = regionsByIndex[TR[t.i]];
+			var what = (g & LAND) ? ((BIOME[TB[t.i]] || [, , , "land"])[3]) : ((g & SHORE) ? "Shore water" : "Open sea");
+			if (g & LAKE) { what = "Lake"; }
+			else if (g & RIVER) { what = "River &mdash; " + ((BIOME[TB[t.i]] || [, , , "land"])[3]).toLowerCase(); }
+			var lines = "<b>" + what + "</b><br>";
+			lines += '<span class="dim">tile</span> ' + t.x + ", " + t.y +
+				' &nbsp;<span class="dim">height</span> ' + (TE[t.i] / SCALE).toFixed(2) + "<br>";
+			if (reg) {
+				lines += '<span class="dim">region</span> ' + reg.index + " &middot; " + n(reg.tiles) + " tiles<br>";
+				lines += '<span class="dim">people</span> ' + n(reg.people) +
+					(reg.bound ? " (" + n(reg.bound) + " bound)" : "") + "<br>";
+				if (reg.settlement) { lines += '<span class="dim">settlement</span> #' + reg.settlement + " "; }
+				if (reg.roads) { lines += '<span class="dim">routes</span> ' + reg.roads + " "; }
+				if (reg.detailed) { lines += "<br><b>simulated person by person</b>"; }
+			} else if (TR[t.i]) {
+				lines += '<span class="dim">region ' + TR[t.i] + "</span>";
+			} else {
+				lines += '<span class="dim">no region: the sea belongs to nobody</span>';
+			}
+			readout.innerHTML = lines;
+		}
+
+		view.addEventListener("mousemove", function (e) {
+			if (dragging) { return; }
+			describe(tileAt(e.clientX, e.clientY));
+		});
+		view.addEventListener("mouseleave", function () { describe(null); });
+
+		view.addEventListener("wheel", function (e) {
+			e.preventDefault();
+			var rect = view.getBoundingClientRect();
+			var mx = e.clientX - rect.left, my = e.clientY - rect.top;
+			var before = zoom;
+			zoom *= e.deltaY < 0 ? 1.18 : 1 / 1.18;
+			if (zoom < 1) { zoom = 1; } else if (zoom > 24) { zoom = 24; }
+			var k = zoom / before;
+			panX = mx - (mx - panX) * k;
+			panY = my - (my - panY) * k;
+			draw();
+		}, { passive: false });
+
+		var dragging = false, lastX = 0, lastY = 0;
+		view.addEventListener("pointerdown", function (e) {
+			dragging = true;
+			lastX = e.clientX;
+			lastY = e.clientY;
+			view.setPointerCapture(e.pointerId);
+			view.style.cursor = "grabbing";
+		});
+		view.addEventListener("pointermove", function (e) {
+			if (!dragging) { return; }
+			panX += e.clientX - lastX;
+			panY += e.clientY - lastY;
+			lastX = e.clientX;
+			lastY = e.clientY;
+			draw();
+		});
+		function release(e) {
+			if (!dragging) { return; }
+			dragging = false;
+			view.style.cursor = "crosshair";
+			if (e && e.pointerId !== undefined && view.hasPointerCapture(e.pointerId)) {
+				view.releasePointerCapture(e.pointerId);
+			}
+		}
+		view.addEventListener("pointerup", release);
+		view.addEventListener("pointercancel", release);
+
+		document.getElementById("reset").addEventListener("click", function () {
+			zoom = 1; panX = 0; panY = 0;
+			draw();
+		});
+
+		window.addEventListener("resize", fit);
+		paint();
+		fit();
+	}());
+</script>

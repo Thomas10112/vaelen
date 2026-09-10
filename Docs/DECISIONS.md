@@ -7009,3 +7009,62 @@ Every number of the world identical on both sides. Two toolchains, two operating
 systems, two build systems, one world. Determinism has been asserted by tests
 since Phase 00; this is the first time it has been observed across the engine
 boundary.
+
+## ADR-0117 — The first thing to draw AELVOR is not the engine, and that is the point
+
+**Date:** 2026-09-10
+**Status:** Accepted
+**Phase:** 13 — task 13.07b
+
+### The decision
+
+`Tools/Viewer/Atlas.html`: the world drawn from the JSON of 13.07a and from
+nothing else. Not `VaelenPresentation`, not Unreal, not a module — a page, in
+the repository, built by a script that refuses to build it from a file the
+checker rejects.
+
+### Why a page rather than the engine module the roadmap named
+
+Two reasons, and the first is the one that matters.
+
+**It is the strongest possible test of 13.01's claim.** The layering rule says
+PRESENTATION reads a view and cannot reach the simulation. A UE actor that obeys
+the rule is a UE actor that could have disobeyed it — the World is right there,
+one `GetWorld()` away, and the discipline is the programmer's. A web page cannot
+disobey. It has no World, no kernel header, no process in common with the
+simulation, and the world that produced its numbers was destroyed before the
+file was written. If the view were missing something, this page could not draw
+it, and no amount of care would help. **It drew it.**
+
+**And it is the loop.** Every question about the world — does the coast look like
+a coast, does the terrain have ranges, where did the towns go — now costs one
+command and a browser tab, on any machine, instead of a fifty-seven-second
+editor start on the one machine that has UE.
+
+### What it settled
+
+A question open since the first screenshot of AELVOR: whether the terrain has
+shape or is flat noise with colour on it. Slope shading, light from the
+north-west, answers it — there are ranges, and they run. The generator is not
+the problem, and 13.07c can be about rendering rather than about world
+generation. That is a task's worth of work not spent.
+
+### What it did NOT settle, said plainly
+
+- **`VaelenPresentation` still does not exist.** The roadmap's 13.07b is now
+  13.07c and stays engine-side. Drawing AELVOR in a browser proves the view
+  carries enough to draw from; it proves nothing about Unreal.
+- **ADR-0113's C4251 decision stays open.** It resolves where MSVC compiles a
+  cross-module consumer, and MSVC never reads this page. Calling a warning dealt
+  with because a different compiler never emitted it is exactly the kind of fake
+  green this project spends its ADRs avoiding.
+- **This is a map, not a game.** Nobody is on the ground, there is no camera at
+  eye height and there is no art. Phase 14 and after are where that lives.
+
+### The palette, and why it is copied rather than chosen
+
+The page uses `AVaelenAtlasActor::PaintColour`'s exact values. A viewer that
+invented its own colours would show a world that looks different from the one
+the engine shows, and every comparison between the two would then be an argument
+about palettes. Copied values drift, so the reason is written here: when the
+engine's palette changes, this changes with it, deliberately and by hand.
