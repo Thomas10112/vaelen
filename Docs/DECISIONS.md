@@ -8069,3 +8069,18 @@ grows into something the project depends on, this is the upgrade path.
 **Leave it unchecked.** Honest for a throwaway. The page is not a throwaway:
 it is how a person sees AELVOR without an engine, and it is the argument that
 `WorldView` holding no pointer was worth the trouble.
+
+### Every one of these was watched failing
+
+A rule nobody has seen fire is a rule nobody has. So:
+
+- each of the ten self-test breaks is **aimed at its own rule**, and being
+  caught by a different one is its own failure - proved by mis-aiming one on
+  purpose, which reported *"syntax error: caught, but by the wrong rule"*;
+- the parse rule is skipped, not faked, when `node` is absent, and both the
+  summary line and the self-test count say so;
+- `Viewer.Built`: the built page from a template with one mis-spelled `id`
+  fails the check with exit 1, and the CMake wrapper exits 1 when the build
+  step itself fails. The wrapper's second failure path is the same three lines
+  as the first and was not separately exercised - said here rather than left to
+  be assumed.
