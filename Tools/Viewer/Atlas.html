@@ -241,6 +241,22 @@
 		margin-right: 6px;
 	}
 
+	.told .because {
+		display: block;
+		margin-left: 22px;
+		font-size: 12.5px;
+		color: var(--ink-soft);
+		border-left: 1px solid var(--rule);
+		padding-left: 9px;
+		margin-top: 2px;
+	}
+
+	.told .because b {
+		font-weight: 400;
+		font-style: italic;
+		color: var(--ink-faint);
+	}
+
 	.told .none, .told .more {
 		color: var(--ink-faint);
 		font-style: italic;
@@ -512,7 +528,18 @@
 				// The sentence already opens with its own year; the tag says it
 				// better and shorter, so the words start at the era.
 				var said = x.said.replace(/^Year\s+\d+,\s*/, "");
-				out += '<p><span class="when">' + x.year + "</span>" + escapeText(said) + "</p>";
+				out += '<p><span class="when">' + x.year + "</span>" + escapeText(said);
+				// The why, where the world kept one. CauseChain walks the event
+				// log rather than the chronicle, so a link can be a thing nobody
+				// thought worth remembering - the drought behind the harvest
+				// behind the hunger.
+				if (x.because) {
+					for (var c = 0; c < x.because.length; c++) {
+						out += '<span class="because" style="margin-left:' + (22 + c * 14) + 'px"><b>because</b> ' +
+							escapeText(x.because[c].replace(/^Year\s+\d+,\s*/, "")) + "</span>";
+					}
+				}
+				out += "</p>";
 			}
 			if (!total) {
 				out = '<p class="none">Nothing the world thought worth remembering.</p>';

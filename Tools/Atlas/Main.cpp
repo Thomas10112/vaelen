@@ -446,6 +446,7 @@ namespace
 		bool Tiles = true;
 		bool Colony = false;
 		bool Chronicle = false;
+		bool Why = false;
 		uint32 Every = 0; ///< years between kept frames; 0 = keep only the last
 	};
 
@@ -503,7 +504,8 @@ namespace
 							 "  --no-tiles      write the regions only, not the ground\n"
 							 "  --colony        found a mining colony on the busiest region\n"
 							 "  --every N       also keep a frame every N years, for a timeline\n"
-							 "  --chronicle     remember what happened, and write it out in words\n");
+							 "  --chronicle     remember what happened, and write it out in words\n"
+							 "  --why           and why: the cause of each thing, back to its root\n");
 	}
 
 	bool ParseOptions(int Argc, char** Argv, Options& Out)
@@ -524,6 +526,13 @@ namespace
 			else if (std::strcmp(Arg, "--chronicle") == 0)
 			{
 				Out.Chronicle = true;
+			}
+			else if (std::strcmp(Arg, "--why") == 0)
+			{
+				// The why is read out of the chronicle's records, so asking for
+				// one asks for the other.
+				Out.Chronicle = true;
+				Out.Why = true;
 			}
 			else if (std::strcmp(Arg, "--help") == 0 || std::strcmp(Arg, "-h") == 0)
 			{
@@ -659,9 +668,11 @@ namespace
 		// line on a timeline needs to know which year it belongs to.
 		struct Told
 		{
+			uint64 Event = 0; ///< the event's persistent id: what a cause chain is asked for
 			uint32 Year = 0;
 			uint32 Region = 0;
 			std::string Line;
+			std::vector<std::string> Because; ///< the cause chain, nearest cause first
 		};
 		std::vector<Told> Chronicle;
 		if (Opt.Chronicle)
@@ -677,6 +688,7 @@ namespace
 			for (const History::RecordInfo& R : Records)
 			{
 				Told T;
+				T.Event = R.Event;
 				T.Year = static_cast<uint32>(R.Tick / History::TicksPerYear);
 				T.Region = R.Region;
 				const Event* E = History::FindEvent(Run.Instance.Log(), PersistentId{R.Event});
@@ -687,6 +699,25 @@ namespace
 				else
 				{
 					History::DescribeRecord(Run.Instance, Run.Ages.Types(), R, T.Line);
+				}
+				// The why. CauseChain walks the EVENT LOG and not the records, so
+				// it can pass through causes nobody thought worth chronicling -
+				// which is the point: the reason a loaf was dear is a harvest, and
+				// the reason for the harvest is a drought, and only one of the
+				// three was ever history.
+				if (Opt.Why && E != nullptr)
+				{
+					std::vector<const Event*> Chain;
+					History::CauseChain(Run.Instance.Log(), E->Id, Chain, 8);
+					for (usize L = 1; L < Chain.size(); ++L)
+					{
+						std::string Step;
+						DescribeEconomyEvent(Run.Instance, Run.Ages.Types(), Run.Trades, *Chain[L], Step, &Index);
+						if (!Step.empty())
+						{
+							T.Because.push_back(std::move(Step));
+						}
+					}
 				}
 				Chronicle.push_back(std::move(T));
 			}
@@ -896,11 +927,26 @@ namespace
 		{
 			J.Put(C == 0 ? "\n" : ",\n");
 			J.Put("{");
+			J.Field("id", Chronicle[C].Event);
+			J.Put(",");
 			J.Field("year", Chronicle[C].Year);
 			J.Put(",");
 			J.Field("region", Chronicle[C].Region);
 			J.Put(",\"said\":");
 			J.Str(Chronicle[C].Line);
+			if (!Chronicle[C].Because.empty())
+			{
+				J.Put(",\"because\":[");
+				for (usize B = 0; B < Chronicle[C].Because.size(); ++B)
+				{
+					if (B != 0)
+					{
+						J.Put(",");
+					}
+					J.Str(Chronicle[C].Because[B]);
+				}
+				J.Put("]");
+			}
 			J.Put("}");
 		}
 		J.Put("\n],\n\"tiles\":{");

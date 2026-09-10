@@ -2591,8 +2591,8 @@ first question Phase 13 or a later gameplay phase should be asked.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (10 of 10) · ENGINE HALF STARTED (13.06 of 3)
-TASK        : 13.08d done — the world tells its own history, in its own words
+PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (11 of 11) · ENGINE HALF STARTED (13.06 of 3)
+TASK        : 13.08e done — and it says WHY, four systems deep
 STATUS      : PROTOTYPE (headless) / VALIDATED (UE 5.6, compiles, links and runs)
 
 PROGRESS
@@ -2667,6 +2667,33 @@ CURRENTLY
 
   It is NOT `VaelenPresentation` - that is now 13.07c, engine-side - and
   ADR-0113's C4251 decision stays open, because MSVC never reads a web page.
+
+→ **13.08e IS DONE: THE WORLD SAYS WHY.** Every event has carried a `Cause`
+  since Phase 03 and `CauseChain` has been able to walk it since. Nothing had
+  ever asked. `--why` asks:
+
+    Year 342: Grain could not be had in Zakru.
+       because  Zakru harvested 102 of grain.
+         because  a drought struck Zakru.
+           because  omens of drought were seen over Zakru.
+
+    Year 325: the age of Oldiss ended.
+       because  a terrible eruption struck Wadumfu and 489 died.
+
+  **An age of the world ended because a volcano killed four hundred and
+  eighty-nine people.** Four systems wrote those lines and none knew about the
+  others. The chain is walked over the LOG and not the chronicle, because a
+  cause is often a thing nobody thought worth remembering - the harvest behind
+  the hunger is not history, the drought behind the harvest is. ADR-0124.
+
+  It also settled a suspected defect the honest way. Pairs at year 0 and 14
+  identical later lines looked like ADR-0120's twin roads; emitting each
+  record's event id gave 8158 ids for 8158 lines, all distinct. Nothing is
+  recorded twice - the year-0 pairs are two events and the chain says the second
+  is BECAUSE the first, and the 14 others are different events that read alike
+  because two people were given the same generated name. The cost of checking
+  was one field in a file; the cost of not checking would have been a third ADR
+  about duplicates that were never there.
 
 → **13.08d IS DONE, AND IT WAS NOT NEW WORK.** Phases 04 to 11 each built a
   chronicle listener and a describer that puts a sentence on an event in the
@@ -2914,6 +2941,7 @@ kernel work: engine-agnostic, tested under the presets, covered by a gate.
 | 13.08a | The NETWORK in the view (`Vaelen/View/Net.h`): roads as roads and not as a count, and the colony. Drawn on the same page | unit, integration, deterministic, edge | **DONE 2026-09-10** |
 | 13.08c | The world IN TIME: `--every N` keeps a frame, the page scrubs four centuries, and the pre-history stops being a black box | deterministic (a timelined run is the same run), checked output | **DONE 2026-09-10** |
 | 13.08d | What HAPPENED: the chronicle listeners of Phases 04-11 wired for the first time outside a test, and the world's own sentences on the page beside the year | deterministic (the chronicle observes without touching), checked output | **DONE 2026-09-10** |
+| 13.08e | And WHY: `CauseChain` walked for every record and written under it, four systems deep | checked output, cause depth capped | **DONE 2026-09-10** |
 
 **Engine-side (needs UE 5.6, another machine).** Nothing here can be written
 honestly from a container without the engine, and writing it anyway is how a

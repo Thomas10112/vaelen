@@ -7525,3 +7525,73 @@ letting the reader conclude the rest of the world is empty.
 > Eleven phases of capability were built and verified and never used. A test
 > proves a thing works; only a reader proves it is worth anything. **Ask the
 > systems you already have what they know before building another one.**
+
+## ADR-0124 — An age of the world ended because a volcano killed four hundred and eighty-nine people
+
+**Date:** 2026-09-10
+**Status:** Accepted
+**Phase:** 13 — task 13.08e
+
+### The claim, and where it had been sitting
+
+The README says the simulation is the source of truth and that **systems cause
+events**. Every event carries a `Cause`, `History::CauseChain` has walked those
+causes since Phase 03, and `ExportWhyWithEconomy` has been able to write the
+chain out in words since 06.07. Nothing had ever asked.
+
+`--why` asks. For every chronicled record it walks the chain and describes each
+link with the same describer the line itself used:
+
+```
+Year 342: Grain could not be had in Zakru.
+   because  Zakru harvested 102 of grain.
+     because  a drought struck Zakru.
+       because  omens of drought were seen over Zakru.
+
+Year 325: the age of Oldiss ended.
+   because  a terrible eruption struck Wadumfu and 489 died.
+     because  omens of eruption were seen over Wadumfu.
+```
+
+Four systems wrote those four lines and none of them knew about the others. That
+is the whole thesis of the project, and it was in the event log unread.
+
+### Why the chain is walked over the LOG and not the chronicle
+
+`CauseChain` reads `World::Log()`. A cause can therefore be an event **nobody
+thought worth remembering** - the harvest behind the hunger is not history, the
+drought behind the harvest is. Walking the records instead would give a chain
+with holes in exactly the places that explain anything.
+
+### What it costs, measured
+
+At 128, 356 of 3295 records have a cause and the deepest chain is three links;
+the file grows from 637 KB to 727 KB. At 256, 388 of 8158, and 2.2 MB in total.
+Depth is capped at 8 - a cycle in the causes would otherwise be a hang, and a
+cap that is never reached costs nothing.
+
+### A duplicate that was not one
+
+The chronicle showed pairs at year 0: *"the Oldegedim first settled Edavaken"*
+and *"the Oldegedim settled Edavaken"*, and 14 later lines that read exactly the
+same as another line of the same year and region. Both looked like ADR-0120's
+twin roads.
+
+Emitting each record's event id settled it: **8158 ids for 8158 lines, all
+distinct.** No event is recorded twice. The year-0 pairs are two events, and the
+cause chain says so itself - the second is *because* the first. The 14 others are
+genuinely different events that read alike because two people in a region of
+seven thousand were given the same generated name.
+
+> The cost of checking was one field in a JSON file. The cost of not checking
+> would have been an ADR proposing a fix to something that was never broken -
+> and this session had already written two ADRs about real duplicates, which is
+> exactly the state of mind in which the third one gets invented.
+
+### Verified
+
+`Tools/check_atlas_output.py` gained three rules: no event id repeats, and a
+`because` that is present is a non-empty list of non-empty lines - because an
+empty cause list is a worse lie than a missing one, saying "this was asked and
+nothing came back". Each proved to fire by `--self-test`, now 50 checks. The
+CTest atlas runs use `--why`, so CI asks the world why on every push.

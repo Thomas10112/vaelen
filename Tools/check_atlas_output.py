@@ -185,6 +185,15 @@ def check(doc):
     want(not strayr, "the chronicle speaks of regions the frame does not have: %s" % strayr[:8])
     mute = sum(1 for t in told if not (t.get("said") or "").strip())
     want(mute == 0, "%d chronicle lines say nothing" % mute)
+    ids = [t.get("id") for t in told]
+    want(len(set(ids)) == len(ids), "the chronicle records an event more than once")
+    # The why, where one was asked for. An empty cause list is a lie of a
+    # different kind from a missing one: it says "this was asked and nothing
+    # came back", so it is not written at all.
+    hollow = [t.get("id") for t in told
+              if "because" in t and (not isinstance(t["because"], list) or not t["because"]
+                                     or any(not str(b).strip() for b in t["because"]))]
+    want(not hollow, "%d chronicle lines carry an empty or wordless cause" % len(hollow))
 
   for key, where in (("digest", frame), ("digest", ground)):
     want(isinstance(where.get(key), str) and where[key] != "0x0000000000000000",
@@ -211,8 +220,9 @@ def a_world():
                 "digest": "0x0000000000000003"},
     "routes": [{"index": 1, "from": 1, "to": 2, "open": 1, "idle": 0, "openings": 1, "carried": 5}],
     "colonies": [{"region": 1, "hands": 2, "lifted": 7}],
-    "chronicle": [{"year": 5, "region": 1, "said": "Year 5: a road was opened."},
-                  {"year": 9, "region": 0, "said": "Year 9: an era closed."}],
+    "chronicle": [{"id": 11, "year": 5, "region": 1, "said": "Year 5: a road was opened."},
+                  {"id": 12, "year": 9, "region": 0, "said": "Year 9: an era closed.",
+                   "because": ["Year 5: a road was opened."]}],
     "timeline": {"every": 5, "frames": 2, "regionStride": 5, "routeStride": 3, "keep": [
       {"year": 5, "people": 1, "open": 0, "regions": [1, 1, 0, 0, 0, 2, 0, 0, 0, 0], "routes": [1, 0, 0]},
       {"year": 10, "people": 3, "open": 1, "regions": [1, 2, 1, 1, 1, 2, 1, 0, 0, 1], "routes": [1, 1, 5]}]},
@@ -285,10 +295,13 @@ def self_test():
   breaks("chronicle after the end", lambda d: d["chronicle"][1].update(year=99))
   breaks("chronicle off the map", lambda d: d["chronicle"][0].update(region=9))
   breaks("chronicle says nothing", lambda d: d["chronicle"][0].update(said="  "))
+  breaks("an event remembered twice", lambda d: d["chronicle"][1].update(id=11))
+  breaks("an empty cause", lambda d: d["chronicle"][1].update(because=[]))
+  breaks("a wordless cause", lambda d: d["chronicle"][1].update(because=[" "]))
 
   for line in failures:
     print("SELF-TEST: %s" % line, file=sys.stderr)
-  print("self-test: %d checks exercised, %d failures" % (47, len(failures)))
+  print("self-test: %d checks exercised, %d failures" % (50, len(failures)))
   return 1 if failures else 0
 
 
@@ -352,10 +365,11 @@ def main():
   keep = doc.get("timeline", {}).get("keep", [])
   span = ("years %u-%u in %u frames" % (keep[0]["year"], keep[-1]["year"], len(keep))) if keep else "one moment"
   print("%s: %u x %u, %u tiles, %u land, %u coast, %u regions, %u roads (%u open, %u twinned), "
-        "%u colonies, %s, %u remembered, frame %s, ground %s, network %s"
+        "%u colonies, %s, %u remembered (%u with a cause), frame %s, ground %s, network %s"
         % (args.path, ground["width"], ground["height"], ground["tiles"], ground["land"],
            ground["coast"], ground["regions"], net.get("routes", 0), net.get("open", 0), twins,
-           net.get("colonies", 0), span, len(doc.get("chronicle", [])), doc["frame"]["digest"],
+           net.get("colonies", 0), span, len(doc.get("chronicle", [])),
+           sum(1 for t in doc.get("chronicle", []) if t.get("because")), doc["frame"]["digest"],
            ground["digest"], net.get("digest", "-")))
   return 0
 
