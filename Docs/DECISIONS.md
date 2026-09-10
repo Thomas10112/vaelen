@@ -6408,3 +6408,44 @@ it already says "detail".
 - An eye looking nowhere in particular gets the whole world, which is what 13.01
   gave and stays the default. A renderer that does not care about level of
   detail never has to know this task happened.
+
+## ADR-0107: A frame taken across a save must not tear
+
+### Context
+
+03.06 puts a world on disk and brings it back. 13.01 says a view is a pure
+function of world state. Those two claims together have a consequence nobody had
+checked: a view taken before a save and a view taken after the reload must be
+the same view. If they ever differed it would mean the view reads something a
+snapshot does not carry - which is the one way a renderer could show a loaded
+game that never existed.
+
+### Decision
+
+The consequence is checked rather than assumed, in three directions:
+
+1. **The frame survives.** The digest of a view taken before the save equals the
+   digest of one taken from the reloaded world.
+
+2. **A delta made ACROSS a save still applies.** This is the half a renderer
+   actually lives on: it holds yesterday's frame, the game is saved and reloaded
+   in between, and the difference from yesterday's frame to today's must still
+   rebuild today's exactly. A renderer must not have to know a save happened.
+
+3. **The eye does not move either.** A framed view is a pure function of the
+   world AND the eye, so neither half may notice a save.
+
+And the 13.01 claim again with a save in the middle: thirty frames taken from
+the saved world and thirty from the loaded one leave both state digests
+unmoved - and the world that has been looked at thirty times saves to **byte
+for byte the same snapshot** it did before anybody looked at it.
+
+### Consequences
+
+- Measured: a 2.5 MB snapshot of a 99-region world of 20255 people; identical
+  frames either side of it; a delta across the save and four further years
+  carrying 27 changed regions in 1600 bytes with `Whole = 0`, meaning the save
+  did not tear the ground.
+- The last check is the strongest one in the module and the cheapest to have
+  skipped: comparing the two snapshots as bytes catches a view that writes
+  through a `const` reference by some route the digest happens not to cover.

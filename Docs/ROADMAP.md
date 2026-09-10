@@ -2591,8 +2591,8 @@ first question Phase 13 or a later gameplay phase should be asked.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 13 — PRESENTATION — 3 of 9 (kernel half)
-TASK        : 13.03 — LEVEL OF DETAIL FOR THE EYE — done
+PHASE       : 13 — PRESENTATION — 4 of 9 (kernel half)
+TASK        : 13.04 — THE VIEW ACROSS A SNAPSHOT AND A RELOAD — done
 STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
@@ -2640,6 +2640,19 @@ CURRENTLY
 
   The eye is an input to the view and never a property of the world. ADR-0106.
 
+  13.04 checked what 03.06 and 13.01 imply together and nobody had tested: a
+  frame taken before a save is the frame taken after the reload, and a delta made
+  ACROSS a save still rebuilds today's frame from yesterday's - which is what a
+  renderer actually lives on, because it must not have to know a save happened.
+
+    a 2.5 MB snapshot of 99 regions and 20255 people — identical frames either side
+    a delta across the save and four more years — 27 regions, 1600 bytes, whole=0
+    thirty frames from each world — and the looked-at world saves to the SAME BYTES
+
+  That last one is the strongest check in the module: comparing two snapshots
+  byte for byte catches a view writing through a const reference by some route a
+  state digest happens not to cover. ADR-0107.
+
   Phase 13 is the first phase that cannot be finished here: section 19 splits it
   into five kernel tasks (this environment) and four engine tasks that need
   UE 5.6, a GPU and somebody looking at a screen. Eleven Build.cs files have
@@ -2676,7 +2689,7 @@ COMPLETED
 ✓ 12.06 what the world does about a name · 12.07 gameplay in the chronicle
 ✓ 12.08 the phase gate — a century of a lived colony, full and replayed
 ✓ 13.01 a read-only view of the world for a frame · 13.02 what changed since the last frame
-✓ 13.03 level of detail for the eye
+✓ 13.03 level of detail for the eye · 13.04 the view across a snapshot and a reload
 
 NEXT
 → 12.06 — consequences: what a polity, an organisation or a family does about somebody whose repute
