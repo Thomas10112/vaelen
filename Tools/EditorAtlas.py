@@ -9,10 +9,12 @@
 # actor, sets the proportions that make a relief legible, builds AELVOR, frames
 # the camera on it and prints the report.
 #
-# Every step is guarded. Unreal's Python bindings rename properties (BuildAelvor
-# becomes build_aelvor, bShowTowns becomes show_towns) and the exact spelling has
-# never been verified on this project, so a step that fails says so and the rest
-# still runs.
+# Every step is guarded, and the first run proved why. Unreal's Python bindings
+# rename properties on the way in - world_size, tile_size, relief_scale all took
+# it - but UFUNCTION(CallInEditor) only draws a button: a function needs
+# BlueprintCallable to reach Python at all, and BuildAelvor does not have it. So
+# the build goes through the console command instead, which is exposed and which
+# reuses the actor this script has just configured.
 #
 # STATUS: UNVERIFIED - editor-side, written blind from a Linux container.
 import unreal
@@ -91,11 +93,45 @@ set_property(atlas, "relief_scale", RELIEF)
 set_property(atlas, "slab_height", SLAB)
 
 log("building AELVOR at %d, this blocks the editor for a while" % WORLD_SIZE)
-try:
-    atlas.build_aelvor()
-except Exception as error:
-    warn("build_aelvor() failed: %s" % error)
-    raise
+
+
+def build(actor):
+    """Press Build Aelvor, by whichever of three routes this engine allows.
+
+    UFUNCTION(CallInEditor) draws a button in the Details panel and nothing
+    more: a function needs BlueprintCallable to reach Python, and BuildAelvor
+    does not have it. So the button exists and atlas.build_aelvor() does not.
+    The console command does, and it reuses the actor already in the level -
+    which is the one whose properties were just set above.
+    """
+    try:
+        actor.build_aelvor()
+        log("built via build_aelvor()")
+        return True
+    except Exception as error:
+        warn("build_aelvor() unavailable (%s), trying reflection" % error)
+
+    try:
+        actor.call_method("BuildAelvor")
+        log("built via call_method('BuildAelvor')")
+        return True
+    except Exception as error:
+        warn("call_method failed (%s), falling back to the console" % error)
+
+    try:
+        editor = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem)
+        world = editor.get_editor_world()
+        command = "Vaelen.Atlas %d %d" % (WORLD_SIZE, YEARS)
+        unreal.SystemLibrary.execute_console_command(world, command)
+        log("built via the console command: " + command)
+        return True
+    except Exception as error:
+        warn("the console command failed too: %s" % error)
+        return False
+
+
+if not build(atlas):
+    warn("AELVOR was not built - nothing below will mean anything")
 
 # ----------------------------------------------------------------------- report
 try:

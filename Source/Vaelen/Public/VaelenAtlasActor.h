@@ -75,11 +75,11 @@ public:
 	FString Report;
 
 	/// Generate the world and lay it out. Safe to press again.
-	UFUNCTION(CallInEditor, Category = "AELVOR")
+	UFUNCTION(BlueprintCallable, CallInEditor, Category = "AELVOR")
 	void BuildAelvor();
 
 	/// Remove every instance and mark left by the last build.
-	UFUNCTION(CallInEditor, Category = "AELVOR")
+	UFUNCTION(BlueprintCallable, CallInEditor, Category = "AELVOR")
 	void ClearAelvor();
 
 	virtual void BeginPlay() override;
