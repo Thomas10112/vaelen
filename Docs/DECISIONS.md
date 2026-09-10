@@ -6576,3 +6576,68 @@ a glance whether the digests are frozen, which a preprocessor guard says and a
 - Windows and macOS remain the two legs no local preset can stand in for. There
   is no fix for that except pushing and reading the result.
 
+## ADR-0111: The chronicle can say what a region grew, and not what it ate
+
+### Context
+
+11.03 established the rule and the project paid for it there: a colony's ore is
+credited through `Economy::AddStock` **and nothing else**, "so that the
+chronicle can say where it came from". 01.05's causal edge and 03.07's `Why`
+both work only on what the event log holds.
+
+12.01 hit the other end of that rule without naming it. A conservation test had
+to be written against a control world rather than against the log, because the
+log could not account for a region's grain. That observation was left open when
+Phase 12 closed. This is it, measured.
+
+### The measurement
+
+`Tests/Economy/Test_Ledger.cpp`, one ordinary year of the busiest region of a
+128 world at year 303, 1460 people:
+
+```
+grain   the stores end +6;   the log names +7329;  7323 units moved unnamed
+cloth   the stores end +15;  the log names +0;       15 units moved unnamed
+tools   the stores end +8;   the log names +0;        8 units moved unnamed
+
+the log names 7329 units in 28 events, and 7346 units moved that it does not
+name at all
+```
+
+**A region harvested 7329 units of grain and its stores rose by six.** The log
+records the 7329. It records nothing whatever about where the other 7323 went.
+
+`ProductionSystem::Tick` writes `RegionStock::Amount` and `HouseStock::Amount`
+directly in a dozen places and publishes exactly two events - `Harvest` and
+`Shortfall`. Spoilage, meals, timber and salt burning, cloth and tools made and
+worn out: all of it moves by direct assignment. `Shortfall` reports what could
+NOT be fed, which is not the same as what was eaten.
+
+### Decision
+
+**Record it; do not fix it unilaterally.** The fix is one a person should choose,
+because of what it costs rather than because it is hard:
+
+- Routing 06.02's consumption through `AddStock` would add roughly four hundred
+  events a year at 256 - cheap in itself.
+- But it moves the **event log digest**, and that digest is frozen in eleven
+  gates: History, Population, Society, Economy, Politics, Military,
+  Infrastructure, Player, Colony, Gameplay and View. Every one would have to be
+  re-recorded in a single deliberate pass.
+- ADR-0095 exists because six phases' frozen digests once moved at once without
+  anybody noticing. Doing that on purpose is fine; doing it at five in the
+  morning on my own judgement is not.
+
+### Consequences
+
+- The test is permanent and asserts `Dark > 0` - that unnamed movement exists -
+  rather than asserting it away. The day 06.02 publishes its meals, that line
+  fails and says by exactly how much the world got more honest.
+- **A fourth payment on the year-boundary trap.** The first version of this test
+  reported "0% explained", which was true of the window and false of the world:
+  the yearly systems run ON the boundary tick, so a window `(From, To]` whose
+  `From` sits on one excludes that year's harvest while the `Before` snapshot
+  was taken after it had already run. One tick off the boundary and the real
+  numbers appeared. The comment in the test says so, because this is the fourth
+  time.
+

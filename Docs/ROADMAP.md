@@ -2613,6 +2613,15 @@ CURRENTLY
   that is right 359 times and wrong once shows the wrong world on the 360th and
   never recovers. ADR-0108.
 
+→ An open question put to a person rather than decided alone. The chronicle can
+  say what a region GREW and not what it ATE: measured, a region harvested 7329
+  units of grain, its stores rose by six, and the log names none of the other
+  7323. 06.02 writes stocks directly for spoilage and meals and publishes only
+  Harvest and Shortfall. Routing it through AddStock is cheap in itself and
+  moves the EVENT LOG DIGEST, which is frozen in eleven gates - a deliberate
+  single-pass re-freeze, and somebody's call rather than mine. ADR-0111 and
+  Tests/Economy/Test_Ledger.cpp have the numbers.
+
 → **PHASE 13 CANNOT BE CLOSED HERE.** Its remaining four tasks are 13.06 the
   first UBT build of all twelve kernel modules, 13.07 VaelenPresentation and the
   world drawn at all, 13.08 a person and a colony and a road drawn from the view
