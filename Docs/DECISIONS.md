@@ -7369,6 +7369,41 @@ fits. Both, or neither.
 > about the worst packing. When a job routinely finishes within five per cent of
 > its timeout, it is already failing — it just has not been unlucky yet.
 
+### And then the ordering was measured, and there is nothing left in it
+
+Run 144 is the first run that was never cancelled, so it is the first real
+timing this project has. `linux-clang-debug`: **5394.65 s**, 152 tests, `-j4`.
+
+The obvious next move was to give every long test a `COST`, not just the
+`Shuffled` and `Gate` ones — three Gameplay tests of five minutes each started
+at minute eighty-five, which looks exactly like the defect this ADR fixed.
+
+Simulated against the measured times before touching anything:
+
+```
+serial work            21192 s   (353 min)
+longest single test     2276 s   Gameplay.Shuffled
+floor, 4 workers        5298 s   (88 min)
+
+measured on CI          5395 s   (90 min)
+simulated, as it is     5298 s
+simulated, cost = time  5299 s
+```
+
+**The win is zero.** The schedule is already at the floor and the two per cent
+above it is process start-up, not packing. Those three late tests are not waste:
+with 21192 s of work over four workers, something has to run at minute
+eighty-five, and the scheduler is choosing well.
+
+So: **do not add more `COST` properties.** The makespan is bound by
+`total work / workers`, not by ordering, and the only two levers left are more
+workers (a GitHub `ubuntu-24.04` runner is 4 vCPU, so `-j4` is already right —
+a larger runner would roughly halve it) or less work in the tests themselves.
+
+Recorded because the next person to look at a ninety-minute CI leg will have
+the same idea I had, and the measurement takes ten minutes while the change
+would take an hour and buy nothing.
+
 ## ADR-0120 — A pair of regions does not identify a road, and 06.04 meant it to
 
 **Date:** 2026-09-10
