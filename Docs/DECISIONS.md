@@ -7424,6 +7424,36 @@ fits. Both, or neither.
 > about the worst packing. When a job routinely finishes within five per cent of
 > its timeout, it is already failing — it just has not been unlucky yet.
 
+### The margin came back down, and one run cannot say why (2026-09-10, run 148)
+
+Run 148 is the first full green run carrying ADR-0120. Its times, against
+run 144's on the same nine jobs:
+
+```
+                    run 144    run 148
+linux-clang-debug      90        116     +26
+linux-gcc-debug       104        104       0
+Windows (MSVC)         69         86     +17
+macOS (AppleClang)     76         70      -6
+the four fast legs   14-15      13-14      0
+```
+
+The slowest leg is now **116 minutes against a 180-minute limit**, where this
+ADR left it at 104 against 180. Sixty-four minutes of headroom rather than
+seventy-six.
+
+**What that is caused by, one run cannot say.** ADR-0120 changed the world -
+184 route entities where there were 317, and the lapses and returns now carried
+by the same entities rather than by new ones - so some change in the work is
+expected. But `linux-gcc-debug` did not move at all while `linux-clang-debug`
+moved twenty-six minutes, on the same machine class doing the same tests, which
+looks far more like runner variance than like the world. Two explanations, one
+data point, no way to choose between them yet.
+
+Recorded so the next run's times get read rather than glanced at. If 116 holds
+across the next few runs, the headroom this ADR bought is half spent and it
+wants revisiting; if it drops back to 90, it was a slow runner.
+
 ### And then the ordering was measured, and there is nothing left in it
 
 Run 144 is the first run that was never cancelled, so it is the first real

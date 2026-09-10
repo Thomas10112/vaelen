@@ -2593,8 +2593,9 @@ VAELEN BUILD STATUS
 
 PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (12 of 12) · ENGINE HALF STARTED (13.06 of 3)
 TASK        : 13.08f done — the viewer page is checked by CTest, not by me looking at it
-CI          : run 146 on acbf7fc — 9 of 9 GREEN, and the first run to prove the
-              three Viewer entries pass on Windows and macOS too.
+CI          : run 148 on 910a99d — 9 of 9 GREEN. ADR-0120's 44 re-frozen digests
+              hold on gcc, clang, AppleClang AND MSVC, in debug and release.
+              They were recorded from linux-gcc-release alone.
 DECIDED     : ADR-0120 FIXED (and it was three fixes) · ADR-0118 decided, unchanged
 OPEN        : ADR-0111 nothing eaten · ADR-0129 a road cannot be abandoned
 13.07c      : COMPILES. 877 lines written with no engine, built first try on
