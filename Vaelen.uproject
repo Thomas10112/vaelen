@@ -150,6 +150,21 @@
 			]
 		},
 		{
+			"Name": "VaelenPresentation",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine",
+				"VaelenCore",
+				"VaelenSim",
+				"VaelenPopulation",
+				"VaelenSociety",
+				"VaelenEconomy",
+				"VaelenPolitics",
+				"VaelenView"
+			]
+		},
+		{
 			"Name": "Vaelen",
 			"Type": "Runtime",
 			"LoadingPhase": "Default",
