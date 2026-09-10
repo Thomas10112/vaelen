@@ -6488,3 +6488,52 @@ less than re-reading.
 - `View.ViewGate` is in `run_gates.sh`, added at the same time as the gate
   itself rather than two phases later, which is what happened to Colony and
   Gameplay.
+
+## ADR-0109: A correctness suite does not assert on the wall clock
+
+### Context
+
+CI run 128 failed one job of nine - `linux-clang-release` - on
+`Population.Lod`, a Phase 04 test nothing in Phases 12 or 13 had touched. The
+failing line was:
+
+```
+VT_CHECK(With > Without * 1.05)   "holding a region at the fine grain costs something real"
+```
+
+It measures how many wall-clock seconds twenty years take with a region held at
+the fine grain against the same twenty years without, and requires the held
+world to be at least five per cent slower. It passes on an idle machine and
+reproduces green locally. It failed on a runner with a hundred and forty-one
+other tests on it.
+
+### Decision
+
+**The claim was right and the instrument was wrong.** The test's own comment
+says what it means: *"the people of the held region are simulated one by one for
+twenty years, so the world with it must do more work than the world without"*.
+That is a statement about WORK, and seconds are only a proxy for work - a proxy
+that on shared CI measures how busy the machine is.
+
+So the assertion counts events instead: the held world's event log against the
+coarse world's over the same twenty years. Measured, **686 events coarse against
+18860 holding it** - a factor of twenty-seven, deterministic, and identical
+under all three presets. The five per cent margin was never the real signal; it
+was a proxy so weak that machine load could swamp it.
+
+**The seconds stay in the log line.** "What does the fine grain cost" is worth
+having on the record, and 11.01 was right to measure it. It is just not
+something to fail a build over.
+
+### Consequences
+
+- Checked across the suite: this was the only wall-clock assertion in the
+  project. Every other use of `steady_clock` - the seven phase gates - only
+  prints how long a century took, which is reporting and not judging.
+- The rule generalises: a test may MEASURE time and print it; it may not decide
+  pass or fail by it. Anything a build fails on has to be a property of what the
+  code did, not of what else the machine was doing.
+- This is the second defect in three days found only because a job differed
+  between presets, after `RegionView`'s padding (ADR-0105). The difference
+  between "green on my two presets" and "green on nine jobs" keeps being where
+  the real defects live.

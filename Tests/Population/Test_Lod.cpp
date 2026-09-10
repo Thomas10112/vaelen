@@ -654,6 +654,7 @@ VAELEN_TEST(Lod, WhatHoldingARegionCostsPerTick)
 	const auto ColdStart = std::chrono::steady_clock::now();
 	Coarse.Ages.Run(20);
 	const double Without = Elapsed(ColdStart);
+	const usize ColdWork = Coarse.Instance.Log().All().size();
 
 	LodRules Rules;
 	Rules.Held = Colony;
@@ -665,6 +666,7 @@ VAELEN_TEST(Lod, WhatHoldingARegionCostsPerTick)
 	const auto WarmStart = std::chrono::steady_clock::now();
 	Fine.Ages.Run(20);
 	const double With = Elapsed(WarmStart);
+	const usize WarmWork = Fine.Instance.Log().All().size();
 
 	const double Years = 20.0;
 	VAELEN_LOG_INFO(LogLod,
@@ -672,11 +674,21 @@ VAELEN_TEST(Lod, WhatHoldingARegionCostsPerTick)
 					"(%.0f%% more, %.1f ms a year, %.1f us a tick)",
 					Without, With, Colony, People, Without > 0.0 ? (With / Without - 1.0) * 100.0 : 0.0,
 					With / Years * 1000.0, With / (Years * 8640.0) * 1e6);
+	VAELEN_LOG_INFO(LogLod, "and in work rather than in seconds: %zu events coarse, %zu holding it", ColdWork,
+					WarmWork);
 	VT_CHECK_MSG(With > 0.0 && Without > 0.0, "both worlds actually ran");
 	VT_CHECK_MSG(Fine.Detailed(Colony), "and the held region was detailed for all of it");
 	VT_CHECK_MSG(IsConsistent(Fine.Instance, Fine.Ages.Types(), Fine.Persons, Colony), "and stayed coherent");
 	// The people of the held region are simulated one by one for twenty years,
 	// so the world with it must do more work than the world without. Anything
 	// else would mean the hold was not doing anything.
-	VT_CHECK_MSG(With > Without * 1.05, "holding a region at the fine grain costs something real");
+	//
+	// Counted in EVENTS and not in seconds, and the difference matters. This
+	// read `With > Without * 1.05` on the wall clock until it failed on a CI
+	// runner with a hundred and forty other tests on it - a timing assertion in
+	// a correctness suite measures how busy the machine is, not what the code
+	// did, and it will fail at random for ever. The seconds are still logged
+	// above, because "what does the fine grain cost" is worth having on the
+	// record; they are just not something to fail a build over.
+	VT_CHECK_MSG(WarmWork > ColdWork, "holding a region at the fine grain costs something real");
 }
