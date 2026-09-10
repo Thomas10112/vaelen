@@ -2730,6 +2730,50 @@ CURRENTLY
   towns. "Require people" stops being a one-line fix - it would remove most of
   the towns this world has ever had.
 
+→ **AND THEN ADR-0120 WAS MEASURED RATHER THAN ESTIMATED.** The ADR said the
+  fix was small and that applying it would move digests frozen in eleven gates.
+  That was a guess, and a decision owed by the owner should not rest on a guess.
+  So the fix went into the working tree, the whole suite ran, the world was
+  written out before and after, and the tree was reverted to the byte. **Nothing
+  was committed - the decision is still not mine to take.**
+
+  What it does, at 256 over 420 years: 317 route entities become **184**, twins
+  **131 pairs to zero**, and the 317 chronicled first openings become 184, of
+  which **none is false where 131 were**. Everything about people is unmoved to
+  the digit - freed 6275, enslaved 5379, died 2466, married 1327, living 206710.
+
+  What it costs: **26 of 155 tests fail**, and twenty-four are frozen constants,
+  mechanical to re-freeze. The other two are the finding.
+
+    Test_EconomyHistory.cpp:494  VT_CHECK(S.Records < Harvests / 4)
+    Test_PlayerGate.cpp:1574     VT_CHECK(Lives > 1)
+
+  The first says **the one-line fix is necessary and not sufficient.** With
+  twins, every reopening was a new entity and so read as a first opening -
+  falsely, but symmetrically with the closings. Fix the twins and the symmetry
+  goes: a road is now said to open once and to fall out of use 1395 times. So
+  ADR-0120 also asks 06.07 a question nobody has asked it: **is a road reopening
+  history?**
+
+  The second is sharper. `PlayerGate` asserts *"the world's mortality really did
+  end a life and start another"*. With the fix it does not - one played life
+  spans the forty years. Nothing about mortality changed; the roads changed, so
+  the food changed, so the bound person lived. That assertion is either an
+  invariant of the design or an accident of the seed, and until now nobody had
+  to say which.
+
+  **And the blast radius is exactly the layering.** The gates that move are
+  ECONOMY, POLITICS, MILITARY, INFRASTRUCTURE, COLONY, PLAYER, GAMEPLAY, VIEW.
+  The ones that do not are HISTORY, POPULATION, SOCIETY - every phase below 06.
+  A change in `TradeSystem` reaches everything above it and nothing beneath it.
+  The layering rule of this project, holding under a real change instead of in a
+  diagram. Full measurement in ADR-0120.
+
+  One correction to the paragraph below: at 128 the same fix moves the living
+  from 45535 to 45544. Nine people. The 256 run happened to cancel; the fix is
+  **not** people-neutral, and saying it was would have been the comfortable
+  reading rather than the true one.
+
 → **ADR-0120 IS WORSE THAN IT LOOKED, AND THE CHRONICLE PROVED IT.** 06.07
   records a road's opening only when `Openings <= 1` - a first building is
   history, a reopening is not. A twin is a NEW entity, so it starts at one, so

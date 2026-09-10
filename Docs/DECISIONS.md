@@ -7440,6 +7440,95 @@ there is one - because that is the road that exists. A view that quietly kept
 one twin and dropped the other would have made the defect invisible again, and
 `Test_Net.cpp` has a suite whose whole job is to fail if anyone tries.
 
+### What the fix actually costs, measured rather than estimated (added 2026-09-10)
+
+The three paragraphs above say the fix is small and that applying it "moves the
+event-log digest frozen in eleven gates". That was an estimate. It has now been
+measured: the fix applied to the working tree, the whole suite run, the world
+written out before and after, and the tree reverted to the byte. **Nothing was
+committed** - the decision is still the project owner's. What follows is so the
+decision can be taken on numbers.
+
+**The fix that was measured** searches `Open` as well as `Closed` for the road
+to reuse, requiring `Closed != 0` on the match. Nineteen lines with the comment.
+`IsOpen` has already ruled out an open route for the pair, so a match in `Open`
+can only be a road that closed during this very tick - the case the defect is.
+
+**What it does to the world**, AELVOR at 256, 300 years of pre-history and 420
+years run:
+
+| | before | after |
+|---|---|---|
+| route entities | 317 | **184** |
+| pairs of regions with a road | 186 | 184 |
+| pairs carrying twins | 131 | **0** |
+| roads open at the end | 83 | 84 |
+| chronicled first openings | 317 | **184** |
+| roads told they opened for the first time more than once | **131** | **0** |
+| "fell out of use" | 686 | 1395 |
+| records in all | 18723 | 19309 |
+| living | 206710 | 206710 |
+| freed / enslaved / died / married | 6275 / 5379 / 2466 / 1327 | identical |
+
+Every twinned pair carried exactly two entities, never three. `RouteStats::Twice`
+is 0 in both columns, which is the point of ADR-0120: the only check that
+existed could not see any of this.
+
+**It is not people-neutral, and the 256 column is misleading on that.** At 128
+the same run gives 45535 living before and **45544 after** - nine people. So the
+right statement is that the fix changes what the world's roads are, and the
+change reaches the living, faintly. At 256 it happened to cancel; that is not a
+property to rely on.
+
+**What it does to the suite**, `linux-gcc-release`, 155 tests:
+
+- baseline **155/155**, 645 s
+- with the fix, **26 fail**
+
+Twenty-four of the twenty-six are frozen constants - digests and record counts -
+and are mechanical to re-freeze. **Two are not**, and they are the reason this
+measurement was worth taking:
+
+```
+Tests/Economy/Test_EconomyHistory.cpp:494  VT_CHECK(S.Records < Harvests / 4)
+Tests/Player/Test_PlayerGate.cpp:1574      VT_CHECK(Lives > 1)
+```
+
+**The first says the fix is necessary but not sufficient.** 06.07 records a
+road's opening only when `Openings <= 1` - a first building is history, a
+reopening is not. With twins, every reopening was a NEW entity, so it read as a
+first opening and got recorded; falsely, but symmetrically with the closings.
+Fix the twins and that symmetry goes: a road is now said to open **once** and to
+fall out of use **1395 times**. Records at 128 go 1147 -> 1615 and cross the
+threshold `a harvest a region a year is not history` was defending. So applying
+ADR-0120 also asks 06.07 a question it has never been asked: **is a road
+reopening history?** Right now the answer is no, and after the fix that answer
+makes the chronicle of the roads lopsided.
+
+**The second is sharper.** `PlayerGate` asserts *"and the world's mortality
+really did end a life and start another"*. With the fix it does not: one played
+life spans the whole forty years. Nothing about mortality changed - the roads
+changed, so the food changed, so the bound person in a crowded region lived.
+That assertion is either an invariant of the design or an accident of this seed,
+and nobody has had to decide which until now.
+
+**The blast radius is exactly the layering.** The gates that move are ECONOMY,
+POLITICS, MILITARY, INFRASTRUCTURE, COLONY, PLAYER, GAMEPLAY and VIEW. The gates
+that do not are HISTORY, POPULATION and SOCIETY - every phase below 06. A change
+in `TradeSystem` reaches everything above it and nothing beneath it. That is the
+layering rule of the whole project holding under a real change rather than in a
+diagram, and it is the first time it has been put to the test this way.
+
+**So the cost, exactly:** 24 constants to re-freeze across 8 gates, each of which
+must be justified rather than pasted, plus two decisions - what 06.07 should
+record about a road that reopens, and whether `PlayerGate` should assert that a
+played life ends. It is not a one-line change. It is a one-line change and an
+afternoon of deciding what the world is supposed to say about its roads.
+
+**Reproducing it:** the working-tree patch and the measurement scripts are not
+in the repository; they were scratch. The patch is the `Open` search quoted
+above, in `TradeSystem::Tick`'s reuse pass in `Source/VaelenEconomy/Private/Trade.cpp`.
+
 ### What it costs, revised upward — evidence from the chronicle (added in 13.08e)
 
 The first version of this ADR counted the cost as entities, memory and a lost
