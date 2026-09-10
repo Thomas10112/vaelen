@@ -24,7 +24,7 @@ FAILED=0
 # moved digest is known before the long ones run.
 for G in Sim.HistoryGate Population.PopulationGate Society.SocietyGate Economy.EconomyGate \
          Politics.PoliticsGate Military.MilitaryGate Infrastructure.InfrastructureGate Player.PlayerGate \
-         Colony.ColonyGate Gameplay.GameplayGate; do
+         Colony.ColonyGate Gameplay.GameplayGate View.ViewGate; do
   OUT=$(ctest --preset "$PRESET" -R "^${G}$" 2>&1 | grep -E "tests passed|tests failed" | head -1)
   echo "${G} | ${OUT}"
   case "$OUT" in *"100% tests passed"*) ;; *) FAILED=$((FAILED + 1)) ;; esac

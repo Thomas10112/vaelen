@@ -6449,3 +6449,42 @@ for byte the same snapshot** it did before anybody looked at it.
 - The last check is the strongest one in the module and the cheapest to have
   skipped: comparing the two snapshots as bytes catches a view that writes
   through a `const` reference by some route the digest happens not to cover.
+
+## ADR-0108: A delta is checked every frame, not at the end of the year
+
+### Context
+
+13.02 established that the difference between two views can rebuild the newer
+one. The Phase 13 kernel gate has to decide how often to check that over a long
+run, and the tempting answer - build a screen out of deltas for a year, compare
+it once at the end - is the wrong one.
+
+### Decision
+
+**The screen is compared against a fresh frame on every single day of the
+watched year.** A delta that is right 359 times and wrong once produces a
+renderer that shows the wrong world on the 360th day and never recovers, because
+every later delta is applied to a screen that already drifted. Checking once at
+the end can only tell you that the drift happened to cancel out.
+
+The gate also asserts its volumes before its verdict, per ADR-0095, for the
+third time in three phases: the Phase 11 gate passed on 1081 intents instead of
+14400, the Phase 12 gate passed with the whole phase measuring zero, and a gate
+that watched a year of a world in which nothing moved would have been the third.
+So it fails unless the world moved during the year it watched, unless at least
+one frame carried real ground, and unless watching by difference actually cost
+less than re-reading.
+
+### Consequences
+
+- Measured: a century at 256 taking the world from 55177 people to 110474; then
+  360 frames watched a day at a time, 12 of them carrying anything at all, 45
+  regions in the busiest one, and **35432 bytes of delta against 2560320 bytes
+  of frames** - fourteen per thousand. The screen matched a fresh frame on all
+  360 days, and the screen built out of nothing but differences equalled the
+  world taken whole at the end.
+- 50.9 seconds under gcc-debug, which makes this the cheapest gate in the
+  project by a wide margin - the view layer does no simulation, it only reads.
+- `View.ViewGate` is in `run_gates.sh`, added at the same time as the gate
+  itself rather than two phases later, which is what happened to Colony and
+  Gameplay.

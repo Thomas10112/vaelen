@@ -2591,72 +2591,36 @@ first question Phase 13 or a later gameplay phase should be asked.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 13 — PRESENTATION — 4 of 9 (kernel half)
-TASK        : 13.04 — THE VIEW ACROSS A SNAPSHOT AND A RELOAD — done
+PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (5 of 5) · ENGINE HALF NEEDS UE 5.6
+TASK        : 13.05 — THE PHASE 13 KERNEL GATE — done
 STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
-█████████████████████████████ 13 of 21 phases closed (00-12)
+█████████████████████████████ 13 of 21 phases closed (00-12) · Phase 13 kernel half done
 
 CURRENTLY
-→ 13.01 made "PRESENTATION reads and does not touch" structural instead of
-  remembered. A WorldView holds no pointer, no handle, no component type and no
-  reference to the world it came from, so a renderer that has one cannot reach
-  the simulation even by accident - and the test asserts
-  std::is_trivially_copyable on it, so the day somebody adds an EntityHandle the
-  build stops rather than a reviewer having to notice.
+→ The kernel half of Phase 13 is finished: 13.01 to 13.05, VaelenView as the
+  twelfth kernel module, ADR-0104 to ADR-0108, View 18/18 and 215 checks under
+  gcc-debug, gcc-release and clang-release.
 
-    99 regions, 19781 people — 5600 bytes for the whole frame
-    sixty frames taken: 13747 events before, 13747 after
-    a world told only about its map and its people: 0 roads, 0 bound,
-      rather than refusing to be looked at
+    a century at 256 — 55177 people becoming 110474
+    360 frames watched a day at a time — 12 carrying anything, 45 regions at most
+    35432 bytes of delta against 2560320 of frames — fourteen per thousand
+    the screen matched a fresh frame on ALL 360 days, not just the last
+    50.9 s, the cheapest gate in the project: the view reads and never simulates
 
-  VaelenView is the twelfth kernel module. ADR-0104.
+  The screen is checked every single day and not once at the end, because a delta
+  that is right 359 times and wrong once shows the wrong world on the 360th and
+  never recovers. ADR-0108.
 
-  13.02 added the difference between two frames, defined by what can be REPLAYED
-  from it: Apply(older, Diff(older, newer)) gives newer back byte for byte, and
-  the test checks that by digest on every frame of a sixty-day run.
-
-    five years moved 27 of 99 regions — 1600 bytes against 5600
-    sixty days: 6792 bytes of difference against 336000 of frames (20 per mille)
-    59 of those 60 days moved nothing a renderer can see
-
-  And it found the defect that justifies the three-preset rule outright.
-  RegionView had eleven 32-bit fields after an int64 - 52 bytes rounded to 56,
-  four of them never written - and MeasureView hashes the struct while Diff
-  memcmps it. Those four bytes were zero under gcc and not under clang-release:
-  green in two presets, failing in the third, on the same source. The assertion
-  compares the size against the SUM OF THE FIELDS now, because
-  static_assert(sizeof(T) == 56) passes happily on a padded struct. ADR-0105.
-
-  13.03 separated how finely the world THINKS from how finely it is SHOWN, and
-  proved they differ on one world at one moment: a region simulated person by
-  person, nine borders from the eye, left out of the frame; and a region the
-  simulation only counts, under the eye and drawn finely.
-
-    looking from region 88, reach 1 — 3 regions of 99, 224 bytes against 5600
-    reach 0..4 — 1, 9, 20, 34, 50 regions, one subject at every reach
-    two eyes on one world — two frames, and the state and log digests unmoved
-
-  The eye is an input to the view and never a property of the world. ADR-0106.
-
-  13.04 checked what 03.06 and 13.01 imply together and nobody had tested: a
-  frame taken before a save is the frame taken after the reload, and a delta made
-  ACROSS a save still rebuilds today's frame from yesterday's - which is what a
-  renderer actually lives on, because it must not have to know a save happened.
-
-    a 2.5 MB snapshot of 99 regions and 20255 people — identical frames either side
-    a delta across the save and four more years — 27 regions, 1600 bytes, whole=0
-    thirty frames from each world — and the looked-at world saves to the SAME BYTES
-
-  That last one is the strongest check in the module: comparing two snapshots
-  byte for byte catches a view writing through a const reference by some route a
-  state digest happens not to cover. ADR-0107.
-
-  Phase 13 is the first phase that cannot be finished here: section 19 splits it
-  into five kernel tasks (this environment) and four engine tasks that need
-  UE 5.6, a GPU and somebody looking at a screen. Eleven Build.cs files have
-  carried UNVERIFIED since Phase 00 and only a compiler reading them clears it.
+→ **PHASE 13 CANNOT BE CLOSED HERE.** Its remaining four tasks are 13.06 the
+  first UBT build of all twelve kernel modules, 13.07 VaelenPresentation and the
+  world drawn at all, 13.08 a person and a colony and a road drawn from the view
+  of 13.01, and 13.09 the editor open on AELVOR at 256 with a frame rate written
+  down. Every one of them needs UE 5.6, a GPU and somebody looking at a screen.
+  This container has clang, gcc, cmake and ninja and no engine. Section 19 has
+  the split and the rule for the machine that has the engine: it reports errors
+  in the kernel modules, it does not fix them.
 
 WAS
 → Phase 12 GAMEPLAY closed against section 2 with a gate that is full: 14400
@@ -2690,6 +2654,7 @@ COMPLETED
 ✓ 12.08 the phase gate — a century of a lived colony, full and replayed
 ✓ 13.01 a read-only view of the world for a frame · 13.02 what changed since the last frame
 ✓ 13.03 level of detail for the eye · 13.04 the view across a snapshot and a reload
+✓ 13.05 the Phase 13 kernel gate — a century watched a day at a time
 
 NEXT
 → 12.06 — consequences: what a polity, an organisation or a family does about somebody whose repute
@@ -2699,7 +2664,8 @@ NEXT
 
 TESTS
 ✓ CI run 113: nine jobs green (six Linux presets, clang-format, Windows MSVC, macOS AppleClang)
-✓ Ten phase gates green in one local run: GATES-DONE 0 failing (19m14s, linux-clang-release)
+✓ Eleven phase gates in run_gates.sh; ten green in one local run before View.ViewGate joined them
+  (GATES-DONE 0 failing, 19m14s, linux-clang-release)
 ✓ VaelenGameplayTests: Living, Repute, Documents, Maps, Fame, Judgement, Chronicle and the phase gate
   — 23 tests, gcc-debug/gcc-release/clang-release, purity 188 files and 0 violations
 ✓ The Phase 12 gate: 98 checks, 12m53s under gcc-debug and 2m05s under clang-release, frozen digests
