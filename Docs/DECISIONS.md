@@ -13,6 +13,13 @@ decision rule decided: robustness, then architectural simplicity, performance,
 evolvability, determinism), Consequences (what it costs and what it enables), Status
 (accepted / superseded, and the validation state of the implementation).
 
+**Three records in this file are PROPOSED and await the project owner's
+decision: ADR-0111, ADR-0118 and ADR-0120.** They are defects found, measured
+and deliberately not fixed, because fixing them changes what the world is.
+`Docs/OPEN_QUESTIONS.md` states each as a choice - what it costs to leave it,
+what it costs to change it, and the one sentence that unblocks it - so that
+reading the three records in full is optional.
+
 Rules for this file:
 
 - Numbering is append-only. A record is never deleted or renumbered; a reversed decision
