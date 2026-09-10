@@ -6537,3 +6537,42 @@ something to fail a build over.
   between presets, after `RegionView`'s padding (ADR-0105). The difference
   between "green on my two presets" and "green on nine jobs" keeps being where
   the real defects live.
+
+## ADR-0110: Use the idiom the other seven gates use, and MSVC will not have to explain why
+
+### Context
+
+The Phase 13 kernel gate froze its digests as `constexpr Hash64` values in the
+anonymous namespace and guarded the comparison with a runtime `if`:
+
+```cpp
+constexpr Hash64 FrozenView = 0xd95d1257...;
+if (FrozenView != 0x0ull) { VT_CHECK_EQ(LastFrame, FrozenView); }
+```
+
+Every one of the seven gates before it uses `#define` at file scope and `#if`.
+I used the newer-looking form because it looked cleaner. The Windows leg of CI
+failed the build: **C4127, "conditional expression is constant"**, which that
+job treats as an error.
+
+### Decision
+
+Use `#define` and `#if`, like the seven gates that already work on all nine CI
+jobs. MSVC is right on the substance - a runtime branch on a compile-time
+constant is exactly what `#if` is for, and a reader of the gate wants to know at
+a glance whether the digests are frozen, which a preprocessor guard says and a
+`constexpr` plus `if` only implies.
+
+### Consequences
+
+- The general rule, and it is the cheap lesson of the two: **when a project has
+  done a thing seven times, the eighth is not the place to improve on it.** If
+  the idiom is wrong, change all eight deliberately; do not diverge in one file
+  and discover why on a platform that is not on this machine.
+- This is the third defect in this session found only because the CI matrix is
+  wider than the local one, after `RegionView`'s padding (ADR-0105) and the
+  wall-clock assertion (ADR-0109). Three for three, the difference between
+  "green here" and "green everywhere" is where the real defects were.
+- Windows and macOS remain the two legs no local preset can stand in for. There
+  is no fix for that except pushing and reading the result.
+

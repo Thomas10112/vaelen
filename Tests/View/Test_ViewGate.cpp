@@ -54,6 +54,13 @@ using namespace Vaelen::Society;
 using namespace Vaelen::View;
 using namespace Vaelen::WorldGen;
 
+// Recorded on gcc 13 / Linux x86_64 on 2026-09-10 (13.05): AELVOR 256 at year
+// 300, a century more with the busiest region simulated person by person, then
+// a year watched a day at a time - 360 frames, the screen kept up to date by
+// nothing but deltas and checked against a fresh frame every day.
+#define VAELEN_VIEWGATE_FROZEN_VIEW 0xd95d12572069446eull
+#define VAELEN_VIEWGATE_FROZEN_STATE 0x0c5813e6d3d13406ull
+
 namespace
 {
 	VAELEN_DEFINE_LOG_CATEGORY(LogGate);
@@ -61,12 +68,12 @@ namespace
 	constexpr uint32 BeforeYears = 100; ///< a century of the world moving before anybody looks
 	constexpr uint32 WatchedDays = 360; ///< then a year of it, a day at a time
 
-	// Recorded on gcc 13 / Linux x86_64 on 2026-09-10 (13.05): AELVOR 256 at year
-	// 300, a century more with the busiest region simulated person by person,
-	// then a year watched a day at a time - 360 frames, the screen kept up to
-	// date by nothing but deltas and checked against a fresh frame every day.
-	constexpr Hash64 FrozenView = 0xd95d12572069446eull;
-	constexpr Hash64 FrozenState = 0x0c5813e6d3d13406ull;
+	// The frozen digests live at file scope as macros, not as constexpr values in
+	// the namespace, because every other gate in this project does - and because
+	// MSVC is right about why. `if (FrozenView != 0)` on a constexpr is C4127,
+	// "conditional expression is constant", and the Windows leg treats warnings
+	// as errors. The seven gates before this one all use `#if`; deviating from
+	// the idiom cost a red build and taught nothing else.
 
 	constexpr uint64 AelvorSeed = 0x41454c564f52ull;
 
@@ -312,9 +319,8 @@ VAELEN_TEST(ViewGate, ACenturyWatchedADayAtATimeRebuildsExactlyEveryFrame)
 
 	VAELEN_LOG_INFO(LogGate, "frozen: view=%016llx state=%016llx", static_cast<unsigned long long>(LastFrame),
 					static_cast<unsigned long long>(State));
-	if (FrozenView != 0x0ull)
-	{
-		VT_CHECK_EQ(LastFrame, FrozenView);
-		VT_CHECK_EQ(State, FrozenState);
-	}
+#if VAELEN_VIEWGATE_FROZEN_VIEW != 0x0ull
+	VT_CHECK_EQ(LastFrame, Hash64{VAELEN_VIEWGATE_FROZEN_VIEW});
+	VT_CHECK_EQ(State, Hash64{VAELEN_VIEWGATE_FROZEN_STATE});
+#endif
 }
