@@ -2592,7 +2592,7 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (11 of 11) · ENGINE HALF STARTED (13.06 of 3)
-TASK        : 13.08e done — and it says WHY, four systems deep
+TASK        : 13.08f done — the viewer page is checked by CTest, not by me looking at it
 STATUS      : PROTOTYPE (headless) / VALIDATED (UE 5.6, compiles, links and runs)
 
 PROGRESS
@@ -2750,6 +2750,29 @@ CURRENTLY
   the run, not a stopped clock. Both settled in under a minute. ADR-0125 keeps
   the lesson, because having just been right about two real duplicate defects is
   exactly the state of mind in which a third gets invented.
+
+→ **13.08f IS DONE: THE PAGE IS CHECKED BY CTEST, NOT BY ME LOOKING AT IT.**
+  `Tools/Viewer/Atlas.html` is 1044 lines and was, until today, the only file
+  in this repository nothing compiled and nothing tested. It broke three times
+  on the day it was written: a name declared nowhere, a `getElementById` for an
+  id the markup spelled differently, and a literal U+2009 where an entity
+  belonged - the mojibake the user saw and reported. All three are silent until
+  a human opens the page.
+
+  `Tools/check_viewer.py` reads it without a browser. Seven rules; all three of
+  the day's real bugs replayed against it and caught, each named precisely -
+  rule 4 reports `['\u2009']`. Three CTest entries: the template, the rules'
+  own self-test against ten deliberate breaks, and `Viewer.Built`, which runs
+  the builder over a world the atlas wrote and checks the *result*, because a
+  sound template can still be inlined into a broken page.
+
+  **What it does not catch is the part worth writing down.** Rule 6 finds a
+  name declared nowhere; it does not find one declared in another function's
+  scope. That is exactly the `html is not defined` bug, and I said this checker
+  would have caught it. It would not. Catching it needs a real JavaScript
+  parser, which is a larger dependency than the page it would guard. The limit
+  is stated first in the file's own header, ahead of the rules, so the next
+  person reads it before trusting the green. ADR-0128.
 
 → **13.08e IS DONE: THE WORLD SAYS WHY.** Every event has carried a `Cause`
   since Phase 03 and `CauseChain` has been able to walk it since. Nothing had
@@ -3025,6 +3048,7 @@ kernel work: engine-agnostic, tested under the presets, covered by a gate.
 | 13.08c | The world IN TIME: `--every N` keeps a frame, the page scrubs four centuries, and the pre-history stops being a black box | deterministic (a timelined run is the same run), checked output | **DONE 2026-09-10** |
 | 13.08d | What HAPPENED: the chronicle listeners of Phases 04-11 wired for the first time outside a test, and the world's own sentences on the page beside the year | deterministic (the chronicle observes without touching), checked output | **DONE 2026-09-10** |
 | 13.08e | And WHY: `CauseChain` walked for every record and written under it, four systems deep | checked output, cause depth capped | **DONE 2026-09-10** |
+| 13.08f | The page CHECKED (`Tools/check_viewer.py`): the one file in this repository that nothing compiled, now read without a browser — script parses, every element it reaches for exists, nothing rendered is non-ASCII, every CSS token is defined on bare `:root`. Three CTest entries; the built page checked too | self-test (10 deliberate breaks), checked output | **DONE 2026-09-10** |
 
 **Engine-side (needs UE 5.6, another machine).** Nothing here can be written
 honestly from a container without the engine, and writing it anyway is how a

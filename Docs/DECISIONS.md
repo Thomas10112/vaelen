@@ -7897,3 +7897,79 @@ Nobody asked this question in thirteen phases, because the answer only becomes
 visible when a world is run long enough to STOP changing. At year 420 the count
 was still climbing and 55 of 126 looked like a world filling up. It had already
 finished.
+
+---
+
+## ADR-0128 — A thousand lines of viewer that nothing compiled
+
+**Status:** ACCEPTED · **Date:** Phase 13 · **Task:** 13.07b (retrofit)
+
+### The situation
+
+`Tools/Viewer/Atlas.html` is 1044 lines: markup, CSS, and a script that paints
+tiles, draws roads, and walks cause chains. Every other line in this repository
+is either compiled by two compilers and run by CTest, or checked by a Python
+script that CTest runs. The page was neither. It was checked by me opening it
+and looking, which is how it broke three times in one day:
+
+- a name assigned but declared nowhere (`toldEl`), silent until that panel opened;
+- a `getElementById` for an id the markup spelled differently, likewise silent;
+- a literal U+2009 written into the script where an HTML entity belonged,
+  which is the mojibake the user saw and reported.
+
+None of the three is a hard problem. All three are invisible until a human
+opens the page, notices, and says so. That is the definition of a check that
+should not be a human's job.
+
+### The decision
+
+`Tools/check_viewer.py` reads the page without a browser. Seven rules, chosen
+because each one names a class of failure that actually happened or would
+plainly happen next:
+
+1. the page has its title and its data placeholder;
+2. `node --check` parses the extracted script;
+3. every `getElementById("X")` has a matching `id="X"` in the markup;
+4. `CONTROLS` keys and `show` keys agree, in both directions;
+5. nothing the script *renders* is non-ASCII (comments are exempt);
+6. no assignment to a name declared nowhere in the file;
+7. no CSS `var(--x)` whose token is undefined on bare `:root`.
+
+Rule 7 is not from a bug we hit; it is from ADR-0113's theme discipline — a
+token defined only inside a `@media` or `[data-theme]` block renders one
+theme's text on the other theme's ground, and that failure is invisible to
+whoever is not using that theme.
+
+Three CTest entries: `Viewer.Page` checks the template, `Viewer.SelfTest`
+proves each rule still fires against ten deliberate breaks, and `Viewer.Built`
+runs `build_viewer.py` over a world the atlas wrote and checks the *result* —
+because a sound template can still be inlined into a broken page, and that is
+the one failure the first two cannot see.
+
+### What it does not catch, which matters more than what it does
+
+Rule 6 finds a name declared *nowhere*. It does not find a name declared in
+another function's scope and used outside it. That is exactly the `html is not
+defined` bug, and I claimed this checker would have caught it. It would not.
+
+Catching it needs scope analysis, which needs a real JavaScript parser. Adding
+one to guard a thousand-line page is a larger dependency than the page. So the
+limit stands and is written first in the file's own header, where the next
+person reads it before trusting the green.
+
+Nor does any of this prove the page *looks* right: the checker never renders,
+never measures a layout, never runs the script against a document. A page can
+pass all seven rules and paint nothing. What the rules buy is that the three
+classes of silent breakage that cost real time today cannot recur unnoticed.
+
+### Considered
+
+**Headless browser (Playwright).** Would catch scope errors, would catch a
+blank canvas, would catch layout. Also pulls a browser into a kernel repo whose
+entire point is that it builds with a compiler and CMake and nothing else, and
+whose CI already runs 9 jobs. Rejected on cost, not on merit — if the viewer
+grows into something the project depends on, this is the upgrade path.
+
+**Leave it unchecked.** Honest for a throwaway. The page is not a throwaway:
+it is how a person sees AELVOR without an engine, and it is the argument that
+`WorldView` holding no pointer was worth the trouble.

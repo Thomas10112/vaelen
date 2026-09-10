@@ -57,6 +57,28 @@ if(Python3_Interpreter_FOUND)
   add_test(NAME Atlas.OutputSelfTest
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_atlas_output.py --self-test)
   set_tests_properties(Atlas.OutputSelfTest PROPERTIES TIMEOUT 120)
+
+  # ── The viewer ─────────────────────────────────────────────────────────────
+  # A thousand lines of page that nothing compiles. Tools/check_viewer.py reads
+  # it without a browser: the script parses, every element it reaches for is in
+  # the markup, every control names a key the script knows, nothing it RENDERS
+  # is non-ASCII, and every CSS token it uses is defined on bare :root. Those
+  # are the classes that actually broke it on the day it was written.
+  add_test(NAME Viewer.Page
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_viewer.py
+            ${PROJECT_SOURCE_DIR}/Tools/Viewer/Atlas.html)
+  set_tests_properties(Viewer.Page PROPERTIES TIMEOUT 120)
+  add_test(NAME Viewer.SelfTest
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_viewer.py --self-test)
+  set_tests_properties(Viewer.SelfTest PROPERTIES TIMEOUT 120)
+
+  # End to end: the world the tool wrote, inlined into the page, checked again.
+  # The template can be sound and the build step still produce something broken.
+  add_test(NAME Viewer.Built
+    COMMAND ${CMAKE_COMMAND} -DPYTHON=${Python3_EXECUTABLE} -DROOT=${PROJECT_SOURCE_DIR}
+            -DATLAS=${VAELEN_ATLAS_A} -DOUT=${CMAKE_CURRENT_BINARY_DIR}/atlas-page.html
+            -P ${PROJECT_SOURCE_DIR}/Tests/BuildAndCheckViewer.cmake)
+  set_tests_properties(Viewer.Built PROPERTIES FIXTURES_REQUIRED AtlasA TIMEOUT 300)
 elseif(VAELEN_REQUIRE_PURITY_CHECK)
   message(FATAL_ERROR "Python 3 is required to check what VaelenAtlas writes.")
 else()
