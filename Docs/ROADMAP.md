@@ -2668,6 +2668,27 @@ CURRENTLY
   It is NOT `VaelenPresentation` - that is now 13.07c, engine-side - and
   ADR-0113's C4251 decision stays open, because MSVC never reads a web page.
 
+→ **ADR-0120 IS WORSE THAN IT LOOKED, AND THE CHRONICLE PROVED IT.** 06.07
+  records a road's opening only when `Openings <= 1` - a first building is
+  history, a reopening is not. A twin is a NEW entity, so it starts at one, so
+  its opening is chronicled as a first. Everything AELVOR says about one road:
+
+    Year 0:   The road from Miogu to Yiotur was opened.
+    Year 385: The road from Miogu to Yiotur was opened.
+
+  Opened for the first time twice, with nothing in between about it closing.
+  The chronicle claims 275 roads opened for the first time; the world contains
+  170 pairs ever linked; **105 of those claims are false.** Thirty-eight per
+  cent of the road history of this world is untrue - not missing, untrue. That
+  is a different order of defect from a wasted entity.
+
+→ And two suspected defects found in the same ten minutes were NOT defects: the
+  chronicle does record road closings (it says "fell out of use", 541 of them,
+  and the grep was wrong), and roads opening in "year 0" are the first year of
+  the run, not a stopped clock. Both settled in under a minute. ADR-0125 keeps
+  the lesson, because having just been right about two real duplicate defects is
+  exactly the state of mind in which a third gets invented.
+
 → **13.08e IS DONE: THE WORLD SAYS WHY.** Every event has carried a `Cause`
   since Phase 03 and `CauseChain` has been able to walk it since. Nothing had
   ever asked. `--why` asks:

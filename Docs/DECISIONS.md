@@ -7322,6 +7322,41 @@ there is one - because that is the road that exists. A view that quietly kept
 one twin and dropped the other would have made the defect invisible again, and
 `Test_Net.cpp` has a suite whose whole job is to fail if anyone tries.
 
+### What it costs, revised upward — evidence from the chronicle (added in 13.08e)
+
+The first version of this ADR counted the cost as entities, memory and a lost
+`Openings` history. With 13.08d's chronicle readable, the real cost is worse:
+**the history of the world is wrong, and wrong in sentences.**
+
+06.07 records a road's opening only when `Openings <= 1` - a first building is
+history, a reopening is not. A twin is a NEW entity, so it starts at one, so its
+opening is chronicled as a first. Everything the world says about one such road:
+
+```
+Year 0:   The road from Miogu to Yiotur was opened.
+Year 385: The road from Miogu to Yiotur was opened.
+```
+
+Opened for the first time twice, three hundred and eighty-five years apart, with
+nothing said in between about it ever closing - because what closed was the other
+entity, and `NameRoute` calls a route that is gone "road N" rather than by its
+towns.
+
+Counted across AELVOR at 256:
+
+```
+the chronicle claims  275 roads opened for the first time
+the world contains    170 pairs of regions ever linked
+therefore             105 of those claims are false
+```
+
+**Thirty-eight per cent of the road history of this world is untrue.** Not
+missing, not approximate - a sentence that says a thing happened for the first
+time, about a thing that had happened before. For a project whose README says
+the simulation is the source of truth and whose chronicle is meant to be
+readable as history, that is a different order of defect from a wasted entity,
+and it is the reason this ADR is worth acting on rather than filing.
+
 ## ADR-0121 — The network is not part of the frame, because the frame is diffed
 
 **Date:** 2026-09-10
@@ -7595,3 +7630,53 @@ seven thousand were given the same generated name.
 empty cause list is a worse lie than a missing one, saying "this was asked and
 nothing came back". Each proved to fire by `--self-test`, now 50 checks. The
 CTest atlas runs use `--why`, so CI asks the world why on every push.
+
+## ADR-0125 — Two suspected defects in a row, and neither was one
+
+**Date:** 2026-09-10
+**Status:** Accepted (a note on method, not a change)
+**Phase:** 13 — while gathering evidence for ADR-0120
+
+### What happened
+
+Reading the chronicle for evidence about the twin roads, two things looked wrong
+within ten minutes of each other. Neither was.
+
+**"The chronicle never records a road closing."** 275 lines saying a road was
+opened, zero saying one was closed, and 49 of the closed routes had carried more
+than the hundred units that makes a closing history. It looked like the
+settlement half of a rule working and the road half not.
+
+The describer says **"fell out of use"**, not "closed". There are 541 of them -
+twice as many as the openings. The grep was wrong, not the world.
+
+**"Roads open in year 0, before anyone has spread."** 115 chronicle lines dated
+year 0, many of them roads. On a world whose first year holds nine hundred people
+in four regions, that reads as a clock that has not started.
+
+It has. `Year = Tick / TicksPerYear`, so every tick of the first year is year 0,
+and the cultures are seeded with stock, so price gaps and therefore roads exist
+in the first year. The date is right and the intuition about it was wrong.
+
+### Why it is worth an ADR
+
+Because of what was in the way of noticing. This session had already found and
+written up two genuine duplicate-entity defects - ADR-0118's settlements that
+cannot be abandoned and ADR-0120's twin roads. **That is the exact state of mind
+in which a third one gets invented**: the pattern is fresh, the tooling is new,
+the data is unfamiliar, and every oddity looks like a member of a family you have
+just learned to recognise.
+
+Both were settled in under a minute - one by reading the describer, one by
+dividing by the ticks in a year. The cost of checking was nothing. The cost of
+not checking would have been two ADRs proposing fixes to working code, in a
+document whose whole value is that its entries are true.
+
+> A new instrument shows you things you have never seen. Most of them were always
+> there and are fine. **Before reporting what an instrument shows, find out what
+> the instrument does** - and the more recently you were right about something
+> that looked the same, the more carefully you should look.
+
+The one thing that survived the checking is in ADR-0120: 105 of 275 chronicled
+first-openings are false, because a twin entity starts its `Openings` count at
+one. That one is real, and it is real because it was checked the same way.
