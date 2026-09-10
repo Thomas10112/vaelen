@@ -2543,6 +2543,47 @@ not belong in this phase. That is what makes a document worth forging and a
 reputation worth minding, and it is the first time in twelve phases that the
 simulation and somebody's picture of it are allowed to differ at all.
 
+## 16b. Phase 12 closed
+
+Closed against section 2 on 2026-09-10. Eight tasks, ADR-0096 to ADR-0103, an
+eleventh kernel module (`VaelenGameplay`), no file carrying `STATUS: INCOMPLETE`,
+purity 188 files and 0 violations, and the ten phase gates green in one run.
+
+**The gate, and it is full.** A century at 256 with the mining colony at full
+detail and its people living lives of their own; forty years played a day at a
+time inside it, then replayed into a fresh world of the same seed:
+
+| | |
+|---|---|
+| played intents | 14400 over two lives - one on every one of the 14400 days |
+| acts in all | 327267, of which 67769 given and 1175 taken |
+| opinions | 6939 people thought of, 55074 opinions held, 81911 tellings |
+| the scale | best 175, worst -92 |
+| names | 96 carried in 12 places, 88 of them from abroad, 3 roads at the furthest |
+| judgements | 21 condemned, 1 pardoned, 10 still bound |
+| chronicle | 82647 events of belief, every one with a sentence |
+| replay | 14400 of 14400 intents answered identically; state, log, mining, fame, repute, judgement and belief digests all matched |
+
+**The eight PROTOTYPE files and what each of them does not do**, as section 2
+requires:
+
+| File | What it is | The limit |
+|---|---|---|
+| `Living.h/.cpp` | a person nobody plays, acting through 10.05's own verbs | Speak, Give and Take only. Work, Eat and Rest are done in aggregate by 06.02 and 04.04 and doing them here would count a life twice (ADR-0096) |
+| `Repute.h/.cpp` | an opinion between any two people, and hearsay | eight holders per person, oldest evicted; and `Repute` is their AVERAGE, which is why a name is not built on it (ADR-0100) |
+| `Documents.h/.cpp` | knowledge that outlives its teller, is copied, is lost, is wrong | a document never changes its mind; nothing forges one by itself |
+| `Maps.h/.cpp` | the one document the world can check | eight regions to a head, and walked ground pushes read ground out and never the reverse (ADR-0099) |
+| `Fame.h/.cpp` | a name held by a place, travelling the roads of 06.04 | eight names to a place, dropped rather than faded - a per-year decay was written and could not be reached (ADR-0100) |
+| `Judgement.h/.cpp` | what a place does about a name | bondage only. 07.02's dues are laid on a region and not on a person, so a polity cannot charge a thief more without an axis this world does not have (ADR-0101) |
+| `GameplayHistory.h/.cpp` | the chronicle of what was BELIEVED | every chain measured is two steps, because nobody in AELVOR ever moves and a place only judges people standing in it (ADR-0102) |
+| `Test_GameplayGate.cpp` | the phase gate | the living rate is 20 in a thousand rather than 12.01's 200, the one rule of the phase the gate moves, so that a colony of four thousand does not make eleven million acts |
+
+**The one thing this phase built and could not feed.** `Player::Intent::Move`
+exists, 12.01 does not use it, and until somebody can earn a name in one place
+and stand in another, nobody is ever judged on a rumour. The machinery is built,
+wired, chronicled and measured; the world gives it nothing to carry. That is the
+first question Phase 13 or a later gameplay phase should be asked.
+
 ## 17. Current BUILD STATUS
 
 ```
@@ -2550,34 +2591,35 @@ simulation and somebody's picture of it are allowed to differ at all.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 12 — GAMEPLAY — 7 of 8
-TASK        : 12.07 — GAMEPLAY IN THE CHRONICLE — done
-STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
+PHASE       : 12 — GAMEPLAY — CLOSED
+TASK        : next is 13.01 — the first UE 5.6 build
+STATUS      : VALIDATED (headless) / UNVERIFIED (engine)
 
 PROGRESS
-████████████████████████████ 12 of 21 phases closed (00-11) · Phase 12 at 7/8
+█████████████████████████████ 13 of 21 phases closed (00-12)
 
 CURRENTLY
-→ 12.07 made the chronicle say what was BELIEVED. 03.07 has walked cause chains
-  since Phase 03, but every link was a fact; a bondage whose chain says nothing
-  is a punishment with no recorded reason. A name now remembers the telling that
-  brought it (Fame grew to 32 bytes for it), and every judgement is published
-  with that telling as its cause - so History::CauseChain walks belief without a
-  second mechanism.
+→ Phase 12 GAMEPLAY closed against section 2. Eight tasks, ADR-0096 to ADR-0103,
+  an eleventh kernel module, and a gate that is FULL:
 
-    Imhugundild was bound by Edavaken for a name it spoke ill of (-707)
-    Edavaken came to speak ill of (-707) Imhugundild
-    Ekdu speaks ill of (-600) Assinek, 1 road away, and has since year 304
+    14400 played intents over two lives, on every one of the 14400 days
+    327267 acts in all, 67769 given, 1175 taken
+    6939 people thought of, 55074 opinions held, 81911 tellings
+    best 175, worst -92 — a world that thinks ill of somebody, at last
+    96 names carried in 12 places, 88 from abroad, 3 roads at the furthest
+    21 condemned, 1 pardoned, 10 still bound
+    82647 events of belief, every one of them with a sentence
 
-  116675 events of belief, every one with a sentence, none falling through to a
-  generic line; identical digest across two runs of one seed.
+  Replayed into a fresh world of the same seed from the founding, the binding,
+  the lively ground, the takings and the intents alone: 14400 of 14400 intents
+  answered identically, and the state, the log, the mining, the fame, the
+  repute, the judgement and the belief digests all matched.
 
-  The limit, named rather than implied: every chain is two steps and every
-  judgement says WHERE IT WAS EARNED, because 12.06 binds only people standing
-  in the place that carries the name and nobody in AELVOR ever moves.
-  Player::Intent::Move exists and 12.01 does not use it. The machinery for
-  judging somebody on a rumour is built, wired and chronicled; the world gives
-  it nothing to carry. ADR-0102.
+  It was hollow on its first run - 0 taken, 0 condemned, every invariant true -
+  because the colony's ground was never marked lively. That is the second hollow
+  gate this project has built and the volume assertions of ADR-0095 are what
+  caught it. Colony.ColonyGate and Gameplay.GameplayGate are in run_gates.sh
+  now; they had been missing for two whole phases.
 
 WAS
 → Phase 11 closed against section 2 on CI run 113: nine jobs green at 6be319f, the eight phase gates
@@ -2601,6 +2643,7 @@ COMPLETED
 ✓ 12.01 a person nobody is playing · 12.02 an opinion between two people, and hearsay
 ✓ 12.03 the documents · 12.04 the maps · 12.05 a name that travels
 ✓ 12.06 what the world does about a name · 12.07 gameplay in the chronicle
+✓ 12.08 the phase gate — a century of a lived colony, full and replayed
 
 NEXT
 → 12.06 — consequences: what a polity, an organisation or a family does about somebody whose repute
@@ -2610,9 +2653,12 @@ NEXT
 
 TESTS
 ✓ CI run 113: nine jobs green (six Linux presets, clang-format, Windows MSVC, macOS AppleClang)
-✓ Eight phase gates green in one local run: GATES-DONE 0 failing
-✓ VaelenGameplayTests: Living, Repute, Documents, Maps, Fame, Judgement and Chronicle — 22 tests,
-  209 checks, gcc-debug/gcc-release/clang-release, purity 188 files and 0 violations
+✓ Ten phase gates green in one local run: GATES-DONE 0 failing (19m14s, linux-clang-release)
+✓ VaelenGameplayTests: Living, Repute, Documents, Maps, Fame, Judgement, Chronicle and the phase gate
+  — 23 tests, gcc-debug/gcc-release/clang-release, purity 188 files and 0 violations
+✓ The Phase 12 gate: 98 checks, 12m53s under gcc-debug and 2m05s under clang-release, frozen digests
+  identical across both — half=a93a0190543952ea end=6a93fa19a2016086 log=cb125f942294717c
+  belief=aa9c8172fa306bd1
 ✓ VaelenColonyTests 17 run, 17 passed across six suites, 1817 checks, CTest 8/8 with Shuffled
 ✓ The Phase 11 gate: a century at 256, a colony of 4007 bound on 4463 of seam, 5 lives and 14400
   intents, replayed blind to the same state digest, event log and mining digest

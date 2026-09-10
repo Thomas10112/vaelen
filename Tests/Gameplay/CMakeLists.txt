@@ -31,4 +31,7 @@ set_tests_properties(Gameplay.Fame PROPERTIES TIMEOUT 5400)
 set_tests_properties(Gameplay.Judgement PROPERTIES TIMEOUT 5400)
 # Chronicle builds five such worlds: 212 s here.
 set_tests_properties(Gameplay.Chronicle PROPERTIES TIMEOUT 5400)
+# The phase gate: AELVOR at 256, three centuries of pre-history, sixty years of
+# detail and forty lived a day at a time, then the whole thing replayed.
+set_tests_properties(Gameplay.GameplayGate PROPERTIES TIMEOUT 7200)
 set_tests_properties(Gameplay.Shuffled PROPERTIES TIMEOUT 5400)

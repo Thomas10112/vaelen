@@ -232,10 +232,9 @@ namespace Vaelen::Gameplay
 		return true;
 	}
 
-	ChronicleStats MeasureChronicle(const World& W, const History::PreHistoryTypes& Types,
-									const GameplayContext& Context)
+	BeliefStats MeasureBelief(const World& W, const History::PreHistoryTypes& Types, const GameplayContext& Context)
 	{
-		ChronicleStats Out;
+		BeliefStats Out;
 		Hash64 Digest = HashConstants::Fnv1a64Offset;
 		for (const Event& E : W.Log().All())
 		{

@@ -18,8 +18,13 @@ PRESET="${1:-linux-clang-debug}"
 cd "$(dirname "$0")/.."
 cmake --build --preset "$PRESET" -j"$(nproc)" 2>&1 | grep -E "error|warning" | head -5
 FAILED=0
+# Colony.ColonyGate and Gameplay.GameplayGate were missing from this list for
+# the whole of Phases 11 and 12 - the two slowest gates in the project, and the
+# two that cover the newest code. Last, because the point of the order is that a
+# moved digest is known before the long ones run.
 for G in Sim.HistoryGate Population.PopulationGate Society.SocietyGate Economy.EconomyGate \
-         Politics.PoliticsGate Military.MilitaryGate Infrastructure.InfrastructureGate Player.PlayerGate; do
+         Politics.PoliticsGate Military.MilitaryGate Infrastructure.InfrastructureGate Player.PlayerGate \
+         Colony.ColonyGate Gameplay.GameplayGate; do
   OUT=$(ctest --preset "$PRESET" -R "^${G}$" 2>&1 | grep -E "tests passed|tests failed" | head -1)
   echo "${G} | ${OUT}"
   case "$OUT" in *"100% tests passed"*) ;; *) FAILED=$((FAILED + 1)) ;; esac

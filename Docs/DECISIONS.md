@@ -6194,3 +6194,68 @@ a punishment with no recorded reason.
   wired and chronicled, and the world gives it nothing to carry. That is the
   next real question this phase asks, and it is named here rather than implied
   by a passing test.
+
+## ADR-0103: The Phase 12 gate, and the second hollow gate this project has built
+
+### Context
+
+ADR-0095 was written when the Phase 11 gate passed its first run on 1081 played
+intents where it should have had 14400: every check it made was true, and it was
+measuring a world in which the played person had died and nobody had replaced
+them. The rule taken from it was **a gate has to be full of what it claims to
+measure - read the volume before the verdict.**
+
+### Decision
+
+1. **The Phase 12 gate is the Phase 11 gate with the phase on top of it.** The
+   same century at 256, the same colony founded where the ore and the people
+   both are, the same forty years played a day at a time - and the colony's
+   people now living lives of their own: speaking, giving, taking, thinking
+   things of each other, telling each other, and the places around them coming
+   to carry names that cost somebody their freedom.
+
+2. **The volumes are asserted before the digests, out loud.** Not as a comment
+   about care but as checks the gate fails: a played intent on every one of the
+   14400 days, somebody taking something, somebody thought ill of, a name
+   crossing a road, a name costing a freedom, and every act of belief in a
+   century carrying a sentence.
+
+3. **It happened again, and the assertions caught it.** The first run of this
+   gate produced `0 taken`, `worst 0`, `0 condemned` and `13680 acts` - and
+   every invariant held, because there is nothing wrong with a world in which
+   nobody does anything. The cause was one missing line: the colony's ground was
+   never marked lively, so `LivingSystem` had no ground to walk and the whole of
+   Phase 12 measured zero inside a gate named for it. `MakeLively` is an INPUT
+   now, alongside the founding and the binding, and the replay performs it on
+   the same tick.
+
+4. **Two invariants of mine were wrong and the gate was right to fail them.**
+   `Opinions >= Heard` - `Heard` is a running total of everything ever told
+   about somebody while `Opinions` is how many of their eight slots are in use,
+   so a person told about a hundred times holds eight opinions and the hundred
+   is not an error. And `Pardoned <= Condemned` - a pardon frees anybody a place
+   thinks well enough of, and most bound people in a colony were bound by
+   05.04's debt or 11.04's founding, so a good name buying somebody out of a
+   bondage they were born into is the system working.
+
+5. **`Colony.ColonyGate` and `Gameplay.GameplayGate` are in `run_gates.sh` now.**
+   They were missing for the whole of Phases 11 and 12 - the two slowest gates
+   in the project and the two covering the newest code, and the script whose own
+   header explains that a local loop excluding the gates is how six phases'
+   frozen digests moved at once without anybody noticing.
+
+### Consequences
+
+- Measured, and this is what full looks like: 14400 played intents over two
+  lives; 327267 acts in all, 67769 given and 1175 taken; 6939 people thought of
+  and 55074 opinions held, of which 81911 tellings; best 175, worst -92; 96
+  names carried in 12 places, 88 of them from abroad and three roads at the
+  furthest; 21 condemned, 1 pardoned, 10 still bound; 82647 events of belief,
+  every one with a sentence.
+- Replayed into a fresh world of the same seed from the founding, the binding,
+  the lively ground, the takings and the intents alone: 14400 of 14400 intents
+  answered identically, 2 of 2 takings, and the state digest, the event log, the
+  mining digest, the fame digest, the repute digest, the judgement digest and
+  the belief digest all identical.
+- The gate takes 12m53s under gcc-debug, which makes it the second-slowest thing
+  in the project after the Colony gate. That is the price of a gate that is full.

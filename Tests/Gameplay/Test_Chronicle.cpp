@@ -178,7 +178,7 @@ namespace
 		FameStats Fame() const { return MeasureFame(Instance, Fame_); }
 		JudgementStats Judged() const { return MeasureJudgement(Instance, Persons, Bondage); }
 		GameplayContext Heard() const { return GameplayContext{Persons, Names, Papers, Charts, Fame_}; }
-		ChronicleStats Chronicle() const { return MeasureChronicle(Instance, Ages.Types(), Heard()); }
+		BeliefStats Chronicle() const { return MeasureBelief(Instance, Ages.Types(), Heard()); }
 		ReputeStats Reputes() const { return MeasureRepute(Instance, Persons, Names); }
 		Player::DoingStats Verbs() const { return Player::MeasureDoings(Instance); }
 
@@ -233,7 +233,7 @@ VAELEN_TEST(Chronicle, EveryActOfBeliefHasASentence)
 	Run W(AelvorSeed);
 	VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
 	VT_REQUIRE(Settle(W) != 0);
-	const ChronicleStats S = W.Chronicle();
+	const BeliefStats S = W.Chronicle();
 	VAELEN_LOG_INFO(LogChron, "%u events of belief in the log, %u of them with a sentence; digest %016llx", S.Events,
 					S.Described, static_cast<unsigned long long>(S.Digest));
 	VT_CHECK_MSG(S.Events > 0, "the world did something worth chronicling");
@@ -354,8 +354,8 @@ VAELEN_TEST(Chronicle, TheSameWorldTellsTheSameStory)
 	Run B(AelvorSeed);
 	VT_REQUIRE(B.Ages.Generate(Run::Square(128), 300));
 	VT_REQUIRE(Settle(B) != 0);
-	const ChronicleStats X = A.Chronicle();
-	const ChronicleStats Y = B.Chronicle();
+	const BeliefStats X = A.Chronicle();
+	const BeliefStats Y = B.Chronicle();
 	VAELEN_LOG_INFO(LogChron, "two runs of one seed: %u/%u sentences, digests %016llx and %016llx", X.Described,
 					Y.Described, static_cast<unsigned long long>(X.Digest), static_cast<unsigned long long>(Y.Digest));
 	VT_CHECK_EQ(X.Described, Y.Described);

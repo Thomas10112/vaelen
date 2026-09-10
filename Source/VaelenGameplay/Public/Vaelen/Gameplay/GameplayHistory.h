@@ -89,7 +89,10 @@ namespace Vaelen::Gameplay
 										  const GameplayContext& Context, uint32 Region, uint32 Person,
 										  std::string& Out);
 
-	struct ChronicleStats
+	/// Named for belief and not for the chronicle, because History has a
+	/// ChronicleStats of its own and a gate that uses both layers cannot say
+	/// which it means.
+	struct BeliefStats
 	{
 		uint32 Events = 0;	  ///< gameplay events in the log
 		uint32 Described = 0; ///< of them, ones with a sentence
@@ -97,6 +100,6 @@ namespace Vaelen::Gameplay
 		uint32 Longest = 0;	  ///< the longest chain of tellings behind any of them
 		Hash64 Digest = 0;	  ///< every sentence, in log order
 	};
-	VAELEN_GAMEPLAY_API ChronicleStats MeasureChronicle(const World& W, const History::PreHistoryTypes& Types,
-														const GameplayContext& Context);
+	VAELEN_GAMEPLAY_API BeliefStats MeasureBelief(const World& W, const History::PreHistoryTypes& Types,
+												  const GameplayContext& Context);
 } // namespace Vaelen::Gameplay
