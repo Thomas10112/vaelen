@@ -7244,12 +7244,49 @@ settlements standing in empty regions at year 420 are not the anomaly - they are
 what is left at the end of a process that has been doing this for four hundred
 years, and the towns on the map of AELVOR are mostly, and always were, empty.
 
-That does not decide the four answers below; it changes what they are worth.
-Answer 4 - "change nothing and rename it" - stops being a nicety about a word:
-if a settlement is a place trade passes through, then VAELEN has a hundred and
-twenty-one caravan stops and fifteen towns, and the map should say so. Answers 1
-and 2 stop being one-line fixes: requiring people would remove most of the towns
-this world has ever had.
+### Corrected an hour later, by looking further (13.08e, second pass)
+
+The paragraph above ended with a sentence that was not true, and the correction
+matters more than the sentence: **"the towns on the map of AELVOR are mostly, and
+always were, empty."**
+
+Every measurement behind that claim stopped at year 420, because every gate in
+this project stops around there. Run the same world to 1500 and:
+
+```
+year   50   16 towns, 12 of them empty    4 regions peopled
+year  100    2 towns,  1 of them empty    4 regions peopled
+year  250   36 towns, 15 of them empty   22 regions peopled
+year 1500   65 towns,  0 of them empty   84 regions peopled
+```
+
+**At year 1500 not one town stands in an empty region.** The abandonment rule
+does clear them - it just takes centuries, and year 420 happened to catch six in
+flight. What survives of the finding is narrower and still real:
+
+- TRUE: 100 of the 121 foundings between year 0 and 420 happened in regions with
+  no inhabitants. Traffic founds a town without asking whether anyone lives there.
+- TRUE: at year 420, six towns stood in empty regions.
+- FALSE: that this is the steady state. It is a transient, and the world resolves
+  it on its own over hundreds of years.
+
+So the defect is real and **self-limiting**, which weakens answer 4 (renaming a
+thing the world eventually corrects) and takes the urgency out of 1 and 2. What
+it leaves is a different question nobody has asked: sixteen towns at year 50 and
+two at year 100 is violent churn, and whether THAT is a world worth having is a
+design question rather than a defect report.
+
+### The lesson, which is ADR-0125's, one hour later and on my own claim
+
+A new instrument showed a pattern; the pattern was real; and the sentence
+generalised it from one snapshot to "always". The instrument that found the
+overreach is the same one - run longer and look again. **Every gate in this
+project stops at four or five centuries, so every claim made from them is a
+claim about a young world**, and that limit is not visible from inside the data.
+
+That does not decide the four answers below; it changes what they are worth. If
+a settlement is a place trade passes through, VAELEN spends centuries building
+caravan stops and then tidying them away, and the map might simply say so.
 
 ## ADR-0119 — A CI budget with no headroom is not a passing job, it is a lucky one
 
@@ -7761,3 +7798,52 @@ document whose whole value is that its entries are true.
 The one thing that survived the checking is in ADR-0120: 105 of 275 chronicled
 first-openings are false, because a twin entity starts its `Openings` count at
 one. That one is real, and it is real because it was checked the same way.
+
+## ADR-0126 — AELVOR reaches an equilibrium and holds it for nine hundred years
+
+**Date:** 2026-09-10
+**Status:** Accepted
+**Phase:** 13 — a long-duration look, done while CI ran
+
+### The question nobody had asked
+
+Every gate in this project stops at four or five centuries. Nothing had ever run
+this world further, so nothing knew whether it settles, starves or runs away.
+`Tools/Atlas` made asking cost one command: AELVOR at 256 for **1500 years**.
+
+```
+year   50     2 405 alive    4 regions peopled   16 towns   14 roads open
+year  250    31 872 alive   22                   36         55
+year  500   177 957 alive   82                   60         83
+year  600   202 373 alive   84                   60         82
+year  900   210 105 alive   84                   66         86
+year 1200   208 336 alive   84                   65         90
+year 1500   203 791 alive   84                   65         91
+```
+
+**It settles.** Population climbs for six centuries, reaches about two hundred
+and five thousand, and then holds within three per cent of that for the next nine
+hundred years. Regions peopled stops at 84 of 126 and never moves again. Towns
+sit between 60 and 66. Roads breathe between 79 and 91.
+
+Nothing was capped to make that happen. It is what the systems do when left
+alone: a carrying capacity emerging from land, harvests, hunger and death rather
+than from a rule that says two hundred thousand.
+
+### What it is evidence for, and what it is not
+
+- **It is evidence of stability.** Fifteen centuries with assertions compiled in,
+  43267 chronicle records, no crash, no runaway, no collapse, 275 seconds.
+- **It is one seed.** A world that settles on `0x41454c564f52` says nothing about
+  a world that would not on another. This is not a gate and is not written down
+  as one.
+- **It is the first thing this project has learned about its own long run**, and
+  it corrected an error inside the hour - see ADR-0118, where a claim built
+  entirely on measurements taken at year 420 turned out to describe a transient.
+
+### The rule it leaves
+
+> Every gate in this project stops at four or five centuries, so **every claim
+> made from a gate is a claim about a young world** - and nothing inside the data
+> says so. When a finding is about what the world IS rather than what it did once,
+> run it further before writing it down.

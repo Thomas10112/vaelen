@@ -2668,6 +2668,27 @@ CURRENTLY
   It is NOT `VaelenPresentation` - that is now 13.07c, engine-side - and
   ADR-0113's C4251 decision stays open, because MSVC never reads a web page.
 
+→ **AELVOR SETTLES, AND HOLDS FOR NINE HUNDRED YEARS.** Every gate stops at four
+  or five centuries; nothing had ever run this world further. Fifteen centuries
+  at 256, in 275 s, with assertions on:
+
+    year  250    31 872 alive, 22 regions peopled, 36 towns
+    year  600   202 373 alive, 84 regions peopled, 60 towns
+    year 1500   203 791 alive, 84 regions peopled, 65 towns
+
+  Population climbs for six centuries and then holds within three per cent for
+  nine hundred years. Nothing was capped: it is a carrying capacity emerging
+  from land, harvest, hunger and death. One seed, so not a gate - but the first
+  thing this project has ever learned about its own long run. ADR-0126.
+
+  **And it corrected me inside the hour.** ADR-0118 had ended on "the towns of
+  AELVOR are mostly, and always were, empty", built entirely on measurements
+  taken at year 420. At year 1500 not one town stands in an empty region: the
+  abandonment rule does clear them, it just takes centuries. What survives is
+  narrower and still real - traffic founds a town without asking whether anyone
+  lives there - and the defect is self-limiting. Every claim made from a gate is
+  a claim about a YOUNG world, and nothing inside the data says so.
+
 → **ADR-0111 IS NOT ONLY ABOUT A DIGEST.** With the chronicle readable, the gap
   can be stated in the world's own words. This is a complete explanation, as
   AELVOR gives it:
