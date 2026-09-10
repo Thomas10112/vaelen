@@ -2753,6 +2753,44 @@ GitHub Actions run 5 (commit `71bad2d`, https://github.com/Thomas10112/vaelen/ac
 
 ## 19. Phase 13 - PRESENTATION: task breakdown
 
+**Read this first, because it changes how the phase runs.** Every phase from 00
+to 12 was done in a container with clang, gcc, cmake and ninja and nothing else.
+Phase 13 is the first that cannot be. `VaelenPresentation` is an Unreal module;
+it needs UE 5.6, an editor, a GPU and a person looking at a screen. Thirteen
+phases of engine-side files - eleven `*.Build.cs`, eleven `*Module.cpp`,
+`Vaelen.uproject`, `Config/` - carried `STATUS: UNVERIFIED` on the promise that
+this phase would pay the debt. 13.06 paid it on 2026-09-10: the project has no
+UNVERIFIED file left. What still needs the engine is everything that has to be
+LOOKED at.
+
+So the phase splits in two, and the split is not a nicety - it is which of two
+machines does the work:
+
+**Kernel-side (headless, this environment).** Everything that answers "what does
+the renderer need to be told" without knowing what a renderer is. It is ordinary
+kernel work: engine-agnostic, tested under the presets, covered by a gate.
+
+| Task | Content | Test kind |
+|---|---|---|
+| 13.01 | A read-only VIEW of the world for a frame: the state a renderer needs, taken once per frame, never written back. The layering rule of the whole project says PRESENTATION reads and does not touch, and this is the surface that makes that structural rather than a promise | unit, deterministic |
+| 13.02 | What changed since the last frame: a renderer that re-reads a world of a hundred thousand people every frame is not a renderer. The delta, and the proof that applying it to the previous view gives the current one | unit, integration |
+| 13.03 | Level of detail for the eye rather than for the simulation: 01.03's SimLod says how finely the world THINKS, and this says how finely it is SHOWN, which is a different question with a different answer | unit, edge |
+| 13.04 | The view under a snapshot and a reload, because a frame taken across a save must not tear | integration, deterministic |
+| 13.05 | Phase 13 kernel gate: a century at 256 with a view taken every frame of the last year, the deltas applied, and the result identical to the view taken fresh | long-duration, replay |
+
+**Engine-side (needs UE 5.6, another machine).** Nothing here can be written
+honestly from a container without the engine, and writing it anyway is how a
+file ends up marked VALIDATED on the strength of having compiled in somebody's
+head.
+
+| Task | Content | How it is verified |
+|---|---|---|
+| 13.06 | The first UBT build of all eleven kernel modules. This is the task the UNVERIFIED marks have been waiting for since Phase 00 | it builds, or it does not | **DONE 2026-09-10 - it builds** |
+| 13.07a | `AVaelenAtlasActor` takes a view of the world it just ran, and logs what it weighs | ViewStats in the editor log |
+| 13.07b | `VaelenPresentation`: the module, and the world drawn as regions **from that view alone** | a screenshot |
+| 13.08 | A person, a colony and a road drawn from the view of 13.01 | a screenshot |
+| 13.09 | Phase 13 gate: the editor open on AELVOR at 256, a century running, and the frame rate written down | measured on the machine that has the engine |
+
 ### 13.06 The first UBT build - VALIDATED (UE 5.6, Win64 Development Editor)
 
 ```
@@ -2794,42 +2832,58 @@ build in the same pass.
 compiles and links as twelve DLLs. Whether a world ticks inside the editor is
 13.09's gate and nothing before it.
 
+### 13.07 broken down - and why reading the repository changed it
 
-**Read this first, because it changes how the phase runs.** Every phase from 00
-to 12 was done in a container with clang, gcc, cmake and ninja and nothing else.
-Phase 13 is the first that cannot be. `VaelenPresentation` is an Unreal module;
-it needs UE 5.6, an editor, a GPU and a person looking at a screen. Thirteen
-phases of engine-side files - eleven `*.Build.cs`, eleven `*Module.cpp`,
-`Vaelen.uproject`, `Config/` - have carried `STATUS: UNVERIFIED` on the promise
-that this phase would pay the debt, and the debt can only be paid on a machine
-with the engine on it.
+Written after 13.06, because 13.06 was the first time anybody looked at the
+engine-side code with a toolchain that could read it.
 
-So the phase splits in two, and the split is not a nicety - it is which of two
-machines does the work:
+**`AVaelenAtlasActor` already exists and already draws AELVOR.** Seven hundred
+and nineteen lines, written early as "the first stone" of a layer that was then
+numbered Phase 15. It builds a `World`, runs its pre-history and its centuries
+inside the editor, and lays the result out as relief: one instanced cube per
+tile, coloured by biome, raised by elevation, towns and roads marked on it. It
+has even already paid a lesson this task would otherwise have paid again - a
+comment records that the plate came out unpainted the first time because
+`BasicShapeMaterial`'s colour parameter is not called what one would expect, so
+the code asks the engine for the parameter list instead of guessing.
 
-**Kernel-side (headless, this environment).** Everything that answers "what does
-the renderer need to be told" without knowing what a renderer is. It is ordinary
-kernel work: engine-agnostic, tested under the presets, covered by a gate.
+**And it reads the world directly.** `Map.GetLayer(T.World.Layers.Biome)`, the
+region pools, the settlement components. That is precisely what 13.01 to 13.05
+were built to stop: PRESENTATION reads a frame, not the simulation.
 
-| Task | Content | Test kind |
-|---|---|---|
-| 13.01 | A read-only VIEW of the world for a frame: the state a renderer needs, taken once per frame, never written back. The layering rule of the whole project says PRESENTATION reads and does not touch, and this is the surface that makes that structural rather than a promise | unit, deterministic |
-| 13.02 | What changed since the last frame: a renderer that re-reads a world of a hundred thousand people every frame is not a renderer. The delta, and the proof that applying it to the previous view gives the current one | unit, integration |
-| 13.03 | Level of detail for the eye rather than for the simulation: 01.03's SimLod says how finely the world THINKS, and this says how finely it is SHOWN, which is a different question with a different answer | unit, edge |
-| 13.04 | The view under a snapshot and a reload, because a frame taken across a save must not tear | integration, deterministic |
-| 13.05 | Phase 13 kernel gate: a century at 256 with a view taken every frame of the last year, the deltas applied, and the result identical to the view taken fresh | long-duration, replay |
+So 13.07 is not "make the first image". The first image has code behind it
+already. 13.07 is **make the image come from the view**, and the useful thing
+reading the code produced is that this is far smaller than it looked.
 
-**Engine-side (needs UE 5.6, another machine).** Nothing here can be written
-honestly from a container without the engine, and writing it anyway is how a
-file ends up marked VALIDATED on the strength of having compiled in somebody's
-head.
+**The property that makes it small.** A `WorldView` holds no pointer, no handle
+and no reference to the world it came from - that was 13.01's whole design, and
+the consequence nobody had needed yet is that **the view outlives the world**.
+`BuildAelvor` can take a frame of a world that dies when the function returns,
+and keep it. No subsystem owning a live world, no duplicating the hundred and
+forty lines of system wiring the atlas actor already has.
 
-| Task | Content | How it is verified |
-|---|---|---|
-| 13.06 | The first UBT build of all eleven kernel modules. This is the task the UNVERIFIED marks have been waiting for since Phase 00 | it builds, or it does not | **DONE 2026-09-10 - it builds** |
-| 13.07 | `VaelenPresentation`: the module, and the world drawn as regions on a map at all | a screenshot |
-| 13.08 | A person, a colony and a road drawn from the view of 13.01 | a screenshot |
-| 13.09 | Phase 13 gate: the editor open on AELVOR at 256, a century running, and the frame rate written down | measured on the machine that has the engine |
+**13.07a** - the atlas actor fills a `ViewSources` from the types it already
+holds, calls `TakeView`, calls `MeasureView`, and writes the result to the log.
+Sixty lines in a file that now compiles, against an API eleven gates verify. It
+proves the world-to-view path inside the editor.
+
+**13.07b** - `VaelenPresentation` as a module, and an actor that draws one slab
+per region from the stored view and from nothing else. It cannot reach the
+simulation even by mistake, because a `WorldView` gives it nothing to reach
+with.
+
+**Why 13.07a is not written yet, and this is a sequencing decision rather than a
+delay.** These files are in no `CMakeLists`, so the nine CI jobs never compile
+them: anything written here for them is unverified until a Windows build reads
+it. The engine build currently WORKS. Pushing a blind change that fails to
+compile would take that away and block the one action worth doing next - opening
+the editor and pressing Build AELVOR on a world nobody has ever seen run. Code
+first, image second is the wrong order when the code cannot be compiled here and
+the image can be produced there today.
+
+**The C4251 decision (ADR-0113) resolves in 13.07b**, which is the first task
+with a real cross-module consumer and the first place a `#pragma` guarded by
+`_MSC_VER` can be shown to do anything at all.
 
 **How the two halves meet.** The kernel half is done here, pushed, and green in
 CI. The engine half is done on the machine with UE 5.6, and the standing rule
