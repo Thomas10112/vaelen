@@ -7169,3 +7169,77 @@ determinism, edge and long-duration tests are all tests of things somebody
 already suspected. **Nobody had ever looked at the world**, and the first look
 produced an anomaly no existing gate could have caught, because every gate
 compares the world to what the world did last time.
+
+## ADR-0119 — A CI budget with no headroom is not a passing job, it is a lucky one
+
+**Date:** 2026-09-10
+**Status:** Accepted
+**Phase:** 13 — after 13.07b
+
+### What happened
+
+Run 140 on `284cfb3`: **seven of nine jobs green**, including the two that
+matter most for a change to `VaelenView` — Windows MSVC (60 min of tests) and
+macOS AppleClang (83 min). The two debug legs were **cancelled at 117 minutes**
+by `timeout-minutes: 120`.
+
+### What it was not
+
+The obvious suspect is the work 13.07a added. The log refutes it:
+
+```
+145/151 Test #148: View.Land ...........................   Passed    1.69 sec
+```
+
+One and seven tenths of a second, plus five Atlas entries of a few seconds each.
+That is not two hours.
+
+### What it was
+
+By the time the axe fell, **150 of 151 tests had passed.** The job was killed
+waiting on one: `Gameplay.Shuffled`, which ctest picked up at 11:04:59 — ninety-
+five minutes into a hundred-and-twenty-minute budget — and which needs about
+forty-five minutes of its own, because by construction it re-runs every suite in
+its module in one process.
+
+The other long poles, measured in the same log:
+
+```
+Infrastructure.Shuffled   2326 s
+Gameplay.GameplayGate     1150 s
+Player.Shuffled           1028 s
+Gameplay.Fame              545 s
+Gameplay.Judgement         535 s
+Player.PlayerGate          495 s
+```
+
+ctest runs four at a time. **The wall clock of a leg is set by when its longest
+test STARTS, not by how much work there is in total.** A forty-five-minute test
+picked up last adds forty-five minutes to the job no matter what else has
+finished. Adding six short tests did not add two hours of work; it changed the
+packing, and the packing is what decided the job.
+
+So the honest statement of the old state: **gcc-debug finishing at 114 of 120
+minutes was never a passing job. It was a job that passed when the packing was
+lucky**, and nobody had noticed because it had always been lucky.
+
+### The decision, in two parts
+
+1. **The long poles are declared.** ctest orders by descending `COST` when it has
+   one, and has none on a fresh checkout. Every `<Module>.Shuffled` now carries
+   `COST 10000` and every gate `COST 5000`, so the things that cannot be
+   parallelised start first instead of last. This attacks the makespan rather
+   than the symptom.
+2. **The budget gets real headroom.** 120 → 180 minutes on the Linux matrix, and
+   on Windows and macOS too, which carry the same suite and the same growth.
+
+Raising the timeout alone would have been the fudge — it hides the packing
+problem until the next phase re-creates it. Setting COST alone would have been
+the gamble — it improves the expected makespan without proving the worst case
+fits. Both, or neither.
+
+### The rule this leaves behind
+
+> A test budget is not a limit on how long the suite may take. It is a claim
+> about the worst packing. When a job routinely finishes within five per cent of
+> its timeout, it is already failing — it just has not been unlucky yet.

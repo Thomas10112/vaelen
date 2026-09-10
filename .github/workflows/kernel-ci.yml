@@ -22,8 +22,13 @@ jobs:
     name: Linux (${{ matrix.preset }})
     runs-on: ubuntu-24.04
     # The suite grows with every phase and the debug legs run every gate with
-    # assertions on; 30 minutes was cutting it fine by Phase 08.
-    timeout-minutes: 120
+    # assertions on; 30 minutes was cutting it fine by Phase 08, and 120 was cut
+    # in Phase 13 - not by the work added, but by WHEN the long poles were
+    # scheduled. Gameplay.Shuffled was picked up 95 minutes into a 120-minute
+    # budget and needed 45 of its own. Tests/*/CMakeLists.txt now give the long
+    # poles a COST so ctest starts them first; this is the headroom that keeps a
+    # packing accident from reading as a failure.
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
@@ -61,7 +66,7 @@ jobs:
     runs-on: windows-2022
     # An MSVC debug build runs the suite about four times slower than Linux
     # debug does, and it is the one leg that cannot be parallelised away.
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -80,7 +85,7 @@ jobs:
   macos:
     name: macOS (AppleClang)
     runs-on: macos-15
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6

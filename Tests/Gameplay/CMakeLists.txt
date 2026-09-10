@@ -35,3 +35,14 @@ set_tests_properties(Gameplay.Chronicle PROPERTIES TIMEOUT 5400)
 # detail and forty lived a day at a time, then the whole thing replayed.
 set_tests_properties(Gameplay.GameplayGate PROPERTIES TIMEOUT 7200)
 set_tests_properties(Gameplay.Shuffled PROPERTIES TIMEOUT 5400)
+
+# ── Scheduling ───────────────────────────────────────────────────────────────
+# The wall clock of a CI leg is set by when its LONGEST test starts, not by how
+# much work there is in total: ctest runs four at a time, and a forty-minute
+# test picked up last adds forty minutes to the job whatever else has finished.
+# ctest orders by descending COST when it has one, and has none on a fresh
+# checkout, so the long poles are declared here. The numbers are relative, not
+# seconds. Gameplay.Shuffled re-runs every suite of this module in one process
+# and is by construction the longest thing in it.
+set_tests_properties(Gameplay.Shuffled PROPERTIES COST 10000)
+set_tests_properties(Gameplay.GameplayGate PROPERTIES COST 5000)

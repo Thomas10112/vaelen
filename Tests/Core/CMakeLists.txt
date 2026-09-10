@@ -33,3 +33,13 @@ set_tests_properties(${VAELEN_CORE_TEST_NAMES} PROPERTIES TIMEOUT 300)
 # The stdio capture test falls back to fixed scratch file names where tmpfile()
 # is refused (Windows); the entries that run it never share a moment.
 set_tests_properties(Core.Log Core.Shuffled Core.Reversed PROPERTIES RESOURCE_LOCK vaelen_stdio_scratch)
+
+# ── Scheduling ───────────────────────────────────────────────────────────────
+# The wall clock of a CI leg is set by when its LONGEST test starts, not by how
+# much work there is in total: ctest runs four at a time, and a forty-minute
+# test picked up last adds forty minutes to the job whatever else has finished.
+# ctest orders by descending COST when it has one, and has none on a fresh
+# checkout, so the long poles are declared here. The numbers are relative, not
+# seconds. Core.Shuffled re-runs every suite of this module in one process
+# and is by construction the longest thing in it.
+set_tests_properties(Core.Shuffled PROPERTIES COST 10000)

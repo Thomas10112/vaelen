@@ -2668,6 +2668,19 @@ CURRENTLY
   It is NOT `VaelenPresentation` - that is now 13.07c, engine-side - and
   ADR-0113's C4251 decision stays open, because MSVC never reads a web page.
 
+→ CI: run 140 came back **7 of 9 green**, Windows MSVC and macOS included, and
+  the two debug legs were CANCELLED at 117 minutes by a 120-minute timeout. Not
+  by the work 13.07a added - `View.Land` takes 1.69 s and 150 of 151 tests had
+  already passed. The job died waiting on `Gameplay.Shuffled`, which ctest
+  picked up ninety-five minutes in and which needs forty-five of its own.
+
+  The wall clock of a leg is set by when its longest test STARTS, not by how
+  much work there is. So gcc-debug finishing at 114 of 120 minutes was never a
+  passing job - it was a job that passed when the packing was lucky. Every
+  `*.Shuffled` now carries `COST 10000` and every gate `COST 5000` so ctest
+  starts them first, and the budget goes to 180 minutes on all three long jobs.
+  ADR-0119.
+
 → A SECOND open question put to a person rather than decided alone, and this one
   was found by LOOKING. One hour after the viewer existed: **six settlements
   stand in regions with zero inhabitants**, and five of them can never be

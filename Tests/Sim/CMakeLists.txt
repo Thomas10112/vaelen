@@ -26,3 +26,14 @@ set_tests_properties(${VAELEN_SIM_TEST_NAMES} PROPERTIES TIMEOUT 300)
 # The shuffled run repeats every Sim test, baselines included: MSVC debug needs
 # more than 300 s for it (CI run 29 timed out at 300 s).
 set_tests_properties(Sim.Shuffled PROPERTIES TIMEOUT 1200)
+
+# ── Scheduling ───────────────────────────────────────────────────────────────
+# The wall clock of a CI leg is set by when its LONGEST test starts, not by how
+# much work there is in total: ctest runs four at a time, and a forty-minute
+# test picked up last adds forty minutes to the job whatever else has finished.
+# ctest orders by descending COST when it has one, and has none on a fresh
+# checkout, so the long poles are declared here. The numbers are relative, not
+# seconds. Sim.Shuffled re-runs every suite of this module in one process
+# and is by construction the longest thing in it.
+set_tests_properties(Sim.Shuffled PROPERTIES COST 10000)
+set_tests_properties(Sim.HistoryGate PROPERTIES COST 5000)

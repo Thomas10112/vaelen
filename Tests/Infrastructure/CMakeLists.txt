@@ -32,3 +32,14 @@ set_tests_properties(Infrastructure.InfrastructureGate PROPERTIES TIMEOUT 5400)
 # Phase 10 was allowed to finish. The work is the same; the machine is slower.
 set_tests_properties(Infrastructure.Decay PROPERTIES TIMEOUT 1800)
 set_tests_properties(Infrastructure.WorksHistory PROPERTIES TIMEOUT 1800)
+
+# ── Scheduling ───────────────────────────────────────────────────────────────
+# The wall clock of a CI leg is set by when its LONGEST test starts, not by how
+# much work there is in total: ctest runs four at a time, and a forty-minute
+# test picked up last adds forty minutes to the job whatever else has finished.
+# ctest orders by descending COST when it has one, and has none on a fresh
+# checkout, so the long poles are declared here. The numbers are relative, not
+# seconds. Infrastructure.Shuffled re-runs every suite of this module in one process
+# and is by construction the longest thing in it.
+set_tests_properties(Infrastructure.Shuffled PROPERTIES COST 10000)
+set_tests_properties(Infrastructure.InfrastructureGate PROPERTIES COST 5000)
