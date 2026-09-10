@@ -1,15 +1,14 @@
 // VAELEN - Tests/View
-// Phase 13.01: a read-only view of the world for a frame.
+// Phase 13.02: what changed since the last frame.
 //
-// The layering rule has said since Phase 00 that PRESENTATION reads WORLD STATE
-// and does not touch it, and for thirteen phases that was a promise everybody
-// remembered. This file is about the claim that it is now structural: a
-// WorldView is a flat block of numbers with no handle, no component type and no
-// pointer back into the world, so a renderer holding one has nothing to reach
-// with.
+// A delta nobody can replay is a delta nobody should believe. So the claim this
+// file is built around is not "the difference is small" - though it is - but
+// that applying the difference to the older view gives the newer one back BYTE
+// FOR BYTE, checked by digest.
 //
 // STATUS: PROTOTYPE (Phase 13)
 
+#include "Vaelen/View/Delta.h"
 #include "Vaelen/View/Frame.h"
 
 #include "Vaelen/Economy/Markets.h"
@@ -49,7 +48,7 @@ using namespace Vaelen::WorldGen;
 
 namespace
 {
-	VAELEN_DEFINE_LOG_CATEGORY(LogView);
+	VAELEN_DEFINE_LOG_CATEGORY(LogDelta);
 
 	constexpr uint64 AelvorSeed = 0x41454c564f52ull;
 
@@ -187,129 +186,128 @@ namespace
 	};
 } // namespace
 
-VAELEN_TEST(Frame, AViewCarriesNoWayBackIntoTheWorld)
+VAELEN_TEST(Delta, ApplyingTheDifferenceGivesTheNewerFrameBack)
 {
-	// The claim the module exists for, made where the compiler can check it. If
-	// a RegionView ever grows a pointer, a handle or a component type, this stops
-	// compiling - which is the point of putting it here rather than in a comment.
-	static_assert(std::is_trivially_copyable<RegionView>::value,
-				  "a RegionView must be copyable by memcpy: no pointer, no handle, no vtable");
-	static_assert(std::is_standard_layout<RegionView>::value, "and laid out plainly enough to hand to a GPU");
-	VT_CHECK_MSG(sizeof(RegionView) == sizeof(int64) + 12 * sizeof(uint32),
-				 "and it has no padding, because MeasureView hashes it and Diff memcmps it");
-
+	// The claim the task rests on. Take a frame, run the world, take another,
+	// take the difference, apply it to the FIRST - and the first must now be the
+	// second, byte for byte.
 	Run W(AelvorSeed);
 	VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
-	WorldView V;
-	TakeView(W.Instance, W.Sources(), V);
-	const ViewStats S = MeasureView(V);
-	VAELEN_LOG_INFO(LogView, "year %u: %u regions (%u peopled, %u detailed), %u people, %u bytes for the frame", V.Year,
-					S.Regions, S.Peopled, S.Detailed, V.People, S.Bytes);
-	VT_CHECK_MSG(S.Regions > 0, "the view has the world's ground in it");
-	VT_CHECK_MSG(S.Peopled > 0, "and the people on it");
-	VT_CHECK_MSG(V.Width == 128 && V.Height == 128, "and the map it is drawn on");
-}
+	WorldView Before;
+	TakeView(W.Instance, W.Sources(), Before);
+	const Hash64 WasDigest = MeasureView(Before).Digest;
 
-VAELEN_TEST(Frame, TheSameWorldGivesTheSameFrame)
-{
-	// Taken twice from a world that has not ticked. A view that differed between
-	// two takings would flicker on screen without anything having happened.
-	Run W(AelvorSeed);
-	VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
-	WorldView A;
-	WorldView B;
-	TakeView(W.Instance, W.Sources(), A);
-	TakeView(W.Instance, W.Sources(), B);
-	VT_CHECK_EQ(MeasureView(A).Digest, MeasureView(B).Digest);
-	VT_CHECK_EQ(A.Regions.size(), B.Regions.size());
-
-	// And the regions come out in index order, every time, so a renderer can
-	// keep its own array in step with the view's.
-	bool Ordered = true;
-	for (usize i = 1; i < A.Regions.size(); ++i)
-	{
-		Ordered = Ordered && A.Regions[i - 1].Index < A.Regions[i].Index;
-	}
-	VT_CHECK_MSG(Ordered, "the regions are in index order and never in pool order");
-	VT_REQUIRE(!A.Regions.empty());
-	const RegionView* Found = RegionIn(A, A.Regions.back().Index);
-	VT_REQUIRE(Found != nullptr);
-	VT_CHECK_EQ(Found->Index, A.Regions.back().Index);
-	VT_CHECK_MSG(RegionIn(A, 0u) == nullptr, "and a region the view does not have comes back as nothing");
-}
-
-VAELEN_TEST(Frame, TakingAFrameChangesNothing)
-{
-	// The other half of read-only, and the half a const signature cannot prove
-	// on its own: a world that has had a view taken from it is the same world,
-	// down to its state digest and its event log.
-	Run W(AelvorSeed);
-	VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
-	W.Instance.TickMany(TicksPerYear * 3);
-	const Hash64 Before = ComputeStateDigest(W.Instance);
-	const Hash64 LogBefore = W.Instance.Log().Digest();
-	const usize EventsBefore = W.Instance.Log().All().size();
-
-	WorldView V;
-	for (uint32 Frame = 0; Frame < 60; ++Frame)
-	{
-		TakeView(W.Instance, W.Sources(), V);
-	}
-	VAELEN_LOG_INFO(LogView, "sixty frames taken: %zu events before, %zu after", EventsBefore,
-					W.Instance.Log().All().size());
-	VT_CHECK_MSG(ComputeStateDigest(W.Instance) == Before, "a second of frames left the world exactly as it was");
-	VT_CHECK_MSG(W.Instance.Log().Digest() == LogBefore, "and wrote nothing into its history");
-	VT_CHECK_EQ(W.Instance.Log().All().size(), EventsBefore);
-}
-
-VAELEN_TEST(Frame, AViewFollowsTheWorldThroughAYear)
-{
-	// A frame is only worth taking if it changes when the world does.
-	Run W(AelvorSeed);
-	VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
-	WorldView Early;
-	TakeView(W.Instance, W.Sources(), Early);
-	const ViewStats First = MeasureView(Early);
 	W.Instance.TickMany(TicksPerYear * 5);
-	WorldView Late;
-	TakeView(W.Instance, W.Sources(), Late);
-	const ViewStats Then = MeasureView(Late);
+	WorldView After;
+	TakeView(W.Instance, W.Sources(), After);
+	const ViewStats Truth = MeasureView(After);
+	VT_REQUIRE(Truth.Digest != WasDigest);
 
-	VAELEN_LOG_INFO(LogView, "year %u: %u people, %u peopled regions, digest %016llx", Early.Year, Early.People,
-					First.Peopled, static_cast<unsigned long long>(First.Digest));
-	VAELEN_LOG_INFO(LogView, "year %u: %u people, %u peopled regions, digest %016llx", Late.Year, Late.People,
-					Then.Peopled, static_cast<unsigned long long>(Then.Digest));
-	VT_CHECK_MSG(Late.Tick > Early.Tick, "the frame knows when it was taken");
-	VT_CHECK_MSG(Late.Year > Early.Year, "and what year the world had reached");
-	VT_CHECK_MSG(Then.Digest != First.Digest, "and five years of a world moving show up in it");
-	VT_CHECK_EQ(First.Regions, Then.Regions);
+	ViewDelta D;
+	Diff(Before, After, D);
+	const DeltaStats S = MeasureDelta(D, After);
+	Apply(Before, D);
+	const ViewStats Rebuilt = MeasureView(Before);
+
+	VAELEN_LOG_INFO(LogDelta,
+					"five years moved %u of %u regions: %u bytes against %u for the whole frame (%u per mille)",
+					S.Changed, Truth.Regions, S.Bytes, S.Whole, S.PerMille);
+	VT_CHECK_MSG(Rebuilt.Digest == Truth.Digest, "the older frame with the difference applied IS the newer frame");
+	VT_CHECK_EQ(Before.Tick, After.Tick);
+	VT_CHECK_EQ(Before.Year, After.Year);
+	VT_CHECK_EQ(Before.People, After.People);
+	VT_CHECK_EQ(Before.Regions.size(), After.Regions.size());
+	VT_CHECK_MSG(D.Whole == 0, "and it was a difference, not a replacement");
 }
 
-VAELEN_TEST(Frame, AViewOfAWorldWithoutAnEconomyIsStillAView)
+VAELEN_TEST(Delta, ADayCostsFarLessThanAFrame)
 {
-	// Every source past the map and the people is optional, and a world that has
-	// no trade should give a view saying nothing about roads rather than refusing
-	// to be looked at. A renderer must work against a half-built world, because
-	// for most of this project's life that is what there was.
+	// Why the task exists. A world moves a little between two frames, and a
+	// renderer should be told about the little rather than re-reading the world.
 	Run W(AelvorSeed);
 	VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
-	ViewSources Bare;
-	Bare.Types = W.Ages.Types();
-	Bare.Persons = W.Persons;
-	WorldView V;
-	TakeView(W.Instance, Bare, V);
-	const ViewStats S = MeasureView(V);
-	uint32 Roads = 0;
-	uint32 Bound = 0;
-	for (const RegionView& R : V.Regions)
+	WorldView Last;
+	TakeView(W.Instance, W.Sources(), Last);
+
+	uint32 Frames = 0;
+	uint64 DeltaBytes = 0;
+	uint64 WholeBytes = 0;
+	uint32 Quiet = 0;
+	for (uint32 Day = 0; Day < 60; ++Day)
 	{
-		Roads += R.Roads;
-		Bound += R.Bound;
+		W.Instance.TickMany(24);
+		WorldView Now;
+		TakeView(W.Instance, W.Sources(), Now);
+		ViewDelta D;
+		Diff(Last, Now, D);
+		const DeltaStats S = MeasureDelta(D, Now);
+		++Frames;
+		DeltaBytes += S.Bytes;
+		WholeBytes += S.Whole;
+		Quiet += S.Changed == 0 ? 1u : 0u;
+		// And every one of them must still rebuild the frame exactly.
+		Apply(Last, D);
+		VT_CHECK(MeasureView(Last).Digest == MeasureView(Now).Digest);
 	}
-	VAELEN_LOG_INFO(LogView, "told only about the map and the people: %u regions, %u people, %u roads, %u bound",
-					S.Regions, V.People, Roads, Bound);
-	VT_CHECK_MSG(S.Regions > 0, "the ground is there");
-	VT_CHECK_MSG(V.People > 0, "and the people are");
-	VT_CHECK_MSG(Roads == 0, "and it says nothing about roads rather than guessing");
-	VT_CHECK_MSG(Bound == 0, "nor about who is free");
+	const uint64 Share = WholeBytes == 0 ? 0u : DeltaBytes * 1000u / WholeBytes;
+	VAELEN_LOG_INFO(
+		LogDelta,
+		"sixty days: %llu bytes of difference against %llu of frames (%llu per mille), %u days when nothing moved",
+		static_cast<unsigned long long>(DeltaBytes), static_cast<unsigned long long>(WholeBytes),
+		static_cast<unsigned long long>(Share), Quiet);
+	VT_CHECK_EQ(Frames, 60u);
+	VT_CHECK_MSG(DeltaBytes < WholeBytes, "a day's difference is smaller than a day's frame");
+	VT_CHECK_MSG(Quiet > 0, "and on some days the world moved nothing a renderer can see");
+}
+
+VAELEN_TEST(Delta, TheFirstFrameOfASessionIsTheWholeThing)
+{
+	// A renderer that has drawn nothing yet needs everything, and saying so is
+	// better than a delta that quietly assumes an empty screen already matches.
+	Run W(AelvorSeed);
+	VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
+	WorldView Now;
+	TakeView(W.Instance, W.Sources(), Now);
+
+	WorldView Nothing;
+	ViewDelta D;
+	Diff(Nothing, Now, D);
+	VT_CHECK_MSG(D.Whole == 1u, "with nothing on screen, the difference is the whole view");
+	VT_CHECK_EQ(D.Changed.size(), Now.Regions.size());
+	Apply(Nothing, D);
+	VAELEN_LOG_INFO(LogDelta, "from an empty screen: %zu regions carried, whole=%u", D.Changed.size(), D.Whole);
+	VT_CHECK_MSG(MeasureView(Nothing).Digest == MeasureView(Now).Digest, "and applying it draws the world");
+}
+
+VAELEN_TEST(Delta, GroundThatIsGoneIsSaidToBeGone)
+{
+	// The case that cannot happen yet and will: a view with fewer regions than
+	// the one before it. Built by hand rather than by waiting for a world to
+	// lose ground, because the branch exists and an untested branch is a guess.
+	Run W(AelvorSeed);
+	VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
+	WorldView Full;
+	TakeView(W.Instance, W.Sources(), Full);
+	VT_REQUIRE(Full.Regions.size() > 4);
+
+	WorldView Fewer = Full;
+	const uint32 Lost = Fewer.Regions[2].Index;
+	Fewer.Regions.erase(Fewer.Regions.begin() + 2);
+
+	ViewDelta D;
+	Diff(Full, Fewer, D);
+	VAELEN_LOG_INFO(LogDelta, "a region lost: %zu changed, %zu gone, first gone %u", D.Changed.size(), D.Gone.size(),
+					D.Gone.empty() ? 0u : D.Gone.front());
+	VT_CHECK_EQ(D.Gone.size(), static_cast<usize>(1));
+	VT_CHECK_EQ(D.Gone.front(), Lost);
+	WorldView Rebuilt = Full;
+	Apply(Rebuilt, D);
+	VT_CHECK_MSG(MeasureView(Rebuilt).Digest == MeasureView(Fewer).Digest, "and applying it takes the ground away");
+
+	// And the other direction: ground appearing.
+	ViewDelta Back;
+	Diff(Fewer, Full, Back);
+	WorldView Grown = Fewer;
+	Apply(Grown, Back);
+	VT_CHECK_MSG(MeasureView(Grown).Digest == MeasureView(Full).Digest, "and ground that appears is put back in order");
 }

@@ -2591,8 +2591,8 @@ first question Phase 13 or a later gameplay phase should be asked.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 13 — PRESENTATION — 1 of 9 (kernel half)
-TASK        : 13.01 — A READ-ONLY VIEW OF THE WORLD FOR A FRAME — done
+PHASE       : 13 — PRESENTATION — 2 of 9 (kernel half)
+TASK        : 13.02 — WHAT CHANGED SINCE THE LAST FRAME — done
 STATUS      : PROTOTYPE (headless) / UNVERIFIED (engine)
 
 PROGRESS
@@ -2612,6 +2612,22 @@ CURRENTLY
       rather than refusing to be looked at
 
   VaelenView is the twelfth kernel module. ADR-0104.
+
+  13.02 added the difference between two frames, defined by what can be REPLAYED
+  from it: Apply(older, Diff(older, newer)) gives newer back byte for byte, and
+  the test checks that by digest on every frame of a sixty-day run.
+
+    five years moved 27 of 99 regions — 1600 bytes against 5600
+    sixty days: 6792 bytes of difference against 336000 of frames (20 per mille)
+    59 of those 60 days moved nothing a renderer can see
+
+  And it found the defect that justifies the three-preset rule outright.
+  RegionView had eleven 32-bit fields after an int64 - 52 bytes rounded to 56,
+  four of them never written - and MeasureView hashes the struct while Diff
+  memcmps it. Those four bytes were zero under gcc and not under clang-release:
+  green in two presets, failing in the third, on the same source. The assertion
+  compares the size against the SUM OF THE FIELDS now, because
+  static_assert(sizeof(T) == 56) passes happily on a padded struct. ADR-0105.
 
   Phase 13 is the first phase that cannot be finished here: section 19 splits it
   into five kernel tasks (this environment) and four engine tasks that need
@@ -2648,7 +2664,7 @@ COMPLETED
 ✓ 12.03 the documents · 12.04 the maps · 12.05 a name that travels
 ✓ 12.06 what the world does about a name · 12.07 gameplay in the chronicle
 ✓ 12.08 the phase gate — a century of a lived colony, full and replayed
-✓ 13.01 a read-only view of the world for a frame
+✓ 13.01 a read-only view of the world for a frame · 13.02 what changed since the last frame
 
 NEXT
 → 12.06 — consequences: what a polity, an organisation or a family does about somebody whose repute

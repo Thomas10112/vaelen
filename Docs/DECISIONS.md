@@ -6310,3 +6310,50 @@ writes the renderer remembering it too.
   the whole world including everything nobody can see; 03.07 answers questions.
   This is one frame's worth of what can be drawn, small enough to take sixty
   times a second.
+
+## ADR-0105: A delta nobody can replay is a delta nobody should believe - and the padding that proved it
+
+### Context
+
+13.01 takes a whole view every frame. For ninety-nine regions that is 5600
+bytes and nobody cares; AELVOR at 256 has thousands, and a renderer re-reading
+all of them sixty times a second to find the four that moved is a poll, not a
+renderer.
+
+### Decision
+
+1. **The delta is defined by what can be replayed from it, not by what it
+   contains.** `Apply(older, Diff(older, newer))` must give `newer` back byte
+   for byte, and the test checks it by digest on every single frame of a
+   sixty-day run rather than once at the end. A difference that cannot rebuild
+   the thing it is a difference of is a compression scheme with no decoder.
+
+2. **An empty previous view means the whole thing, and says so.** `Whole = 1`
+   rather than a delta that quietly assumes the screen already matches. A
+   renderer that has drawn nothing needs everything.
+
+3. **Ground appearing and disappearing is handled and tested, though no world
+   does it yet.** The branches exist, and an untested branch is a guess.
+
+### Consequences
+
+- Measured: five years moved 27 of 99 regions - 1600 bytes against 5600 for the
+  full frame. Sixty days cost 6792 bytes of difference against 336000 bytes of
+  frames, **twenty per mille**, with 59 of the 60 days moving nothing a renderer
+  can see at all.
+- **The defect this task found, and it is the reason ROADMAP section 18 now
+  demands three presets.** `RegionView` had eleven 32-bit fields after an
+  `int64` - 52 bytes, which the compiler rounds to 56 for the struct's 8-byte
+  alignment, leaving four bytes nobody ever wrote. `MeasureView` hashes these
+  structs and `Diff` memcmps them, so those four bytes decided whether two
+  identical regions compared equal. They happened to be zero under gcc and not
+  under clang-release: the suite was green in two presets and failed in the
+  third, on the same source.
+  The fix is a twelfth 32-bit field to make the count even, and an assertion
+  that compares the size against the SUM OF THE FIELDS rather than against a
+  number I typed. `static_assert(sizeof(T) == 56)` passes happily on a padded
+  struct, which is exactly how this got in.
+- The rule generalises past this struct: anything hashed or memcmp'd byte-wise
+  needs the field-sum assertion, not a size assertion. The kernel's component
+  types get this from `PlainData`'s no-padding check; a view struct is not a
+  component and got nothing until now.

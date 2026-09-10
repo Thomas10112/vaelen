@@ -46,11 +46,11 @@ namespace Vaelen::View
 	/// back into the world.
 	struct RegionView
 	{
+		int64 Elevation = 0;	 ///< Fix64 raw, as 02.02 keeps it - first, so nothing pads behind it
 		uint32 Index = 0;		 ///< the region's own index, 1-based
 		uint32 CentroidTile = 0; ///< where to draw it
 		uint32 Tiles = 0;		 ///< how much ground it covers
 		uint32 Biome = 0;		 ///< what it looks like
-		int64 Elevation = 0;	 ///< Fix64 raw, as 02.02 keeps it
 		uint32 People = 0;		 ///< how many live there
 		uint32 Bound = 0;		 ///< of them, how many are not free
 		uint32 Settlement = 0;	 ///< settlement index, 0 for none
@@ -58,8 +58,18 @@ namespace Vaelen::View
 		uint32 Names = 0;		 ///< names the place carries (12.05)
 		uint32 Detailed = 0;	 ///< 1 when the world simulates it person by person
 		uint32 Reserved = 0;	 //
+		uint32 Reserved2 = 0;	 ///< keeps the count of 32-bit fields even, which is what removes the padding
 	};
-	static_assert(sizeof(RegionView) == 56, "RegionView must stay padding free");
+	// NOT sizeof == 56 on its own, which is what this said first and was wrong.
+	// The eleven 32-bit fields came to 52 bytes and the compiler rounded the
+	// struct to 56 for its 8-byte alignment, leaving four bytes nobody wrote.
+	// MeasureView hashes these structs and Diff memcmps them, so those four
+	// bytes decided whether two identical regions compared equal - and they
+	// happened to be zero under gcc and not under clang-release, which is how a
+	// suite that was green in one preset failed in another. The assertion below
+	// compares the size against the fields, so it cannot pass a padded struct.
+	static_assert(sizeof(RegionView) == sizeof(int64) + 12 * sizeof(uint32),
+				  "RegionView must have no padding: MeasureView hashes it and Diff memcmps it");
 
 	/// The world as a renderer needs it, for one frame.
 	struct WorldView
