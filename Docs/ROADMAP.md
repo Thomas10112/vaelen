@@ -2668,6 +2668,25 @@ CURRENTLY
   It is NOT `VaelenPresentation` - that is now 13.07c, engine-side - and
   ADR-0113's C4251 decision stays open, because MSVC never reads a web page.
 
+→ **ADR-0118 IS BIGGER THAN IT LOOKED, AND IT IS THE OTHER HALF.** The six
+  settlements standing in empty regions were the question "why can they not
+  die". The chronicle answers one nobody had asked - how were they BORN:
+
+    Year 405: The town of region 14 rose on the traffic of its roads.
+
+  Counted over four centuries at 256: **121 towns founded, 100 of them in a
+  region with no inhabitants at all**, 75 empty both before and after, 15 where
+  anybody lived. Forty-four regions had a town rise more than once, one of them
+  four times. Traffic founds a town and traffic keeps it; nobody is asked at
+  either end. The six at year 420 are not the anomaly - they are the residue of
+  a process that has been doing this for four hundred years, and the towns on
+  the map of AELVOR are mostly, and always were, empty.
+
+  It does not decide the four answers; it changes what they are worth. "Rename
+  it" stops being about a word - the world would have 121 caravan stops and 15
+  towns. "Require people" stops being a one-line fix - it would remove most of
+  the towns this world has ever had.
+
 → **ADR-0120 IS WORSE THAN IT LOOKED, AND THE CHRONICLE PROVED IT.** 06.07
   records a road's opening only when `Openings <= 1` - a first building is
   history, a reopening is not. A twin is a NEW entity, so it starts at one, so

@@ -7170,6 +7170,52 @@ already suspected. **Nobody had ever looked at the world**, and the first look
 produced an anomaly no existing gate could have caught, because every gate
 compares the world to what the world did last time.
 
+### Revised by the chronicle (13.08e): the six were the residue, not the defect
+
+The reasoning above asked why six settlements could not DIE. With 13.08d's
+chronicle readable, the world answers a question nobody had put to it - how they
+were BORN:
+
+```
+Year 405: The town of region 14 rose on the traffic of its roads.
+Year 413: The town of region 20 rose on the traffic of its roads.
+```
+
+They were not towns that emptied. They were founded in regions that were already
+empty, by traffic alone. Counted over the whole run of AELVOR at 256, against the
+kept frames of 13.08c:
+
+```
+towns founded over four centuries                          121
+  rose in a region with NO inhabitants at the frame before  100
+  empty both before AND after the founding                   75
+  rose where anybody at all lived                            15
+regions where a town "rose" more than once                   44
+```
+
+**One hundred of a hundred and twenty-one towns in this world were founded where
+nobody lived**, and forty-four regions had a town rise more than once - one of
+them four times.
+
+So the founding rule has the same blindness as the abandonment rule, and it is
+the larger half:
+
+```cpp
+if (Settled[R] != 0 || Traffic[R] < Rules.SettleFromTraffic || RegionHandles[R].IsNull()) { continue; }
+```
+
+Traffic founds a town. Traffic keeps it. Nobody is asked at either end. The six
+settlements standing in empty regions at year 420 are not the anomaly - they are
+what is left at the end of a process that has been doing this for four hundred
+years, and the towns on the map of AELVOR are mostly, and always were, empty.
+
+That does not decide the four answers below; it changes what they are worth.
+Answer 4 - "change nothing and rename it" - stops being a nicety about a word:
+if a settlement is a place trade passes through, then VAELEN has a hundred and
+twenty-one caravan stops and fifteen towns, and the map should say so. Answers 1
+and 2 stop being one-line fixes: requiring people would remove most of the towns
+this world has ever had.
+
 ## ADR-0119 — A CI budget with no headroom is not a passing job, it is a lucky one
 
 **Date:** 2026-09-10
