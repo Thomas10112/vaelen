@@ -2601,6 +2601,13 @@ OPEN        : ADR-0111 nothing eaten · ADR-0129 a road cannot be abandoned
               UE 5.6.1 / MSVC 14.44: 14 modules, 167 actions, Succeeded, 7m25.
               Still NOT SEEN - the exit criterion is a screenshot, and compiling
               only proves it is the shape of a program.
+DETERMINISM : and that build gave the best result of the day. ADR-0120 changed
+              the road network on purpose; the editor and the headless tool then
+              agreed on ELEVEN values at two sizes, roads included - 77 at 256
+              where both said 78 this morning. Two builds of the same code
+              agreeing proves the seed is the seed. Both halves moving together
+              when the code changes underneath them is the actual property.
+              ADR-0130.
 STATUS      : PROTOTYPE (headless) / VALIDATED (UE 5.6, compiles, links and runs)
 
 PROGRESS

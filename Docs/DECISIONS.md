@@ -7767,6 +7767,69 @@ was built. The asymmetry is smaller than it was and it is honest now, but it is
 still an asymmetry, and closing it means giving routes what settlements have.
 That is a design change, not a defect fix. **ADR-0129.**
 
+## ADR-0130 — Determinism survived a change to the kernel, across the engine boundary
+
+**Status:** Accepted — an observation, not a choice
+**Date:** 2026-09-10
+**Phase:** 13 — by 13.07c's build
+
+### What was already known, and why it was weaker than it looked
+
+13.06 built the kernel under UnrealBuildTool and ran `Vaelen.Atlas` at 128 and
+256 in the editor. The numbers matched the headless tool exactly. That was the
+first time this project saw its own determinism cross the engine boundary, and
+it was rightly reported as a result.
+
+It was also a weaker result than it appeared. **Two builds of the same code
+agreeing is not the same as determinism holding.** Nothing had changed between
+them. A pair of runs that match tell you the seed is the seed; they do not tell
+you the property is robust to the code moving underneath it.
+
+### What was seen today
+
+ADR-0120 changed `TradeSystem::Tick` — the road network, in three places, on
+purpose. It moved eight gates' worth of frozen digests. Then a second machine,
+a fresh clone, a different toolchain (UE 5.6.1, MSVC 14.44) built the changed
+kernel and ran the same two commands:
+
+```
+                  engine (MSVC)      headless (gcc)
+year                    420                420
+land tiles      6459 / 25842       6459 / 25842
+regions peopled       65 / 55            65 / 55
+living           36374 / 123600     36374 / 123600
+towns                 44 / 51            44 / 51
+roads                 90 / 77            90 / 77
+detailed region       26 / 42            26 / 42
+```
+
+Eleven values at two sizes, all equal.
+
+**The road count is the one that matters.** This morning the editor reported 78
+open roads at 256. It reports 77 now. The number changed because ADR-0120
+changed what a road IS, and it changed by the same amount on both sides of the
+boundary, computed by two different compilers on two different operating
+systems from the same seed.
+
+That is the property this project claims in its first sentence, tested the only
+way it can really be tested: by breaking something on purpose and watching both
+halves break identically.
+
+### What it does not prove
+
+The two runs were the same *configuration* and that took a moment to establish -
+the editor actor runs 300 years of pre-history plus 120, ending at year 420,
+while the afternoon's headless runs used `--years 420` and ended at year 720.
+The first comparison looked like a mismatch and was a units error. Worth
+recording because the next person will make it too.
+
+It also does not prove anything about the engine leg of the CI, because there is
+no engine leg. This was one person running one command on one machine and
+pasting the output. The nine headless jobs remain the only automated evidence,
+and ADR-0113's UNVERIFIED marks on the Unreal-facing files stay where they are.
+
+---
+
 ## ADR-0129 — A road cannot be abandoned, only shut, and the chronicle has been guessing
 
 **Status:** Proposed — a design change, not a defect fix
