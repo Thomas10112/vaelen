@@ -12,6 +12,16 @@
 
 namespace Vaelen::View
 {
+	// The one place allowed to see both the enum and the view constant, exactly
+	// as Land.cpp is for BiomeKinds.
+	static_assert(AliveState == static_cast<uint8>(Population::LifeState::Alive),
+				  "View::AliveState must match Population::LifeState::Alive");
+
+	bool IsAlive(const PersonView& P)
+	{
+		return P.State == AliveState;
+	}
+
 	void TakePeopleView(const World& W, const ViewSources& From, PeopleView& Out)
 	{
 		Out.People.clear();
@@ -48,7 +58,7 @@ namespace Vaelen::View
 				  [](const PersonView& A, const PersonView& B) { return A.Index < B.Index; });
 		for (const PersonView& V : Out.People)
 		{
-			Out.Living += V.State == static_cast<uint8>(Population::LifeState::Alive) ? 1u : 0u;
+			Out.Living += IsAlive(V) ? 1u : 0u;
 		}
 	}
 
@@ -87,7 +97,7 @@ namespace Vaelen::View
 		for (const PersonView& P : V.People)
 		{
 			++Out.People;
-			const bool Alive = P.State == static_cast<uint8>(Population::LifeState::Alive);
+			const bool Alive = IsAlive(P);
 			Out.Living += Alive ? 1u : 0u;
 			Out.Oldest = Alive && P.Years > Out.Oldest ? P.Years : Out.Oldest;
 			if (P.Region != 0 && Seen[P.Region] == 0)

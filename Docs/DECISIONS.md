@@ -8772,3 +8772,69 @@ deserves its own measurement rather than being carried along.
    reader cannot see.
 
 Option 2 is the one to measure first.
+
+---
+
+## ADR-0134 — The CI cannot see the module that has broken twice
+
+**Status:** Proposed — the project owner's call, because it costs CI minutes.
+**Date:** 2026-09-11
+**Phase:** 13 — VaelenPresentation
+
+### The finding
+
+`VaelenPresentation` is the only module in the project that no build on this
+machine and no job in the CI ever compiles. It needs an engine, the CI has
+none, and `VaelenPresentation.Build.cs` says so in a comment that is correct:
+"a module that needs an editor to exist has no business claiming a green light
+from a build that has none."
+
+That reasoning is right about VALIDATION and wrong about SYNTAX, and the
+difference has now cost two round trips on somebody else's evening:
+
+| when | what was pushed | what it cost |
+|---|---|---|
+| 13.07c | `ReliefScale` renamed to `ReliefFraction` in the settings struct, the actor still assigning the old name | `error C2039` on the user's machine, a build, a report, a fix, a second build |
+| 13.08b | `DrawFolk`, `ColourOfPerson`, a fourth view, a fifth component — unknown | unknown, and that is the point |
+
+Both were pure mechanical breakage: a name, a signature, an argument count.
+Neither needed a GPU, a level, or a person at a screen to find. Both were found
+by the one machine in the project that should not have had to.
+
+### What is being proposed
+
+Not that the CI validate this module — it cannot, and claiming otherwise is
+exactly what UNVERIFIED exists to prevent. That the CI **parse** it.
+
+The engine headers are the obstacle: `CoreMinimal.h`, `FLinearColor`,
+`TArray`, `UHierarchicalInstancedStaticMeshComponent`, `UCLASS`. Three ways to
+get past it, in increasing cost and increasing worth:
+
+1. **A shim header.** A `Tools/EngineShim/` with just enough of the engine's
+   surface for these two files to parse — `FVector`, `FTransform`,
+   `FLinearColor`, `TArray`, `TMap`, `TSet`, and a stubbed component class.
+   Cheap, catches every defect in the table above, and carries its own hazard:
+   a shim that drifts from the real engine gives a green light for a file that
+   does not build, which is worse than no light at all. It would need the real
+   build to be the authority whenever the two disagree.
+2. **clang-parse against the real engine headers**, on a runner that has UE
+   installed. Correct, and needs a machine the project does not have.
+3. **Keep nothing, and keep the round trips.** Which is today, and today is the
+   row in the table with "unknown" in it.
+
+### The rule this does not break
+
+A module that needs an editor is still UNVERIFIED until an editor has run it.
+Option 1 would not change a single STATUS line; it would only stop the *user's*
+machine being the first compiler to read a file. The distinction matters and
+this ADR would be wrong without it: parsing proves the shape of a program,
+which is precisely what the STATUS blocks in that module already say compiling
+proves, and no more.
+
+### Why it is written and not done
+
+Same reason as ADR-0133. It is a design question with a real hazard attached
+(a drifting shim), it costs CI time on nine jobs, and the phase in flight is
+13.08b. Written now because the second occurrence is when a pattern stops being
+bad luck, and a finding not written down at that moment gets written down after
+the third.

@@ -69,6 +69,28 @@ namespace Vaelen::View
 	static_assert(sizeof(PersonView) == 7 * sizeof(uint32) + 4 + sizeof(Hash64),
 				  "PersonView must have no padding: MeasurePeopleView hashes it");
 
+	/// What PersonView::State holds for somebody alive.
+	///
+	/// The enum it comes from is Population::LifeState, and a renderer is not
+	/// allowed to include the module that declares it - that prohibition is the
+	/// point of this whole layer. Which left the one consumer this view was
+	/// built for unable to ask the one question it has: is this person alive.
+	/// It could count them (PeopleView::Living) and not identify them.
+	///
+	/// So the value is named here and checked against the enum in Folk.cpp,
+	/// which is the one place allowed to see both. The same arrangement as
+	/// BiomeKinds in Land.h, and found the same way: by writing the thing that
+	/// was supposed to read the view and watching it come up short.
+	inline constexpr uint8 AliveState = 0;
+
+	/// Whether this person is alive at the frame the view was taken.
+	///
+	/// Not "not dead": Population::LifeState also has Gone, somebody who left
+	/// the detailed grain of 04.06 and is kept for history. They are not dead
+	/// and they are nowhere, so a renderer that draws everyone who is not dead
+	/// draws people who are not there.
+	VAELEN_VIEW_API bool IsAlive(const PersonView& P);
+
 	/// The people of one frame, in index order - always, so a renderer can keep
 	/// its own array in step with this one without sorting it first.
 	struct PeopleView

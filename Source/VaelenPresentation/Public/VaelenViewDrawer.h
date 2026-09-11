@@ -1,23 +1,39 @@
-// VAELEN - VaelenPresentation. Phase 13 task 13.07c.
+// VAELEN - VaelenPresentation. Phase 13 tasks 13.07c and 13.08b.
 //
 // The world drawn from the view, and from nothing else.
 //
-// STATUS: PROTOTYPE - compiled and linked by UnrealBuildTool on UE 5.6.1 with
-// MSVC 14.44 on 2026-09-10 (14 modules, 167 actions, Result: Succeeded), and
-// NOT YET RUN. Nothing here has been dropped in a level or looked at, so every
-// claim about what it DRAWS remains unmeasured. What compiling proves is only
-// that it is the shape of a program.
+// STATUS: UNVERIFIED - the 13.07c part of this file was compiled by
+// UnrealBuildTool on UE 5.6.1 with MSVC 14.44, dropped in a level and LOOKED AT
+// on 2026-09-10: AELVOR stood there, twelve biomes, rivers, 44 towns, 90 roads,
+// and the engine reported the same figures as the headless kernel.
+//
+// The 13.08b part - the people - has been compiled by NOTHING. The headless CI
+// cannot build this module and there is no engine on the machine that wrote it,
+// so what is claimed below about drawing a person is a claim about source text.
+// 13.07c pushed a rename that did not compile and cost a round trip; this is the
+// same exposure, named in advance rather than after.
 //
 // The claim about what this file CANNOT REACH is checked by the compiler, and
 // that is the point of it - see below.
 //
 // READ THE SIGNATURES. Not one function here takes a World, a TickContext, an
 // EntityHandle, a ComponentType, or anything else that could lead back into the
-// simulation. They take three flat structs of numbers - MapView, WorldView,
-// NetView - and a settings block, and they fill instanced meshes.
+// simulation. They take four flat structs of numbers - MapView, WorldView,
+// NetView, PeopleView - and a settings block, and they fill instanced meshes.
+//
+// PeopleView is the one that makes the point hardest to argue with. A region is
+// a number and a road is a pair of them, but a person was an ENTITY: the world
+// held a handle to them, and this file draws nine hundred of them with no way
+// to ask the world anything about any of them, after the world is gone.
 //
 // VaelenViewDrawer.cpp includes Vaelen/View/*.h and the engine, and NOTHING
-// from VaelenSim, VaelenPopulation, VaelenEconomy or VaelenPolitics. That is
+// from VaelenSim, VaelenPopulation, VaelenEconomy or VaelenPolitics. 13.08b
+// tested that the hard way and the compiler won: drawing only the LIVING means
+// asking whether a person is alive, PersonView::State is a raw uint8, and the
+// enum that gives it meaning lives in VaelenPopulation, which this file may not
+// include. The answer was not to include it. It was View::IsAlive - see
+// Vaelen/View/Folk.h, where the value is named and checked against the enum in
+// the one translation unit allowed to see both. That is
 // not a promise in a comment; it is a compile error waiting for anyone who
 // tries. 13.01 said a view "holds no pointer, no handle, and no reference to
 // the World it came from, so a renderer that has one cannot reach the
@@ -33,6 +49,7 @@
 
 #include "CoreMinimal.h"
 
+#include "Vaelen/View/Folk.h"
 #include "Vaelen/View/Frame.h"
 #include "Vaelen/View/Land.h"
 #include "Vaelen/View/Net.h"
@@ -70,6 +87,18 @@ struct FVaelenDrawSettings
 	/// spans four orders of magnitude, so the width goes by the cube root of
 	/// it - the same choice Tools/Viewer/Atlas.html made, for the same reason.
 	uint64 RoadBusy = 20000;
+	/// Width of one person, in centimetres.
+	float FolkSize = 20.0f;
+	/// Height of one person, in centimetres. 170, because that is how tall a
+	/// person is: a figure drawn at a real human height on a tile drawn at
+	/// TileSize is the one scale in this file a reader can check by looking,
+	/// and the last defect of 13.07c was a scale nobody could check by looking.
+	float FolkHeight = 170.0f;
+	/// A person younger than this is drawn as a child, one at least ElderYears
+	/// as an elder. Presentation policy and nothing else - the simulation has
+	/// no opinion about when childhood ends, and neither does the view.
+	uint32 ChildYears = 15;
+	uint32 ElderYears = 60;
 };
 
 /// What one call to Draw put on the ground, so a caller can log it and a
@@ -82,6 +111,9 @@ struct FVaelenDrawTally
 	int32 Towns = 0;		///< settlement markers
 	int32 Roads = 0;		///< open routes drawn
 	int32 SkippedRoads = 0; ///< routes whose regions the frame does not have
+	int32 Folk = 0;			///< living people drawn
+	int32 SkippedFolk = 0;	///< living people whose region owns no land on the map
+	int32 FolkTiles = 0;	///< distinct tiles the people were placed on
 };
 
 namespace VaelenViewDrawer
@@ -117,6 +149,43 @@ namespace VaelenViewDrawer
 	VAELENPRESENTATION_API int32 DrawRoads(const Vaelen::View::NetView& Net, const Vaelen::View::WorldView& Frame,
 										   const Vaelen::View::MapView& Map, const FVaelenDrawSettings& How,
 										   UHierarchicalInstancedStaticMeshComponent* Into, int32& OutSkipped);
+
+	/// The people: one figure per LIVING person, standing on a tile of the
+	/// region they live in.
+	///
+	/// Takes the ground and the people and NOT the frame, which is the whole
+	/// reason this is worth a function. A region's centroid is one tile, and
+	/// nine hundred people drawn on it are a pillar rather than a population.
+	/// MapView already says which region owns each tile, so the people are
+	/// spread over the ground their region actually holds, and a wide province
+	/// looks wide.
+	///
+	/// WHERE ONE PERSON STANDS IS INVENTED HERE, and that is said out loud
+	/// because it is the kind of thing that quietly becomes a fact. The
+	/// simulation has no coordinate for a person - PersonInfo names a region
+	/// and stops - so the view has none either, and it must not: a view that
+	/// made one up would be reporting a position the world does not hold.
+	/// What this function does is choose one, from the person's own Identity,
+	/// so that the same person in the same world always stands in the same
+	/// place and a screenshot can be compared with the one before it. It is a
+	/// drawing decision, it lives in the drawing layer, and Phase 14 is free
+	/// to replace it the day a person has somewhere to actually be.
+	///
+	/// OutSkipped counts living people whose region owns no land in this map -
+	/// the same refusal DrawRoads makes, for the same reason: a figure placed
+	/// at the origin is a confident wrong picture. OutTiles counts the distinct
+	/// tiles used, which is what tells a crowd spread over a province from a
+	/// crowd stacked on one square, and neither looks different from far away.
+	VAELENPRESENTATION_API int32 DrawFolk(const Vaelen::View::PeopleView& Folk, const Vaelen::View::MapView& Map,
+										  const FVaelenDrawSettings& How,
+										  UHierarchicalInstancedStaticMeshComponent* Into, int32& OutSkipped,
+										  int32& OutTiles);
+
+	/// The colour a person is drawn in: by age, because age is the one thing
+	/// about a person that a crowd should show at a glance. A province of
+	/// children is a province in trouble and it ought to look like one.
+	VAELENPRESENTATION_API FLinearColor ColourOfPerson(const Vaelen::View::PersonView& Who,
+													   const FVaelenDrawSettings& How);
 
 	/// The colour a biome is drawn in. Biome is a number in the view; what it
 	/// LOOKS like is a decision of this layer and of no other, which is why the

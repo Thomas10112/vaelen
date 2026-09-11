@@ -1,12 +1,17 @@
-// VAELEN - VaelenPresentation. Phase 13 task 13.07c.
+// VAELEN - VaelenPresentation. Phase 13 tasks 13.07c and 13.08b.
 //
 // AELVOR drawn inside Unreal from the view of 13.01 and from nothing else.
 //
-// STATUS: PROTOTYPE - compiled and linked by UnrealBuildTool on UE 5.6.1 with
-// MSVC 14.44 on 2026-09-10 (14 modules, 167 actions, Result: Succeeded), and
-// NOT YET RUN. Nothing here has been dropped in a level or looked at, so every
-// claim about what it DRAWS remains unmeasured. What compiling proves is only
-// that it is the shape of a program.
+// STATUS: UNVERIFIED - the 13.07c part of this file was compiled by
+// UnrealBuildTool on UE 5.6.1 with MSVC 14.44, dropped in a level and LOOKED AT
+// on 2026-09-10: AELVOR stood there, twelve biomes, rivers, 44 towns, 90 roads,
+// and the engine reported the same figures as the headless kernel.
+//
+// The 13.08b part - the people - has been compiled by NOTHING. The headless CI
+// cannot build this module and there is no engine on the machine that wrote it,
+// so what is claimed below about drawing a person is a claim about source text.
+// 13.07c pushed a rename that did not compile and cost a round trip; this is the
+// same exposure, named in advance rather than after.
 //
 // WHAT THIS IS FOR, and why it is not simply the atlas actor again.
 //
@@ -21,17 +26,24 @@
 //     {
 //         FWorldRun Run(Seed);          // the world is born here
 //         ...generate, run the centuries...
-//         TakeMapView (Run.Instance, Sources, Map);
-//         TakeView    (Run.Instance, Sources, Frame);
-//         TakeNetView (Run.Instance, Sources, Net);
+//         TakeMapView   (Run.Instance, Sources, Map);
+//         TakeView      (Run.Instance, Sources, Frame);
+//         TakeNetView   (Run.Instance, Sources, Net);
+//         TakePeopleView(Run.Instance, Sources, People);
 //     }                                  // AND IT DIES HERE
 //
-//     Draw(Map, Frame, Net);             // every instance placed after this
+//     Draw(Map, Frame, Net, People);     // every instance placed after this
 //
 // The world is destroyed before a single slab is placed. Not "not used" -
 // destroyed, its memory returned, its entity registry gone. If a view were
 // secretly holding a handle back into it, this actor would draw garbage or
 // crash, and that is precisely the test.
+//
+// 13.08b makes that test sharper than it was. The people are the first view in
+// this project of things that are ENTITIES - a region is a number, a road is a
+// pair of numbers, but a person is somebody the world had a handle to. Nine
+// hundred figures standing on AELVOR after their world has been destroyed is
+// the strongest form of 13.01's promise the project can show anyone.
 //
 // Tests/View/Test_Land.cpp proves the same thing headless in a suite called
 // "the ground outlives the world". This is that suite with a viewport, which is
@@ -90,6 +102,13 @@ public:
 	UPROPERTY(EditAnywhere, Category = "AELVOR|Scale", meta = (ClampMin = "1"))
 	float SlabHeight = 40.0f;
 
+	/// Draw the living, one figure each, on the ground of the region they live
+	/// in. Only regions the simulation thinks about person by person have any:
+	/// everywhere else has a population and no people, which is the truth about
+	/// that region and not a gap. See Vaelen/View/Folk.h.
+	UPROPERTY(EditAnywhere, Category = "AELVOR|World")
+	bool bDrawPeople = true;
+
 	/// What the last build put on the ground, in one line, and what the view
 	/// weighed. An empty world and a failed one look identical in a viewport,
 	/// so this exists to tell them apart without opening the log.
@@ -134,4 +153,7 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<UHierarchicalInstancedStaticMeshComponent> Roads;
+
+	UPROPERTY()
+	TObjectPtr<UHierarchicalInstancedStaticMeshComponent> Folk;
 };

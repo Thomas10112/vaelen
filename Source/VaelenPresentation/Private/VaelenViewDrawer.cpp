@@ -1,17 +1,22 @@
-// VAELEN - VaelenPresentation. Phase 13 task 13.07c.
+// VAELEN - VaelenPresentation. Phase 13 tasks 13.07c and 13.08b.
 //
-// STATUS: PROTOTYPE - compiled and linked by UnrealBuildTool on UE 5.6.1 with
-// MSVC 14.44 on 2026-09-10 (14 modules, 167 actions, Result: Succeeded), and
-// NOT YET RUN. Nothing here has been dropped in a level or looked at, so every
-// claim about what it DRAWS remains unmeasured. What compiling proves is only
-// that it is the shape of a program.
+// STATUS: UNVERIFIED - the 13.07c part of this file was compiled by
+// UnrealBuildTool on UE 5.6.1 with MSVC 14.44, dropped in a level and LOOKED AT
+// on 2026-09-10: AELVOR stood there, twelve biomes, rivers, 44 towns, 90 roads,
+// and the engine reported the same figures as the headless kernel.
+//
+// The 13.08b part - the people - has been compiled by NOTHING. The headless CI
+// cannot build this module and there is no engine on the machine that wrote it,
+// so what is claimed below about drawing a person is a claim about source text.
+// 13.07c pushed a rename that did not compile and cost a round trip; this is the
+// same exposure, named in advance rather than after.
 //
 // LOOK AT THE INCLUDES BELOW AND THEN LOOK FOR WHAT IS NOT THERE. No
 // Vaelen/Sim/World.h. No Vaelen/Population/Persons.h. No Vaelen/Economy/
 // anything. This file draws AELVOR and does not know the word World.
 //
-// Everything it has is three structs of numbers taken by 13.01, 13.07a and
-// 13.08a. If somebody later needs "just one thing" out of the simulation to
+// Everything it has is four structs of numbers taken by 13.01, 13.07a, 13.08a
+// and 13.08b. If somebody later needs "just one thing" out of the simulation to
 // draw something here, the include they reach for will make this file stop
 // compiling, and that is the design working rather than failing.
 #include "VaelenViewDrawer.h"
@@ -63,6 +68,13 @@ namespace
 	constexpr FLinearColor Town(0.92f, 0.82f, 0.35f);
 	constexpr FLinearColor Road(0.42f, 0.33f, 0.22f);
 
+	/// The three ages of a person. Chosen to read against the ground rather
+	/// than to be pretty: every biome in the table above is a green, a tan or a
+	/// grey, so people are drawn in the one family of hues the land never uses.
+	constexpr FLinearColor Child(0.98f, 0.70f, 0.78f);
+	constexpr FLinearColor Grown(0.86f, 0.20f, 0.24f);
+	constexpr FLinearColor Elder(0.98f, 0.96f, 0.98f);
+
 	/// Colour goes to the instance as three floats of per-instance custom data.
 	/// A material that does not read PerInstanceCustomData will draw the whole
 	/// world in one colour and be none the wiser, which is said plainly in
@@ -108,6 +120,34 @@ namespace
 	{
 		const bool bLand = (T.Ground & Vaelen::View::GroundFlag::Land) != 0u;
 		return bLand ? static_cast<float>(T.Elevation) * PerUnit : 0.0f;
+	}
+
+	/// The surface a thing standing on a tile stands on. The slab is a cube
+	/// centred on TopOf, so its top face is half a slab higher - which is a
+	/// sentence worth writing down, because getting it wrong buries a figure to
+	/// the waist and looks like a shorter figure rather than like a mistake.
+	float GroundLevel(const Vaelen::View::TileView& T, float PerUnit, const FVaelenDrawSettings& How)
+	{
+		return TopOf(T, PerUnit) + How.SlabHeight * 0.5f;
+	}
+
+	/// One draw from a person's own identity, stable across machines because
+	/// it is the kernel's hash and not the engine's RNG. Nth says which draw:
+	/// the tile, then the offset east, then the offset north, all from the same
+	/// person and all different.
+	Vaelen::uint64 DrawOf(Vaelen::Hash64 Identity, Vaelen::uint64 Nth)
+	{
+		return static_cast<Vaelen::uint64>(
+			Vaelen::HashCombine(Vaelen::HashUInt64(static_cast<Vaelen::uint64>(Identity)), Vaelen::HashUInt64(Nth)));
+	}
+
+	/// A draw turned into a fraction of a tile, from -Spread to +Spread.
+	float Scatter(Vaelen::uint64 Draw, float Spread)
+	{
+		// 12 bits is finer than a pixel at any camera height this map is looked
+		// at from, and keeps the arithmetic in float exactly.
+		const float Unit = static_cast<float>(Draw & 0xFFFu) / 4095.0f;
+		return (Unit - 0.5f) * 2.0f * Spread;
 	}
 } // namespace
 
@@ -279,4 +319,94 @@ int32 VaelenViewDrawer::DrawRoads(const Vaelen::View::NetView& Net, const Vaelen
 	}
 	Into->MarkRenderStateDirty();
 	return Bars.Num();
+}
+
+FLinearColor VaelenViewDrawer::ColourOfPerson(const Vaelen::View::PersonView& Who, const FVaelenDrawSettings& How)
+{
+	if (Who.Years < How.ChildYears)
+	{
+		return Child;
+	}
+	return Who.Years >= How.ElderYears ? Elder : Grown;
+}
+
+int32 VaelenViewDrawer::DrawFolk(const Vaelen::View::PeopleView& Folk, const Vaelen::View::MapView& Map,
+								 const FVaelenDrawSettings& How, UHierarchicalInstancedStaticMeshComponent* Into,
+								 int32& OutSkipped, int32& OutTiles)
+{
+	using namespace Vaelen::View;
+
+	OutSkipped = 0;
+	OutTiles = 0;
+	if (Into == nullptr || Map.Width == 0 || Map.Tiles.empty())
+	{
+		return 0;
+	}
+
+	// The ground each region owns, in ONE pass over the map. A person names a
+	// region and the map names a region per tile, so this is the join the whole
+	// function turns on, and doing it per person would be a scan of the world
+	// for every figure drawn.
+	//
+	// Land only. A region touching the coast owns sea tiles too and nobody
+	// stands on those.
+	TMap<uint32, TArray<int32>> Held;
+	const int32 TileCount = static_cast<int32>(Map.Tiles.size());
+	for (int32 i = 0; i < TileCount; ++i)
+	{
+		const TileView& T = Map.Tiles[static_cast<size_t>(i)];
+		if (T.Region != 0 && (T.Ground & GroundFlag::Land) != 0u)
+		{
+			Held.FindOrAdd(static_cast<uint32>(T.Region)).Add(i);
+		}
+	}
+
+	const float PerUnit = ReliefPerUnit(Map, How);
+	const float Spread = 0.4f; // of a tile, from its centre
+	TArray<FTransform> Figures;
+	TArray<FLinearColor> Paint;
+	TSet<int32> Stood;
+	Figures.Reserve(static_cast<int32>(Folk.Living));
+	Paint.Reserve(static_cast<int32>(Folk.Living));
+
+	for (const PersonView& P : Folk.People)
+	{
+		// The dead are in the view, kept for history, and are not drawn. So is
+		// anyone Gone - they left the detailed grain and are nowhere at all,
+		// which is exactly why IsAlive exists and "not dead" would not do.
+		if (!IsAlive(P))
+		{
+			continue;
+		}
+		const TArray<int32>* Ground_ = Held.Find(P.Region);
+		if (Ground_ == nullptr || Ground_->Num() == 0)
+		{
+			// Alive, in a region this map gives no land to. Counted rather than
+			// dropped at the origin, and counted rather than dropped silently:
+			// it would mean the people and the ground disagree about what
+			// regions exist, and that is a finding about two views, not a
+			// rounding error.
+			++OutSkipped;
+			continue;
+		}
+		const int32 Tile = (*Ground_)[static_cast<int32>(DrawOf(P.Identity, 1) % static_cast<uint64>(Ground_->Num()))];
+		FVector At = PlaceOfTile(Map, static_cast<uint32>(Tile), How);
+		At.X += Scatter(DrawOf(P.Identity, 2), Spread) * How.TileSize;
+		At.Y += Scatter(DrawOf(P.Identity, 3), Spread) * How.TileSize;
+		At.Z = GroundLevel(Map.Tiles[static_cast<size_t>(Tile)], PerUnit, How) + How.FolkHeight * 0.5f;
+		const FVector Scale(How.FolkSize / 100.0f, How.FolkSize / 100.0f, How.FolkHeight / 100.0f);
+		Figures.Add(FTransform(FRotator::ZeroRotator, At, Scale));
+		Paint.Add(ColourOfPerson(P, How));
+		Stood.Add(Tile);
+	}
+
+	WantColour(Into);
+	const TArray<int32> Placed = Into->AddInstances(Figures, true);
+	for (int32 i = 0; i < Placed.Num() && i < Paint.Num(); ++i)
+	{
+		PaintInstance(Into, Placed[i], Paint[i]);
+	}
+	Into->MarkRenderStateDirty();
+	OutTiles = Stood.Num();
+	return Figures.Num();
 }

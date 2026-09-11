@@ -3141,7 +3141,7 @@ head.
 |---|---|---|
 | 13.06 | The first UBT build of all eleven kernel modules. This is the task the UNVERIFIED marks have been waiting for since Phase 00 | it builds, or it does not | **DONE 2026-09-10 - it builds** |
 | 13.07c | `VaelenPresentation`: the UE module, and the world drawn as regions **from that view alone** inside the engine. 13.07b proved the view is sufficient to draw from; this is the same claim in Unreal, and the first place ADR-0113's C4251 decision can be shown to do anything | a screenshot | **COMPILES 2026-09-10 (UE 5.6.1, MSVC 14.44, 14/14 DLLs) — NOT YET SEEN** |
-| 13.08b | A person, a colony and a road drawn from the view of 13.01 **inside the engine** | a screenshot |
+| 13.08b | A person, a colony and a road drawn from the view of 13.01 **inside the engine** | a screenshot | **WRITTEN 2026-09-11 — NO COMPILER HAS READ IT** |
 | 13.09 | Phase 13 gate: the editor open on AELVOR at 256, a century running, and the frame rate written down | measured on the machine that has the engine |
 
 ### 13.06 The first UBT build - VALIDATED (UE 5.6, Win64 Development Editor)
@@ -3493,3 +3493,73 @@ systems you already have what they know before building another one.
 looked right. UNVERIFIED is not an embarrassment to be cleared by assertion; it
 is an accurate statement about eleven `Build.cs` files that no compiler has ever
 read, and it stays until one has.
+
+### 13.08b written - the view had no person in it
+
+**The task could not be started.** "A person, a colony and a road drawn from the
+view of 13.01" - and 13.01 has no person. `RegionView` carries a head COUNT,
+which draws a number over a province and cannot put one figure anywhere. The
+colony and the road were delivered by 13.08a; the person was not deliverable,
+and nothing said so, because nothing in the project had ever tried to draw one.
+
+That is the shape of the finding worth keeping: **the gap was in the surface,
+not in the renderer.** It stayed invisible for as long as the only consumer of
+the view was a test that read the view.
+
+**`Vaelen/View/Folk.h`.** `PersonView` is 40 bytes, no padding: index, region,
+family, culture, religion, AGE IN YEARS, spouse, sex, state, identity. An age
+and not a birth tick, because a renderer draws a child or an elder and should
+not have to know what a tick is. No parents - 13.01 says the state a renderer
+NEEDS, and a family tree is Phase 14's business.
+
+Taken separately from `WorldView`, for `NetView`'s reason and one of its own:
+13.02's `Delta` would carry a vector of people without diffing it, and a frame
+of AELVOR at 128 is 5600 bytes, which is 13.01's promise and not something to
+spend on a crowd most renderers never draw.
+
+**Only materialised people are in it.** A region the simulation thinks about in
+aggregate has a population and no persons. The view reports who EXISTS rather
+than estimating who would exist if somebody looked, and a renderer that finds no
+people in a region is being told the truth about that region.
+
+**What the drawer found that the tests had not.** `DrawFolk` draws the LIVING.
+Asking whether a person is alive means reading `PersonView::State`, which is a
+raw `uint8` whose meaning lives in `Population::LifeState` - in a module the
+presentation layer may not include, by a prohibition that is the whole point of
+the layer. So the view could COUNT the living and could not IDENTIFY one.
+
+`View::IsAlive` and `View::AliveState` close it, checked against the enum in
+`Folk.cpp`, the one translation unit allowed to see both - the same arrangement
+`BiomeKinds` got in 13.07c, and found the same way: by writing the thing that
+was supposed to read the view and watching it come up short. Not "not dead":
+`LifeState` also has `Gone`, somebody who left the detailed grain and is kept
+for history. They are not dead and they are nowhere.
+
+```
+region 36 after 40 years: 932 people, 570 living by the predicate, 362 not
+region 38 detailed:      1164 people materialised, 1164 in the view, 911 living
+same seed twice:          698 people, 582 living, oldest 85, digest ec2dc961979d1743
+```
+
+**Where a person stands is INVENTED, and the file says so.** The simulation has
+no coordinate for a person - `PersonInfo` names a region and stops - so the view
+has none either, and it must not: a view that made one up would be reporting a
+position the world does not hold. `DrawFolk` chooses a tile from the ones the
+MAP says the person's region owns, by a hash of that person's own identity, so
+the same person in the same world always stands in the same place and one
+screenshot can be compared with the next. It is a drawing decision, it lives in
+the drawing layer, and Phase 14 may replace it the day a person has somewhere to
+actually be.
+
+It also means the crowd is spread over the ground the region actually holds,
+rather than stacked on the centroid: `DrawFolk` takes the ground and the people
+and NOT the frame, which is the reason it is worth being a function. The actor
+logs the count of DISTINCT TILES used, because a pillar of nine hundred figures
+and a populated province are the same picture from above.
+
+**STATUS: UNVERIFIED, and deliberately.** The headless suite is green - 6/6 on
+`View.Folk`, 156/156 overall - and that covers `Folk.h` and nothing in
+`VaelenPresentation`, which the CI cannot build and no compiler on this machine
+has read. 13.07c pushed a rename that did not compile and cost a round trip on
+somebody else's evening. This is the same exposure, named in advance instead of
+after, and it is why 13.08b is marked WRITTEN and not DONE.

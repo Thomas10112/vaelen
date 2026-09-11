@@ -260,3 +260,60 @@ VAELEN_TEST(Folk, TwoWorldsOfTheSameSeedGiveTheSamePeople)
 	VT_CHECK_EQ(S.Living, T.Living);
 	VT_CHECK_EQ(S.Oldest, T.Oldest);
 }
+
+// The question the renderer actually has, and could not ask.
+//
+// Written after DrawFolk, not before it, and that order is the finding. The
+// view had a count of the living (PeopleView::Living) and no way to point at
+// one of them: State is a raw uint8 and the enum that gives it meaning is in
+// VaelenPopulation, which a renderer may not include - so the drawer could
+// report how many people were alive and could not draw them.
+//
+// This suite checks what IsAlive is for: it separates the living from BOTH
+// other states, and "not dead" is not the same answer. Population::LifeState
+// has Gone, somebody who left the detailed grain of 04.06 and is kept only so
+// history still has them. They are not dead and they are nowhere, and a
+// renderer drawing everybody who is not dead draws people who are not there.
+VAELEN_TEST(Folk, TheLivingCanBeToldApartWithoutTheKernelsEnum)
+{
+	PersonView Living;
+	Living.State = AliveState;
+	VT_CHECK_MSG(IsAlive(Living), "the value the view publishes is the one the view's own predicate accepts");
+
+	// Every other byte is somebody the renderer must not place. Checked over
+	// the whole range rather than over the two states that exist today,
+	// because the failure mode here is a state ADDED later and quietly drawn.
+	for (uint32 Other = 0; Other <= 255u; ++Other)
+	{
+		if (static_cast<uint8>(Other) == AliveState)
+		{
+			continue;
+		}
+		PersonView P;
+		P.State = static_cast<uint8>(Other);
+		VT_CHECK_MSG(!IsAlive(P), "anything that is not the living state is not alive");
+	}
+
+	// And the predicate agrees with the count the view took from the world,
+	// which is the thing that would drift if either were ever changed alone.
+	Peopled W(AelvorSeed);
+	VT_REQUIRE(W.Ages.Generate(Peopled::Square(64), 300));
+	const uint32 Where = W.Busiest();
+	VT_REQUIRE(Where != 0);
+	RequestDetail(W.Instance, W.Lod, Where);
+	W.Ages.Run(40);
+
+	PeopleView V;
+	TakePeopleView(W.Instance, W.Sources(), V);
+	uint32 Counted = 0;
+	uint32 Others = 0;
+	for (const PersonView& P : V.People)
+	{
+		Counted += IsAlive(P) ? 1u : 0u;
+		Others += IsAlive(P) ? 0u : 1u;
+	}
+	VAELEN_LOG_INFO(LogFolk, "region %u after 40 years: %u people, %u living by the predicate, %u not", Where,
+					static_cast<uint32>(V.People.size()), Counted, Others);
+	VT_CHECK_EQ(Counted, V.Living);
+	VT_CHECK_MSG(Others > 0, "forty years is long enough that somebody has died, or the test proves nothing");
+}

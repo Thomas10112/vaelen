@@ -1,14 +1,20 @@
-// VAELEN - VaelenPresentation. Phase 13 task 13.07c.
+// VAELEN - VaelenPresentation. Phase 13 tasks 13.07c and 13.08b.
 //
-// STATUS: PROTOTYPE - compiled and linked by UnrealBuildTool on UE 5.6.1 with
-// MSVC 14.44 on 2026-09-10 (14 modules, 167 actions, Result: Succeeded), and
-// NOT YET RUN. Nothing here has been dropped in a level or looked at, so every
-// claim about what it DRAWS remains unmeasured. What compiling proves is only
-// that it is the shape of a program.
+// STATUS: UNVERIFIED - the 13.07c part of this file was compiled by
+// UnrealBuildTool on UE 5.6.1 with MSVC 14.44, dropped in a level and LOOKED AT
+// on 2026-09-10: AELVOR stood there, twelve biomes, rivers, 44 towns, 90 roads,
+// and the engine reported the same figures as the headless kernel.
+//
+// The 13.08b part - the people - has been compiled by NOTHING. The headless CI
+// cannot build this module and there is no engine on the machine that wrote it,
+// so what is claimed below about drawing a person is a claim about source text.
+// 13.07c pushed a rename that did not compile and cost a round trip; this is the
+// same exposure, named in advance rather than after.
 //
 // This is the ONE file of the module that knows what a World is, and it knows
-// it for exactly as long as it takes to take three views of one. Everything
-// after the closing brace of that scope draws from numbers.
+// it for exactly as long as it takes to take FOUR views of one - the ground,
+// the frame, the network and, since 13.08b, the people. Everything after the
+// closing brace of that scope draws from numbers.
 #include "VaelenViewActor.h"
 
 #include "Materials/MaterialInterface.h"
@@ -233,6 +239,7 @@ AVaelenViewActor::AVaelenViewActor()
 	Ground = MakeLayer(this, Plate, TEXT("Ground"));
 	Towns = MakeLayer(this, Plate, TEXT("Towns"));
 	Roads = MakeLayer(this, Plate, TEXT("Roads"));
+	Folk = MakeLayer(this, Plate, TEXT("Folk"));
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> Cube(TEXT("/Engine/BasicShapes/Cube.Cube"));
 	if (Cube.Succeeded())
@@ -240,6 +247,7 @@ AVaelenViewActor::AVaelenViewActor()
 		Ground->SetStaticMesh(Cube.Object);
 		Towns->SetStaticMesh(Cube.Object);
 		Roads->SetStaticMesh(Cube.Object);
+		Folk->SetStaticMesh(Cube.Object);
 	}
 
 	// If the project has a tile material by the name this module expects, take
@@ -278,6 +286,10 @@ void AVaelenViewActor::Clear()
 	{
 		Roads->ClearInstances();
 	}
+	if (Folk != nullptr)
+	{
+		Folk->ClearInstances();
+	}
 	Report = TEXT("cleared");
 }
 
@@ -285,12 +297,13 @@ void AVaelenViewActor::BuildFromView()
 {
 	Clear();
 
-	// The three views, declared OUTSIDE the scope that owns the world. That
+	// The four views, declared OUTSIDE the scope that owns the world. That
 	// placement is the whole task: they are filled inside it and read after it
 	// has closed.
 	Vaelen::View::MapView Map;
 	Vaelen::View::WorldView Frame;
 	Vaelen::View::NetView Net;
+	Vaelen::View::PeopleView People;
 
 	const double Started = FPlatformTime::Seconds();
 	double Simulated = 0.0;
@@ -318,6 +331,7 @@ void AVaelenViewActor::BuildFromView()
 		Vaelen::View::TakeMapView(Run.Instance, From, Map);
 		Vaelen::View::TakeView(Run.Instance, From, Frame);
 		Vaelen::View::TakeNetView(Run.Instance, From, Net);
+		Vaelen::View::TakePeopleView(Run.Instance, From, People);
 	}
 	// THE WORLD IS GONE. Its entities, its components, its map and its event
 	// log were destroyed by the brace above. Everything below draws from three
@@ -339,6 +353,7 @@ void AVaelenViewActor::BuildFromView()
 		Ground->SetMaterial(0, TileMaterial);
 		Towns->SetMaterial(0, TileMaterial);
 		Roads->SetMaterial(0, TileMaterial);
+		Folk->SetMaterial(0, TileMaterial);
 	}
 	int32 Painted = 0;
 	Tally.Tiles = VaelenViewDrawer::DrawGround(Map, How, Ground, Tally.Land, Painted);
@@ -346,6 +361,22 @@ void AVaelenViewActor::BuildFromView()
 		   Tally.Tiles);
 	Tally.Towns = VaelenViewDrawer::DrawTowns(Frame, Map, How, Towns);
 	Tally.Roads = VaelenViewDrawer::DrawRoads(Net, Frame, Map, How, Roads, Tally.SkippedRoads);
+	if (bDrawPeople)
+	{
+		Tally.Folk = VaelenViewDrawer::DrawFolk(People, Map, How, Folk, Tally.SkippedFolk, Tally.FolkTiles);
+	}
+
+	// What the people weigh and who they are, printed for the reason the biome
+	// histogram is printed: a crowd of nine hundred stacked on one tile and a
+	// crowd spread over a province are the same picture from above, and only a
+	// count of distinct tiles tells them apart. The digest is here so this line
+	// can be set beside the headless suite's, which reports the same number.
+	const Vaelen::View::PeopleStats Counted = Vaelen::View::MeasurePeopleView(People);
+	UE_LOG(LogVaelenView, Display,
+		   TEXT("AELVOR people: %u in the view, %u living in %u regions, oldest %u, %u bytes, digest %016llx - drawn ")
+			   TEXT("%d on %d tiles, %d unplaced"),
+		   Counted.People, Counted.Living, Counted.Regions, Counted.Oldest, Counted.Bytes,
+		   static_cast<unsigned long long>(Counted.Digest), Tally.Folk, Tally.FolkTiles, Tally.SkippedFolk);
 
 	const Vaelen::View::ViewStats Weighed = Vaelen::View::MeasureView(Frame);
 	// How many tiles of each biome the DRAWER was handed. Printed because a
@@ -368,6 +399,13 @@ void AVaelenViewActor::BuildFromView()
 			TEXT("view %u bytes, simulated in %.2f s"),
 		WorldSize, WorldSize, Frame.Year, Tally.Tiles, Tally.Land, Weighed.Regions, Weighed.Peopled, Frame.People,
 		Tally.Towns, Tally.Roads, static_cast<int32>(Net.Routes.size()), Weighed.Bytes, Simulated);
+	Report += FString::Printf(TEXT(", %d people drawn on %d tiles"), Tally.Folk, Tally.FolkTiles);
+	if (Tally.SkippedFolk > 0)
+	{
+		// Living people in a region the ground gives no land to. Said out loud
+		// for DrawRoads' reason: two views that are meant to agree do not.
+		Report += FString::Printf(TEXT(" - %d people not drawn, their region owns no land"), Tally.SkippedFolk);
+	}
 	if (Tally.SkippedRoads > 0)
 	{
 		// Said out loud rather than swallowed: a road the frame could not place
@@ -391,7 +429,7 @@ namespace
 	///
 	/// Under -nullrhi nothing is DRAWN, and the instances go nowhere. What still
 	/// happens is everything that matters for checking the work: the world is
-	/// built, the three views are taken, the world is destroyed, and the tally
+	/// built, the four views are taken, the world is destroyed, and the tally
 	/// and the report are computed from what outlived it. The numbers can be
 	/// compared to the headless tool without a single pixel.
 	void DrawFromView(const TArray<FString>& Args, UWorld* World_)
