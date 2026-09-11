@@ -45,11 +45,21 @@ struct FVaelenDrawSettings
 {
 	/// Side of one tile's slab, in centimetres.
 	float TileSize = 100.0f;
-	/// Centimetres of height per unit of elevation. TileView::Elevation is a
-	/// Fix64 raw shifted down 16 - the whole part of the world's own elevation
-	/// unit, whatever 02.02 decided that means. It is not centimetres, which is
-	/// exactly why this factor exists here and not in the kernel.
-	float ReliefScale = 700.0f;
+	/// How tall the highest land stands, as a fraction of the map's width.
+	///
+	/// NOT centimetres per elevation unit, which is what this was and why the
+	/// land was never once visible: TileView::Elevation is a Fix64 raw shifted
+	/// down 16, so AELVOR's land runs to about 2000 of them and its median sits
+	/// near 640. At the old 700 cm per unit a middling field stood 4.5 km above
+	/// a map 128 m across and the mountains reached 14 km. Every land tile was
+	/// launched clean out of frame, and what looked like a continent in the
+	/// viewport was the HOLE in the sea where the land should have been.
+	///
+	/// A fraction cannot do that. The drawer reads the view's own highest land
+	/// and scales to it, so a flat world and an alpine one both come out
+	/// legible, and a world whose elevation unit means something else entirely
+	/// still does.
+	float ReliefFraction = 0.08f;
 	/// Thickness of a slab. The sea is drawn flat.
 	float SlabHeight = 40.0f;
 	/// Height of a settlement marker above the ground it stands on.

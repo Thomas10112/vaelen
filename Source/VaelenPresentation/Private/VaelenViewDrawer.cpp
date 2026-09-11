@@ -87,11 +87,27 @@ namespace
 		}
 	}
 
-	/// The height, in centimetres, of the top of a tile's slab.
-	float TopOf(const Vaelen::View::TileView& T, const FVaelenDrawSettings& How)
+	/// Centimetres of height per elevation unit, so that the highest land in
+	/// THIS view stands ReliefFraction of the map's width above the sea.
+	float ReliefPerUnit(const Vaelen::View::MapView& Map, const FVaelenDrawSettings& How)
+	{
+		int32 Highest = 1;
+		for (const Vaelen::View::TileView& T : Map.Tiles)
+		{
+			if ((T.Ground & Vaelen::View::GroundFlag::Land) != 0u && T.Elevation > Highest)
+			{
+				Highest = T.Elevation;
+			}
+		}
+		const float Across = static_cast<float>(Map.Width) * How.TileSize;
+		return Across * How.ReliefFraction / static_cast<float>(Highest);
+	}
+
+	/// The height, in centimetres, of the top of a tile's slab. The sea is flat.
+	float TopOf(const Vaelen::View::TileView& T, float PerUnit)
 	{
 		const bool bLand = (T.Ground & Vaelen::View::GroundFlag::Land) != 0u;
-		return bLand ? static_cast<float>(T.Elevation) * How.ReliefScale : 0.0f;
+		return bLand ? static_cast<float>(T.Elevation) * PerUnit : 0.0f;
 	}
 } // namespace
 
@@ -140,6 +156,7 @@ int32 VaelenViewDrawer::DrawGround(const Vaelen::View::MapView& Map, const FVael
 		return 0;
 	}
 	WantColour(Into);
+	const float PerUnit = ReliefPerUnit(Map, How);
 	const int32 Count = static_cast<int32>(Map.Tiles.size());
 	TArray<FTransform> Slabs;
 	Slabs.Reserve(Count);
@@ -149,7 +166,7 @@ int32 VaelenViewDrawer::DrawGround(const Vaelen::View::MapView& Map, const FVael
 		const bool bLand = (T.Ground & Vaelen::View::GroundFlag::Land) != 0u;
 		OutLandTiles += bLand ? 1 : 0;
 		FVector At = PlaceOfTile(Map, static_cast<uint32>(i), How);
-		At.Z = TopOf(T, How);
+		At.Z = TopOf(T, PerUnit);
 		// A unit cube scaled to the slab: the mesh the caller set is assumed to
 		// be 100 units a side, which is Unreal's own cube.
 		const FVector Scale(How.TileSize / 100.0f, How.TileSize / 100.0f, How.SlabHeight / 100.0f);
@@ -176,6 +193,7 @@ int32 VaelenViewDrawer::DrawTowns(const Vaelen::View::WorldView& Frame, const Va
 	{
 		return 0;
 	}
+	const float PerUnit = ReliefPerUnit(Map, How);
 	TArray<FTransform> Marks;
 	for (const Vaelen::View::RegionView& R : Frame.Regions)
 	{
@@ -189,7 +207,7 @@ int32 VaelenViewDrawer::DrawTowns(const Vaelen::View::WorldView& Frame, const Va
 			continue;
 		}
 		FVector At = PlaceOfTile(Map, Tile, How);
-		At.Z = TopOf(Map.Tiles[Tile], How) + How.TownHeight * 0.5f;
+		At.Z = TopOf(Map.Tiles[Tile], PerUnit) + How.TownHeight * 0.5f;
 		const FVector Scale(How.TileSize / 100.0f, How.TileSize / 100.0f, How.TownHeight / 100.0f);
 		Marks.Add(FTransform(FRotator::ZeroRotator, At, Scale));
 	}
@@ -212,6 +230,7 @@ int32 VaelenViewDrawer::DrawRoads(const Vaelen::View::NetView& Net, const Vaelen
 	{
 		return 0;
 	}
+	const float PerUnit = ReliefPerUnit(Map, How);
 	TArray<FTransform> Bars;
 	for (const Vaelen::View::RouteView& Rt : Net.Routes)
 	{
@@ -232,8 +251,8 @@ int32 VaelenViewDrawer::DrawRoads(const Vaelen::View::NetView& Net, const Vaelen
 		}
 		FVector From = PlaceOfTile(Map, A->CentroidTile, How);
 		FVector To = PlaceOfTile(Map, B->CentroidTile, How);
-		From.Z = TopOf(Map.Tiles[A->CentroidTile], How) + How.SlabHeight;
-		To.Z = TopOf(Map.Tiles[B->CentroidTile], How) + How.SlabHeight;
+		From.Z = TopOf(Map.Tiles[A->CentroidTile], PerUnit) + How.SlabHeight;
+		To.Z = TopOf(Map.Tiles[B->CentroidTile], PerUnit) + How.SlabHeight;
 		const FVector Along = To - From;
 		const float Length = static_cast<float>(Along.Size());
 		if (Length <= KINDA_SMALL_NUMBER)
