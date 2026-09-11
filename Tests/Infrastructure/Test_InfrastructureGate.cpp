@@ -71,10 +71,10 @@ using namespace Vaelen::WorldGen;
 // Recorded on clang 18 / Linux x86_64 on 2026-09-08 (09.08): AELVOR 256 at year
 // 300, the two most peopled regions detailed, five centuries with every Phase
 // 04 to 09 system running (506 s with assertions on).
-#define VAELEN_WORKSGATE_FROZEN_256_250 0x44afb686db76f791ull
-#define VAELEN_WORKSGATE_FROZEN_256_500 0x4efbefd0e45cf20cull
-#define VAELEN_WORKSGATE_LOG_256_500 0x52647cbd0ac2c26aull
-#define VAELEN_WORKSGATE_TEXT_256_500 0x4fdf3eb5cd85c1bcull
+#define VAELEN_WORKSGATE_FROZEN_256_250 0x387298b713101486ull
+#define VAELEN_WORKSGATE_FROZEN_256_500 0x30364f6263a1ac03ull
+#define VAELEN_WORKSGATE_LOG_256_500 0x39bbb70abea06aeeull
+#define VAELEN_WORKSGATE_TEXT_256_500 0x556652079cab141dull
 
 namespace
 {

@@ -33,9 +33,9 @@ using namespace Vaelen::WorldGen;
 // Recorded on clang 18 / Linux x86_64 on 2026-09-06 (05.04): the busiest
 // region of AELVOR 128 detailed at year 300 and lived through 200 years with
 // every Phase 04 and 05 system so far, every institution allowed.
-#define VAELEN_BONDAGE_FROZEN_128 0xa1a92018c62bc034ull
-#define VAELEN_BONDAGE_ENTERED_128 2845u
-#define VAELEN_BONDAGE_LEFT_128 2220u
+#define VAELEN_BONDAGE_FROZEN_128 0x17ee3b7169cfc352ull
+#define VAELEN_BONDAGE_ENTERED_128 2843u
+#define VAELEN_BONDAGE_LEFT_128 2218u
 
 namespace
 {

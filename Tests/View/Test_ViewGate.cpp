@@ -59,7 +59,7 @@ using namespace Vaelen::WorldGen;
 // a year watched a day at a time - 360 frames, the screen kept up to date by
 // nothing but deltas and checked against a fresh frame every day.
 #define VAELEN_VIEWGATE_FROZEN_VIEW 0x115c2ff70a5327c4ull
-#define VAELEN_VIEWGATE_FROZEN_STATE 0x97eb395f076dae61ull
+#define VAELEN_VIEWGATE_FROZEN_STATE 0x5bc8478689958433ull
 
 namespace
 {

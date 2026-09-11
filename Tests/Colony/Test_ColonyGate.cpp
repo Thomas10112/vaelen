@@ -100,18 +100,18 @@ using namespace Vaelen::WorldGen;
 // did NOT move by that change and were not re-recorded - the history this world
 // wrote and the life that was lived in it are the same ones, which is the
 // evidence that the change was to the bookkeeping and not to the world.
-#define VAELEN_PLAYERGATE_FROZEN_HALF 0xcbabf49184794e61ull
-#define VAELEN_PLAYERGATE_FROZEN_END 0x458fd55fec8bfeb6ull
-#define VAELEN_PLAYERGATE_LOG 0x83ffbf6305c229a1ull
+#define VAELEN_PLAYERGATE_FROZEN_HALF 0x13ed18cbe1ab95a3ull
+#define VAELEN_PLAYERGATE_FROZEN_END 0x43786be94ea6011aull
+#define VAELEN_PLAYERGATE_LOG 0xed52a98caebc7d65ull
 #define VAELEN_PLAYERGATE_LIFE 0x5d7c3a439b10fa79ull
 
 // Recorded on gcc 13 / Linux x86_64 on 2026-09-09 (11.08): AELVOR 256 at year
 // 300, sixty years of detail on the ground where the ore and the people both
 // are, the colony founded and bound there, and forty years lived a day at a
 // time inside it out of a recorded stream of intents.
-#define VAELEN_COLONYGATE_FROZEN_HALF 0x5ce64eda88e7e073ull
-#define VAELEN_COLONYGATE_FROZEN_END 0x28cd6c1ebac92181ull
-#define VAELEN_COLONYGATE_LOG 0x47c19fcdd72a8ee8ull
+#define VAELEN_COLONYGATE_FROZEN_HALF 0xc731539e6d65b1full
+#define VAELEN_COLONYGATE_FROZEN_END 0x915df627394d53c5ull
+#define VAELEN_COLONYGATE_LOG 0x205401cf6075e326ull
 
 namespace
 {

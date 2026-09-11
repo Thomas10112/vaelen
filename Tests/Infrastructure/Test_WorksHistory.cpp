@@ -71,7 +71,7 @@ using namespace Vaelen::WorldGen;
 // year 300, the two most peopled regions detailed, 250 years with every Phase
 // 04 to 09 system.
 #define VAELEN_ANNALS_RECORDS_128 707u
-#define VAELEN_ANNALS_TEXT_128 0xb43f79e23e518716ull
+#define VAELEN_ANNALS_TEXT_128 0x89d555fefbb3ebf2ull
 
 namespace
 {

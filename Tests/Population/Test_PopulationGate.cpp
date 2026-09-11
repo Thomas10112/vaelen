@@ -38,10 +38,10 @@ using namespace Vaelen::WorldGen;
 // goes up, so a demoted region no longer hands its indices out again to the
 // people made after it, and the world's one counter entity is state like any
 // other. Every invariant of the gate is unchanged; only the state digests are.
-#define VAELEN_POPGATE_FROZEN_256_250 0xfa5be8eb020c970full
-#define VAELEN_POPGATE_FROZEN_256_500 0xa916dafda879a758ull
+#define VAELEN_POPGATE_FROZEN_256_250 0x3baadf987cb88bf6ull
+#define VAELEN_POPGATE_FROZEN_256_500 0x787134179545cf82ull
 #define VAELEN_POPGATE_PERSONS_256_500 0xf5f4643d97ce5068ull
-#define VAELEN_POPGATE_LOG_256_500 0xba7af3a8312954d8ull
+#define VAELEN_POPGATE_LOG_256_500 0x6879cbc821f51af3ull
 
 namespace
 {

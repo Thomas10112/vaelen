@@ -25,10 +25,10 @@ using namespace Vaelen::WorldGen;
 
 // Recorded on clang 18 / Linux x86_64 on 2026-09-06 (03.08): AELVOR 256 after
 // 1000, 1500 and 2000 years (the first five centuries are frozen in 03.06).
-#define VAELEN_GATE_FROZEN_256_1000 0x3ee019d12e58c774ull
-#define VAELEN_GATE_FROZEN_256_1500 0xa39530dc59e041e0ull
-#define VAELEN_GATE_FROZEN_256_2000 0x2ce95360ad09dda9ull
-#define VAELEN_GATE_LOG_256_2000 0x1b884d94518bfe79ull
+#define VAELEN_GATE_FROZEN_256_1000 0x4e265540f82a6468ull
+#define VAELEN_GATE_FROZEN_256_1500 0xaccb59e1e688b085ull
+#define VAELEN_GATE_FROZEN_256_2000 0x177e28092a87c158ull
+#define VAELEN_GATE_LOG_256_2000 0x3aa536466a7fce87ull
 
 namespace
 {

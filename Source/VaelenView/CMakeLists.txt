@@ -8,6 +8,7 @@ set(VAELEN_VIEW_PUBLIC_HEADERS
   Public/Vaelen/View/Net.h
   Public/Vaelen/View/Delta.h
   Public/Vaelen/View/Eye.h
+  Public/Vaelen/View/Folk.h
 )
 
 set(VAELEN_VIEW_SOURCES
@@ -16,6 +17,7 @@ set(VAELEN_VIEW_SOURCES
   Private/Net.cpp
   Private/Delta.cpp
   Private/Eye.cpp
+  Private/Folk.cpp
 )
 
 add_library(VaelenView STATIC ${VAELEN_VIEW_SOURCES} ${VAELEN_VIEW_PUBLIC_HEADERS})

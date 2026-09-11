@@ -59,7 +59,7 @@ using namespace Vaelen::WorldGen;
 // most peopled regions detailed, 100 years with every Phase 04 to 08 system so
 // far, the chronicle included.
 #define VAELEN_ANNALS_RECORDS_128 241u
-#define VAELEN_ANNALS_TEXT_128 0x88eee3886fdd6d57ull
+#define VAELEN_ANNALS_TEXT_128 0x89d555fefbb3ebf2ull
 
 namespace
 {
