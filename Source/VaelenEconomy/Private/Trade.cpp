@@ -240,10 +240,9 @@ namespace Vaelen::Economy
 					{
 						continue;
 					}
-					Context.Events->Publish(
-						Context.Tick, GoodsCarriedEvent,
-						TradePayload{Live->Index, Seller[g], Buyer[g], Saturate(Moved[g]), g},
-						W.Entities().GetId(Rt.Handle));
+					Context.Events->Publish(Context.Tick, GoodsCarriedEvent,
+											TradePayload{Live->Index, Seller[g], Buyer[g], Saturate(Moved[g]), g},
+											W.Entities().GetId(Rt.Handle));
 				}
 				if (A < N)
 				{
