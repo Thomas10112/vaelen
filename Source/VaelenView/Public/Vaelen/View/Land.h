@@ -60,6 +60,16 @@ namespace Vaelen::View
 	/// eight: MeasureMapView hashes these, so a byte nobody writes is a byte
 	/// that decides whether two identical maps compare equal (the lesson
 	/// RegionView paid in 13.01, and it is not being paid twice).
+	/// How many kinds `TileView::Biome` can hold, so that a reader can size a
+	/// table by biome without naming WorldGen::Biome - which a presentation
+	/// layer must not be able to reach. Land.cpp asserts it against the enum,
+	/// in the one place that is allowed to see both.
+	///
+	/// It exists because a table did get it wrong: the engine drawer held
+	/// eleven colours for twelve biomes and started at the wrong one, so
+	/// every land tile was painted as the biome one step colder than it is.
+	inline constexpr uint32 BiomeKinds = 12;
+
 	struct TileView
 	{
 		int32 Elevation = 0; ///< Fix64 raw shifted right 16: units in Q16.16, saturated

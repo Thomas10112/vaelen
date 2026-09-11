@@ -16,6 +16,13 @@
 
 namespace Vaelen::View
 {
+	// The one place allowed to see both the enum and the view constant.
+	static_assert(BiomeKinds == static_cast<uint32>(WorldGen::Biome::Count),
+				  "View::BiomeKinds must match WorldGen::Biome::Count");
+} // namespace Vaelen::View
+
+namespace Vaelen::View
+{
 	// The first four GroundFlag bits are WorldGen::TerrainFlag, copied. Copied
 	// values drift; asserted values cannot. If Phase 02 ever renumbers a flag,
 	// this file stops compiling instead of quietly painting the coast inland.

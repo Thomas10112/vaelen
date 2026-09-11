@@ -20,25 +20,42 @@
 
 namespace
 {
-	/// The eleven biomes of 02.04, in the order WorldGen::Biome declares them.
+	/// The twelve biomes of 02.04, in the order WorldGen::Biome declares them,
+	/// indexed by the enum's own value.
+	///
+	/// This table used to hold eleven and start at Ice, while the enum starts at
+	/// Ocean = 0 - so every land tile was painted as the biome one step colder
+	/// than it is, and Alpine (11) ran off the end and came out sea blue. The
+	/// comment above it said "the eleven biomes, in the order WorldGen::Biome
+	/// declares them", which was wrong twice: there are twelve, and that was not
+	/// the order. A comment asserting a correspondence is worth nothing unless
+	/// something checks it, hence the static_assert below.
+	///
 	/// Named here rather than pulled from the kernel on purpose: what a tundra
 	/// LOOKS like is a decision of the presentation layer and of nothing else,
 	/// and the day an artist wants a different green they should not have to
 	/// touch a module the CI compiles four ways.
 	constexpr FLinearColor BiomePaint[] = {
-		FLinearColor(0.86f, 0.91f, 0.95f), // 0  Ice
-		FLinearColor(0.62f, 0.65f, 0.58f), // 1  Tundra
-		FLinearColor(0.16f, 0.32f, 0.24f), // 2  BorealForest
-		FLinearColor(0.55f, 0.58f, 0.40f), // 3  ColdSteppe
-		FLinearColor(0.20f, 0.45f, 0.22f), // 4  TemperateForest
-		FLinearColor(0.45f, 0.60f, 0.28f), // 5  Grassland
-		FLinearColor(0.58f, 0.55f, 0.32f), // 6  Scrubland
-		FLinearColor(0.12f, 0.38f, 0.18f), // 7  TropicalForest
-		FLinearColor(0.68f, 0.60f, 0.30f), // 8  Savanna
-		FLinearColor(0.80f, 0.72f, 0.48f), // 9  Desert
-		FLinearColor(0.70f, 0.70f, 0.72f), // 10 Alpine
+		FLinearColor(0.09f, 0.18f, 0.34f), // 0  Ocean - land tiles never reach it
+		FLinearColor(0.86f, 0.91f, 0.95f), // 1  Ice
+		FLinearColor(0.62f, 0.65f, 0.58f), // 2  Tundra
+		FLinearColor(0.16f, 0.32f, 0.24f), // 3  BorealForest
+		FLinearColor(0.55f, 0.58f, 0.40f), // 4  ColdSteppe
+		FLinearColor(0.20f, 0.45f, 0.22f), // 5  TemperateForest
+		FLinearColor(0.45f, 0.60f, 0.28f), // 6  Grassland
+		FLinearColor(0.58f, 0.55f, 0.32f), // 7  Scrubland
+		FLinearColor(0.12f, 0.38f, 0.18f), // 8  TropicalForest
+		FLinearColor(0.68f, 0.60f, 0.30f), // 9  Savanna
+		FLinearColor(0.80f, 0.72f, 0.48f), // 10 Desert
+		FLinearColor(0.70f, 0.70f, 0.72f), // 11 Alpine
 	};
 	constexpr int32 BiomeCount = static_cast<int32>(sizeof(BiomePaint) / sizeof(BiomePaint[0]));
+	// Checked against the view, not against the kernel: this file is not
+	// allowed to name WorldGen, and Build.cs says the compiler is what
+	// enforces that. View::BiomeKinds is asserted against the enum in
+	// Land.cpp, which is the one place that may see both.
+	static_assert(BiomeCount == static_cast<int32>(Vaelen::View::BiomeKinds),
+				  "BiomePaint must hold one colour per biome, indexed by the enum's own value");
 
 	constexpr FLinearColor Sea(0.09f, 0.18f, 0.34f);
 	constexpr FLinearColor River(0.20f, 0.42f, 0.68f);
