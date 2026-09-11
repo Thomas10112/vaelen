@@ -61,6 +61,35 @@ jobs:
           git ls-files 'Source/*.h' 'Source/*.cpp' 'Tests/*.h' 'Tests/*.cpp' | grep -v 'Source/Vaelen/' \
             | xargs clang-format-18 --style=file --dry-run -Werror
 
+  parse:
+    name: engine modules parse (clang 18)
+    runs-on: ubuntu-24.04
+    # Seconds, not minutes: it is a front end over three translation units.
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      # WHAT THIS JOB IS AND IS NOT (ADR-0134).
+      #
+      # VaelenPresentation needs an engine and this runner has none, so nothing
+      # here BUILDS it and nothing here may claim it is validated - it stays
+      # UNVERIFIED until an editor has run it. What this does is PARSE it
+      # against Tools/EngineShim, which catches the class of defect that twice
+      # reached the project owner's machine first: a renamed member, an
+      # argument count, a type that changed.
+      #
+      # The self-test runs FIRST and is the reason to believe the parse. It
+      # breaks the module seven ways on a temporary copy - the first being the
+      # defect that actually shipped in 13.07c - and fails if the parser did
+      # not notice, so a shim that has silently stopped working cannot go on
+      # reporting green.
+      - name: Shim self-test
+        run: python3 Tools/test_engine_shim.py
+      - name: Parse
+        run: python3 Tools/parse_engine_modules.py
+
   windows:
     name: Windows (MSVC)
     runs-on: windows-2022

@@ -8777,7 +8777,9 @@ Option 2 is the one to measure first.
 
 ## ADR-0134 — The CI cannot see the module that has broken twice
 
-**Status:** Proposed — the project owner's call, because it costs CI minutes.
+**Status:** **APPLIED 2026-09-11** — option 1, the shim, chosen by the project
+owner. `Tools/EngineShim/`, `Tools/parse_engine_modules.py`,
+`Tools/test_engine_shim.py`, and one CI job. No STATUS line moved.
 **Date:** 2026-09-11
 **Phase:** 13 — VaelenPresentation
 
@@ -8831,10 +8833,94 @@ this ADR would be wrong without it: parsing proves the shape of a program,
 which is precisely what the STATUS blocks in that module already say compiling
 proves, and no more.
 
-### Why it is written and not done
+### Why it was written before it was done
 
 Same reason as ADR-0133. It is a design question with a real hazard attached
-(a drifting shim), it costs CI time on nine jobs, and the phase in flight is
-13.08b. Written now because the second occurrence is when a pattern stops being
-bad luck, and a finding not written down at that moment gets written down after
-the third.
+(a drifting shim), it costs CI time, and the phase in flight was 13.08b.
+Written at the second occurrence, because that is when a pattern stops being
+bad luck and a finding not written down then gets written down after the third.
+
+---
+
+### What was built, and the measurement that makes it worth anything
+
+Option 1. `Tools/EngineShim/` is about 400 lines standing in for the engine:
+`FVector`, `FTransform`, `FLinearColor`, `TArray`, `TMap`, `TSet`,
+`TObjectPtr`, `AActor`, `UWorld`, `UHierarchicalInstancedStaticMeshComponent`,
+`ConstructorHelpers`, the console command, `UE_LOG`, and UHT's macros as
+no-ops. `Tools/parse_engine_modules.py` runs clang's front end over the
+module's three translation units with `-fsyntax-only -Wall -Wextra -Werror`.
+
+**The drawer alone would have been the comfortable version and was refused.**
+Both defects in the table above are in `VaelenViewActor.cpp` — the file with
+the `UCLASS`, the `.generated.h` and the `TObjectPtr`. A shim covering only
+`VaelenViewDrawer.cpp` would have been half the work and would have caught
+neither. So the actor is in scope, and the two hard parts got honest answers
+rather than convenient ones:
+
+- **`.generated.h`** is written by the script into a temp directory, one stub
+  per `.generated.h` it finds *included*. Generated rather than committed, so
+  an actor added next year is covered the day it is written instead of being
+  the one file nobody remembered to add to a list.
+- **`Super`** is `typedef AActor Super` in UHT's output and a macro cannot name
+  a class's base, so `AActor` declares `using Super = AActor` and every actor
+  inherits it. Exactly right for an actor derived straight from `AActor`, which
+  is every actor this project has; the limit is written in the file rather than
+  left to be discovered.
+
+**`Tools/test_engine_shim.py` is the part that makes the green light mean
+something.** A checker that has never caught anything is a claim, not a
+capability, and a shim that silently stopped working would report green just
+like a healthy one. So the self-test breaks the module seven ways on a
+temporary copy and fails if the parser did not notice:
+
+```
+[shim-test] control: an untouched copy parses
+[shim-test] caught  the real 13.07c defect: a renamed setting the actor still assigns
+[shim-test] caught  an argument dropped from a drawer call
+[shim-test] caught  a tally field renamed in the header and not at its use
+[shim-test] caught  UE_LOG naming a log category that was never declared
+[shim-test] caught  a log argument naming a member that is gone
+[shim-test] caught  a drawer handed the wrong view entirely
+[shim-test] caught  a colour function called with the settings missing
+[shim-test] 7 mutations, all caught, control clean
+```
+
+The first case is not invented. It is `How.ReliefScale = ReliefScale`, the
+line that shipped in 13.07c and cost a build, a report, a fix and a second
+build on the project owner's machine.
+
+The **control must pass**, and it runs first. Without it, a parser that failed
+on everything — a broken shim, a missing compiler — would look like a perfect
+detector and all seven mutations would be "caught" for the wrong reason.
+
+A mutation whose target text is no longer in the source is reported **STALE**
+and fails the run, rather than passing quietly: a test that has stopped
+touching the thing it names is worse than no test.
+
+### Two hazards, and what was done about each
+
+**The shim shadowing the real engine.** If `Tools/EngineShim` ever reached a
+real build's include path it would shadow Unreal's `CoreMinimal.h` and let a
+module build against a toy. `CoreMinimal.h` therefore opens with an `#error`
+unless `VAELEN_SHIM_PARSE` is defined, which only the parse script defines.
+Verified: including it from anything else stops the compiler dead.
+
+**The shim drifting from the engine.** Nothing here can detect that, and
+pretending otherwise would be the dishonest part. The rule instead: **the UBT
+build is the authority.** When the two disagree the shim is wrong, and the fix
+goes in `Tools/EngineShim` — never a change to `VaelenPresentation` made to
+please it. Signatures are copied narrow for the same reason: parameters are the
+engine's types rather than templates that would swallow anything, because a
+shim that accepts everything proves nothing.
+
+### What the green light is worth, stated so nobody has to guess
+
+It proves the file is a well-formed C++20 program: names resolve, signatures
+match, a renamed member is gone, an argument count is checked.
+
+It does not prove the module BUILDS under UnrealBuildTool, that UHT accepts the
+`UCLASS`, that the engine's real types behave as these do, or that anything
+DRAWS. **`VaelenPresentation` stays UNVERIFIED until an editor has run it**,
+and this ADR would have been wrong if it had moved one STATUS line. It moved
+none.

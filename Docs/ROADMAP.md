@@ -3563,3 +3563,63 @@ and a populated province are the same picture from above.
 has read. 13.07c pushed a rename that did not compile and cost a round trip on
 somebody else's evening. This is the same exposure, named in advance instead of
 after, and it is why 13.08b is marked WRITTEN and not DONE.
+
+### ADR-0134 applied - the CI now reads the module the CI cannot build
+
+**Why this, and why now.** `VaelenPresentation` was the only module in the
+project that no build on a CI runner and no build on the kernel machine ever
+compiled. `VaelenPresentation.Build.cs` explains why, and is right: "a module
+that needs an editor to exist has no business claiming a green light from a
+build that has none."
+
+That is right about VALIDATION and wrong about SYNTAX, and the difference cost
+two round trips on the project owner's machine - a rename in 13.07c that did
+not compile, and 13.08b's `DrawFolk`, which nothing had read at all.
+
+The occasion was the owner being away from that machine for a weekend. The one
+thing making that machine a bottleneck is that it holds the only compiler that
+reads this module, so the weekend went on removing the bottleneck rather than
+waiting behind it.
+
+**What runs.** `Tools/parse_engine_modules.py` puts clang's front end over the
+module's three translation units against `Tools/EngineShim`, with
+`-fsyntax-only -Wall -Wextra -Werror`. One CI job, seconds long.
+
+**The comfortable version was refused.** Both defects that actually shipped are
+in `VaelenViewActor.cpp` - the file with the `UCLASS`, the `.generated.h` and
+the `TObjectPtr`. A shim covering only the drawer would have been half the work
+and would have caught neither. The `.generated.h` stubs are written by the
+script for every one it finds *included*, so an actor added next year is
+covered the day it is written.
+
+**The measurement.** `Tools/test_engine_shim.py` breaks the module seven ways
+on a temporary copy and fails if the parse did not notice - the first case
+being `How.ReliefScale = ReliefScale`, the line that actually shipped:
+
+```
+control: an untouched copy parses
+caught  the real 13.07c defect: a renamed setting the actor still assigns
+caught  an argument dropped from a drawer call
+caught  a tally field renamed in the header and not at its use
+caught  UE_LOG naming a log category that was never declared
+caught  a log argument naming a member that is gone
+caught  a drawer handed the wrong view entirely
+caught  a colour function called with the settings missing
+7 mutations, all caught, control clean
+```
+
+The control runs first and must pass: without it, a parser that failed on
+everything would look like a perfect detector.
+
+**Not one STATUS line moved, and that is the point.** Parsing proves the shape
+of a program - which is exactly what this module's STATUS blocks already say
+compiling proves, and no more. `VaelenPresentation` stays UNVERIFIED until an
+editor has run it. 13.08b stays WRITTEN, not DONE: it still needs a screenshot.
+
+**The hazard is named in the file, not hidden.** A shim that drifts from the
+engine gives a green light to code that does not build, which is worse than no
+light at all. The rule: the UBT build is the authority, and when the two
+disagree the shim is what gets fixed. A second guard is mechanical - the shim's
+`CoreMinimal.h` refuses to compile unless `VAELEN_SHIM_PARSE` is defined, which
+only the parse script defines, so it can never shadow the real engine header in
+a real build.
