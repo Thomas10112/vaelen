@@ -49,6 +49,7 @@
 #include "VaelenViewActor.generated.h"
 
 class UHierarchicalInstancedStaticMeshComponent;
+class UMaterialInterface;
 
 UCLASS(Blueprintable, ClassGroup = (VAELEN), meta = (DisplayName = "VAELEN View"))
 class VAELENPRESENTATION_API AVaelenViewActor : public AActor
@@ -89,6 +90,21 @@ public:
 	/// What the last build put on the ground, in one line, and what the view
 	/// weighed. An empty world and a failed one look identical in a viewport,
 	/// so this exists to tell them apart without opening the log.
+	/// The material every tile, town and road is drawn with.
+	///
+	/// The drawer writes a colour per instance as three floats of per-instance
+	/// custom data. A material that does not read PerInstanceCustomData draws
+	/// the whole world in one flat colour - which is what the engine default
+	/// does, and what you see when this is left unset. To see the biomes, the
+	/// sea, the towns and the roads, point this at an Unlit material whose
+	/// Emissive Color is MakeFloat3(PerInstanceCustomData[0], [1], [2]).
+	///
+	/// Left unset on purpose rather than defaulted: a material asset belongs to
+	/// the project content, not to this module, and the world should still draw
+	/// - colourless but correct - in a project that has none.
+	UPROPERTY(EditAnywhere, Category = "AELVOR|Look")
+	TObjectPtr<UMaterialInterface> TileMaterial;
+
 	UPROPERTY(VisibleAnywhere, Category = "AELVOR|Report")
 	FString Report;
 

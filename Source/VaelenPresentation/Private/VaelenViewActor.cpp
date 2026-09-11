@@ -11,6 +11,8 @@
 // after the closing brace of that scope draws from numbers.
 #include "VaelenViewActor.h"
 
+#include "Materials/MaterialInterface.h"
+
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
@@ -314,6 +316,14 @@ void AVaelenViewActor::BuildFromView()
 	How.SlabHeight = SlabHeight;
 
 	FVaelenDrawTally Tally;
+	// Before anything is drawn, so that changing the material in the Details
+	// panel and running again is enough to see it.
+	if (TileMaterial != nullptr)
+	{
+		Ground->SetMaterial(0, TileMaterial);
+		Towns->SetMaterial(0, TileMaterial);
+		Roads->SetMaterial(0, TileMaterial);
+	}
 	Tally.Tiles = VaelenViewDrawer::DrawGround(Map, How, Ground, Tally.Land);
 	Tally.Towns = VaelenViewDrawer::DrawTowns(Frame, Map, How, Towns);
 	Tally.Roads = VaelenViewDrawer::DrawRoads(Net, Frame, Map, How, Roads, Tally.SkippedRoads);
