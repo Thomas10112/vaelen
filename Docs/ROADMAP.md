@@ -2603,10 +2603,27 @@ DECIDED     : ADR-0120 FIXED (three fixes) · ADR-0118 decided, unchanged
               a single unit doing it
 OPEN        : ADR-0129 a road cannot be abandoned · ADR-0131 the log says how
               much crossed a road, not what it was
-13.07c      : COMPILES. 877 lines written with no engine, built first try on
-              UE 5.6.1 / MSVC 14.44: 14 modules, 167 actions, Succeeded, 7m25.
-              Still NOT SEEN - the exit criterion is a screenshot, and compiling
-              only proves it is the shape of a program.
+13.07c      : DONE AND SEEN. AELVOR stands in the editor with its biomes, its
+              rivers and lakes, its 44 towns and the 90 roads between them, and
+              it is the same world the headless kernel builds under Linux: 6459
+              land tiles, ten biomes at identical counts, 36374 living.
+              Getting there cost four defects, all mine, all in the drawing:
+                - the land was multiplied by 700 cm per elevation unit, a
+                  constant copied from VaelenAtlasActor where the value it
+                  multiplies is 65536x smaller. Land sat 4.5 km above a 128 m
+                  map. What looked like a continent all evening was the HOLE in
+                  the sea where the land should have been;
+                - the biome palette held eleven colours for twelve biomes and
+                  started at the wrong one;
+                - nothing in the project counted biomes, so neither could be
+                  contradicted by any output;
+                - the tile material was left unset by default, and the command
+                  spawns its actor into an unsaved level, so every restart threw
+                  the assignment away and looked like a rendering bug.
+              Relief is now a fraction of the map's width, normalised to the
+              highest land in the view: a number that cannot be wrong by three
+              orders of magnitude. MapStats counts biomes, the atlas writes
+              them, the actor logs them and the colours it painted.
 DETERMINISM : and that build gave the best result of the day. ADR-0120 changed
               the road network on purpose; the editor and the headless tool then
               agreed on ELEVEN values at two sizes, roads included - 77 at 256
