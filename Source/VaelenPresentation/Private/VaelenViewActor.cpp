@@ -328,7 +328,7 @@ void AVaelenViewActor::BuildFromView()
 
 	FVaelenDrawSettings How;
 	How.TileSize = TileSize;
-	How.ReliefScale = ReliefScale;
+	How.ReliefFraction = ReliefFraction;
 	How.SlabHeight = SlabHeight;
 
 	FVaelenDrawTally Tally;

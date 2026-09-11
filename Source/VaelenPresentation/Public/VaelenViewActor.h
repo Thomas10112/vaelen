@@ -81,8 +81,11 @@ public:
 	UPROPERTY(EditAnywhere, Category = "AELVOR|Scale", meta = (ClampMin = "10"))
 	float TileSize = 100.0f;
 
-	UPROPERTY(EditAnywhere, Category = "AELVOR|Scale", meta = (ClampMin = "0"))
-	float ReliefScale = 700.0f;
+	/// How tall the highest land stands, as a fraction of the map's width.
+	/// See FVaelenDrawSettings::ReliefFraction for why this is a fraction and
+	/// not centimetres per elevation unit.
+	UPROPERTY(EditAnywhere, Category = "AELVOR|Scale", meta = (ClampMin = "0", ClampMax = "1"))
+	float ReliefFraction = 0.08f;
 
 	UPROPERTY(EditAnywhere, Category = "AELVOR|Scale", meta = (ClampMin = "1"))
 	float SlabHeight = 40.0f;
