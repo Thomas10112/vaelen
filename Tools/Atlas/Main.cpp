@@ -791,6 +791,20 @@ namespace
 		// Elevation is Fix64 raw shifted right 16, so a value over 65536 is the
 		// height in units. The scale is written down rather than assumed.
 		J.Put(",\"elevationScale\":65536");
+		// One count per biome, in the enum's own order, so that a reader can
+		// see at a glance whether a world has weather or is all one thing.
+		// Written because nothing wrote it: a wrong biome table lived in the
+		// engine drawer unseen, and no output anywhere could have contradicted it.
+		J.Put(",\"biomes\":[");
+		for (Vaelen::uint32 b = 0; b < Vaelen::View::BiomeKinds; ++b)
+		{
+			if (b != 0)
+			{
+				J.Put(",");
+			}
+			J.Number(GroundStats.Biomes[b]);
+		}
+		J.Put("]");
 		J.Put("},\n\"network\":{");
 		J.Field("routes", NetStats_.Routes);
 		J.Put(",");

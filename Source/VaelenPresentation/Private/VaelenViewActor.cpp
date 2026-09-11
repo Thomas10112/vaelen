@@ -329,6 +329,20 @@ void AVaelenViewActor::BuildFromView()
 	Tally.Roads = VaelenViewDrawer::DrawRoads(Net, Frame, Map, How, Roads, Tally.SkippedRoads);
 
 	const Vaelen::View::ViewStats Weighed = Vaelen::View::MeasureView(Frame);
+	// How many tiles of each biome the DRAWER was handed. Printed because a
+	// wrong palette is invisible from a screenshot: a map drawn in one flat
+	// colour looks the same whether the world has no weather or the table
+	// reading it is broken, and only a number tells the two apart.
+	const Vaelen::View::MapStats Grounded = Vaelen::View::MeasureMapView(Map);
+	FString Weather;
+	for (Vaelen::uint32 b = 0; b < Vaelen::View::BiomeKinds; ++b)
+	{
+		if (Grounded.Biomes[b] != 0)
+		{
+			Weather += FString::Printf(TEXT(" %u:%u"), b, Grounded.Biomes[b]);
+		}
+	}
+	UE_LOG(LogVaelenView, Display, TEXT("AELVOR biomes (index:tiles):%s"), *Weather);
 	Report = FString::Printf(
 		TEXT(
 			"AELVOR %dx%d, year %u: %d tiles (%d land), %u regions (%u peopled), %u living, %d towns, %d roads of %d, ")

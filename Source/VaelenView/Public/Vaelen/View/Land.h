@@ -110,6 +110,12 @@ namespace Vaelen::View
 		uint32 Regions = 0; ///< distinct region indices the ground mentions
 		uint32 Bytes = 0;	///< what the ground weighs
 		Hash64 Digest = 0;	///< every tile in index order
+		/// Tiles of each biome, indexed by WorldGen::Biome's own value.
+		///
+		/// Counted because nothing counted it: TileView has carried a Biome
+		/// since 13.07a and no measurement ever looked at it, so a reader could
+		/// hold a wrong table for it - and one did - with nothing to say so.
+		uint32 Biomes[BiomeKinds] = {};
 	};
 	VAELEN_VIEW_API MapStats MeasureMapView(const MapView& V);
 } // namespace Vaelen::View

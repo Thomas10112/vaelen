@@ -135,6 +135,10 @@ namespace Vaelen::View
 			Out.Land += (T.Ground & GroundFlag::Land) != 0 ? 1u : 0u;
 			Out.Coast += (T.Ground & GroundFlag::Coast) != 0 ? 1u : 0u;
 			Out.Water += (T.Ground & (GroundFlag::River | GroundFlag::Lake)) != 0 ? 1u : 0u;
+			if (T.Biome < BiomeKinds)
+			{
+				++Out.Biomes[T.Biome];
+			}
 			if (T.Region != 0 && Seen[T.Region] == 0)
 			{
 				Seen[T.Region] = 1;
