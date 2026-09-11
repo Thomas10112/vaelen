@@ -80,8 +80,15 @@ namespace VaelenViewDrawer
 	///
 	/// Takes a MapView and a component. There is no third parameter that could
 	/// be a world, and that absence is the whole design.
+	///
+	/// OutDistinctColours reports how many different colours were actually
+	/// written to the instances. It exists because a flat-looking map has two
+	/// very different causes - the drawer painted one colour, or it painted
+	/// many and the material showed one - and from a screenshot they are the
+	/// same picture. This number tells them apart without another round trip.
 	VAELENPRESENTATION_API int32 DrawGround(const Vaelen::View::MapView& Map, const FVaelenDrawSettings& How,
-											UHierarchicalInstancedStaticMeshComponent* Into, int32& OutLandTiles);
+											UHierarchicalInstancedStaticMeshComponent* Into, int32& OutLandTiles,
+											int32& OutDistinctColours);
 
 	/// The towns: one marker per region that has a settlement, standing on the
 	/// tile the region calls its centroid.

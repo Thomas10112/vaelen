@@ -340,7 +340,10 @@ void AVaelenViewActor::BuildFromView()
 		Towns->SetMaterial(0, TileMaterial);
 		Roads->SetMaterial(0, TileMaterial);
 	}
-	Tally.Tiles = VaelenViewDrawer::DrawGround(Map, How, Ground, Tally.Land);
+	int32 Painted = 0;
+	Tally.Tiles = VaelenViewDrawer::DrawGround(Map, How, Ground, Tally.Land, Painted);
+	UE_LOG(LogVaelenView, Display, TEXT("AELVOR ground: %d distinct colours written to %d instances"), Painted,
+		   Tally.Tiles);
 	Tally.Towns = VaelenViewDrawer::DrawTowns(Frame, Map, How, Towns);
 	Tally.Roads = VaelenViewDrawer::DrawRoads(Net, Frame, Map, How, Roads, Tally.SkippedRoads);
 

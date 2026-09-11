@@ -130,9 +130,11 @@ FVector VaelenViewDrawer::PlaceOfTile(const Vaelen::View::MapView& Map, uint32 T
 }
 
 int32 VaelenViewDrawer::DrawGround(const Vaelen::View::MapView& Map, const FVaelenDrawSettings& How,
-								   UHierarchicalInstancedStaticMeshComponent* Into, int32& OutLandTiles)
+								   UHierarchicalInstancedStaticMeshComponent* Into, int32& OutLandTiles,
+								   int32& OutDistinctColours)
 {
 	OutLandTiles = 0;
+	OutDistinctColours = 0;
 	if (Into == nullptr || Map.Width == 0 || Map.Height == 0)
 	{
 		return 0;
@@ -154,11 +156,15 @@ int32 VaelenViewDrawer::DrawGround(const Vaelen::View::MapView& Map, const FVael
 		Slabs.Add(FTransform(FRotator::ZeroRotator, At, Scale));
 	}
 	const TArray<int32> Placed = Into->AddInstances(Slabs, true);
+	TArray<FLinearColor> Used;
 	for (int32 i = 0; i < Placed.Num() && i < Count; ++i)
 	{
 		const Vaelen::View::TileView& T = Map.Tiles[static_cast<size_t>(i)];
-		PaintInstance(Into, Placed[i], ColourOfBiome(T.Biome, T.Ground));
+		const FLinearColor C = ColourOfBiome(T.Biome, T.Ground);
+		PaintInstance(Into, Placed[i], C);
+		Used.AddUnique(C);
 	}
+	OutDistinctColours = Used.Num();
 	Into->MarkRenderStateDirty();
 	return Count;
 }
