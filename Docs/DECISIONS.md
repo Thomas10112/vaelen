@@ -8604,3 +8604,85 @@ A rule nobody has seen fire is a rule nobody has. So:
   step itself fails. The wrapper's second failure path is the same three lines
   as the first and was not separately exercised - said here rather than left to
   be assumed.
+
+---
+
+## ADR-0132 — The narrative must never be a cause
+
+**Status: applied.** Found by ADR-0131, not caused by it.
+
+### The rule that was broken
+
+The architecture says SIMULATION is the source of truth and the record runs
+downstream of it. `Religion.cpp` had the arrow the other way round:
+
+```cpp
+if (HashUInt64(E.Id.Value ^ 0x534348ull) % 1000u < Rules.SchismPerMille)
+```
+
+`E.Id` is the event log's bookkeeping - the serial number of the nth event
+ever published. Deciding a schism by hashing it means a region's religion
+depended on **how much had been written down elsewhere in the world**.
+Publishing one extra event, in any module, anywhere earlier in the run,
+shifted every later serial and re-tossed this coin.
+
+### How it surfaced
+
+ADR-0131 published one `GoodsCarried` event per good instead of one per
+route. That should be a change to the record alone. Instead 28 frozen
+constants moved, and `VAELEN_GRAINS_LIVING_64` - a digest of stock
+components with no log in it at all - moved with them.
+
+The chain, established by measurement rather than by reading:
+
+| step | evidence |
+|---|---|
+| log volume, not payload content, is what moves the world | single publish passes; per-good publish fails; `From`/`To` and the new `Good` field change nothing |
+| but one extra empty event changes nothing | a probe adding one zero-amount event per route passes |
+| the two worlds are identical for 475 years | 500 yearly stock digests, first divergence at year 476 |
+| year 476 is a LOD alternation year | `476 % 25 == 1`; both worlds drop 285 -> ~221 detailed houses |
+| the divergence is one house, in one region | region 36: 49 houses against 50 |
+| one house means one family line ended differently | `Living` is every non-extinct house of the region |
+
+Seven hypotheses were eliminated first and are recorded so nobody pays for
+them twice: an event listener acting per event (there is none outside the
+describer), a shared id counter (serials are per `IdKind`), payload overflow
+(`MaxPayloadBytes` is 64, the payload grew 16 -> 20), a log reference held
+across a publish (both scans fill locals first), a capped or trimmed log (it
+is append-only), a per-tick dispatch budget (there is none), and struct
+padding (`RegionStock` and `HouseStock` are `uint32[8]`, 32 bytes, no
+padding).
+
+### The decision
+
+The coin is seeded from the world's own material - the tick, the splitting
+culture, its parent, the region, and the faith that would split - following
+the convention already used in the module, `HashCombine(Identity,
+HashString(name))`. Never from a serial number.
+
+Verified by the only test that means anything here: **with the fix, the same
+world comes out at both log volumes** - digest `477efde8a0ccb23d`, 987
+returns, 45 inheritances, 328 houses valued, 22 with an heir, identical on
+every value. Before the fix those two runs differed.
+
+### What this cost, and what it would have cost
+
+Every world AELVOR has ever generated had its religious history decided in
+part by how many events unrelated modules happened to publish. The frozen
+digests of twelve gates encode those worlds. They move once here, knowingly.
+
+Left asleep it was worse than that: the next module to add an event - in
+09.xx, in 12.xx, anywhere - would have shifted the religions of every world
+again, silently, and the moved digests would have been re-frozen as though
+they were a consequence of that module's own work. ADR-0095 is exactly that
+accident, six phases at once, unnoticed.
+
+### Not fixed here, on purpose
+
+`Religion.cpp:294` and `Disasters.cpp:373` **store** an event id in persistent
+state (`FaithRequest`, `PendingOmen`) to attribute a cause later. No decision
+reads it, so no behaviour depends on it - but it does put log serials into
+snapshotted, hashed state, which keeps state digests sensitive to log volume.
+That is a separate defect with a separate fix, and stacking it here would
+repeat the ADR-0095 mistake of moving several things at once. Proposed,
+not applied.

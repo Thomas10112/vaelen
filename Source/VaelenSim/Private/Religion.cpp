@@ -632,7 +632,8 @@ namespace Vaelen::History
 		}
 		if (E.Is(CultureSplitEvent) && Rules.SchismOnSplit != 0)
 		{
-			const uint32 Region = E.Get<CulturePayload>().Region;
+			const CulturePayload P = E.Get<CulturePayload>();
+			const uint32 Region = P.Region;
 			const std::vector<EntityHandle> Regions = RegionHandles(W, Setup);
 			if (Region == 0 || Region >= Regions.size() || Regions[Region].IsNull())
 			{
@@ -643,7 +644,24 @@ namespace Vaelen::History
 			{
 				return;
 			}
-			if (HashUInt64(E.Id.Value ^ 0x534348ull) % 1000u < Rules.SchismPerMille)
+			// The coin is the world's own material, never the event's serial
+			// number. It used to read HashUInt64(E.Id.Value ^ 0x534348), and
+			// E.Id is the log's bookkeeping: the nth event ever published. So
+			// publishing one more event anywhere earlier - in trade, in war, in
+			// any module at all - shifted every later serial and re-tossed this
+			// coin. A region's religion depended on how much had been written
+			// down, which is the narrative becoming a cause. ADR-0132.
+			//
+			// Found by ADR-0131, which published one GoodsCarried event per good
+			// instead of one per route: two worlds identical for 475 years, then
+			// one schism landing differently, then one family's line ending
+			// differently, then one house of region 36 keeping its stock.
+			Hash64 Coin = HashCombine(HashString("SchismOnSplit"), HashUInt64(static_cast<uint64>(E.Tick)));
+			Coin = HashCombine(Coin, HashUInt64(P.Culture));
+			Coin = HashCombine(Coin, HashUInt64(P.Parent));
+			Coin = HashCombine(Coin, HashUInt64(Region));
+			Coin = HashCombine(Coin, HashUInt64(F->Majority));
+			if (Coin % 1000u < Rules.SchismPerMille)
 			{
 				System->RequestFounding(Region, E.Id, FoundingKind::Schism);
 			}
