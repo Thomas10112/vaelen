@@ -2593,9 +2593,10 @@ VAELEN BUILD STATUS
 
 PHASE       : 13 — PRESENTATION — KERNEL HALF DONE (12 of 12) · ENGINE HALF STARTED (13.06 of 3)
 TASK        : 13.08f done — the viewer page is checked by CTest, not by me looking at it
-CI          : run 148 on 910a99d — 9 of 9 GREEN. ADR-0120's 44 re-frozen digests
-              hold on gcc, clang, AppleClang AND MSVC, in debug and release.
-              They were recorded from linux-gcc-release alone.
+CI          : run 151 on 46b275b — 9 of 9 GREEN. ADR-0111's 28 re-frozen digests
+              hold on gcc, clang, AppleClang and MSVC, debug and release, as
+              ADR-0120's 44 did in run 148. Both were recorded from
+              linux-gcc-release alone.
 DECIDED     : ADR-0120 FIXED (three fixes) · ADR-0118 decided, unchanged
               ADR-0111 FIXED - the ledger of a region closes for everything
               06.02 makes, eats, spoils and wears, and the world did not move

@@ -7610,6 +7610,27 @@ Recorded so the next run's times get read rather than glanced at. If 116 holds
 across the next few runs, the headroom this ADR bought is half spent and it
 wants revisiting; if it drops back to 90, it was a slow runner.
 
+**Answered by run 151 (2026-09-11): it was the runner.**
+
+```
+                  run 144   run 148   run 151
+linux-clang-debug     90       116        72
+linux-gcc-debug      104       104       116
+Windows (MSVC)        69        86        87
+macOS (AppleClang)    76        70        78
+```
+
+`linux-clang-debug` runs the same tests in 90, then 116, then **72** minutes.
+Nothing about the work changed that much; the leg that happens to be slowest
+changes from run to run, and the variation follows the runner rather than the
+compiler or the world. The twenty-six minutes that looked like a trend were
+noise, and the guess in the paragraph above - "much more like runner variance"
+- was right for the right reason.
+
+What is true across all three: **the slowest leg lands between 104 and 116
+minutes**, whichever leg that turns out to be, against a 180-minute limit. Sixty
+to seventy-five minutes of headroom, and no trend. Nothing to do.
+
 ### And then the ordering was measured, and there is nothing left in it
 
 Run 144 is the first run that was never cancelled, so it is the first real
