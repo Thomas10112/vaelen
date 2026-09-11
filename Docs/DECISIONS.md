@@ -6800,9 +6800,40 @@ what the world SAYS.
 
 ## ADR-0131 — The log says how much crossed a road, and not what it was
 
-**Status:** Proposed — the project owner's call
+**Status: APPLIED** 2026-09-11. The ledger of a region closes completely.
 **Date:** 2026-09-10
 **Phase:** 13 — found by applying ADR-0111
+
+### What it did, measured
+
+`GoodsCarriedEvent` gained a fifth field naming the good, and the single
+publish per route became one publish per good, with `From` and `To` the seller
+and the buyer rather than the road's two ends in index order. Both halves
+mattered: the old event named an amount belonging to no good and a direction
+that was not the one the goods went.
+
+One region, one year, units the log cannot account for:
+
+| | grain | cloth | tools | ore | timber |
+|---|---|---|---|---|---|
+| before ADR-0111 | 7323 | — | — | — | — |
+| after 0111, before 0131 | 0 | 0 | 0 | 37 | unnamed |
+| after 0131 | 0 | 0 | 0 | **0** | **0** |
+
+Every unit that entered or left a region's stores in a year is now named by
+some event, to the unit. `Test_Ledger` asserts `Dark == 0` where it asserted
+`Dark > 0` the day before, and the comment that explained why it could never
+reach zero has been replaced rather than patched: both halves of the reason it
+gave are gone.
+
+### And it found something much worse than itself
+
+Applying it moved world state, which a change to what gets published must not
+do. Eleven hypotheses were eliminated - seven by reading, four by measurement -
+before the cause was found: a schism was decided by hashing an event's serial
+number, so the volume of the log steered the world's religions. That is
+**ADR-0132**, it had been there for nine phases, and nothing but a change to
+log volume could have revealed it.
 
 ### The gap
 
@@ -8684,5 +8715,60 @@ state (`FaithRequest`, `PendingOmen`) to attribute a cause later. No decision
 reads it, so no behaviour depends on it - but it does put log serials into
 snapshotted, hashed state, which keeps state digests sensitive to log volume.
 That is a separate defect with a separate fix, and stacking it here would
-repeat the ADR-0095 mistake of moving several things at once. Proposed,
-not applied.
+repeat the ADR-0095 mistake of moving several things at once. It is
+**ADR-0133**, below.
+
+---
+
+## ADR-0133 — Pending state still holds event serial numbers
+
+**Status:** Proposed — not applied, deliberately separate from ADR-0132.
+**Date:** 2026-09-11
+**Phase:** 13 — the residue of ADR-0132
+
+### The finding
+
+ADR-0132 removed the one place where an event's serial number decided
+something. Two places still **store** one:
+
+- `Religion.cpp:294` — `S->Pending[S->PendingCount] = FaithRequest{Region, Kind, Cause.Value}`
+- `Disasters.cpp:373` — `S->Pending[S->PendingCount] = PendingOmen{R, K, Risk, 0, Id.Value}`
+
+Both keep an event id so that a founding or an omen resolved on a later tick
+can still name what caused it. The intent is right: a cause is exactly what a
+chronicle needs.
+
+### Why it is a defect anyway
+
+`PendingCount` and the `Pending` array are world state. They are snapshotted,
+they are serialised, and `ComputeStateDigest` hashes them. So a serial number
+minted by the log sits inside the state the project freezes and compares.
+
+Nothing reads it back to make a decision - that was ADR-0132 and it is fixed -
+so no world diverges because of this. What it does is keep every frozen state
+digest **sensitive to how many events have been published**, which is the same
+brittleness in a quieter form: a future change adding events anywhere will move
+digests that describe a world nobody changed, and the next person will have to
+re-run the same eleven-hypothesis hunt to learn it was harmless.
+
+### Why it is not being fixed in the same breath
+
+Because ADR-0095 happened. Six phases' frozen digests once moved at once and
+nobody noticed; the rule since is that a deliberate re-freeze covers changes
+that are each understood, one at a time. ADR-0131 and ADR-0132 are understood
+and measured. This is not yet: the fix is a design question - resolve the
+request in the same tick, or carry a stable key instead of a serial - and it
+deserves its own measurement rather than being carried along.
+
+### The options, for the record
+
+1. **Resolve in the same tick.** No pending state, no stored id. Changes when
+   a founding happens, which is a behaviour change, not a cleanup.
+2. **Store a stable key.** The region and tick that caused it, from which the
+   cause can be found again when the chronicle is written. State stops holding
+   serials; the chronicle keeps its cause.
+3. **Leave it, and write the sensitivity down.** Cheapest, and dishonest in the
+   way this project has twice paid for: a digest that moves for reasons the
+   reader cannot see.
+
+Option 2 is the one to measure first.
