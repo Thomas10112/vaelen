@@ -241,6 +241,22 @@ AVaelenViewActor::AVaelenViewActor()
 		Towns->SetStaticMesh(Cube.Object);
 		Roads->SetStaticMesh(Cube.Object);
 	}
+
+	// If the project has a tile material by the name this module expects, take
+	// it as the default. Still overridable in the Details panel, and still
+	// perfectly happy without it - the world draws colourless rather than not
+	// at all, which is why TileMaterial is not required.
+	//
+	// This default exists because the alternative failed in practice, three
+	// times in one sitting: the command spawns the actor into an unsaved level,
+	// so closing the editor takes the actor and the assignment with it, and the
+	// next run comes back grey with no hint why. A setting a user must redo
+	// after every restart is a setting that will be wrong most of the time.
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Paint(TEXT("/Game/M_VaelenTile.M_VaelenTile"));
+	if (Paint.Succeeded())
+	{
+		TileMaterial = Paint.Object;
+	}
 }
 
 void AVaelenViewActor::BeginPlay()
