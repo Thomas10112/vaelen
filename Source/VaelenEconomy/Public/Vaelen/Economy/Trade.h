@@ -103,7 +103,18 @@ namespace Vaelen::Economy
 		uint32 From = 0;  ///< region (a settlement's region for its events)
 		uint32 To = 0;
 		uint32 Amount = 0; ///< units carried, or the traffic that founded a settlement
+		/// Which good moved, for GoodsCarried. `GoodCount` on every other event
+		/// of this payload, meaning "this is not about one good" - the same
+		/// convention StockPayload::Good already uses.
+		///
+		/// It was not here until ADR-0131, and its absence was the last thing
+		/// keeping a region's ledger from closing. GoodsCarried said that
+		/// thirty-seven units crossed a road and could not say what they were,
+		/// so ore and timber were the two goods Test_Ledger could never
+		/// account for once ADR-0111 had silenced everything else.
+		uint32 Good = GoodCount;
 	};
+	static_assert(sizeof(TradePayload) == 5 * sizeof(uint32), "TradePayload must stay padding free");
 	inline constexpr EventType<TradePayload> RouteOpenedEvent = MakeEventType<TradePayload>("RouteOpened");
 	inline constexpr EventType<TradePayload> RouteClosedEvent = MakeEventType<TradePayload>("RouteClosed");
 	inline constexpr EventType<TradePayload> GoodsCarriedEvent = MakeEventType<TradePayload>("GoodsCarried");

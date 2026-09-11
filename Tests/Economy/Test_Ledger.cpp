@@ -513,12 +513,23 @@ VAELEN_TEST(Ledger, HowMuchOfAYearTheLogCanAccountFor)
 		if (E.Is(GoodsCarriedEvent))
 		{
 			++Events;
-			// It CANNOT be added to Explained, and that is the finding rather
-			// than an oversight: TradePayload has a Route, a From, a To and an
-			// Amount, and no Good. There is nowhere to put these units.
+			// ADR-0131 put the good in the payload and made From and To the
+			// seller and the buyer, so these finally go where they belong. The
+			// comment that stood here said they could not, and listed exactly
+			// what was missing; both halves of that list are now present.
 			const TradePayload& P = E.Get<TradePayload>();
-			if (P.From == Where || P.To == Where)
+			if (P.Good >= Explained.size())
 			{
+				continue;
+			}
+			if (P.From == Where)
+			{
+				Explained[P.Good] -= static_cast<int64>(P.Amount);
+				Carried += P.Amount;
+			}
+			else if (P.To == Where)
+			{
+				Explained[P.Good] += static_cast<int64>(P.Amount);
 				Carried += P.Amount;
 			}
 		}
@@ -575,31 +586,34 @@ VAELEN_TEST(Ledger, HowMuchOfAYearTheLogCanAccountFor)
 	VT_CHECK_MSG(Logged > 0, "the log names SOMETHING, or the window missed the year's pass entirely");
 	VT_CHECK_MSG(HarvestsHere > 0, "and the region did harvest during it");
 
-	// THAT DAY CAME. This assertion used to read `Dark > 0` with a comment
-	// saying that the day 06.02 published its spoilage and its meals, the line
-	// would say by how much the world got more honest. ADR-0111 was applied and
-	// the answer is: entirely, for everything 06.02 touches.
+	// THAT DAY CAME TWICE. This block held two assertions with a paragraph
+	// between them explaining why one line could never reach zero. Both halves
+	// of that explanation are now gone, and each went the same way: not by
+	// arguing with the test, but by making the log say the thing it could not.
 	//
-	//   before   grain  the stores end +6; the log names +7329; 7323 unnamed
-	//   after    grain  the stores end +6; the log names    +6;    0 unnamed
+	//   ADR-0111   06.02 publishes its spoilage and its meals
+	//     before   grain  the stores end +6; the log names +7329; 7323 unnamed
+	//     after    grain  the stores end +6; the log names    +6;    0 unnamed
 	//
-	// Grain, cloth and tools now balance to the unit. What a region ate, what
-	// spoiled in its stores, what it burnt, wove, forged and wore out - the log
-	// holds all of it.
+	//   ADR-0131   GoodsCarried names the good it carried
+	//     before   ore    the stores end +0; the log names   -37;   37 unnamed
+	//     after    ore    the stores end +0; the log names    +0;    0 unnamed
 	//
-	// WHAT IS LEFT IS NOT PRODUCTION, AND SAYING SO IS THE POINT OF THIS TEST.
-	// Ore and timber still miss, and they miss in the direction that gives it
-	// away: the stores end unchanged while the log names a NET LOSS, so
-	// something put goods in that no event names. That something is 06.04.
-	// `GoodsCarriedEvent` carries `TradePayload{Route, From, To, Amount}` and
-	// there is no Good in it - the log can say that thirty-seven units crossed
-	// a road and cannot say what they were. So the ledger of a region that
-	// trades cannot close, however honest 06.02 becomes. ADR-0131.
+	// So the line that stood here - "what is still unnamed is what 06.04
+	// carried, because GoodsCarried has no Good in it" - was true when it was
+	// written and is false now. It asserted `Dark > 0`. Keeping it would have
+	// meant asserting that the world still lies about something, which is not a
+	// property worth defending; inverting it is the honest move, and it is the
+	// stronger claim of the two.
 	//
-	// Hence two assertions rather than one, and they say different things.
-	const int64 DarkMade = Missing[static_cast<usize>(Good::Grain)] + Missing[static_cast<usize>(Good::Cloth)] +
-						   Missing[static_cast<usize>(Good::Tools)];
-	VT_CHECK_MSG(DarkMade == 0, "everything 06.02 makes, eats, spoils and wears is named by the log, to the unit");
-	VT_CHECK_MSG(Dark > 0, "and what is still unnamed is what 06.04 carried, because GoodsCarried has no Good in it");
-	VT_CHECK_MSG(Carried > 0, "which is only a finding while this region actually trades");
+	// A region's ledger closes. Everything that entered or left its stores in a
+	// year is named by some event, to the unit: what it grew, ate, spoilt,
+	// burnt, wove, forged and wore out (06.02), what it dug (05.03), and now
+	// what crossed its roads in either direction and which good it was (06.04).
+	//
+	// `Carried > 0` is what keeps this from being vacuous. A region that never
+	// trades would close its books trivially, and the second half of the claim
+	// would be untested. This one trades.
+	VT_CHECK_MSG(Dark == 0, "every unit that entered or left this region's stores in a year is named by the log");
+	VT_CHECK_MSG(Carried > 0, "and that is a finding, not an accident, because this region actually trades");
 }

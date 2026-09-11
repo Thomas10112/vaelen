@@ -328,7 +328,21 @@ namespace Vaelen::Economy
 			Capitalise(Out, Text);
 			Append(Out, " carried ");
 			AppendNumber(Out, P.Amount);
-			Append(Out, " of goods.");
+			// "of goods" was all this could say until ADR-0131 put the good in
+			// the payload. It falls back to the old wording for any event that
+			// predates it or is genuinely about no good in particular.
+			if (P.Good < GoodCount)
+			{
+				Append(Out, " of ");
+				Append(Out, GoodName(static_cast<Good>(P.Good)));
+				Append(Out, " to ");
+				AppendRegion(W, Types, P.To, Out);
+				Append(Out, ".");
+			}
+			else
+			{
+				Append(Out, " of goods.");
+			}
 		}
 		else if (E.Is(SettlementFoundedEvent) || E.Is(SettlementAbandonedEvent))
 		{

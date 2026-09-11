@@ -171,6 +171,12 @@ namespace Vaelen::Economy
 			// happen get across. No road is a factor of one, to the unit.
 			const RouteEase* Made = HasEase ? W.Components().GetPool(Ease).TryGet(Rt.Handle) : nullptr;
 			const uint64 Easier = 1000u + (Made != nullptr ? Made->CarryPerMille : 0u);
+			// What moved, good by good, and which way. ADR-0131: one event per
+			// good rather than one event per route carrying a total, because a
+			// total is a number a ledger cannot put anywhere.
+			uint64 Moved[GoodCount] = {};
+			uint32 Seller[GoodCount] = {};
+			uint32 Buyer[GoodCount] = {};
 			if (A < N && B < N && Common[A] != nullptr && Common[B] != nullptr && Market[A] != nullptr &&
 				Market[B] != nullptr)
 			{
@@ -204,6 +210,9 @@ namespace Vaelen::Economy
 					Held[usize{S} * GoodCount + g] -= Carry;
 					Held[usize{D} * GoodCount + g] += Carry;
 					Units += Carry;
+					Moved[g] = Carry;
+					Seller[g] = S;
+					Buyer[g] = D;
 				}
 			}
 			RouteInfo* Live = W.Components().GetPool(Trade.Route).TryGet(Rt.Handle);
@@ -215,9 +224,27 @@ namespace Vaelen::Economy
 			{
 				Live->Idle = 0;
 				Live->Carried += Units;
-				Context.Events->Publish(Context.Tick, GoodsCarriedEvent,
-										TradePayload{Live->Index, A, B, Saturate(Units)},
-										W.Entities().GetId(Rt.Handle));
+				// ONE EVENT PER GOOD, in good order, and From/To are the SELLER
+				// and the BUYER rather than the road's two ends in index order.
+				//
+				// Both halves matter to a reader trying to balance a region's
+				// books. Before ADR-0131 this was a single event carrying the
+				// sum of every good, with From always the lower region index -
+				// so it named an amount that belonged to no good and a
+				// direction that was not the one the goods went. A ledger could
+				// do nothing with either, which is why Test_Ledger counted
+				// these events and then deliberately refused to use them.
+				for (uint32 g = 0; g < GoodCount; ++g)
+				{
+					if (Moved[g] == 0)
+					{
+						continue;
+					}
+					Context.Events->Publish(
+						Context.Tick, GoodsCarriedEvent,
+						TradePayload{Live->Index, Seller[g], Buyer[g], Saturate(Moved[g]), g},
+						W.Entities().GetId(Rt.Handle));
+				}
 				if (A < N)
 				{
 					Traffic[A] += Units;
