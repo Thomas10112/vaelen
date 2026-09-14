@@ -49,6 +49,7 @@
 #include "Vaelen/Society/SocietyHistory.h"
 #include "Vaelen/Society/Standing.h"
 #include "Vaelen/View/Frame.h"
+#include "Vaelen/View/Panel.h"
 #include "Vaelen/View/Land.h"
 #include "Vaelen/View/Net.h"
 #include "Vaelen/View/Take.h"
@@ -454,6 +455,7 @@ namespace
 		uint32 Every = 0;	///< years between kept frames; 0 = keep only the last
 		std::string Replay; ///< 14.03: a stream to replay into a fresh played Run; the world is the stream's
 		bool Empty = false; ///< 14.03: the empty play - the Play wiring, nobody taken up, no stream
+		bool Panel = false; ///< 14.06: print the first screen of the world the replay came to
 	};
 
 	/// Runs Years years, keeping a frame every Opt.Every of them. Taking a view
@@ -514,7 +516,8 @@ namespace
 					 "  --chronicle     remember what happened, and write it out in words\n"
 					 "  --why           and why: the cause of each thing, back to its root\n"
 					 "  --replay FILE   replay a vaelen-stream into a fresh played Run and write what it came to\n"
-					 "  --empty         the empty play: the Play wiring with nobody taken up, no stream\n");
+					 "  --empty         the empty play: the Play wiring with nobody taken up, no stream\n"
+					 "  --panel         with --replay or --empty: print the first screen it came to (14.06)\n");
 	}
 
 	bool ParseOptions(int Argc, char** Argv, Options& Out)
@@ -558,6 +561,10 @@ namespace
 			else if (std::strcmp(Arg, "--empty") == 0)
 			{
 				Out.Empty = true;
+			}
+			else if (std::strcmp(Arg, "--panel") == 0)
+			{
+				Out.Panel = true;
 			}
 			else if (std::strcmp(Arg, "--size") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
 			{
@@ -704,6 +711,24 @@ namespace
 		const ViewStats FrameStats = MeasureView(Frame);
 		const MapStats GroundStats = MeasureMapView(Ground);
 		const NetStats NetStats_ = MeasureNetView(Net);
+
+		// 14.06: the first screen of the world the replay came to, as the rows
+		// a widget draws. Printed, not written to the JSON: it is a page for a
+		// person to read and for a CTest to match, and its last row is its own
+		// digest - the same digest View.Panel freezes.
+		if (Opt.Panel)
+		{
+			WorldGen::RegionGraphCache Ways;
+			LifeView Life;
+			ChronicleView Told;
+			PanelView Page;
+			TakeLifeView(A.Instance(), A.Sources(), Ways, Life);
+			TakeChronicleView(A.Instance(), A.Sources(), Told);
+			TakePanel(Frame, Life, Told, Page);
+			std::vector<char> Rows(PanelTextBytes, '\0');
+			Lines(Page, Rows.data(), PanelTextBytes);
+			std::printf("%s\n", Rows.data());
+		}
 
 		Json J;
 		J.Reserve(4096);

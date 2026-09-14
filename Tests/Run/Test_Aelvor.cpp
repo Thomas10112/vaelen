@@ -14,6 +14,7 @@
 #include "Vaelen/Run/Door.h"
 #include "Vaelen/View/Frame.h"
 #include "Vaelen/View/Land.h"
+#include "Vaelen/View/Panel.h"
 #include "Vaelen/View/Take.h"
 
 #include "Vaelen/Core/Log.h"
@@ -200,9 +201,33 @@ VAELEN_TEST(Aelvor, ADayAt256WithTheColonyIsMeasured)
 	}
 	VT_CHECK_EQ(D.Days(), Days);
 	VT_CHECK_EQ(A.Founded(), A.Detail());
+
+	// 14.06: the page of this day at 256, measured rather than frozen - the
+	// two frozen pages are the worlds above, and a 256 world is built by no CI
+	// leg but this one. What is asserted here is what the row asks of every
+	// page: it fits, it is ASCII, and its own digest is what its last row says.
+	WorldGen::RegionGraphCache Ways;
+	WorldView Frame;
+	LifeView Life;
+	ChronicleView Told;
+	PanelView Page;
+	const auto TP = std::chrono::steady_clock::now();
+	TakeView(A.Instance(), A.Sources(), Frame);
+	TakeLifeView(A.Instance(), A.Sources(), Ways, Life);
+	TakeChronicleView(A.Instance(), A.Sources(), Told);
+	TakePanel(Frame, Life, Told, Page);
+	const double Drawn = Ms(TP);
+	const PanelStats PS = MeasurePanel(Page);
+	VT_CHECK_EQ(PS.NonAscii, 0u);
+	VT_CHECK_EQ(PS.Truncated, 0u);
+	VT_CHECK(PS.Rows <= PanelRows);
+	VT_CHECK(PS.Bytes <= 4096);
+	VT_CHECK_EQ(PS.Digest, Hash64{Page.Digest});
+	VT_CHECK_EQ(Page.Person, Who);
 	VAELEN_LOG_INFO(
 		LogRun,
 		"run: day mean %.1f ms, max %.1f ms at 256 with the colony (%u days played by person %u on region %u; "
-		"the world built in %.1f s)",
-		Sum / Days, Max, Days, Who, A.Founded(), Built / 1000.0);
+		"the world built in %.1f s); panel: bytes %u, lines %u, truncated %u, digest %016llx, taken in %.2f ms",
+		Sum / Days, Max, Days, Who, A.Founded(), Built / 1000.0, PS.TextBytes, PS.Rows, PS.Truncated,
+		static_cast<unsigned long long>(PS.Digest), Drawn);
 }

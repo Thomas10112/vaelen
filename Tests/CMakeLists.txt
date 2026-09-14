@@ -86,6 +86,17 @@ if(Python3_Interpreter_FOUND)
     COMMAND VaelenAtlas --size 48 --prehistory 30 --years 10 --empty --out ${CMAKE_CURRENT_BINARY_DIR}/atlas-empty.json)
   set_tests_properties(Atlas.Empty PROPERTIES TIMEOUT 900)
 
+  # 14.06: the first screen of that same empty play at 128/120, printed. The
+  # page is composed kernel-side from three views, so the tool draws exactly
+  # what the engine will; its LAST row is the page's own digest, and this
+  # entry matches the one View.Panel freezes (VAELEN_PANEL_FROZEN_EMPTY).
+  # Byte for byte: a page that differs anywhere differs here.
+  add_test(NAME Atlas.PanelEmpty
+    COMMAND VaelenAtlas --empty --size 128 --years 120 --panel
+            --out ${CMAKE_CURRENT_BINARY_DIR}/atlas-panel-empty.json)
+  set_tests_properties(Atlas.PanelEmpty PROPERTIES TIMEOUT 900
+    PASS_REGULAR_EXPRESSION "\ndigest 964aab6a9d4c3b03\n")
+
   # The checker's own regression suite: proves every rule still fires.
   add_test(NAME Atlas.OutputSelfTest
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_atlas_output.py --self-test)

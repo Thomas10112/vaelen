@@ -14,6 +14,7 @@
 #include "Vaelen/View/Land.h"
 #include "Vaelen/View/Life.h"
 #include "Vaelen/View/Net.h"
+#include "Vaelen/View/Panel.h"
 #include "Vaelen/View/ViewApi.h"
 
 #include "Vaelen/Player/Intent.h"
@@ -30,12 +31,14 @@ int main()
 	Eye At;
 	LifeView Life;
 	ChronicleView Chronicle;
+	PanelView Panel;
 	Vaelen::Player::PlayerCommand C;
 	std::printf("[probe] the view headers are leaves: frame %u, map %u, net %u, people %u, eye %u, command %u, life "
-				"%u, chronicle %u bytes\n",
+				"%u, chronicle %u, panel %u bytes\n",
 				static_cast<unsigned>(sizeof(Frame)), static_cast<unsigned>(sizeof(Map)),
 				static_cast<unsigned>(sizeof(Net)), static_cast<unsigned>(sizeof(People)),
 				static_cast<unsigned>(sizeof(At)), static_cast<unsigned>(sizeof(C)),
-				static_cast<unsigned>(sizeof(Life)), static_cast<unsigned>(sizeof(Chronicle)));
+				static_cast<unsigned>(sizeof(Life)), static_cast<unsigned>(sizeof(Chronicle)),
+				static_cast<unsigned>(sizeof(Panel)));
 	return 0;
 }

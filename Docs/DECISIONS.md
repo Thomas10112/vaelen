@@ -9318,6 +9318,15 @@ take describes with the same `LifeContext` as `Run::Aelvor::Life()`, the
 economy speaking for the layers under it; a host without them gets the
 person layer's plainer sentence. No leaf moved; the frozen pairs held.
 
+### Widened by 14.06
+
+`Panel.h`, the ninth leaf, is the first to include OTHER leaves - `Frame.h`,
+`Life.h`, `Chronicle.h` - which ADR-0136 allows and the probe still fences:
+its closure is Core, ViewApi, those three and `Player/Intent.h`, and nothing
+that names the World. `Take.h` gained no take: a page is composed from views
+a caller already has, not taken from a world, which is what lets `TakePanel`
+be called on a thread that has never heard of the simulation.
+
 ### The hazard this does not remove
 
 Under UnrealBuildTool every `PublicDependencyModuleNames` include path is
