@@ -434,6 +434,13 @@ namespace Vaelen::Run
 		S.Played = K->W.Played;
 		S.HasFame = Given_.Lively;
 		S.Fame = K->W.Fame;
+		S.HasLife = Given_.Play;
+		S.Hour = K->W.Hour;
+		S.Order = K->W.Order;
+		S.Regard = K->W.Regard;
+		S.Start = K->W.Start;
+		S.Needs = K->W.Needs;
+		S.Families = K->W.Families;
 		return S;
 	}
 

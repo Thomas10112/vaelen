@@ -11,6 +11,7 @@
 #include "Vaelen/View/Folk.h"
 #include "Vaelen/View/Frame.h"
 #include "Vaelen/View/Land.h"
+#include "Vaelen/View/Life.h"
 #include "Vaelen/View/Net.h"
 #include "Vaelen/View/ViewApi.h"
 
@@ -26,10 +27,12 @@ int main()
 	NetView Net;
 	PeopleView People;
 	Eye At;
+	LifeView Life;
 	Vaelen::Player::PlayerCommand C;
-	std::printf("[probe] the view headers are leaves: frame %u, map %u, net %u, people %u, eye %u, command %u bytes\n",
-				static_cast<unsigned>(sizeof(Frame)), static_cast<unsigned>(sizeof(Map)),
-				static_cast<unsigned>(sizeof(Net)), static_cast<unsigned>(sizeof(People)),
-				static_cast<unsigned>(sizeof(At)), static_cast<unsigned>(sizeof(C)));
+	std::printf(
+		"[probe] the view headers are leaves: frame %u, map %u, net %u, people %u, eye %u, command %u, life %u bytes\n",
+		static_cast<unsigned>(sizeof(Frame)), static_cast<unsigned>(sizeof(Map)), static_cast<unsigned>(sizeof(Net)),
+		static_cast<unsigned>(sizeof(People)), static_cast<unsigned>(sizeof(At)), static_cast<unsigned>(sizeof(C)),
+		static_cast<unsigned>(sizeof(Life)));
 	return 0;
 }

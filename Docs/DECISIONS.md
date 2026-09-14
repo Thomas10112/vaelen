@@ -9300,6 +9300,13 @@ The probe is linked to `vaelen_build_flags` and to nothing else (the finding
 of 14.01's review, applied here on the same day): held to `-Werror` / `/WX`
 without one include directory beyond Core, View and Player.
 
+### Widened by 14.04
+
+`ViewSources` gained `HasLife` and six type sets (Hour, Order, Regard, Start,
+Need, Family) and `Take.h` a seventh take, `TakeLifeView`, for the seventh
+leaf `Life.h`. Views are never persisted, so no save-format bump; no struct
+or field of the six earlier leaves moved, and the frozen pairs held.
+
 ### The hazard this does not remove
 
 Under UnrealBuildTool every `PublicDependencyModuleNames` include path is

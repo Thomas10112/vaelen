@@ -9,6 +9,8 @@ set(VAELEN_VIEW_PUBLIC_HEADERS
   Public/Vaelen/View/Delta.h
   Public/Vaelen/View/Eye.h
   Public/Vaelen/View/Folk.h
+  Public/Vaelen/View/Take.h
+  Public/Vaelen/View/Life.h
 )
 
 set(VAELEN_VIEW_SOURCES
@@ -18,6 +20,7 @@ set(VAELEN_VIEW_SOURCES
   Private/Delta.cpp
   Private/Eye.cpp
   Private/Folk.cpp
+  Private/Life.cpp
 )
 
 add_library(VaelenView STATIC ${VAELEN_VIEW_SOURCES} ${VAELEN_VIEW_PUBLIC_HEADERS})

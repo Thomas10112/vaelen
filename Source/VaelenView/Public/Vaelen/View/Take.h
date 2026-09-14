@@ -34,7 +34,13 @@
 #include "Vaelen/Economy/Trade.h"
 #include "Vaelen/Gameplay/Fame.h"
 #include "Vaelen/Infrastructure/Roads.h"
+#include "Vaelen/Player/Commands.h"
+#include "Vaelen/Player/Hours.h"
 #include "Vaelen/Player/Player.h"
+#include "Vaelen/Player/Regard.h"
+#include "Vaelen/Player/Start.h"
+#include "Vaelen/Population/Families.h"
+#include "Vaelen/Population/Needs.h"
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/Regions.h"
@@ -44,6 +50,7 @@
 #include "Vaelen/View/Folk.h"
 #include "Vaelen/View/Frame.h"
 #include "Vaelen/View/Land.h"
+#include "Vaelen/View/Life.h"
 #include "Vaelen/View/Net.h"
 #include "Vaelen/View/ViewApi.h"
 
@@ -72,6 +79,15 @@ namespace Vaelen::View
 		Player::PlayerTypes Played;
 		bool HasColony = false;
 		Colony::ColonyTypes Colony_;
+		/// 14.04: the played life. Six type sets a screen reads through; a
+		/// world without them (every Atlas world) takes an empty LifeView.
+		bool HasLife = false;
+		Player::HourTypes Hour;
+		Player::OrderTypes Order;
+		Player::RegardTypes Regard;
+		Player::StartTypes Start;
+		Population::NeedTypes Needs;
+		Population::FamilyTypes Families;
 	};
 
 	/// Takes the frame. Const world in, numbers out: the signature is the
@@ -104,6 +120,14 @@ namespace Vaelen::View
 	/// rather than hidden in a static.
 	VAELEN_VIEW_API void TakeViewFor(const World& W, const ViewSources& From, const Eye& At,
 									 WorldGen::RegionGraphCache& Ways, WorldView& Out);
+
+	/// Takes the played life (14.04). Const world in, numbers and names out.
+	/// The cache is the caller's, as for TakeViewFor: the graph is a walk of
+	/// the whole map and a screen is taken every frame, so the choice is made
+	/// where somebody can see it. Out has Person = 0 and every name empty when
+	/// the sources carry no life or nobody is played.
+	VAELEN_VIEW_API void TakeLifeView(const World& W, const ViewSources& From, WorldGen::RegionGraphCache& Ways,
+									  LifeView& Out);
 
 	/// How far one region is from another across borders, or `Unreached` when no
 	/// chain of borders joins them. Public because "how far is that" is a

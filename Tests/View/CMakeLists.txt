@@ -8,7 +8,7 @@ add_executable(VaelenViewTests
   ${VAELEN_VIEW_TEST_SOURCES})
 
 target_include_directories(VaelenViewTests PRIVATE ${PROJECT_SOURCE_DIR}/Tests/Harness)
-target_link_libraries(VaelenViewTests PRIVATE Vaelen::View Vaelen::Gameplay Vaelen::Player Vaelen::Colony Vaelen::Infrastructure Vaelen::Military Vaelen::Politics Vaelen::Economy Vaelen::Society Vaelen::Population Vaelen::Sim Vaelen::Core Threads::Threads)
+target_link_libraries(VaelenViewTests PRIVATE Vaelen::Run Vaelen::View Vaelen::Gameplay Vaelen::Player Vaelen::Colony Vaelen::Infrastructure Vaelen::Military Vaelen::Politics Vaelen::Economy Vaelen::Society Vaelen::Population Vaelen::Sim Vaelen::Core Threads::Threads)
 
 set(VAELEN_VIEW_TEST_NAMES "")
 foreach(TestSource IN LISTS VAELEN_VIEW_TEST_SOURCES)
