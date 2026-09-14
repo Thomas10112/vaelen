@@ -9065,6 +9065,12 @@ rather than Unreal's (caught by the project's own `static_assert` in
 hands out a proxy where the engine hands out a `bool&`. Six translation units
 are parsed now instead of three, and the shim is more honest for it.
 
-**STATUS.** Both actor changes are UNVERIFIED until the next Windows build.
-They parse. The headless side — the guard, the CTest entry, the suite — is
-VALIDATED: 157/157.
+**STATUS, after the Windows build of 2026-09-14.** `AVaelenViewActor` is
+VALIDATED: `Vaelen.View 128 120` printed `frame abc5a5767c6cf9dd, ground
+8f7f4948f49b6e86`, both identical to `Tools/Atlas` at the same settings, with
+every other figure unchanged (36374 living, 90 roads of 163, 4555 people). The
+four `AttachTo` warnings of 13.09 are gone from the same log, so the mobility
+fix is validated by the same run. `AVaelenAtlasActor`'s bondage stays
+UNVERIFIED — nothing in that run exercises the game module's actor, and a
+change that was not run is not a change that was seen. The guard, the CTest
+entry and the suite: 157/157.

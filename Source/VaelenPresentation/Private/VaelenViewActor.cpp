@@ -1,15 +1,15 @@
 // VAELEN - VaelenPresentation. Phase 13 tasks 13.07c and 13.08b.
 //
-// STATUS: UNVERIFIED - the 13.07c part of this file was compiled by
-// UnrealBuildTool on UE 5.6.1 with MSVC 14.44, dropped in a level and LOOKED AT
-// on 2026-09-10: AELVOR stood there, twelve biomes, rivers, 44 towns, 90 roads,
-// and the engine reported the same figures as the headless kernel.
+// STATUS: VALIDATED - built by UnrealBuildTool on UE 5.6.1 with MSVC 14.44,
+// run in the editor and LOOKED AT on 2026-09-14: AELVOR at 128 and at 256,
+// twelve biomes, rivers, towns, roads, and 1467 people standing on 117 tiles of
+// one region (6996 on 639 at 256), after the world they came from was
+// destroyed. 100 fps on a T400 4GB with 72649 instances.
 //
-// The 13.08b part - the people - has been compiled by NOTHING. The headless CI
-// cannot build this module and there is no engine on the machine that wrote it,
-// so what is claimed below about drawing a person is a claim about source text.
-// 13.07c pushed a rename that did not compile and cost a round trip; this is the
-// same exposure, named in advance rather than after.
+// And measured, not just seen: every figure the engine prints matches
+// Tools/Atlas at the same seed and settings, INCLUDING the frame digest
+// (abc5a5767c6cf9dd at 128/120) and the ground digest (8f7f4948f49b6e86) since
+// ADR-0135 put the same systems in both. Two halves of one project, one world.
 //
 // This is the ONE file of the module that knows what a World is, and it knows
 // it for exactly as long as it takes to take FOUR views of one - the ground,

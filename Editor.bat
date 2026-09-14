@@ -20,8 +20,11 @@ REM         LogVaelenView numbers still come out. That is how 13.07c was
 REM         checked on a machine whose editor would not open, and it is the
 REM         fastest way to read the figures when the picture is not the point.
 REM
-REM STATUS: UNVERIFIED - written on a Linux container with no Unreal Engine and
-REM no cmd.exe. Not one line has run.
+REM STATUS: VERIFIED 2026-09-14. The editor log of that day reads
+REM     Command Line: -log -d3d11
+REM -log first, then what was typed after the script - which is the order this
+REM file writes and not the order of the hand-typed command it replaced. That is
+REM how a batch file that prints nothing of its own gets to say it ran.
 
 REM Nothing here needs delayed expansion, and it would eat an exclamation mark
 REM in somebody's install path.

@@ -3780,4 +3780,9 @@ shim itself, one of them caught by the project's own `static_assert`.
 157/157 headless · purity 201/0 · shim-test 7/7 · parse 6 TU · wiring 3/3 agree
 ```
 
-Both actor changes UNVERIFIED until the next Windows build. They parse.
+**Validated the same afternoon.** The Windows build ran `Vaelen.View 128 120`
+and printed `frame abc5a5767c6cf9dd, ground 8f7f4948f49b6e86` - both identical
+to `Tools/Atlas` - with every other figure unchanged and the four `AttachTo`
+warnings gone. The engine and the headless kernel now agree on the digest of
+the frame, which is the check this ADR set out to restore. `AVaelenAtlasActor`'s
+half stays UNVERIFIED: that run does not exercise it.
