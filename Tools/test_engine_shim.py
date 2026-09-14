@@ -33,13 +33,20 @@ sys.path.insert(0, os.path.join(ROOT, "Tools"))
 # the day a second module was added there, this file still copied one, the
 # parser found "no translation units" for the other, and the CONTROL failed -
 # which is the control doing its job, and the reason it runs first.
-from parse_engine_modules import ENGINE_MODULES  # noqa: E402
+from parse_engine_modules import ENGINE_MODULES, module_root  # noqa: E402
 
 MODULE = "VaelenPresentation"
 
 ACTOR = os.path.join("Source", MODULE, "Private", "VaelenViewActor.cpp")
 DRAWER = os.path.join("Source", MODULE, "Private", "VaelenViewDrawer.cpp")
 HEADER = os.path.join("Source", MODULE, "Public", "VaelenViewDrawer.h")
+
+# 14.07's half: the UI, which is parsed with a restricted include set. Until
+# 14.09 writes Source/VaelenUI these are the witness's files (the copy below
+# takes each module from wherever the parser finds it), and after it they are
+# the real ones without a word changing here.
+HUD = os.path.join("Source", "VaelenUI", "Private", "VaelenHUD.cpp")
+KEYS = os.path.join("Source", "VaelenUI", "Private", "VaelenPlayerController.cpp")
 
 # (name, file, text to find, text to put there). A mutation whose "find" text
 # is no longer present is a FAILURE of this file, not a pass: it means the
@@ -87,13 +94,49 @@ MUTATIONS = [
         "Paint.Add(ColourOfPerson(P, How));",
         "Paint.Add(ColourOfPerson(P));",
     ),
+    (
+        "a UI that includes the header of the world it may not see",
+        HUD,
+        '#include "VaelenWorldSubsystem.h"',
+        '#include "VaelenWorldSubsystem.h"\n#include "Vaelen/View/Take.h"',
+    ),
+    (
+        "a UI that includes the command surface of the kernel",
+        HUD,
+        '#include "Engine/Canvas.h"',
+        '#include "Engine/Canvas.h"\n#include "Vaelen/Player/Commands.h"',
+    ),
+    (
+        "a UI that includes the World itself",
+        HUD,
+        '#include "Engine/Engine.h"',
+        '#include "Engine/Engine.h"\n#include "Vaelen/Sim/World.h"',
+    ),
+    (
+        "a UI that names Vaelen::World",
+        HUD,
+        "void AVaelenHUD::DrawHUD()\n{",
+        "void AVaelenHUD::DrawHUD()\n{\n\tVaelen::World* Reached = nullptr;\n\t(void)Reached;",
+    ),
+    (
+        "a field of the view the UI reads and the view does not have",
+        HUD,
+        "static_cast<float>(Page.RowCount)",
+        "static_cast<float>(Page.HoursRemaining)",
+    ),
+    (
+        "an argument dropped from Press",
+        KEYS,
+        "Press(Held->Page(), Kind, 0, 1, What)",
+        "Press(Held->Page(), Kind, 1, What)",
+    ),
 ]
 
 
-def parses(source_root):
+def parses(source_root, extra=()):
     done = subprocess.run(
         [sys.executable, os.path.join(ROOT, "Tools", "parse_engine_modules.py"),
-         "--source-root", source_root, "--quiet"],
+         "--source-root", source_root, "--quiet", *extra],
         capture_output=True, text=True)
     return done.returncode == 0
 
@@ -103,8 +146,11 @@ def main():
         pristine = os.path.join(work, "pristine")
         os.makedirs(os.path.join(pristine, "Source"))
         for name in ENGINE_MODULES:
-            shutil.copytree(os.path.join(ROOT, "Source", name),
-                            os.path.join(pristine, "Source", name))
+            # Wherever the parser finds it: Source for the modules that have
+            # one, Tools/UiWitness for the two that 14.08 and 14.09 write. The
+            # copy always looks like Source/, so a mutation below names a path
+            # that will still be right the day the real modules land.
+            shutil.copytree(module_root(ROOT, name), os.path.join(pristine, "Source", name))
 
         # THE CONTROL, FIRST. If an untouched copy does not parse, every result
         # below is meaningless and saying so now is the only honest option.
@@ -116,6 +162,21 @@ def main():
                             "--source-root", pristine])
             return 1
         print("[shim-test] control: an untouched copy parses")
+
+        # THE REVERSE CONTROL. The same untouched copy, parsed with the stub
+        # scan this file used to do - each module's own .generated.h and no
+        # other - must FAIL, because 14.09's HUD includes 14.08's subsystem
+        # header and that header's generated stub is written while VaelenGame
+        # is scanned. If this ever passes, the shared stub directory has
+        # stopped being load-bearing and the CONTROL above is proving less
+        # than it says.
+        if parses(pristine, ("--stub-scope", "own")):
+            print("[shim-test] REVERSE CONTROL FAILED: the copy parses with per-module stubs,",
+                  file=sys.stderr)
+            print("[shim-test] so nothing here proves the shared stub directory is needed.",
+                  file=sys.stderr)
+            return 1
+        print("[shim-test] reverse control: with per-module stubs it does NOT parse")
 
         missed = []
         stale = []

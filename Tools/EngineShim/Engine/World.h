@@ -5,6 +5,8 @@
 #include "GameFramework/Actor.h"
 #include "UObject/Object.h"
 
+class UGameInstance;
+
 class UWorld : public UObject
 {
 public:
@@ -14,4 +16,8 @@ public:
 		static T Made;
 		return &Made;
 	}
+
+	/// How a world reaches the subsystem that holds the simulation (14.08).
+	/// Declared, not defined: nothing here is linked.
+	UGameInstance* GetGameInstance() const;
 };

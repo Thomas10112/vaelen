@@ -53,13 +53,50 @@ SHIM = os.path.join(ROOT, "Tools", "EngineShim")
 # list and not a scan: a module that appears here is a module somebody decided
 # cannot be covered by the real headless build, and that decision should be
 # visible in a file rather than inferred from a directory layout.
-ENGINE_MODULES = ["VaelenPresentation", "Vaelen"]
+ENGINE_MODULES = ["VaelenPresentation", "Vaelen", "VaelenGame", "VaelenUI"]
+
+# The modules the UI fence covers (14.07). They are parsed with a LITERAL
+# include list and not with kernel_include_dirs(), so that a header the UI may
+# not see is "file not found" from a real front end rather than a rule in a
+# checker: Take.h, Commands.h and Sim/World.h are not on this path, and after
+# 14.02 no header that is declares Vaelen::World.
+#
+# It is a literal list on purpose. kernel_include_dirs() enumerates every
+# Source/*/Public there is, so a filter over it would silently widen the day a
+# module is added - which is the failure this whole file exists to prevent.
+UI_MODULES = {"VaelenUI"}
+
+def ui_include_dirs(source_root):
+    """What VaelenUI may see, and nothing else."""
+    out = [module_dir(source_root, "VaelenGame", "Public")]
+    for name in ("VaelenView", "VaelenCore", "VaelenPlayer"):
+        out.append(os.path.join(ROOT, "Source", name, "Public"))
+    return out
+
+# Where a module lives when Source/ does not hold it yet. 14.08 writes
+# Source/VaelenGame and 14.09 Source/VaelenUI; until then the tools read the
+# witness of 14.07 (Tools/UiWitness/README.md says what it is and is not), so
+# that the fence and its self-tests are green BEFORE the code they guard is
+# written rather than after. A module with a Private directory under Source
+# always wins: the day the real one lands, nothing here has to be told.
+WITNESS = os.path.join(ROOT, "Tools", "UiWitness")
 
 GENERATED_INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+\.generated\.h)"', re.MULTILINE)
 
 
 def module_dir(source_root, module, sub):
-    return os.path.join(source_root, "Source", module, sub)
+    return os.path.join(module_root(source_root, module), sub)
+
+
+def module_root(source_root, module):
+    """Where this module's Public and Private live: Source, or the witness."""
+    under_source = os.path.join(source_root, "Source", module)
+    if os.path.isdir(os.path.join(under_source, "Private")):
+        return under_source
+    witness = os.path.join(WITNESS, module)
+    if os.path.isdir(os.path.join(witness, "Private")):
+        return witness
+    return under_source
 
 
 def kernel_include_dirs():
@@ -80,10 +117,18 @@ def translation_units(source_root, module):
     return [os.path.join(private, f) for f in sorted(os.listdir(private)) if f.endswith(".cpp")]
 
 
-def stub_generated_headers(source_root, module, into):
-    """Write an empty header for every .generated.h the module includes."""
+def stub_generated_headers(source_root, modules, into):
+    """Write an empty header for every .generated.h these modules include.
+
+    Over EVERY module at once, into ONE directory, because a header of one
+    module is included by another: 14.08's VaelenWorldSubsystem.h is included
+    by 14.09's HUD, and a stub scan that only saw the module being parsed
+    would leave VaelenWorldSubsystem.generated.h "file not found" on the UI's
+    first line. --stub-scope own restores the per-module scan, and the
+    self-test parses the healthy tree with it to prove this is load-bearing.
+    """
     made = []
-    for sub in ("Public", "Private"):
+    for module, sub in [(m, s) for m in modules for s in ("Public", "Private")]:
         folder = module_dir(source_root, module, sub)
         if not os.path.isdir(folder):
             continue
@@ -115,12 +160,41 @@ def main():
     # copy without ever writing a broken file into the working tree.
     ap.add_argument("--source-root", default=ROOT)
     ap.add_argument("--quiet", action="store_true")
+    # Whether a module's .generated.h stubs are written from EVERY module's
+    # includes (shared, the default and what 14.07 made load-bearing) or only
+    # from its own, which is what this file did before and what the self-test
+    # uses to prove the difference.
+    ap.add_argument("--stub-scope", choices=("shared", "own"), default="shared")
     args = ap.parse_args()
 
     if shutil.which(args.compiler) is None:
         print(f"[parse] no compiler named {args.compiler!r} on PATH", file=sys.stderr)
         return 2
 
+    failures = 0
+    checked = 0
+    # ONE directory for every module's stubs, made before the first module is
+    # parsed. See stub_generated_headers.
+    with tempfile.TemporaryDirectory(prefix="vaelen-uht-") as shared:
+        if args.stub_scope == "shared":
+            stubs = stub_generated_headers(args.source_root, ENGINE_MODULES, shared)
+            if args.verbose:
+                print(f"[parse] generated stubs: {len(stubs)} ({', '.join(sorted(set(stubs)))})")
+        failures, checked = parse_modules(args, shared)
+
+    if failures:
+        if not args.quiet:
+            print(f"[parse] {failures} module(s) failed to parse", file=sys.stderr)
+        return 1
+    if args.quiet:
+        return 0
+    print(f"[parse] {checked} translation units parsed against Tools/EngineShim, 0 errors")
+    print("[parse] this proves the SHAPE of a program and nothing about the engine "
+          "- see Tools/EngineShim/CoreMinimal.h")
+    return 0
+
+
+def parse_modules(args, shared):
     failures = 0
     checked = 0
     for module in ENGINE_MODULES:
@@ -131,9 +205,17 @@ def main():
             failures += 1
             continue
 
-        with tempfile.TemporaryDirectory(prefix="vaelen-uht-") as generated:
-            stubs = stub_generated_headers(args.source_root, module, generated)
-            includes = [SHIM, generated, public] + kernel_include_dirs()
+        with tempfile.TemporaryDirectory(prefix="vaelen-uht-own-") as own:
+            generated = shared
+            if args.stub_scope == "own":
+                stub_generated_headers(args.source_root, [module], own)
+                generated = own
+            if module in UI_MODULES:
+                includes = [SHIM, generated, public] + ui_include_dirs(args.source_root)
+            else:
+                includes = [SHIM, generated, public] + kernel_include_dirs()
+            if args.verbose:
+                print(f"[parse] {module}: from {module_root(args.source_root, module)}")
             command = [
                 args.compiler,
                 "-std=c++20",
@@ -168,19 +250,8 @@ def main():
                     print(f"[parse] {module}: FAILED", file=sys.stderr)
                     sys.stderr.write(done.stderr)
             elif not args.quiet:
-                print(f"[parse] {module}: {len(units)} translation units, "
-                      f"{len(stubs)} generated stubs, OK")
-
-    if failures:
-        if not args.quiet:
-            print(f"[parse] {failures} module(s) failed to parse", file=sys.stderr)
-        return 1
-    if args.quiet:
-        return 0
-    print(f"[parse] {checked} translation units parsed against Tools/EngineShim, 0 errors")
-    print("[parse] this proves the SHAPE of a program and nothing about the engine "
-          "- see Tools/EngineShim/CoreMinimal.h")
-    return 0
+                print(f"[parse] {module}: {len(units)} translation units, OK")
+    return failures, checked
 
 
 if __name__ == "__main__":

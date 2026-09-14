@@ -3,10 +3,18 @@
 
 #include "CoreMinimal.h"
 
+class UClass;
+
 class UObject
 {
 public:
 	virtual ~UObject() = default;
+
+	/// UnrealHeaderTool writes one of these into every generated header, and
+	/// a game mode names its HUD with it. Inherited here rather than
+	/// generated, which is right for a parse: it exists and returns a class
+	/// handle, and nothing in this project looks at what the handle holds.
+	static UClass* StaticClass();
 };
 
 /// Constructs a UObject at runtime. The engine's takes an outer and a name.

@@ -9327,6 +9327,18 @@ that names the World. `Take.h` gained no take: a page is composed from views
 a caller already has, not taken from a world, which is what lets `TakePanel`
 be called on a thread that has never heard of the simulation.
 
+### Held by 14.07
+
+Nothing widened: 14.07 added the thing that makes ADR-0136 and ADR-0137
+enforceable rather than believed. `Tools/check_ui_fence.py` reads every
+`Vaelen/` include of the UI and the transitive closure of each, and
+`Tools/parse_engine_modules.py` parses the UI with a literal include list
+that holds no kernel header but the view leaves, `Vaelen/Core/` and the
+command surface. The honest limit is in both docstrings:
+`VaelenView.Build.cs:29` is a PUBLIC dependency list, so under
+UnrealBuildTool every kernel include path is transitive into the UI, and the
+restricted parse is a simulation. The closure check is the fence.
+
 ### The hazard this does not remove
 
 Under UnrealBuildTool every `PublicDependencyModuleNames` include path is

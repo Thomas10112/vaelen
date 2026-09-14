@@ -64,7 +64,7 @@ jobs:
   parse:
     name: engine modules parse (clang 18)
     runs-on: ubuntu-24.04
-    # Seconds, not minutes: it is a front end over three translation units.
+    # Seconds, not minutes: it is a front end over nine translation units.
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
@@ -81,10 +81,12 @@ jobs:
       # argument count, a type that changed.
       #
       # The self-test runs FIRST and is the reason to believe the parse. It
-      # breaks the module seven ways on a temporary copy - the first being the
-      # defect that actually shipped in 13.07c - and fails if the parser did
-      # not notice, so a shim that has silently stopped working cannot go on
-      # reporting green.
+      # breaks the modules on a temporary copy, one way at a time - the first
+      # being the defect that actually shipped in 13.07c - and fails if the
+      # parser did not notice, so a shim that has silently stopped working
+      # cannot go on reporting green. Since 14.07 it also carries a REVERSE
+      # control: the healthy copy parsed with --stub-scope own must FAIL,
+      # which is what proves the shared stub directory is load-bearing.
       - name: Shim self-test
         run: python3 Tools/test_engine_shim.py
       - name: Parse
@@ -94,6 +96,27 @@ jobs:
       # hour: a wiring that has drifted should be known before the hour starts.
       - name: World wiring
         run: python3 Tools/check_world_wiring.py
+      # 14.07. Also CTest Kernel.UiFence on every build leg; here too because
+      # this job is seconds long and the build legs are an hour.
+      - name: UI fence
+        run: |
+          set -o pipefail
+          python3 Tools/check_ui_fence.py --self-test
+          python3 Tools/check_ui_fence.py
+      # The stubs the parse writes must be the .generated.h includes the tree
+      # actually has: two numbers from two different readers, equal or the job
+      # is red. A stub silently not written is a header silently not checked.
+      - name: Generated stubs
+        run: |
+          set -o pipefail
+          # -E and a + rather than a *: the star form also matches a bare
+          # ".generated.h" written in a sentence, and a comment about the
+          # stubs would then be counted as one. The wiring guard learned the
+          # same lesson the same way (check_world_wiring.py).
+          WANTED=$(grep -hoE '[A-Za-z]+\.generated\.h' Source/Vaelen*/Public/*.h Source/Vaelen*/Private/*.cpp \
+                   Tools/UiWitness/*/Public/*.h Tools/UiWitness/*/Private/*.cpp | sort -u | wc -l)
+          MADE=$(python3 Tools/parse_engine_modules.py --verbose | grep -c '^\[parse\] generated stubs: '"$WANTED"' ')
+          test "$MADE" = 1
       - name: Kernel modules
         # Thirteen kernel modules since 14.03 (VaelenRun). The count is what the
         # purity checker enumerates from Tools/kernel_modules.txt, so a module

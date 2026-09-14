@@ -35,7 +35,18 @@ if(Python3_Interpreter_FOUND)
   # four source files and needs no compiler of its own.
   add_test(NAME Kernel.WorldWiring
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_world_wiring.py)
-  set_tests_properties(Kernel.Purity Kernel.PuritySelfTest Kernel.WorldWiring PROPERTIES TIMEOUT 120)
+  # 14.07: what the UI may include, and what it may never name. The UI cannot
+  # be built by any leg of this CI, and under UnrealBuildTool every kernel
+  # include path is transitive into it (VaelenView.Build.cs:29), so this text
+  # check is the only thing standing between the UI and Commands.h. It reads
+  # Source/VaelenUI and Source/VaelenGame/Public when they exist and the
+  # witness of 14.07 (Tools/UiWitness) until they do.
+  add_test(NAME Kernel.UiFence
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_ui_fence.py --root ${PROJECT_SOURCE_DIR})
+  add_test(NAME Kernel.UiFenceSelfTest
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_ui_fence.py --self-test --root ${PROJECT_SOURCE_DIR})
+  set_tests_properties(Kernel.Purity Kernel.PuritySelfTest Kernel.WorldWiring Kernel.UiFence
+                       Kernel.UiFenceSelfTest PROPERTIES TIMEOUT 120)
 elseif(VAELEN_REQUIRE_PURITY_CHECK)
   message(FATAL_ERROR "Python 3 is required for the Kernel.Purity test. Install it or configure with -DVAELEN_REQUIRE_PURITY_CHECK=OFF (the purity check is then NOT run).")
 else()

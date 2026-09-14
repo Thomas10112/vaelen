@@ -15,6 +15,7 @@
 #   shim self-test 7 mutations the engine-module parse must catch
 #   parse          the engine modules, against Tools/EngineShim
 #   wiring         the four wirings of AELVOR agree
+#   ui fence       the UI includes no kernel header and names no world
 #
 # Any failure stops the script and exits non-zero. No "warnings".
 set -euo pipefail
@@ -41,5 +42,8 @@ python3 Tools/parse_engine_modules.py | tail -2 | head -1
 
 echo "[verify] wiring"
 python3 Tools/check_world_wiring.py | tail -1
+
+echo "[verify] ui fence"
+python3 Tools/check_ui_fence.py | tail -2 | head -1
 
 echo "[verify] all fast checks pass - the suite (ctest) and the CI legs are still the authority"

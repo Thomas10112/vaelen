@@ -39,7 +39,8 @@
 // symbol below, so any other build that reaches this header stops here instead
 // of quietly succeeding.
 #if !defined(VAELEN_SHIM_PARSE)
-#	error "Tools/EngineShim is a parse-only stand-in for Unreal (ADR-0134) and must never be on a real build's include path. Only Tools/parse_engine_modules.py may include it."
+#	error                                                                                                              \
+		"Tools/EngineShim is a parse-only stand-in for Unreal (ADR-0134) and must never be on a real build's include path. Only Tools/parse_engine_modules.py may include it."
 #endif
 
 #include <cstdint>
@@ -79,10 +80,29 @@ using TCHAR = wchar_t;
 
 /// Real conversion macros build a temporary; here they only have to produce
 /// something of the right shape for the call around them to typecheck.
-#define UTF8_TO_TCHAR(x) (L"")
-#define TCHAR_TO_UTF8(x) ("")
-#define ANSI_TO_TCHAR(x) (L"")
-#define TCHAR_TO_ANSI(x) ("")
+///
+/// Through a function, not as a bare (L""): a macro that throws its argument
+/// away typechecks anything, including the day somebody hands one of these a
+/// number or a pointer of the wrong width. These evaluate what they are given
+/// and then answer an empty string, which is the honest answer here and the
+/// one the calling code has to handle anyway (UObject/Object.h says the same
+/// of NewObject).
+namespace VaelenShim
+{
+	inline const wchar_t* Widen(const char*)
+	{
+		return L"";
+	}
+	inline const char* Narrow(const wchar_t*)
+	{
+		return "";
+	}
+} // namespace VaelenShim
+
+#define UTF8_TO_TCHAR(x) (VaelenShim::Widen(x))
+#define TCHAR_TO_UTF8(x) (VaelenShim::Narrow(x))
+#define ANSI_TO_TCHAR(x) (VaelenShim::Widen(x))
+#define TCHAR_TO_ANSI(x) (VaelenShim::Narrow(x))
 
 // UHT's markers. They annotate; they do not generate anything a parser needs.
 #define UCLASS(...)
@@ -127,10 +147,7 @@ public:
 	void Empty() { Items.clear(); }
 	void Reset() { Items.clear(); }
 	void SetNum(int32 Count) { Items.resize(static_cast<std::size_t>(Count < 0 ? 0 : Count)); }
-	void Init(const T& Value, int32 Count)
-	{
-		Items.assign(static_cast<std::size_t>(Count < 0 ? 0 : Count), Value);
-	}
+	void Init(const T& Value, int32 Count) { Items.assign(static_cast<std::size_t>(Count < 0 ? 0 : Count), Value); }
 	void SetNumZeroed(int32 Count) { Items.assign(static_cast<std::size_t>(Count < 0 ? 0 : Count), T{}); }
 	bool IsValidIndex(int32 Index) const { return Index >= 0 && Index < Num(); }
 	void RemoveAt(int32 Index)
@@ -262,6 +279,25 @@ public:
 
 private:
 	T* Ptr = nullptr;
+};
+
+/// A class handed about as a value: what a game mode names its HUD and its
+/// controller with. The engine's carries a UClass*; this carries the same and
+/// nothing else, because what this file is for is catching the day somebody
+/// assigns the wrong kind of class to one.
+class UClass;
+
+template <typename T>
+class TSubclassOf
+{
+public:
+	TSubclassOf() = default;
+	TSubclassOf(UClass* In) : Class(In) {}
+
+	UClass* Get() const { return Class; }
+
+private:
+	UClass* Class = nullptr;
 };
 
 // ------------------------------------------------------------------- strings
@@ -486,7 +522,7 @@ struct FShimLogCategory
 namespace VaelenShim
 {
 	inline void Swallow(...) {}
-}
+} // namespace VaelenShim
 
 /// The engine's global log device. The project's log sink flushes it so a
 /// crash does not lose the last lines, which is a real thing to keep working.
