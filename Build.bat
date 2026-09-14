@@ -71,9 +71,9 @@ echo [vaelen] Unreal Engine %WANT% was not found.
 echo [vaelen] To see every place that was asked and what each answered:
 echo [vaelen]     powershell -File Tools\find_unreal.ps1 -Version %WANT% -Explain
 echo.
-echo [vaelen] Say where it is and this file will stop guessing:
-echo [vaelen]     setx VAELEN_UE_ROOT "D:\your\path\to\UE_%WANT%"
-echo [vaelen] then open a new shell.
+echo [vaelen] Or say where it is, WITHOUT angle brackets around the path:
+echo [vaelen]     setx VAELEN_UE_ROOT "D:\Users\You\UE_%WANT%"
+echo [vaelen] then open a NEW shell - setx does not reach the one you are in.
 exit /b 1
 
 :found
