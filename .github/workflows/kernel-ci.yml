@@ -89,6 +89,11 @@ jobs:
         run: python3 Tools/test_engine_shim.py
       - name: Parse
         run: python3 Tools/parse_engine_modules.py
+      # Also runs as the CTest entry Kernel.WorldWiring on every build leg. Run
+      # here too because this job is seconds long and the build legs are an
+      # hour: a wiring that has drifted should be known before the hour starts.
+      - name: World wiring
+        run: python3 Tools/check_world_wiring.py
 
   windows:
     name: Windows (MSVC)

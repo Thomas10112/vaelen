@@ -26,4 +26,8 @@ public:
 	void SetMobility(EComponentMobility Mobility);
 	void SetCollisionEnabled(ECollisionEnabled Enabled);
 	void SetCastShadow(bool bCast);
+	void DestroyComponent(bool bPromoteChildren = false);
+	void RegisterComponent();
+	void SetWorldLocation(const FVector& Where);
+	void SetRelativeLocation(const FVector& Where);
 };

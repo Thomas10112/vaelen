@@ -28,6 +28,13 @@ import sys
 import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "Tools"))
+# The list of engine modules is the parser's, read from it rather than copied:
+# the day a second module was added there, this file still copied one, the
+# parser found "no translation units" for the other, and the CONTROL failed -
+# which is the control doing its job, and the reason it runs first.
+from parse_engine_modules import ENGINE_MODULES  # noqa: E402
+
 MODULE = "VaelenPresentation"
 
 ACTOR = os.path.join("Source", MODULE, "Private", "VaelenViewActor.cpp")
@@ -95,8 +102,9 @@ def main():
     with tempfile.TemporaryDirectory(prefix="vaelen-shim-test-") as work:
         pristine = os.path.join(work, "pristine")
         os.makedirs(os.path.join(pristine, "Source"))
-        shutil.copytree(os.path.join(ROOT, "Source", MODULE),
-                        os.path.join(pristine, "Source", MODULE))
+        for name in ENGINE_MODULES:
+            shutil.copytree(os.path.join(ROOT, "Source", name),
+                            os.path.join(pristine, "Source", name))
 
         # THE CONTROL, FIRST. If an untouched copy does not parse, every result
         # below is meaningless and saying so now is the only honest option.

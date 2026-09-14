@@ -37,6 +37,7 @@
 #include "Vaelen/Sim/World.h"
 #include "Vaelen/Sim/WorldGen.h"
 #include "Vaelen/Sim/WorldMap.h"
+#include "Vaelen/Society/Bondage.h"
 #include "Vaelen/Society/Norms.h"
 #include "Vaelen/Society/Organizations.h"
 #include "Vaelen/Society/Standing.h"
@@ -167,6 +168,11 @@ namespace
 			Organizations = OrganizationTypes::Declare(Instance);
 			Standing = StandingTypes::Declare(Instance);
 			Norms = NormTypes::Declare(Instance);
+			// NINTH, between Norms and Economy, which is where Tools/Atlas
+			// declares it. Declaration order fixes component type ids, so a
+			// Bondage declared anywhere else would be a different world
+			// wearing the same name - ADR-0135.
+			Bondage = BondageTypes::Declare(Instance);
 			Economy = EconomyTypes::Declare(Instance);
 			Production = ProductionTypes::Declare(Instance);
 			Markets = MarketTypes::Declare(Instance);
@@ -195,6 +201,8 @@ namespace
 													Wealth, WealthRules{});
 			Ranks = std::make_unique<StandingSystem>(Instance, Ages.Types(), Persons, Families, Traits, Organizations,
 													 Standing, StandingRules{});
+			Bonds = std::make_unique<BondageSystem>(Instance, Ages.Types(), Persons, Norms, Standing, Bondage,
+												   BondageRules{});
 			Rulers =
 				std::make_unique<PolitySystem>(Instance, Ages.Types(), Persons, Organizations, Polities, PolityRules{});
 
@@ -226,6 +234,7 @@ namespace
 			Instance.Systems().Add(Roads.get());
 			Instance.Systems().Add(Purses.get());
 			Instance.Systems().Add(Ranks.get());
+			Instance.Systems().Add(Bonds.get());
 			Instance.Systems().Add(Rulers.get());
 			Instance.Build();
 		}
@@ -268,6 +277,7 @@ namespace
 		Vaelen::Society::OrganizationTypes Organizations;
 		Vaelen::Society::StandingTypes Standing;
 		Vaelen::Society::NormTypes Norms;
+		Vaelen::Society::BondageTypes Bondage;
 		Vaelen::Economy::EconomyTypes Economy;
 		Vaelen::Economy::ProductionTypes Production;
 		Vaelen::Economy::MarketTypes Markets;
@@ -287,6 +297,7 @@ namespace
 		std::unique_ptr<Vaelen::Economy::TradeSystem> Roads;
 		std::unique_ptr<Vaelen::Economy::WealthSystem> Purses;
 		std::unique_ptr<Vaelen::Society::StandingSystem> Ranks;
+		std::unique_ptr<Vaelen::Society::BondageSystem> Bonds;
 		std::unique_ptr<Vaelen::Politics::PolitySystem> Rulers;
 	};
 } // namespace

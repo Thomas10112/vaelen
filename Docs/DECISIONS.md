@@ -8929,7 +8929,11 @@ none.
 
 ## ADR-0135 — Three wirings of one world, and the engine's has no bondage
 
-**Status:** Proposed — the project owner's call, because the fix moves world state.
+**Status:** **APPLIED 2026-09-14** — option 1, chosen by the project owner, plus
+the guard that stops it recurring. `BondageSystem` in both actors at the same
+position as the headless tool; `ViewSources::HasBondage` in the view actor;
+the frame digest printed; `Tools/check_world_wiring.py` as CTest entry
+`Kernel.WorldWiring` and as a CI step. 157/157.
 **Date:** 2026-09-14
 **Phase:** 13 — found while cross-checking 13.08b
 
@@ -9012,3 +9016,55 @@ something checks it. `BiomeKinds` got a `static_assert` in 13.07c for exactly
 this reason, and `View::AliveState` got one in 13.08b. **A third wiring of the
 same world has no such guard, and this is what that absence looks like a year
 later.**
+
+---
+
+### What applying it found, and what it built
+
+**The omission was in two places, not one.** The system was missing — that was
+the finding. But `ViewSources::HasBondage` and `ViewSources::Bondage` were
+missing too, ten lines away in the same file. A world can run `BondageSystem`
+all century and the view still report nobody bound, because `RegionView::Bound`
+is only filled when the source names the types. Adding the system alone would
+have changed the digest and shown nothing.
+
+**Declared ninth, deliberately.** Declaration order fixes component type ids.
+`Tools/Atlas` declares `Bondage` between `Norms` and `Economy`; both actors now
+do the same, and the comment at that line says why. A `Bondage` declared
+anywhere else would be a different world wearing the same name.
+
+**The digest is printed now.** Restoring a check nobody can read restores
+nothing, so `AVaelenViewActor` logs `AELVOR digests: frame …, ground …` on
+every run. With bondage wired in, that frame digest is the number `Tools/Atlas`
+publishes for the same seed and settings — `0xabc5a5767c6cf9dd` at 128/120 —
+and a person can hold the two side by side. If they ever differ again, the
+engine and the headless kernel have stopped simulating the same world, and that
+line is where it shows.
+
+**And the class, not just the instance.** The ADR closed on its own rule: a
+comment claiming two things are kept identical is worth nothing unless
+something checks it. `Tools/check_world_wiring.py` reads the three files and
+compares the declaration order and the system order, resolving local names to
+type names so `Roads` and `Roads_` count as the same `TradeSystem`. Anything
+deliberately optional is named one by one with its reason — `Colony` and the
+three chronicles behind `--colony` and `--chronicle`, `MiningSystem` behind
+`--colony` — and nothing else is excused, so the next system nobody meant to
+make optional fails there instead of being waved through.
+
+It was tested the way the shim was: `BondageSystem` removed from one actor on a
+copy, and the guard pointed at row 14, column 3. It runs as CTest entry
+`Kernel.WorldWiring` on every build leg and every developer's machine, and as a
+seconds-long CI step so a drift is known before the hour-long legs start.
+
+**A side effect worth its own line.** Editing `VaelenAtlasActor.cpp` — a game
+module file no compiler on this side reads — was the reason to extend
+ADR-0134's parse to the `Vaelen` module before touching it. That extension
+found two real defects *in the shim*: its integer types were `<cstdint>`'s
+rather than Unreal's (caught by the project's own `static_assert` in
+`Vaelen.cpp`), and its `TArray<bool>` was backed by `std::vector<bool>`, which
+hands out a proxy where the engine hands out a `bool&`. Six translation units
+are parsed now instead of three, and the shim is more honest for it.
+
+**STATUS.** Both actor changes are UNVERIFIED until the next Windows build.
+They parse. The headless side — the guard, the CTest entry, the suite — is
+VALIDATED: 157/157.

@@ -3749,3 +3749,35 @@ doubt. A gate is for the things that only appear when the whole thing runs at
 full size in front of a person - and this one produced a defect that was
 invisible to 156 headless tests, to nine CI jobs, to a compiler, and to a
 screenshot that looked right.
+
+### ADR-0135 applied - one world, three wirings, and a guard that reads all three
+
+**What changed.** `BondageSystem` is now in `AVaelenAtlasActor` and
+`AVaelenViewActor`, declared ninth - between `Norms` and `Economy`, where
+`Tools/Atlas` declares it, because declaration order fixes component type ids.
+The view actor also names the bondage types in its `ViewSources`, which was the
+second half of the omission and the easier one to miss: without it, the system
+runs and the view still reports nobody bound.
+
+**What the engine prints now.** `AELVOR digests: frame …, ground …`, every run.
+With bondage in, the frame digest is the number the headless atlas publishes
+for the same seed and settings. That is the strongest check between the two
+halves of the project, and it had been unplugged since the day the atlas gained
+a system the actors did not.
+
+**What stops it recurring.** `Tools/check_world_wiring.py` reads the three
+files and compares their declaration order and their system order. Every
+deliberate difference is named one by one with its reason; nothing else is
+excused. CTest entry `Kernel.WorldWiring`, and a CI step. Tested by removing
+`BondageSystem` from one actor on a copy: it points at the row and the column.
+
+**And ADR-0134's parse now reads the game module too** - six translation units
+instead of three - because touching `VaelenAtlasActor.cpp` without a compiler
+was the same exposure 13.07c paid for. Extending it found two defects in the
+shim itself, one of them caught by the project's own `static_assert`.
+
+```
+157/157 headless · purity 201/0 · shim-test 7/7 · parse 6 TU · wiring 3/3 agree
+```
+
+Both actor changes UNVERIFIED until the next Windows build. They parse.

@@ -29,6 +29,9 @@ public:
 	USceneComponent* RootComponent = nullptr;
 
 	UWorld* GetWorld() const;
+	FTransform GetActorTransform() const;
+	FVector GetActorLocation() const;
+	void SetActorLocation(const FVector& Where);
 
 	/// The engine's real signature is a variadic forwarding template. Kept
 	/// narrow here on purpose: this project only ever passes a name, and a
@@ -40,6 +43,11 @@ public:
 		static T Made;
 		return &Made;
 	}
+
+	/// Components made after construction have to be handed to the actor, and
+	/// the project's atlas actor rebuilds its layers every run.
+	void AddInstanceComponent(USceneComponent* Component);
+	void RemoveInstanceComponent(USceneComponent* Component);
 
 	virtual void BeginPlay();
 };

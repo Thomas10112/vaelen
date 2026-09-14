@@ -53,7 +53,7 @@ SHIM = os.path.join(ROOT, "Tools", "EngineShim")
 # list and not a scan: a module that appears here is a module somebody decided
 # cannot be covered by the real headless build, and that decision should be
 # visible in a file rather than inferred from a directory layout.
-ENGINE_MODULES = ["VaelenPresentation"]
+ENGINE_MODULES = ["VaelenPresentation", "Vaelen"]
 
 GENERATED_INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+\.generated\.h)"', re.MULTILINE)
 
@@ -146,9 +146,14 @@ def main():
                 # are about the shim and not about the code under test.
                 "-Wno-unused-parameter",
                 "-Wno-unused-private-field",
-                "-DVAELENPRESENTATION_API=",
                 "-DVAELEN_SHIM_PARSE=1",
             ]
+            # UnrealBuildTool defines <MODULE>_API per module for the dllexport
+            # dance. Every engine module here gets its own, and the ones it
+            # depends on, rather than one hardcoded name - the second module
+            # added to this list is what showed that a constant would not do.
+            for name in ENGINE_MODULES:
+                command.append(f"-D{name.upper()}_API=")
             for d in includes:
                 command += ["-I", d]
             command += units

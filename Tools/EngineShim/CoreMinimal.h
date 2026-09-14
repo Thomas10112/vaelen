@@ -46,24 +46,43 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <type_traits>
+#include <deque>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
-// Unreal's integer names, which the kernel's own Vaelen::uintNN deliberately
-// shadow nowhere - the presentation files use both and the distinction matters,
-// so it is reproduced rather than smoothed over.
-using uint8 = std::uint8_t;
-using uint16 = std::uint16_t;
-using uint32 = std::uint32_t;
-using uint64 = std::uint64_t;
-using int8 = std::int8_t;
-using int16 = std::int16_t;
-using int32 = std::int32_t;
-using int64 = std::int64_t;
+// Unreal's integer names, SPELLED AS UNREAL SPELLS THEM and not as <cstdint>
+// would. This was wrong in the first version - uint64 was std::uint64_t, which
+// is `unsigned long` on Linux while Unreal's is `unsigned long long` - and the
+// thing that caught it was the project's own code:
+//
+//     Source/Vaelen/Private/Vaelen.cpp
+//     static_assert(std::is_same_v<Vaelen::uint64, ::uint64>,
+//                   "Vaelen::uint64 must be Unreal's uint64");
+//
+// A shim that had smoothed that over would have reported green on a file the
+// real build rejects, which is the exact failure ADR-0134 names as worse than
+// no light at all. The rule held: the code is the authority, the shim is what
+// gets fixed.
+using uint8 = unsigned char;
+using uint16 = unsigned short;
+using uint32 = unsigned int;
+using uint64 = unsigned long long;
+using int8 = signed char;
+using int16 = signed short;
+using int32 = int;
+using int64 = long long;
 
 using TCHAR = wchar_t;
 #define TEXT(x) L##x
+
+/// Real conversion macros build a temporary; here they only have to produce
+/// something of the right shape for the call around them to typecheck.
+#define UTF8_TO_TCHAR(x) (L"")
+#define TCHAR_TO_UTF8(x) ("")
+#define ANSI_TO_TCHAR(x) (L"")
+#define TCHAR_TO_ANSI(x) ("")
 
 // UHT's markers. They annotate; they do not generate anything a parser needs.
 #define UCLASS(...)
@@ -80,6 +99,11 @@ using TCHAR = wchar_t;
 
 // ---------------------------------------------------------------- containers
 
+/// Backed by std::deque and NOT std::vector, for one reason: std::vector<bool>
+/// is specialised to a bit field, its operator[] returns a proxy, and binding
+/// `bool&` to it does not compile. Unreal's TArray<bool> holds actual bools and
+/// the project's atlas actor keeps one. Found by extending this shim to a
+/// second module, which is the argument for extending it.
 template <typename T>
 class TArray
 {
@@ -97,18 +121,36 @@ public:
 		}
 		Items.push_back(Item);
 	}
-	void Reserve(int32 Count) { Items.reserve(static_cast<std::size_t>(Count < 0 ? 0 : Count)); }
+	/// A hint in the engine and nothing at all here: std::deque has no
+	/// reserve, and a parse does not care how memory was arranged.
+	void Reserve(int32 Count) { (void)Count; }
 	void Empty() { Items.clear(); }
+	void Reset() { Items.clear(); }
+	void SetNum(int32 Count) { Items.resize(static_cast<std::size_t>(Count < 0 ? 0 : Count)); }
+	void Init(const T& Value, int32 Count)
+	{
+		Items.assign(static_cast<std::size_t>(Count < 0 ? 0 : Count), Value);
+	}
+	void SetNumZeroed(int32 Count) { Items.assign(static_cast<std::size_t>(Count < 0 ? 0 : Count), T{}); }
+	bool IsValidIndex(int32 Index) const { return Index >= 0 && Index < Num(); }
+	void RemoveAt(int32 Index)
+	{
+		if (IsValidIndex(Index))
+		{
+			Items.erase(Items.begin() + Index);
+		}
+	}
+	bool IsEmpty() const { return Items.empty(); }
 	int32 Num() const { return static_cast<int32>(Items.size()); }
 	T& operator[](int32 Index) { return Items[static_cast<std::size_t>(Index)]; }
 	const T& operator[](int32 Index) const { return Items[static_cast<std::size_t>(Index)]; }
-	typename std::vector<T>::iterator begin() { return Items.begin(); }
-	typename std::vector<T>::iterator end() { return Items.end(); }
-	typename std::vector<T>::const_iterator begin() const { return Items.begin(); }
-	typename std::vector<T>::const_iterator end() const { return Items.end(); }
+	typename std::deque<T>::iterator begin() { return Items.begin(); }
+	typename std::deque<T>::iterator end() { return Items.end(); }
+	typename std::deque<T>::const_iterator begin() const { return Items.begin(); }
+	typename std::deque<T>::const_iterator end() const { return Items.end(); }
 
 private:
-	std::vector<T> Items;
+	std::deque<T> Items;
 };
 
 template <typename K, typename V>
@@ -136,13 +178,67 @@ template <typename T>
 class TSet
 {
 public:
-	void Add(const T& Item) { Items.insert(Item); }
+	/// The engine's signature, out-parameter included: TSet::Add reports
+	/// whether the item was already there, and a shim that dropped that
+	/// parameter would reject code the real build accepts.
+	void Add(const T& Item, bool* bIsAlreadyInSetPtr = nullptr)
+	{
+		const bool bHad = Items.find(Item) != Items.end();
+		if (bIsAlreadyInSetPtr != nullptr)
+		{
+			*bIsAlreadyInSetPtr = bHad;
+		}
+		Items.insert(Item);
+	}
 	bool Contains(const T& Item) const { return Items.find(Item) != Items.end(); }
 	int32 Num() const { return static_cast<int32>(Items.size()); }
 
 private:
 	std::unordered_set<T> Items;
 };
+
+/// Unreal's owning pointer. Move-only, like the engine's.
+template <typename T>
+class TUniquePtr
+{
+public:
+	TUniquePtr() = default;
+	explicit TUniquePtr(T* In) : Ptr(In) {}
+	TUniquePtr(const TUniquePtr&) = delete;
+	TUniquePtr& operator=(const TUniquePtr&) = delete;
+	TUniquePtr(TUniquePtr&& Other) : Ptr(Other.Ptr) { Other.Ptr = nullptr; }
+	TUniquePtr& operator=(TUniquePtr&& Other)
+	{
+		Ptr = Other.Ptr;
+		Other.Ptr = nullptr;
+		return *this;
+	}
+	~TUniquePtr() { delete Ptr; }
+	T* Get() const { return Ptr; }
+	T* operator->() const { return Ptr; }
+	T& operator*() const { return *Ptr; }
+	explicit operator bool() const { return Ptr != nullptr; }
+	void Reset(T* In = nullptr)
+	{
+		delete Ptr;
+		Ptr = In;
+	}
+	T* Release()
+	{
+		T* Was = Ptr;
+		Ptr = nullptr;
+		return Was;
+	}
+
+private:
+	T* Ptr = nullptr;
+};
+
+template <typename T, typename... Args>
+TUniquePtr<T> MakeUnique(Args&&... Rest)
+{
+	return TUniquePtr<T>(new T(static_cast<Args&&>(Rest)...));
+}
 
 /// A handle to a UObject. The only property of it this project relies on is
 /// that it converts to the raw pointer wherever one is wanted, which is what
@@ -181,6 +277,8 @@ public:
 		return *this;
 	}
 	const TCHAR* operator*() const { return Text.c_str(); }
+	bool IsEmpty() const { return Text.empty(); }
+	int32 Len() const { return static_cast<int32>(Text.size()); }
 	template <typename... Args>
 	static FString Printf(const TCHAR* Format, Args... Rest);
 
@@ -192,6 +290,29 @@ template <typename... Args>
 FString FString::Printf(const TCHAR* Format, Args...)
 {
 	return FString(Format);
+}
+
+/// Unreal's interned name. ToString is what the project's code calls on it,
+/// and keeping it a distinct type from FString is the point: the two are not
+/// interchangeable in the engine and must not be here either.
+class FName
+{
+public:
+	FName() = default;
+	FName(const TCHAR* In) : Text(In == nullptr ? L"" : In) {}
+	FString ToString() const { return FString(Text.c_str()); }
+	bool IsNone() const { return Text.empty(); }
+	bool operator==(const FName& Other) const { return Text == Other.Text; }
+
+private:
+	std::wstring Text;
+};
+
+/// std::move by another name.
+template <typename T>
+constexpr typename std::remove_reference<T>::type&& MoveTemp(T&& Value) noexcept
+{
+	return static_cast<typename std::remove_reference<T>::type&&>(Value);
 }
 
 struct FCString
@@ -246,6 +367,18 @@ struct FVector
 	static const FVector ZeroVector;
 };
 
+struct FVector2D
+{
+	double X = 0.0;
+	double Y = 0.0;
+	FVector2D() = default;
+	FVector2D(double InX, double InY) : X(InX), Y(InY) {}
+	FVector2D operator+(const FVector2D& Other) const { return FVector2D(X + Other.X, Y + Other.Y); }
+	FVector2D operator-(const FVector2D& Other) const { return FVector2D(X - Other.X, Y - Other.Y); }
+	FVector2D operator*(double Scale) const { return FVector2D(X * Scale, Y * Scale); }
+	double Size() const;
+};
+
 struct FTransform
 {
 	FTransform() = default;
@@ -256,6 +389,39 @@ struct FTransform
 	FRotator Rotation;
 	FVector Translation;
 	FVector Scale;
+
+	/// The engine's accessors, which is how the atlas actor builds a transform
+	/// in pieces rather than in one constructor call.
+	void SetLocation(const FVector& Where) { Translation = Where; }
+	void SetScale3D(const FVector& How) { Scale = How; }
+	void SetRotation(const FRotator& Which) { Rotation = Which; }
+	FVector GetLocation() const { return Translation; }
+	FVector GetScale3D() const { return Scale; }
+	FVector TransformPosition(const FVector& Point) const;
+	FVector TransformVector(const FVector& Direction) const;
+	FVector InverseTransformPosition(const FVector& Point) const;
+};
+
+/// The 8-bit colour. Its named constants are used as values, so they exist as
+/// values; nothing here is ever linked, so they are declared and not defined.
+struct FColor
+{
+	uint8 R = 0, G = 0, B = 0, A = 255;
+	constexpr FColor() = default;
+	constexpr FColor(uint8 InR, uint8 InG, uint8 InB, uint8 InA = 255) : R(InR), G(InG), B(InB), A(InA) {}
+	static const FColor White;
+	static const FColor Black;
+	static const FColor Red;
+	static const FColor Green;
+	static const FColor Blue;
+	static const FColor Yellow;
+	static const FColor Cyan;
+	static const FColor Magenta;
+	static const FColor Orange;
+	static const FColor Silver;
+	static const FColor Emerald;
+	static const FColor Turquoise;
+	static const FColor Purple;
 };
 
 struct FLinearColor
@@ -266,6 +432,9 @@ struct FLinearColor
 	float A = 1.0f;
 	constexpr FLinearColor() = default;
 	constexpr FLinearColor(float InR, float InG, float InB, float InA = 1.0f) : R(InR), G(InG), B(InB), A(InA) {}
+	/// The engine converts FColor to FLinearColor implicitly-ish; the project's
+	/// code writes FLinearColor(SomeFColor), so that spelling has to work.
+	explicit FLinearColor(const FColor& From);
 	constexpr bool operator==(const FLinearColor& Other) const
 	{
 		return R == Other.R && G == Other.G && B == Other.B && A == Other.A;
@@ -279,19 +448,31 @@ struct FPlatformTime
 
 // ------------------------------------------------------------------ logging
 
-enum class EShimVerbosity : uint8
+/// Unreal's verbosity is an unscoped enum inside a NAMESPACE, so the code that
+/// uses it writes ELogVerbosity::Type and ELogVerbosity::VeryVerbose. A scoped
+/// enum class would be tidier and would reject exactly that spelling, which is
+/// how the first version of this file got it wrong.
+namespace ELogVerbosity
 {
-	Fatal,
-	Error,
-	Warning,
-	Display,
-	Log,
-	Verbose,
-	All,
-};
+	enum Type : uint8
+	{
+		NoLogging = 0,
+		Fatal,
+		Error,
+		Warning,
+		Display,
+		Log,
+		Verbose,
+		VeryVerbose,
+		All = VeryVerbose,
+	};
+}
 
 struct FShimLogCategory
 {
+	ELogVerbosity::Type GetVerbosity() const { return ELogVerbosity::Log; }
+	bool IsSuppressed(ELogVerbosity::Type Level) const { return false; }
+	void SetVerbosity(ELogVerbosity::Type Level) {}
 };
 
 #define DECLARE_LOG_CATEGORY_EXTERN(Name, Default, Compile) extern FShimLogCategory Name
@@ -306,4 +487,26 @@ namespace VaelenShim
 {
 	inline void Swallow(...) {}
 }
+
+/// The engine's global log device. The project's log sink flushes it so a
+/// crash does not lose the last lines, which is a real thing to keep working.
+class FOutputDevice
+{
+public:
+	virtual ~FOutputDevice() = default;
+	virtual void Flush() {}
+	virtual void Serialize(const TCHAR* Text, ELogVerbosity::Type Level, const class FName& Category) {}
+};
+
+extern FOutputDevice* GLog;
 #define UE_LOG(Category, Verbosity, Format, ...) VaelenShim::Swallow(&Category, Format, ##__VA_ARGS__)
+
+/// The ensure family returns a bool and evaluates everything it is handed,
+/// which is what lets `if (!ensure(X))` typecheck.
+#define ensure(Expression) (VaelenShim::Swallow(Expression), static_cast<bool>(Expression))
+#define ensureMsgf(Expression, Format, ...) (VaelenShim::Swallow(Format, ##__VA_ARGS__), static_cast<bool>(Expression))
+#define ensureAlways(Expression) (static_cast<bool>(Expression))
+#define ensureAlwaysMsgf(Expression, Format, ...)                                                                      \
+	(VaelenShim::Swallow(Format, ##__VA_ARGS__), static_cast<bool>(Expression))
+#define checkf(Expression, Format, ...) VaelenShim::Swallow(Format, ##__VA_ARGS__)
+#define check(Expression) VaelenShim::Swallow(Expression)

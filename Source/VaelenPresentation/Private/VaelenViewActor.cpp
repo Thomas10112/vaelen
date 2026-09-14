@@ -44,6 +44,7 @@
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/World.h"
 #include "Vaelen/Sim/WorldGen.h"
+#include "Vaelen/Society/Bondage.h"
 #include "Vaelen/Society/Norms.h"
 #include "Vaelen/Society/Organizations.h"
 #include "Vaelen/Society/Standing.h"
@@ -80,6 +81,11 @@ namespace
 			Organizations = OrganizationTypes::Declare(Instance);
 			Standing = StandingTypes::Declare(Instance);
 			Norms = NormTypes::Declare(Instance);
+			// NINTH, between Norms and Economy, which is exactly where
+			// Tools/Atlas declares it. Declaration order fixes component type
+			// ids, so a Bondage declared anywhere else would be a different
+			// world wearing the same name - ADR-0135.
+			Bondage = BondageTypes::Declare(Instance);
 			Economy = EconomyTypes::Declare(Instance);
 			Production = ProductionTypes::Declare(Instance);
 			Markets = MarketTypes::Declare(Instance);
@@ -108,6 +114,8 @@ namespace
 													Wealth, WealthRules{});
 			Ranks = std::make_unique<StandingSystem>(Instance, Ages.Types(), Persons, Families, Traits, Organizations,
 													 Standing, StandingRules{});
+			Bonds = std::make_unique<BondageSystem>(Instance, Ages.Types(), Persons, Norms, Standing, Bondage,
+												   BondageRules{});
 			Rulers =
 				std::make_unique<PolitySystem>(Instance, Ages.Types(), Persons, Organizations, Polities, PolityRules{});
 
@@ -139,6 +147,7 @@ namespace
 			Instance.Systems().Add(Roads_.get());
 			Instance.Systems().Add(Purses.get());
 			Instance.Systems().Add(Ranks.get());
+			Instance.Systems().Add(Bonds.get());
 			Instance.Systems().Add(Rulers.get());
 			Instance.Build();
 		}
@@ -182,6 +191,13 @@ namespace
 			Vaelen::View::ViewSources S;
 			S.Types = Ages.Types();
 			S.Persons = Persons;
+			// BOTH halves, and the second was the easier one to miss: a world
+			// can run BondageSystem all century and the view still reports
+			// nobody bound, because RegionView::Bound is only filled when the
+			// source names the types. ADR-0135 found the system missing; the
+			// source was missing too, in the same file, ten lines away.
+			S.HasBondage = true;
+			S.Bondage = Bondage;
 			S.HasTrade = true;
 			S.Trade = Trade;
 			return S;
@@ -197,6 +213,7 @@ namespace
 		Vaelen::Society::OrganizationTypes Organizations;
 		Vaelen::Society::StandingTypes Standing;
 		Vaelen::Society::NormTypes Norms;
+		Vaelen::Society::BondageTypes Bondage;
 		Vaelen::Economy::EconomyTypes Economy;
 		Vaelen::Economy::ProductionTypes Production;
 		Vaelen::Economy::MarketTypes Markets;
@@ -216,6 +233,7 @@ namespace
 		std::unique_ptr<Vaelen::Economy::TradeSystem> Roads_;
 		std::unique_ptr<Vaelen::Economy::WealthSystem> Purses;
 		std::unique_ptr<Vaelen::Society::StandingSystem> Ranks;
+		std::unique_ptr<Vaelen::Society::BondageSystem> Bonds;
 		std::unique_ptr<Vaelen::Politics::PolitySystem> Rulers;
 	};
 
@@ -400,11 +418,23 @@ void AVaelenViewActor::BuildFromView()
 		   static_cast<unsigned long long>(Counted.Digest), Tally.Folk, Tally.FolkTiles, Tally.SkippedFolk);
 
 	const Vaelen::View::ViewStats Weighed = Vaelen::View::MeasureView(Frame);
+	// THE DIGEST, PRINTED, which is the point of ADR-0135 and not a side effect
+	// of it. Restoring a check nobody can read restores nothing: with bondage
+	// wired in, this number is now the same number Tools/Atlas publishes for
+	// the same seed and settings, and a person can hold the two side by side.
+	//
+	//     Tools/Atlas --size 128 --years 120   frame 0xabc5a5767c6cf9dd
+	//
+	// If they ever differ again, the engine and the headless kernel have
+	// stopped simulating the same world, and this line is where that shows.
+	const Vaelen::View::MapStats GroundDigest = Vaelen::View::MeasureMapView(Map);
+	UE_LOG(LogVaelenView, Display, TEXT("AELVOR digests: frame %016llx, ground %016llx - compare with Tools/Atlas"),
+		   static_cast<unsigned long long>(Weighed.Digest), static_cast<unsigned long long>(GroundDigest.Digest));
 	// How many tiles of each biome the DRAWER was handed. Printed because a
 	// wrong palette is invisible from a screenshot: a map drawn in one flat
 	// colour looks the same whether the world has no weather or the table
 	// reading it is broken, and only a number tells the two apart.
-	const Vaelen::View::MapStats Grounded = Vaelen::View::MeasureMapView(Map);
+	const Vaelen::View::MapStats& Grounded = GroundDigest;
 	FString Weather;
 	for (Vaelen::uint32 b = 0; b < Vaelen::View::BiomeKinds; ++b)
 	{

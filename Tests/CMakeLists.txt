@@ -23,7 +23,17 @@ if(Python3_Interpreter_FOUND)
   # The checker's own regression suite: proves every rule still fires.
   add_test(NAME Kernel.PuritySelfTest
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_kernel_purity.py --self-test)
-  set_tests_properties(Kernel.Purity Kernel.PuritySelfTest PROPERTIES TIMEOUT 120)
+  # The same world is wired in three places - the headless atlas, the game
+  # module's actor and the presentation actor - and ADR-0135 is what happened
+  # when they drifted: the engine drew a world in which nobody was ever in
+  # bondage, and nothing said so for as long as nobody cross-checked.
+  #
+  # A CTest entry rather than a CI-only step, so that it runs on every leg and
+  # on every developer's machine, like the purity check it sits beside. It reads
+  # three source files and needs no compiler of its own.
+  add_test(NAME Kernel.WorldWiring
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_world_wiring.py)
+  set_tests_properties(Kernel.Purity Kernel.PuritySelfTest Kernel.WorldWiring PROPERTIES TIMEOUT 120)
 elseif(VAELEN_REQUIRE_PURITY_CHECK)
   message(FATAL_ERROR "Python 3 is required for the Kernel.Purity test. Install it or configure with -DVAELEN_REQUIRE_PURITY_CHECK=OFF (the purity check is then NOT run).")
 else()
