@@ -18,6 +18,19 @@ foreach(TestSource IN LISTS VAELEN_PLAYER_TEST_SOURCES)
   list(APPEND VAELEN_PLAYER_TEST_NAMES Player.${SuiteName})
 endforeach()
 
+# 14.01's probe: Intent.h compiled with ONLY Core and Player public headers on
+# the include path and linked to NOTHING - no target_link_libraries, because a
+# linked target's PUBLIC include directories propagate and would quietly hand
+# this file every kernel header. The probe is the fence; compiling it is the
+# test. If the leaf ever includes past those two directories, this stops
+# building and every CI leg is red at the Build step, not the Test step.
+add_executable(VaelenPlayerIntentLeafProbe ${CMAKE_CURRENT_SOURCE_DIR}/Probe_IntentLeaf.cpp)
+target_include_directories(VaelenPlayerIntentLeafProbe PRIVATE
+  ${PROJECT_SOURCE_DIR}/Source/VaelenCore/Public
+  ${PROJECT_SOURCE_DIR}/Source/VaelenPlayer/Public)
+add_test(NAME Player.IntentLeaf COMMAND VaelenPlayerIntentLeafProbe)
+list(APPEND VAELEN_PLAYER_TEST_NAMES Player.IntentLeaf)
+
 add_test(NAME Player.Registry COMMAND VaelenPlayerTests --check-registry)
 add_test(NAME Player.Shuffled COMMAND VaelenPlayerTests --shuffle 1)
 list(APPEND VAELEN_PLAYER_TEST_NAMES Player.Registry Player.Shuffled)

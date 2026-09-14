@@ -5,6 +5,7 @@
 // STATUS: PROTOTYPE (Phase 10)
 
 #include "Vaelen/Player/Commands.h"
+#include "Vaelen/Player/Stream.h"
 #include "Vaelen/Player/Hours.h"
 #include "Vaelen/Player/Start.h"
 #include "Vaelen/Population/Families.h"
@@ -433,12 +434,8 @@ VAELEN_TEST(Commands, ARecordedStreamReplaysToTheSameLife)
 	// half. Applied to the same seed, the same stream gives the same life -
 	// which is only true because the intents are inputs and the simulation is
 	// the only writer.
-	struct Recorded
-	{
-		uint64 Tick = 0;
-		PlayerCommand Command;
-		Refusal Verdict = Refusal::None; ///< what the door said at the time
-	};
+	// Recorded lives in Vaelen/Player/Stream.h since 14.01 (ADR-0136): the
+	// five gates that each declared it privately now share one record type.
 	std::vector<Recorded> Stream;
 
 	Run Lived(AelvorSeed);

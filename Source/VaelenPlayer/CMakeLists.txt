@@ -6,7 +6,9 @@ set(VAELEN_PLAYER_PUBLIC_HEADERS
   Public/Vaelen/Player/Player.h
   Public/Vaelen/Player/Start.h
   Public/Vaelen/Player/Hours.h
+  Public/Vaelen/Player/Intent.h
   Public/Vaelen/Player/Commands.h
+  Public/Vaelen/Player/Stream.h
   Public/Vaelen/Player/Doings.h
   Public/Vaelen/Player/Regard.h
   Public/Vaelen/Player/PlayerHistory.h
@@ -17,6 +19,7 @@ set(VAELEN_PLAYER_SOURCES
   Private/Start.cpp
   Private/Hours.cpp
   Private/Commands.cpp
+  Private/Stream.cpp
   Private/Doings.cpp
   Private/Regard.cpp
   Private/PlayerHistory.cpp

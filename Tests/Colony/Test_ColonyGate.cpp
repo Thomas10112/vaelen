@@ -58,6 +58,7 @@
 #include "Vaelen/Colony/Holders.h"
 #include "Vaelen/Colony/Mining.h"
 #include "Vaelen/Player/Commands.h"
+#include "Vaelen/Player/Stream.h"
 #include "Vaelen/Player/Doings.h"
 #include "Vaelen/Player/Hours.h"
 #include "Vaelen/Player/Player.h"
@@ -1276,23 +1277,15 @@ namespace
 
 	/// One intent as it was submitted, with the answer the door gave. The whole
 	/// of the player's half of the input, and what a replay has to reproduce.
-	struct Recorded
-	{
-		uint64 Tick = 0;
-		PlayerCommand Command;
-		Refusal Verdict = Refusal::None;
-	};
+	// Recorded lives in Vaelen/Player/Stream.h since 14.01 (ADR-0136): the
+	// five gates that each declared it privately now share one record type.
 
 	/// The other thing the outside world does: take somebody up. A world with
 	/// mortality in it will not let one person be played for forty years, so a
 	/// life ends and another is taken, and the tick that happened on is as much
 	/// a part of the input as any intent. Seed plus takings plus intents is the
 	/// whole of what a replay is given.
-	struct Taking
-	{
-		uint64 Tick = 0;
-		uint32 Person = 0;
-	};
+	// Taking is Stream.h's TakenUp, renamed so the leaf is self-describing.
 
 	/// What the person means to do today, decided from the world they are in
 	/// rather than from a script: hungry, they eat; tired, they rest; otherwise
@@ -1582,7 +1575,7 @@ VAELEN_TEST(ColonyGate, ACenturyOfAColonyHoldsEveryInvariantAndReplays)
 
 	const auto Start = std::chrono::steady_clock::now();
 	std::vector<Recorded> Stream;
-	std::vector<Taking> Takings{Taking{W.Instance.Now(), Who}};
+	std::vector<TakenUp> Takings{TakenUp{W.Instance.Now(), Who}};
 	uint32 Failures = 0;
 	uint32 Lives = 1;
 	uint32 Playing = Who;
@@ -1609,7 +1602,7 @@ VAELEN_TEST(ColonyGate, ACenturyOfAColonyHoldsEveryInvariantAndReplays)
 				Playing = Next_;
 				if (Next_ != 0)
 				{
-					Takings.push_back(Taking{W.Instance.Now(), Next_});
+					Takings.push_back(TakenUp{W.Instance.Now(), Next_});
 					++Lives;
 					VT_CHECK(W.Open());
 				}

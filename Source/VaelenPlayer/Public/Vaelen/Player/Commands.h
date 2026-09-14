@@ -29,6 +29,7 @@
 
 #include "Vaelen/Core/CoreTypes.h"
 #include "Vaelen/Player/Hours.h"
+#include "Vaelen/Player/Intent.h"
 #include "Vaelen/Player/Player.h"
 #include "Vaelen/Player/PlayerApi.h"
 #include "Vaelen/Population/Persons.h"
@@ -47,56 +48,8 @@ namespace Vaelen
 
 namespace Vaelen::Player
 {
-	/// What a person can want to do. The seven doings of 10.05 are named here so
-	/// that a recorded stream made in this task keeps its meaning in the next;
-	/// this task gives them a cost in hours and no effect beyond that.
-	enum class Intent : uint8
-	{
-		None = 0,
-		Wait, ///< let the hours go by; the one intent that is complete here
-		Work,
-		Rest,
-		Eat,
-		Move,
-		Speak,
-		Give,
-		Take,
-		Count
-	};
-	inline constexpr usize IntentCount = static_cast<usize>(Intent::Count);
-	VAELEN_PLAYER_API const char* IntentName(Intent Kind);
-
-	/// Why the world refused an intent. Kept on the command and counted on the
-	/// queue, because "nothing happened" is not an answer a player can act on.
-	enum class Refusal : uint8
-	{
-		None = 0,
-		NoPlayer, ///< nobody is played, or the played person has no queue
-		Dead,	  ///< the person the intent was for is no longer alive
-		Unknown,  ///< an intent this build has no name for
-		Costly,	  ///< it asks for more hours than a whole day has
-		Full,	  ///< the queue is already holding all it can
-		Stale,	  ///< it waited so long unapplied that it is no longer meant
-		Nothing,  ///< there is nothing to do it with: no grain to eat, none to give
-		TooFar,	  ///< the region is not one a person can walk to from here
-		NoOne,	  ///< the person it is aimed at is not here, or not alive
-		Count
-	};
-	VAELEN_PLAYER_API const char* RefusalName(Refusal Why);
-
-	/// One intent. Small, flat and copyable, because a recorded stream of these
-	/// IS the player's half of a replay: seed plus stream gives the same life.
-	struct PlayerCommand
-	{
-		uint8 Kind = 0;		 ///< Intent
-		uint8 Why = 0;		 ///< Refusal, filled in when the world refused it
-		uint16 Reserved = 0; //
-		uint32 Target = 0;	 ///< what it is aimed at; the kind says what that means
-		uint32 Amount = 0;	 ///< how much of it
-		uint32 Hours = 0;	 ///< hours asked; 0 takes the rule's cost for the kind
-		uint64 Issued = 0;	 ///< the tick it was submitted on
-	};
-	static_assert(sizeof(PlayerCommand) == 24, "PlayerCommand must stay padding free");
+	// Intent, Refusal and PlayerCommand live in Intent.h since 14.01 (ADR-0136):
+	// the shape of an intent is a leaf a UI may include, the door below is not.
 
 	/// How many intents can wait at once. A queue and not a list: a person acts
 	/// on what they meant recently, and an unbounded backlog is not a life.

@@ -6,6 +6,7 @@
 
 #include "Vaelen/Economy/Stocks.h"
 #include "Vaelen/Player/Commands.h"
+#include "Vaelen/Player/Stream.h"
 #include "Vaelen/Player/Doings.h"
 #include "Vaelen/Player/Hours.h"
 #include "Vaelen/Player/Start.h"
@@ -545,12 +546,8 @@ VAELEN_TEST(Doings, DeterministicAndReplayable)
 	// The claim of 10.04 has to survive the verbs having effects: the same
 	// stream on the same seed gives the same world, economy and people
 	// included, not merely the same queue.
-	struct Recorded
-	{
-		uint64 Tick = 0;
-		PlayerCommand Command;
-		Refusal Verdict = Refusal::None;
-	};
+	// Recorded lives in Vaelen/Player/Stream.h since 14.01 (ADR-0136): the
+	// five gates that each declared it privately now share one record type.
 	std::vector<Recorded> Stream;
 
 	Run Lived(AelvorSeed);
