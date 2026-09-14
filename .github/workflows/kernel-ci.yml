@@ -113,8 +113,13 @@ jobs:
           # ".generated.h" written in a sentence, and a comment about the
           # stubs would then be counted as one. The wiring guard learned the
           # same lesson the same way (check_world_wiring.py).
+          # Source/ only: the witness tree the fence was first tested against
+          # (Tools/UiWitness) went away with 14.09, and a glob that matches
+          # nothing makes grep exit 2, which pipefail then turns into a red
+          # step that says nothing about the stubs.
           WANTED=$(grep -hoE '[A-Za-z]+\.generated\.h' Source/Vaelen*/Public/*.h Source/Vaelen*/Private/*.cpp \
-                   Tools/UiWitness/*/Public/*.h Tools/UiWitness/*/Private/*.cpp | sort -u | wc -l)
+                   | sort -u | wc -l)
+          test "$WANTED" -ge 1
           MADE=$(python3 Tools/parse_engine_modules.py --verbose | grep -c '^\[parse\] generated stubs: '"$WANTED"' ')
           test "$MADE" = 1
       - name: Kernel modules
