@@ -99,7 +99,10 @@ jobs:
         # purity checker enumerates from Tools/kernel_modules.txt, so a module
         # missing from that list, or listed with no directory on disk, shows
         # here in seconds rather than on a build leg an hour later.
+        # pipefail, or tail's 0 would stand in for the checker's 1: the step
+        # prints the violation count as if it enforced it, so it does.
         run: |
+          set -o pipefail
           python3 Tools/check_kernel_purity.py --root . --verbose | tee purity.log | tail -1
           test "$(grep -c '^\[purity\] module ' purity.log)" = 13
 

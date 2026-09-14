@@ -35,7 +35,15 @@ namespace Vaelen::Run
 		// is put on a command, so that no wall clock and no frame count can be.
 		C.Issued = W.Now();
 		const Refusal Verdict = W.Submit(C);
-		Tape.Commands.push_back(Recorded{W.Now(), C, Verdict, {}});
+		// NoPlayer touched nothing (Player::Submit answers it before any pool is
+		// written), so it is not a record: on one tick the text form and Replay
+		// put takings before commands, and a NoPlayer command recorded before a
+		// same-tick taking would be replayed AFTER it - accepted, and executed,
+		// where the original refused it. Found by review before it shipped.
+		if (Verdict != Refusal::NoPlayer)
+		{
+			Tape.Commands.push_back(Recorded{W.Now(), C, Verdict, {}});
+		}
 		return Verdict;
 	}
 

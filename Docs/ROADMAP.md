@@ -4059,4 +4059,25 @@ files; the `parse` job now prints the module count and fails unless it is 13.
 `Run.Shuffled`, `Atlas.Empty`). `VaelenRun.Build.cs` and `VaelenRunModule.cpp`
 are UNVERIFIED until 14.08's build on the engine machine, and say so.
 
+**The review** (three lenses, seven findings, two refuters each; two
+confirmed, five refuted as documented limits or intended contract) and the
+second commit it produced. Confirmed: `Door::Mean` recorded a command
+answered `NoPlayer` - the world untouched - and on one tick the text form and
+`Replay` put takings before commands, so a host whose input fired before its
+first `TakeUp` on the same tick would have its refused command replayed
+AFTER the taking, accepted and executed: `Wrong=1`, another state. A
+`NoPlayer` answer is not a record now, `Door.h` says why, and `Run.Door` has
+the case (a command meant before anybody is played, then a taking, ten
+played days, replayed to the same world). And the `parse` job's "Kernel
+modules" step piped the purity checker through `tee | tail`, which under
+GitHub's `bash -e` without `pipefail` replaced the checker's exit status with
+tail's 0: the step printed the violation count as if it enforced it, and
+enforced only the module count. `set -o pipefail` now. Also taken from the
+refuted set, cheaply: `Aelvor::Day()` before `Begin()` turns nothing rather
+than failing a check in the history. Left as documented: the day-turn records
+are a count, not ticks checked against the clock; `Colony` and the start
+rules are the host's configuration and not in the stream header; the row's
+`Days=360` is `Days=365` in the test - 360 played days plus the five empty
+ones the truncated-stream clause needs.
+
 STATUS: PROTOTYPE. Next: 14.04, `LifeView`.

@@ -159,7 +159,8 @@ namespace Vaelen::Run
 		/// Player::Submit on the played queue. The door's answer only: the
 		/// world's refusals arrive later, in Orders().
 		Player::Refusal Submit(const Player::PlayerCommand& C);
-		/// TickMany(24). A Door records it; nothing else should call it.
+		/// TickMany(24), and nothing before Begin(). A Door records it; nothing
+		/// else should call it.
 		uint64 Day();
 
 		// ── Measures.

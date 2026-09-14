@@ -498,7 +498,12 @@ namespace Vaelen::Run
 
 	uint64 Aelvor::Day()
 	{
-		K->Instance.TickMany(24);
+		// Nothing to turn before Begin(): the world has no map and no history,
+		// and a tick of it would fail a check rather than do nothing.
+		if (Begun_)
+		{
+			K->Instance.TickMany(24);
+		}
 		return K->Instance.Now();
 	}
 

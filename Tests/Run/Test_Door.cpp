@@ -177,6 +177,44 @@ VAELEN_TEST(Door, AYearPlayedReplaysToTheSameWorldAndMinusItsLastDayItDoesNot)
 		static_cast<unsigned long long>(T.State));
 }
 
+VAELEN_TEST(Door, ACommandMeantBeforeAnybodyIsPlayedIsNotARecord)
+{
+	// A host whose input fires before its first TakeUp on the same tick: the
+	// door answers NoPlayer and the world is untouched. Were that recorded,
+	// the text form's tie rule (takings before commands) would hand it to the
+	// replay AFTER the taking - accepted, and executed. So it is not a record,
+	// and the replay is the same world.
+	Aelvor A(Small());
+	VT_REQUIRE(A.Begin());
+	Door D(A, Anywhere());
+	PlayerCommand C;
+	C.Kind = static_cast<uint8>(Intent::Work);
+	C.Amount = 1;
+	VT_CHECK(D.Mean(C) == Refusal::NoPlayer);
+	VT_CHECK_MSG(D.Stream().Commands.empty(), "NoPlayer touched nothing and is not a record");
+	const uint32 Who = D.TakeUp();
+	VT_REQUIRE(Who != 0);
+	VT_CHECK(D.Mean(C) == Refusal::None);
+	for (uint32 i = 0; i < 10; ++i)
+	{
+		D.Day();
+		D.Mean(C);
+	}
+	VT_CHECK_EQ(D.Stream().Commands.size(), 11u);
+	const std::string Text = EncodeStream(D.Stream());
+	InputStream Back;
+	StreamReport Rep;
+	VT_REQUIRE(DecodeStream(Text, Back, Rep));
+	Aelvor F(Small());
+	VT_REQUIRE(F.Begin());
+	const ReplayReport R = Replay(F, Back, Anywhere());
+	VT_CHECK_EQ(R.Wrong, 0u);
+	VT_CHECK_EQ(R.Answered, 11u);
+	VT_CHECK_EQ(R.Days, 10u);
+	VT_CHECK_MSG(R.State == A.StateDigest(), "the same world, with the refused command in neither");
+	VT_CHECK(R.Log == A.LogDigest());
+}
+
 VAELEN_TEST(Door, AStreamOfAnotherWorldOrIntoAnUnplayedRunIsRefused)
 {
 	Options O;
@@ -188,6 +226,7 @@ VAELEN_TEST(Door, AStreamOfAnotherWorldOrIntoAnUnplayedRunIsRefused)
 	InputStream S;
 	S.Header = A.Header();
 	VT_CHECK_MSG(Replay(A, S).Refused == 1, "not before Begin()");
+	VT_CHECK_MSG(A.Day() == A.Now() && A.Now() == 0, "and no day turns before Begin()");
 	VT_REQUIRE(A.Begin());
 	S.Header.Seed ^= 1;
 	VT_CHECK_MSG(Replay(A, S).Refused == 1, "another seed is another world");

@@ -14,12 +14,16 @@
 // `Issued` is stamped here, by the world's clock, whatever the caller wrote:
 // no wall clock and no frame count ever enters the simulation.
 //
+// A command answered NoPlayer is not recorded: the world was untouched, and
+// on one tick takings come before commands in the text form and in Replay, so
+// recording it would let a replay execute what the original refused.
+//
 // What a replay cannot know: a played person who died with nobody left to
 // take up. The Door releases them and records nothing, because there is
-// nothing to record; the replay keeps the dead mark, and the commands after
-// it are refused Dead where the original was refused NoPlayer. Named here
-// rather than hidden, and a record kind for it is a later task if a stream
-// ever meets it.
+// nothing to record; the replay keeps the dead mark and the Phase 10
+// components the original released, so the two state digests differ by
+// those components from that day on. Named here rather than hidden, and a
+// record kind for it is a later task if a stream ever meets it.
 //
 // STATUS: PROTOTYPE (Phase 14) - Tests/Run/Test_Door.cpp
 #pragma once
@@ -44,7 +48,8 @@ namespace Vaelen::Run
 		/// Takes somebody up now and records it. 0 when the world offers
 		/// nobody or somebody is already played.
 		uint32 TakeUp();
-		/// Stamps Issued with the world's clock, submits, records the answer.
+		/// Stamps Issued with the world's clock, submits, records the answer -
+		/// unless it is NoPlayer, which touched nothing and is not a record.
 		Player::Refusal Mean(Player::PlayerCommand C);
 		/// Records DayTurned{Now()} and turns the day. When the played person
 		/// is no longer alive afterwards they are released and another is
