@@ -9074,3 +9074,193 @@ fix is validated by the same run. `AVaelenAtlasActor`'s bondage stays
 UNVERIFIED — nothing in that run exercises the game module's actor, and a
 change that was not run is not a change that was seen. The guard, the CTest
 entry and the suite: 157/157.
+
+---
+
+## ADR-0136 — The command surface as a leaf, and the played input as a stream
+
+**Status:** Proposed — applied by Phase 14 task 14.01.
+**Date:** 2026-09-14
+**Phase:** 14 — UI, task 14.01
+
+### The finding
+
+`Vaelen/Player/Commands.h` declares both halves of the player's command
+surface in one header: the *shape* of an intent (`Intent`, `Refusal`,
+`PlayerCommand`, `IntentName`, `RefusalName`) and the *door* into the
+simulation (`Submit(World&, ...)`, `PlayerOrderSystem`, the queue). It
+includes `Sim/System.h`, `Population/Persons.h` and `Sim/PreHistory.h` to do
+so. A file that needs only the shape — a UI that builds a `PlayerCommand` from
+a keypress — cannot include it without also being able to name `World&`.
+
+Separately, five gate tests (`Test_PlayerGate`, `Test_Commands`, `Test_Doings`,
+`Test_GameplayGate`, `Test_ColonyGate`) each declare a private
+`Recorded{Tick, Command, Verdict}` and replay it in a private loop. The
+project's strongest gameplay claim — 10.04, "a recorded command stream replays
+to the same life" — has no shared type and no interchange form.
+
+### The decision
+
+1. **`Vaelen/Player/Intent.h`** receives `Intent`, `Refusal`, `PlayerCommand`
+   with its `static_assert(sizeof == 24)`, `IntentName`, `RefusalName`, and
+   includes only `Vaelen/Core/CoreTypes.h` and `Vaelen/Player/PlayerApi.h`.
+   `Commands.h` includes it back. Nothing compiled today changes; `Submit`
+   is not nameable from a file that includes only the leaf.
+2. **`Vaelen/Player/Stream.h`** carries three record kinds — `Recorded{Tick,
+   Command, Verdict}` lifted from the five tests; `TakenUp{Tick, Person}` (the
+   gates' private `Taking`, renamed so the leaf is self-describing —
+   `Regard.h:91` is a field `ForTaking`, not a symbol collision); and
+   **`DayTurned{Tick}`**, one per day turn, because the day turn is an input
+   the host makes and a replay must know how many to make. `EncodeStream` /
+   `DecodeStream` to and from one record per line under a header
+   `vaelen-stream 1 <seed> <size> <prehistory> <years>`. No file I/O: the
+   kernel writes no file.
+3. **The stream is an input record, not a save.** No `VAELEN_SAVE_FORMAT_VERSION`
+   bump; Phase 16 inherits nothing from it.
+
+### What this changes about a closed phase
+
+An addition to Phase 10's public API. No symbol renamed, no layout changed,
+no frozen digest touched. The five gate tests keep their loops until 14.03
+gives them `Replay()`; lifting the record type is the only edit they take.
+
+### Verification (from the plan)
+
+`Player.Stream`: round trip byte-identical for all three record kinds; a
+corrupt line counted in `BadLines`, not crashed on; a header of another seed
+or size refused. `Player.IntentLeaf`: a probe TU including only `Intent.h`
+compiles with `-I Source/VaelenCore/Public -I Source/VaelenPlayer/Public` and
+nothing else. Player suites unchanged on all presets. `Kernel.Purity` 0.
+
+---
+
+## ADR-0137 — The view headers as leaves: a read-only surface that could name the write
+
+**Status:** Proposed — applied by Phase 14 task 14.02.
+**Date:** 2026-09-14
+**Phase:** 14 — UI, task 14.02; corrects a defect in 13.01's closed API
+
+### The finding
+
+13.01's promise is that a view "holds no pointer, no handle, and no reference
+to the World it came from, so a renderer that has one cannot reach the
+simulation even by mistake". The *structs* keep that promise. The *headers*
+do not.
+
+`Source/VaelenView/Public/Vaelen/View/Frame.h:26-33` includes eight kernel
+headers so that `ViewSources` and `TakeView(const World&, ...)` can be declared
+beside `WorldView`. Walked on 2026-09-14, the transitive closure of `Frame.h`
+is **63 headers**, and it contains:
+
+```
+Vaelen/Player/Commands.h     <- Gameplay/Repute.h <- Gameplay/Fame.h <- View/Frame.h
+Vaelen/Sim/System.h          <- Colony/Mining.h <- View/Frame.h
+Vaelen/Sim/EventBus.h        <- Sim/History.h <- Gameplay/Fame.h <- View/Frame.h
+Vaelen/Sim/ComponentStore.h  <- Sim/System.h <- Colony/Mining.h <- View/Frame.h
+```
+
+`Submit(World&, ...)` is declared at `Commands.h:221`. `Land.h`, `Net.h`,
+`Folk.h`, `Delta.h` and `Eye.h` all include `Frame.h`; `Eye.h:23` adds
+`Sim/Regions.h` on its own. So every consumer of a view — including the
+presentation drawer of 13.07c, and any UI Phase 14 builds — can *name* the
+simulation's write entry point and its ECS containers by include, through the
+one module the layering rule says is safe. `Sim/World.h` itself is not in the
+closure and no `World` object is handed out; this is an include reach, not a
+pointer reach. But rule 1 of Phase 14 is stated as an include rule, and a
+fence that a `#include` walks around is not a fence.
+
+Found by two independent skeptics reviewing the Phase 14 plan, each with the
+same file:line path; verified by hand before this ADR was written.
+
+### The decision
+
+**Split every view header into a leaf and a take-side.**
+
+- `Frame.h`, `Land.h`, `Net.h`, `Folk.h`, `Delta.h`, `Eye.h` keep only their
+  structs, `RegionIn`, `GrainName`, `Measure*`, `Diff`, and include only
+  `Vaelen/Core/CoreTypes.h`, `Vaelen/Core/Hash.h`, `Vaelen/View/ViewApi.h`
+  and `<vector>`. They lose their `class World;` forward declarations
+  (`Frame.h:40`, `Land.h:39`, `Net.h:37`, `Folk.h:43`). `Eye.h` drops
+  `Sim/Regions.h` and keeps `Eye{Region, Reach, Most}` as plain numbers.
+- **`Vaelen/View/Take.h`** receives `ViewSources` and every
+  `Take*(const World&, const ViewSources&, ...)` — `TakeView`, `TakeMapView`,
+  `TakeNetView`, `TakePeopleView`, `TakeViewFor`, `BordersBetween` with their
+  `RegionGraphCache&`. It is the one VaelenView header allowed to include
+  kernel modules, and the one a UI may never include.
+- The five `.cpp`, `VaelenViewActor.cpp`, the eight view tests and
+  `Tools/Atlas/Main.cpp` add `#include "Vaelen/View/Take.h"` — twenty files,
+  one line each. `VaelenViewDrawer.h` changes nothing: it already includes
+  only what a leaf provides.
+
+### What must not move
+
+No struct, no field, no layout. `View.ViewGate` keeps asserting
+`VAELEN_VIEWGATE_FROZEN_VIEW 0x115c2ff70a5327c4` and `_STATE
+0x5bc8478689958433`. A new CTest `Atlas.Frozen128` asserts the ADR-0135 pair
+— `frame 0xabc5a5767c6cf9dd`, `ground 0x8f7f4948f49b6e86` at 128/120 — which
+today lives only in this file and in the roadmap, in no test.
+
+### Verification (from the plan)
+
+`View.Leaf`: a probe TU including every `Vaelen/View/*.h` except `Take.h`,
+plus `Vaelen/Player/Intent.h`, compiles with `-I Source/VaelenCore/Public -I
+Source/VaelenView/Public -I Source/VaelenPlayer/Public` and nothing else;
+`grep -lE 'Vaelen/(Sim|Population|Society|Economy|Colony|Infrastructure|Gameplay|Player/Player|Player/Commands)' Source/VaelenView/Public/Vaelen/View/*.h`
+returns only `Take.h`; the parse job green with the drawer untouched.
+
+### The hazard this does not remove
+
+Under UnrealBuildTool every `PublicDependencyModuleNames` include path is
+transitive (`VaelenView.Build.cs:29` lists eleven kernel modules), so a UI
+module *can* `#include "Vaelen/View/Take.h"` and build. The leaf split makes
+the honest include set *possible*; 14.07's restricted parse and closure walk
+are what make it *checked*. Both are named in the plan; neither is the
+compiler.
+
+---
+
+## ADR-0138 — The day turn is the one host input that is not a command, and it is recorded
+
+**Status:** Proposed — applied by Phase 14 tasks 14.03 and 14.08.
+**Date:** 2026-09-14
+**Phase:** 14 — UI, tasks 14.03, 14.08
+
+### The question
+
+Phase 14's sentence says the UI writes to the simulation only through
+gameplay commands. A played life needs one more thing from its host: *time
+moves*. The Phase 10 gates advance the world by `TickMany(24)` per day in a
+test loop; in the engine somebody has to press a key. Is that key a command?
+
+### The decision
+
+**No — it is the one host input that is not a gameplay command, and it is
+recorded so a replay is a function of the keys alone, Space included.**
+
+- `Run::Door::Day()` is the only way time moves; it calls `TickMany(24)`
+  and appends a `DayTurned{Tick}` to the stream (ADR-0136). `Replay()` is
+  bounded by the records: it makes exactly as many day turns as the stream
+  holds, and returns `Days` beside `Answered`/`Wrong`.
+- `Issued` is stamped by the world side — `C.Issued = W.Now()` whatever the
+  caller wrote — so no wall-clock and no frame count ever enters the
+  simulation. The world does not tick per frame; between day turns it is
+  still, which is also why the gate's frame rate has no year-turn frame to
+  exclude.
+- The host of the Run in the engine is **`VaelenGame`**, the module
+  `ARCHITECTURE.md` 3.2 names for "Player, input, gameplay commands" and
+  rule 4 names as the only command path — created by this phase, not the
+  `Vaelen` bridge module. A `UVaelenWorldSubsystem : UGameInstanceSubsystem`
+  holds `Run::Aelvor`/`Door`; the pasted-line check runs under
+  `UnrealEditor-Cmd Vaelen.uproject -game -nullrhi -log -ExecCmds="..."`,
+  because without `-game` no `UGameInstance` exists and the subsystem would
+  print nothing. `LogVaelenPlay: no game instance` is the named failure
+  line; the `UEngineSubsystem` alternative is the named fallback.
+
+### Why this is an ADR and not a line in a task
+
+Because it is a *reading* of the layering rule. "UI writes only through
+gameplay commands" now reads "…and the recorded day turn", and the truncated-
+stream test in 14.03 (a stream minus its last day turn does **not** replay to
+the same state) is what shows the record is load-bearing rather than
+decorative. A reading of a rule is the kind of thing that gets argued about a
+year later, and this is where the argument is written down.
