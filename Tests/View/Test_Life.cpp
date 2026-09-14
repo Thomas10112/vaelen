@@ -191,6 +191,7 @@ VAELEN_TEST(Life, EveryNumberIsTheKernelsAndSixtyTakesMoveNothing)
 	Player::PlayerCommand C;
 	C.Kind = static_cast<uint8>(Player::Intent::Work);
 	C.Amount = 1;
+	C.Issued = A.Now(); // Aelvor::Submit stamps nothing: unstamped, an order is Stale by the time it is read
 	VT_CHECK(A.Submit(C) == Player::Refusal::None);
 	C.Kind = static_cast<uint8>(Player::Intent::Speak);
 	C.Target = 0; // nobody: refused by the world, which is a number too
@@ -198,6 +199,7 @@ VAELEN_TEST(Life, EveryNumberIsTheKernelsAndSixtyTakesMoveNothing)
 	A.Day();
 	C.Kind = static_cast<uint8>(Player::Intent::Rest);
 	C.Target = 0;
+	C.Issued = A.Now();
 	VT_CHECK(A.Submit(C) == Player::Refusal::None);
 
 	const auto T0 = std::chrono::steady_clock::now();
@@ -273,6 +275,8 @@ VAELEN_TEST(Life, EveryNumberIsTheKernelsAndSixtyTakesMoveNothing)
 		VT_CHECK_EQ(V.Held, Q->Held);
 		VT_CHECK_EQ(V.Taken, Q->Taken);
 		VT_CHECK_EQ(V.Refused, Q->Refused);
+		VT_CHECK_MSG(V.Taken >= 1 && V.Refused >= 1,
+					 "the Work was taken and the Speak at nobody refused: taken %u, refused %u", V.Taken, V.Refused);
 		VT_CHECK_EQ(V.Dropped, Q->Dropped);
 		VT_CHECK_EQ(V.LastRefusal, Q->Last);
 		VT_CHECK_MSG(Q->Held >= 1, "a Rest is waiting for tomorrow");
@@ -280,8 +284,12 @@ VAELEN_TEST(Life, EveryNumberIsTheKernelsAndSixtyTakesMoveNothing)
 		{
 			const Player::PlayerCommand& R = Q->Ring[(Q->First + i) % Player::MostOrders];
 			VT_CHECK_EQ(V.Waiting[i].Kind, R.Kind);
-			VT_CHECK_EQ(V.Waiting[i].Issued, R.Issued);
+			VT_CHECK_EQ(V.Waiting[i].Why, R.Why);
+			VT_CHECK_EQ(V.Waiting[i].Target, R.Target);
 			VT_CHECK_EQ(V.Waiting[i].Amount, R.Amount);
+			VT_CHECK_EQ(V.Waiting[i].Hours, R.Hours);
+			VT_CHECK_EQ(V.Waiting[i].Issued, R.Issued);
+			VT_CHECK(std::memcmp(&V.Waiting[i], &R, sizeof(Player::PlayerCommand)) == 0);
 		}
 		VT_CHECK_EQ(V.Waiting[Q->Held < MostWaiting ? Q->Held : MostWaiting - 1].Kind,
 					Q->Held < MostWaiting ? uint8{0} : V.Waiting[MostWaiting - 1].Kind);
@@ -357,6 +365,7 @@ VAELEN_TEST(Life, EveryNumberIsTheKernelsAndSixtyTakesMoveNothing)
 			VT_CHECK(V.Company[i].Person != Who);
 			VT_CHECK(i == 0 || V.Company[i - 1].Person < V.Company[i].Person);
 			VT_CHECK_EQ(V.Company[i].Sex, O->Sex);
+			VT_CHECK_EQ(V.Company[i].Years, static_cast<uint32>((A.Now() - O->Born) / History::TicksPerYear));
 			VT_CHECK(CleanName(V.Company[i].Name));
 			VT_CHECK(std::strcmp(V.Company[i].Name, Named(A, V.Company[i].Person).c_str()) == 0);
 		}
@@ -384,6 +393,76 @@ VAELEN_TEST(Life, EveryNumberIsTheKernelsAndSixtyTakesMoveNothing)
 					V.Name, V.Person, V.RegionName, V.Years, V.Left, V.Awake, V.Food, V.Health, V.Rest, V.Held, V.Taken,
 					V.Refused, V.Repute, V.KnownCount, V.NearCount, Waited, V.CompanyCount, V.CompanyThere, S.Named,
 					S.Bytes, static_cast<unsigned long long>(S.Digest), Took);
+}
+
+VAELEN_TEST(Life, TheKnownAndTheHolderAreNamed)
+{
+	// The two name branches the fixture above never enters: somebody KNOWN
+	// (the regard is written when somebody is met - a Speak aimed at company,
+	// taken the next day) and somebody who HOLDS the played person (a bound
+	// start, which the 96-map does not offer and AELVOR at 128/120 may).
+	// Each branch asserts the name whenever the world offers the case, and
+	// the log says whether it did.
+	Aelvor A(Small());
+	VT_REQUIRE(A.Begin());
+	const uint32 Who = A.TakeUp(Anywhere());
+	VT_REQUIRE(Who != 0);
+	WorldGen::RegionGraphCache Ways;
+	LifeView V;
+	TakeLifeView(A.Instance(), A.Sources(), Ways, V);
+	VT_REQUIRE(V.CompanyCount >= 1);
+	Player::PlayerCommand C;
+	C.Kind = static_cast<uint8>(Player::Intent::Speak);
+	C.Target = V.Company[0].Person;
+	C.Amount = 1;
+	C.Issued = A.Now(); // unstamped, it would wait past StaleAfter and be refused as no longer meant
+	VT_CHECK(A.Submit(C) == Player::Refusal::None);
+	for (uint32 d = 0; d < 3; ++d)
+	{
+		A.Day();
+	}
+	TakeLifeView(A.Instance(), A.Sources(), Ways, V);
+	const Player::PlayerRegard* R = Player::RegardOf(A.Instance(), A.Handles().Regard);
+	VT_CHECK_MSG(R != nullptr && R->Known >= 1, "somebody spoken to is somebody known");
+	VT_CHECK_EQ(V.KnownCount, R != nullptr ? R->Known : 0u);
+	for (uint32 i = 0; i < V.KnownCount && i < MostKnownOf; ++i)
+	{
+		VT_CHECK(CleanName(V.Known[i].Name));
+		VT_CHECK(V.Known[i].Name[0] != '\0');
+		VT_CHECK_MSG(std::strcmp(V.Known[i].Name, Named(A, V.Known[i].Person).c_str()) == 0, "known: %s",
+					 V.Known[i].Name);
+	}
+
+	Options O;
+	O.Play = true;
+	Aelvor B(O);
+	VT_REQUIRE(B.Begin());
+	const uint32 Bound = B.TakeUp(Player::StartRules{}); // WantBound = 1: somebody bound to be
+	VT_CHECK_MSG(Bound != 0, "AELVOR at 128/120 offers somebody bound to be");
+	uint32 Holder = 0;
+	if (Bound != 0)
+	{
+		LifeView H;
+		TakeLifeView(B.Instance(), B.Sources(), Ways, H);
+		const Player::PlayerStart* S = Player::StartOf(B.Instance(), B.Handles().Start);
+		VT_REQUIRE(S != nullptr);
+		Holder = S->Holder;
+		VT_CHECK_EQ(H.Holder, S->Holder);
+		VT_CHECK_EQ(H.Bond, S->Bond);
+		VT_CHECK(CleanName(H.HolderName));
+		if (S->Holder != 0)
+		{
+			VT_CHECK(H.HolderName[0] != '\0');
+			VT_CHECK_MSG(std::strcmp(H.HolderName, Named(B, S->Holder).c_str()) == 0, "held by %s", H.HolderName);
+		}
+		else
+		{
+			VT_CHECK_EQ(H.HolderName[0], '\0');
+		}
+	}
+	VAELEN_LOG_INFO(LogLife, "known after a Speak: %u (%s); the bound start at 128: person %u held by %s", V.KnownCount,
+					V.KnownCount != 0 ? V.Known[0].Name : "-", Bound,
+					Holder != 0 ? Named(B, Holder).c_str() : "the region itself");
 }
 
 VAELEN_TEST(Life, TheViewOutlivesTheWorld)

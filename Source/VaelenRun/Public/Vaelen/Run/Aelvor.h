@@ -157,7 +157,9 @@ namespace Vaelen::Run
 		uint32 Played() const;
 		bool PlayedAlive() const;
 		/// Player::Submit on the played queue. The door's answer only: the
-		/// world's refusals arrive later, in Orders().
+		/// world's refusals arrive later, in Orders(). Nothing is stamped: a
+		/// command with Issued left at 0 is Stale (OrderRules::StaleAfter) by
+		/// the time the day reads it - Door::Mean stamps Now() for the caller.
 		Player::Refusal Submit(const Player::PlayerCommand& C);
 		/// TickMany(24), and nothing before Begin(). A Door records it; nothing
 		/// else should call it.
