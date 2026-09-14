@@ -71,7 +71,7 @@ void AVaelenPlayerController::Space()
 									  : nullptr;
 	if (Held != nullptr)
 	{
-		Held->TurnTheDay();
+		Held->AdvanceDay(1); // the recorded day turn (ADR-0138)
 	}
 }
 
@@ -86,7 +86,7 @@ void AVaelenPlayerController::Verb(Vaelen::Player::Intent Kind)
 	}
 	Vaelen::Player::PlayerCommand What;
 	// The page's own answer first: an unoffered verb costs the world nothing.
-	if (Vaelen::View::Press(Held->Page(), Kind, 0, 1, What) != Vaelen::Player::Refusal::None)
+	if (Vaelen::View::Press(Held->Panel(), Kind, 0, 1, What) != Vaelen::Player::Refusal::None)
 	{
 		return;
 	}

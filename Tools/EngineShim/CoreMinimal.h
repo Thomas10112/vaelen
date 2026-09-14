@@ -313,6 +313,8 @@ public:
 		return *this;
 	}
 	const TCHAR* operator*() const { return Text.c_str(); }
+	void Reset() { Text.clear(); }
+	bool operator==(const FString& Other) const { return Text == Other.Text; }
 	bool IsEmpty() const { return Text.empty(); }
 	int32 Len() const { return static_cast<int32>(Text.size()); }
 	template <typename... Args>

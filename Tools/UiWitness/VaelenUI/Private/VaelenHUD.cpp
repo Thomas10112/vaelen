@@ -25,7 +25,7 @@ void AVaelenHUD::DrawHUD()
 	{
 		return;
 	}
-	const Vaelen::View::PanelView& Page = Held->Page();
+	const Vaelen::View::PanelView& Page = Held->Panel();
 	const uint32 Written = Vaelen::View::Lines(Page, Rows, Vaelen::View::PanelTextBytes);
 	if (Written == 0)
 	{

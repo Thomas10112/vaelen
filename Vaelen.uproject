@@ -169,6 +169,18 @@
 			]
 		},
 		{
+			"Name": "VaelenGame",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine",
+				"VaelenCore",
+				"VaelenPlayer",
+				"VaelenView",
+				"VaelenRun"
+			]
+		},
+		{
 			"Name": "VaelenPresentation",
 			"Type": "Runtime",
 			"LoadingPhase": "Default",

@@ -127,8 +127,8 @@ MUTATIONS = [
     (
         "an argument dropped from Press",
         KEYS,
-        "Press(Held->Page(), Kind, 0, 1, What)",
-        "Press(Held->Page(), Kind, 1, What)",
+        "Press(Held->Panel(), Kind, 0, 1, What)",
+        "Press(Held->Panel(), Kind, 1, What)",
     ),
 ]
 
