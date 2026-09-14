@@ -3140,7 +3140,7 @@ head.
 | Task | Content | How it is verified |
 |---|---|---|
 | 13.06 | The first UBT build of all eleven kernel modules. This is the task the UNVERIFIED marks have been waiting for since Phase 00 | it builds, or it does not | **DONE 2026-09-10 - it builds** |
-| 13.07c | `VaelenPresentation`: the UE module, and the world drawn as regions **from that view alone** inside the engine. 13.07b proved the view is sufficient to draw from; this is the same claim in Unreal, and the first place ADR-0113's C4251 decision can be shown to do anything | a screenshot | **COMPILES 2026-09-10 (UE 5.6.1, MSVC 14.44, 14/14 DLLs) — NOT YET SEEN** |
+| 13.07c | `VaelenPresentation`: the UE module, and the world drawn as regions **from that view alone** inside the engine. 13.07b proved the view is sufficient to draw from; this is the same claim in Unreal, and the first place ADR-0113's C4251 decision can be shown to do anything | a screenshot | **DONE 2026-09-10 — seen: 12 biomes, rivers, 44 towns, 90 roads** |
 | 13.08b | A person, a colony and a road drawn from the view of 13.01 **inside the engine** | a screenshot | **DONE 2026-09-14 — 1467 people drawn on 117 tiles, seen** |
 | 13.09 | Phase 13 gate: the editor open on AELVOR at 256, a century running, and the frame rate written down | measured on the machine that has the engine | **PASSED 2026-09-14 — 100 fps / 11 ms on a T400 4GB** |
 
