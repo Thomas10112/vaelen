@@ -10,6 +10,7 @@
 #include "Vaelen/Core/Log.h"
 #include "VaelenTest.h"
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -106,6 +107,8 @@ VAELEN_TEST(Stream, ARoundTripIsByteIdentical)
 	StreamReport R;
 	VT_REQUIRE(DecodeStream(Once, Back, R));
 	VT_CHECK_EQ(R.BadLines, 0u);
+	VT_CHECK_MSG(R.Lines == static_cast<uint32>(std::count(Once.begin(), Once.end(), '\n')),
+				 "Lines is what wc -l says: one per newline, none for the nothing after the last");
 	VT_CHECK_EQ(R.HeaderBad, 0u);
 	VT_CHECK_EQ(R.Refused, 0u);
 	VT_CHECK_EQ(R.Records, static_cast<uint32>(StreamRecords(S)));
@@ -131,9 +134,10 @@ VAELEN_TEST(Stream, ARoundTripIsByteIdentical)
 
 VAELEN_TEST(Stream, EqualTicksKeepTheirOrder)
 {
-	// At one tick: commands, then the taking, then the day turn. That is what
-	// really happens - submitted at T, the day turned at T - and a replay that
-	// read them in another order would turn the day before the commands.
+	// At one tick: the taking, then the commands, then the day turn. That is
+	// what really happens - a life taken up at T, its first command issued at
+	// T, the day turned at T - and a replay that read them in another order
+	// would submit that first command to nobody, or turn the day before it.
 	InputStream S;
 	S.Header = Aelvor128();
 	const uint64 T = 1000;
@@ -145,13 +149,11 @@ VAELEN_TEST(Stream, EqualTicksKeepTheirOrder)
 	const usize Header = Text.find('\n');
 	VT_REQUIRE(Header != std::string::npos);
 	const std::string Body = Text.substr(Header + 1);
-	VT_CHECK_MSG(Body.rfind("c 1000 ", 0) == 0, "the first record at a tick is a command");
-	const usize FirstT = Body.find("\nt 1000 ");
+	VT_CHECK_MSG(Body.rfind("t 1000 ", 0) == 0, "the first record at a tick is the taking");
+	const usize FirstC = Body.find("\nc 1000 ");
 	const usize FirstD = Body.find("\nd 1000");
-	const usize SecondC = Body.find("\nc 1000 ");
-	VT_CHECK_MSG(SecondC != std::string::npos && FirstT != std::string::npos && FirstD != std::string::npos,
-				 "all three kinds are present");
-	VT_CHECK_MSG(SecondC < FirstT && FirstT < FirstD, "commands, then the taking, then the day turn");
+	VT_CHECK_MSG(FirstC != std::string::npos && FirstD != std::string::npos, "all three kinds are present");
+	VT_CHECK_MSG(FirstC < FirstD, "the taking, then the commands, then the day turn");
 	// And the two commands keep the order they were meant in.
 	const usize RestAt = Body.find("c 1000 3 ");
 	const usize WaitAt = Body.find("c 1000 1 ");
@@ -215,10 +217,82 @@ VAELEN_TEST(Stream, AHeaderOfAnotherWorldIsRefused)
 	// No header at all, or a header that is not one.
 	VT_CHECK(!DecodeStream("", Back, R));
 	VT_CHECK_EQ(R.HeaderBad, 1u);
+	VT_CHECK_EQ(R.Lines, 0u);
 	VT_CHECK(!DecodeStream("c 1 1 0 0 0 1 0\n", Back, R));
 	VT_CHECK_EQ(R.HeaderBad, 1u);
 	VT_CHECK(!DecodeStream("vaelen-stream 1 x 128 300 120\n", Back, R));
 	VT_CHECK_EQ(R.HeaderBad, 1u);
+}
+
+VAELEN_TEST(Stream, AVersionThisBuildCannotReadIsNamedAsSuch)
+{
+	// A well-formed header of another version is not "another world" and not
+	// "not a header": it is a form this build does not read, and it says so.
+	// Reading a version-2 stream under version-1 rules would drop every field
+	// it did not know as a bad line and call the rest a success.
+	InputStream Back;
+	StreamReport R;
+	VT_CHECK(!DecodeStream("vaelen-stream 2 7 128 300 120\nd 5\n", Back, R));
+	VT_CHECK_EQ(R.VersionBad, 1u);
+	VT_CHECK_EQ(R.HeaderBad, 0u);
+	VT_CHECK_EQ(R.Refused, 0u);
+	VT_CHECK_MSG(Back.Days.empty(), "a stream of another version leaves Out untouched");
+	VT_CHECK(!DecodeStream("vaelen-stream 0 7 128 300 120\n", Back, R));
+	VT_CHECK_EQ(R.VersionBad, 1u);
+	// With Expect too: the version is not part of the world's identity.
+	StreamHeader Same_ = Aelvor128();
+	VT_CHECK(!DecodeStream("vaelen-stream 2 7 128 300 120\n", Back, R, &Same_));
+	VT_CHECK_EQ(R.VersionBad, 1u);
+	VT_CHECK_EQ(R.Refused, 0u);
+	Same_.Version = 2;
+	VT_CHECK_MSG(SameWorld(Aelvor128(), Same_), "SameWorld compares the world, not the text form");
+}
+
+VAELEN_TEST(Stream, TheLastPossibleTickIsARecordAndNotASentinel)
+{
+	// 2^64-1 is a tick like any other. The first draft of the merge used it
+	// to mean "this vector is exhausted", and a taking at that tick with no
+	// commands read past the end of an empty vector. Each vector alone, then
+	// all three at that tick, then the round trip.
+	const uint64 Last = ~uint64{0};
+	{
+		InputStream S;
+		S.Header = Aelvor128();
+		S.Takings.push_back(TakenUp{Last, 7, 0});
+		const std::string Text = EncodeStream(S);
+		VT_CHECK_MSG(Text.find("\nt 18446744073709551615 7\n") != std::string::npos, "a taking at the last tick");
+	}
+	{
+		InputStream S;
+		S.Header = Aelvor128();
+		S.Days.push_back(DayTurned{Last});
+		const std::string Text = EncodeStream(S);
+		VT_CHECK_MSG(Text.find("\nd 18446744073709551615\n") != std::string::npos, "a day turned at the last tick");
+	}
+	{
+		InputStream S;
+		S.Header = Aelvor128();
+		S.Commands.push_back(Meant(Last, Intent::Wait, 0, 0, Refusal::None));
+		const std::string Text = EncodeStream(S);
+		VT_CHECK_MSG(Text.find("\nc 18446744073709551615 ") != std::string::npos, "a command at the last tick");
+	}
+	InputStream S;
+	S.Header = Aelvor128();
+	S.Days.push_back(DayTurned{Last});
+	S.Commands.push_back(Meant(Last, Intent::Wait, 0, 0, Refusal::None));
+	S.Takings.push_back(TakenUp{Last, 7, 0});
+	const std::string Once = EncodeStream(S);
+	InputStream Back;
+	StreamReport R;
+	VT_REQUIRE(DecodeStream(Once, Back, R));
+	VT_CHECK_EQ(R.Records, 3u);
+	VT_CHECK_EQ(R.BadLines, 0u);
+	VT_CHECK_MSG(EncodeStream(Back) == Once, "the round trip holds at the last tick too");
+	const usize Header = Once.find('\n');
+	VT_REQUIRE(Header != std::string::npos);
+	const std::string Body = Once.substr(Header + 1);
+	VT_CHECK_MSG(Body.rfind("t ", 0) == 0 && Body.find("\nc ") < Body.find("\nd "),
+				 "and the tie rule holds there: taking, command, day");
 }
 
 VAELEN_TEST(Stream, TheSameStreamAlwaysWritesTheSameBytes)

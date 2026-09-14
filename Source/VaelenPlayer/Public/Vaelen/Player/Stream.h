@@ -23,10 +23,12 @@
 //              rule this rests on; this is the record that makes it testable.
 //
 // ORDER. Three vectors, each in time order, and one rule for equal ticks that
-// Encode writes and a replay must honour: commands, then takings, then day
-// turns. The rule is what really happens - commands are submitted at tick T,
+// Encode writes and a replay must honour: takings, then commands, then day
+// turns. The rule is what really happens - a person is taken up at tick T and
+// their first command is issued at that same T (the gates do exactly this),
 // then Day() turns the day AT T and advances to T+24 - and it is asserted in
-// the tests rather than trusted.
+// the tests rather than trusted. The first draft had commands before takings,
+// which would have replayed the first command of every life to nobody.
 //
 // NOT A SAVE. No file I/O here: the kernel writes no file, and the text is an
 // input record, not world state. No VAELEN_SAVE_FORMAT_VERSION bump; Phase 16
@@ -102,7 +104,7 @@ namespace Vaelen::Player
 	VAELEN_PLAYER_API usize StreamRecords(const InputStream& S);
 
 	/// The text form: one header line, then one record per line in time order,
-	/// commands before takings before day turns at equal ticks.
+	/// takings before commands before day turns at equal ticks.
 	///
 	///   vaelen-stream 1 <seed> <size> <prehistory> <years>
 	///   c <tick> <kind> <target> <amount> <hours> <issued> <verdict>
@@ -114,18 +116,19 @@ namespace Vaelen::Player
 
 	struct StreamReport
 	{
-		uint32 Lines = 0;	  ///< read, blank lines included
-		uint32 Records = 0;	  ///< accepted
-		uint32 BadLines = 0;  ///< neither blank nor a record - counted, skipped
-		uint32 HeaderBad = 0; ///< 1 when the first line was not a header
-		uint32 Refused = 0;	  ///< 1 when Expect was given and the header named another world
-		uint32 Reserved = 0;
+		uint32 Lines = 0;	   ///< read, blank lines included
+		uint32 Records = 0;	   ///< accepted
+		uint32 BadLines = 0;   ///< neither blank nor a record - counted, skipped
+		uint32 HeaderBad = 0;  ///< 1 when the first line was not a header
+		uint32 Refused = 0;	   ///< 1 when Expect was given and the header named another world
+		uint32 VersionBad = 0; ///< 1 when the header is one, but of a form this build does not read
 	};
 
 	/// Reads the text form back. A corrupt line is counted in BadLines and
 	/// skipped, never crashed on. With Expect, a header naming another world is
-	/// refused and Out is left untouched. False when the header is bad or
-	/// refused; BadLines alone do not fail it, they are reported.
+	/// refused and Out is left untouched. False when the header is bad, of
+	/// another version, or refused; BadLines alone do not fail it, they are
+	/// reported. Lines is what `wc -l` would say of the text.
 	VAELEN_PLAYER_API bool DecodeStream(std::string_view Text, InputStream& Out, StreamReport& Report,
 										const StreamHeader* Expect = nullptr);
 } // namespace Vaelen::Player

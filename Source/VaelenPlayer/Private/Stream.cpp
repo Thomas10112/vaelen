@@ -27,34 +27,32 @@ namespace Vaelen::Player
 		void WriteHeader(std::string& Out, const StreamHeader& H)
 		{
 			char Buffer[160];
-			const int Wrote = std::snprintf(Buffer, sizeof(Buffer), "vaelen-stream %llu %llu %llu %llu %llu",
-											static_cast<unsigned long long>(H.Version),
-											static_cast<unsigned long long>(H.Seed),
-											static_cast<unsigned long long>(H.Size),
-											static_cast<unsigned long long>(H.PreHistory),
-											static_cast<unsigned long long>(H.Years));
+			const int Wrote =
+				std::snprintf(Buffer, sizeof(Buffer), "vaelen-stream %llu %llu %llu %llu %llu",
+							  static_cast<unsigned long long>(H.Version), static_cast<unsigned long long>(H.Seed),
+							  static_cast<unsigned long long>(H.Size), static_cast<unsigned long long>(H.PreHistory),
+							  static_cast<unsigned long long>(H.Years));
 			Append(Out, Buffer, Wrote, sizeof(Buffer));
 		}
 
 		void WriteCommand(std::string& Out, const Recorded& R)
 		{
 			char Buffer[160];
-			const int Wrote = std::snprintf(Buffer, sizeof(Buffer), "c %llu %llu %llu %llu %llu %llu %llu",
-											static_cast<unsigned long long>(R.Tick),
-											static_cast<unsigned long long>(R.Command.Kind),
-											static_cast<unsigned long long>(R.Command.Target),
-											static_cast<unsigned long long>(R.Command.Amount),
-											static_cast<unsigned long long>(R.Command.Hours),
-											static_cast<unsigned long long>(R.Command.Issued),
-											static_cast<unsigned long long>(static_cast<uint8>(R.Verdict)));
+			const int Wrote = std::snprintf(
+				Buffer, sizeof(Buffer), "c %llu %llu %llu %llu %llu %llu %llu", static_cast<unsigned long long>(R.Tick),
+				static_cast<unsigned long long>(R.Command.Kind), static_cast<unsigned long long>(R.Command.Target),
+				static_cast<unsigned long long>(R.Command.Amount), static_cast<unsigned long long>(R.Command.Hours),
+				static_cast<unsigned long long>(R.Command.Issued),
+				static_cast<unsigned long long>(static_cast<uint8>(R.Verdict)));
 			Append(Out, Buffer, Wrote, sizeof(Buffer));
 		}
 
 		void WriteTaking(std::string& Out, const TakenUp& T)
 		{
 			char Buffer[80];
-			const int Wrote = std::snprintf(Buffer, sizeof(Buffer), "t %llu %llu", static_cast<unsigned long long>(T.Tick),
-											static_cast<unsigned long long>(T.Person));
+			const int Wrote =
+				std::snprintf(Buffer, sizeof(Buffer), "t %llu %llu", static_cast<unsigned long long>(T.Tick),
+							  static_cast<unsigned long long>(T.Person));
 			Append(Out, Buffer, Wrote, sizeof(Buffer));
 		}
 
@@ -96,14 +94,22 @@ namespace Vaelen::Player
 			return true;
 		}
 
-		bool Fits32(uint64 V) { return V <= 0xFFFFFFFFull; }
-		bool Fits8(uint64 V) { return V <= 0xFFull; }
+		bool Fits32(uint64 V)
+		{
+			return V <= 0xFFFFFFFFull;
+		}
+		bool Fits8(uint64 V)
+		{
+			return V <= 0xFFull;
+		}
 	} // namespace
 
 	bool SameWorld(const StreamHeader& A, const StreamHeader& B)
 	{
-		return A.Seed == B.Seed && A.Size == B.Size && A.PreHistory == B.PreHistory && A.Years == B.Years &&
-			   A.Version == B.Version;
+		// The version is the text form's, not the world's: a stream of another
+		// version is refused by the decoder as unreadable, never as "another
+		// world", so that a refusal means what its name says.
+		return A.Seed == B.Seed && A.Size == B.Size && A.PreHistory == B.PreHistory && A.Years == B.Years;
 	}
 
 	usize StreamRecords(const InputStream& S)
@@ -117,23 +123,34 @@ namespace Vaelen::Player
 		WriteHeader(Out, S.Header);
 
 		// A three-way merge on Tick, with the rule for equal ticks written as
-		// the order of the three tests below: commands, then takings, then
-		// days. Each vector is expected in time order; if one is not, the
-		// output is still the same for the same input, which is all a replay
-		// needs from an encoder.
+		// the order of the three tests below: takings, then commands, then day
+		// turns - the order a life is actually lived in. A person is taken up
+		// at T and their first command is issued at that same T (the gates do
+		// exactly this, Test_PlayerGate.cpp:1451 and :1504), and the day is
+		// turned at T after the commands of T. Each vector is expected in time
+		// order; if one is not, the output is still the same for the same
+		// input, which is all a replay needs from an encoder.
+		//
+		// Exhaustion is tracked by the three booleans and NOT by a sentinel
+		// tick: the first version used ~0 as "no more" and a genuine record at
+		// tick 2^64-1 - which Field() admits, and rightly - read past the end
+		// of an empty vector. Found by review before it shipped.
 		usize c = 0, t = 0, d = 0;
 		while (c < S.Commands.size() || t < S.Takings.size() || d < S.Days.size())
 		{
-			const uint64 Tc = c < S.Commands.size() ? S.Commands[c].Tick : ~uint64{0};
-			const uint64 Tt = t < S.Takings.size() ? S.Takings[t].Tick : ~uint64{0};
-			const uint64 Td = d < S.Days.size() ? S.Days[d].Tick : ~uint64{0};
-			if (Tc <= Tt && Tc <= Td)
-			{
-				WriteCommand(Out, S.Commands[c++]);
-			}
-			else if (Tt <= Td)
+			const bool Hc = c < S.Commands.size();
+			const bool Ht = t < S.Takings.size();
+			const bool Hd = d < S.Days.size();
+			const uint64 Tc = Hc ? S.Commands[c].Tick : 0;
+			const uint64 Tt = Ht ? S.Takings[t].Tick : 0;
+			const uint64 Td = Hd ? S.Days[d].Tick : 0;
+			if (Ht && (!Hc || Tt <= Tc) && (!Hd || Tt <= Td))
 			{
 				WriteTaking(Out, S.Takings[t++]);
+			}
+			else if (Hc && (!Hd || Tc <= Td))
+			{
+				WriteCommand(Out, S.Commands[c++]);
 			}
 			else
 			{
@@ -149,12 +166,16 @@ namespace Vaelen::Player
 		InputStream Read;
 		bool HaveHeader = false;
 
+		// A line is what precedes a newline, or what follows the last newline
+		// when the text does not end in one. Nothing follows a final newline,
+		// so nothing is counted there: Lines is the count a person gets from
+		// wc -l on the encoder's own output, and 0 for empty text.
 		usize At = 0;
-		while (At <= Text.size())
+		while (At < Text.size())
 		{
 			const usize End = Text.find('\n', At);
 			std::string_view L = Text.substr(At, End == std::string_view::npos ? std::string_view::npos : End - At);
-			At = End == std::string_view::npos ? Text.size() + 1 : End + 1;
+			At = End == std::string_view::npos ? Text.size() : End + 1;
 			if (!L.empty() && L.back() == '\r')
 			{
 				L.remove_suffix(1);
@@ -182,6 +203,15 @@ namespace Vaelen::Player
 					Report.HeaderBad = 1;
 					return false;
 				}
+				if (V != 1)
+				{
+					// A header, and a well-formed one, in a form this build does
+					// not read. Named as such: reading a version-2 stream under
+					// version-1 rules would drop every unknown field as a bad
+					// line and call the result a success.
+					Report.VersionBad = 1;
+					return false;
+				}
 				Read.Header.Version = static_cast<uint32>(V);
 				Read.Header.Seed = Seed;
 				Read.Header.Size = static_cast<uint32>(Size);
@@ -206,7 +236,7 @@ namespace Vaelen::Player
 			bool Ok = false;
 			if (L[0] == 'c')
 			{
-				uint64 Tick, Kind, Target, Amount, Hours, Issued, Verdict;
+				uint64 Tick = 0, Kind = 0, Target = 0, Amount = 0, Hours = 0, Issued = 0, Verdict = 0;
 				Ok = Field(Rest, Tick) && Field(Rest, Kind) && Field(Rest, Target) && Field(Rest, Amount) &&
 					 Field(Rest, Hours) && Field(Rest, Issued) && Field(Rest, Verdict) && Rest.empty() && Fits8(Kind) &&
 					 Fits32(Target) && Fits32(Amount) && Fits32(Hours) && Fits8(Verdict);
@@ -225,7 +255,7 @@ namespace Vaelen::Player
 			}
 			else if (L[0] == 't')
 			{
-				uint64 Tick, Person;
+				uint64 Tick = 0, Person = 0;
 				Ok = Field(Rest, Tick) && Field(Rest, Person) && Rest.empty() && Fits32(Person);
 				if (Ok)
 				{
@@ -234,7 +264,7 @@ namespace Vaelen::Player
 			}
 			else if (L[0] == 'd')
 			{
-				uint64 Tick;
+				uint64 Tick = 0;
 				Ok = Field(Rest, Tick) && Rest.empty();
 				if (Ok)
 				{
