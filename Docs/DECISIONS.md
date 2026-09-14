@@ -9307,6 +9307,17 @@ Need, Family) and `Take.h` a seventh take, `TakeLifeView`, for the seventh
 leaf `Life.h`. Views are never persisted, so no save-format bump; no struct
 or field of the six earlier leaves moved, and the frozen pairs held.
 
+### Widened by 14.05
+
+`ViewSources` gained `HasGoods`, `Economy::MarketTypes Markets` and
+`Society::OrganizationTypes Organizations`, and `Take.h` an eighth take,
+`TakeChronicleView`, for the eighth leaf `Chronicle.h` - the first
+INCREMENTAL take: the view carries its own cursor into the log (`Since`) and
+a take reads what was appended since. The three new sources exist so the
+take describes with the same `LifeContext` as `Run::Aelvor::Life()`, the
+economy speaking for the layers under it; a host without them gets the
+person layer's plainer sentence. No leaf moved; the frozen pairs held.
+
 ### The hazard this does not remove
 
 Under UnrealBuildTool every `PublicDependencyModuleNames` include path is

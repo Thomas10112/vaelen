@@ -31,6 +31,7 @@
 
 #include "Vaelen/Colony/Mining.h"
 #include "Vaelen/Core/CoreTypes.h"
+#include "Vaelen/Economy/Markets.h"
 #include "Vaelen/Economy/Trade.h"
 #include "Vaelen/Gameplay/Fame.h"
 #include "Vaelen/Infrastructure/Roads.h"
@@ -45,6 +46,8 @@
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/Regions.h"
 #include "Vaelen/Society/Bondage.h"
+#include "Vaelen/Society/Organizations.h"
+#include "Vaelen/View/Chronicle.h"
 #include "Vaelen/View/Delta.h"
 #include "Vaelen/View/Eye.h"
 #include "Vaelen/View/Folk.h"
@@ -88,6 +91,13 @@ namespace Vaelen::View
 		Player::StartTypes Start;
 		Population::NeedTypes Needs;
 		Population::FamilyTypes Families;
+		/// 14.05: the goods and the society, so that a line of the chronicle
+		/// about a stock or an organization is worded by its own layer, as
+		/// Run::Aelvor::Life() words it. Without them the person layer speaks
+		/// for every layer, which is a plainer sentence and not an error.
+		bool HasGoods = false;
+		Economy::MarketTypes Markets;
+		Society::OrganizationTypes Organizations;
 	};
 
 	/// Takes the frame. Const world in, numbers out: the signature is the
@@ -128,6 +138,15 @@ namespace Vaelen::View
 	/// the sources carry no life or nobody is played.
 	VAELEN_VIEW_API void TakeLifeView(const World& W, const ViewSources& From, WorldGen::RegionGraphCache& Ways,
 									  LifeView& Out);
+
+	/// Takes the last lines of the played life (14.05), INCREMENTALLY: only
+	/// the log events appended since the last take of this same view are read
+	/// and described, and the view is started over when the played person is
+	/// not the one it was taken for. Returns the events read this time. Out
+	/// has Person = 0 and nothing written when the sources carry no life or
+	/// nobody is played. A fresh view taken once equals one grown take by
+	/// take, byte for byte.
+	VAELEN_VIEW_API uint32 TakeChronicleView(const World& W, const ViewSources& From, ChronicleView& Out);
 
 	/// How far one region is from another across borders, or `Unreached` when no
 	/// chain of borders joins them. Public because "how far is that" is a

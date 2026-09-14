@@ -11,6 +11,7 @@ set(VAELEN_VIEW_PUBLIC_HEADERS
   Public/Vaelen/View/Folk.h
   Public/Vaelen/View/Take.h
   Public/Vaelen/View/Life.h
+  Public/Vaelen/View/Chronicle.h
 )
 
 set(VAELEN_VIEW_SOURCES
@@ -21,6 +22,7 @@ set(VAELEN_VIEW_SOURCES
   Private/Eye.cpp
   Private/Folk.cpp
   Private/Life.cpp
+  Private/Chronicle.cpp
 )
 
 add_library(VaelenView STATIC ${VAELEN_VIEW_SOURCES} ${VAELEN_VIEW_PUBLIC_HEADERS})

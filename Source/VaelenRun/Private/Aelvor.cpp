@@ -156,8 +156,11 @@ namespace Vaelen::Run
 				Chron.Player = W.Played;
 				Chron.Regard = W.Regard;
 				Chron.Goods = &EconomyCtx;
-				Told =
-					std::make_unique<LifeChronicle>(Instance, Ages.Types(), Chron, W.LifeRecords, LifeChronicleRules{});
+				// A played life records its refusals (14.05): what the world would
+				// not let them do is a line of the screen, not only a count.
+				LifeChronicleRules Kept;
+				Kept.RecordRefusals = 1;
+				Told = std::make_unique<LifeChronicle>(Instance, Ages.Types(), Chron, W.LifeRecords, Kept);
 			}
 			if (Given.Lively)
 			{
@@ -441,6 +444,9 @@ namespace Vaelen::Run
 		S.Start = K->W.Start;
 		S.Needs = K->W.Needs;
 		S.Families = K->W.Families;
+		S.HasGoods = true;
+		S.Markets = K->W.Markets;
+		S.Organizations = K->W.Organizations;
 		return S;
 	}
 
