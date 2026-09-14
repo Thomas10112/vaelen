@@ -115,7 +115,7 @@ namespace
 			Ranks = std::make_unique<StandingSystem>(Instance, Ages.Types(), Persons, Families, Traits, Organizations,
 													 Standing, StandingRules{});
 			Bonds = std::make_unique<BondageSystem>(Instance, Ages.Types(), Persons, Norms, Standing, Bondage,
-												   BondageRules{});
+													BondageRules{});
 			Rulers =
 				std::make_unique<PolitySystem>(Instance, Ages.Types(), Persons, Organizations, Polities, PolityRules{});
 
