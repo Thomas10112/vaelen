@@ -10,6 +10,7 @@
 // STATUS: PROTOTYPE (Phase 13)
 
 #include "Vaelen/View/Net.h"
+#include "Vaelen/View/Take.h"
 
 #include "Vaelen/Colony/Mining.h"
 #include "Vaelen/Economy/Markets.h"

@@ -32,11 +32,6 @@
 
 #include <vector>
 
-namespace Vaelen
-{
-	class World;
-}
-
 namespace Vaelen::View
 {
 	/// One route, as something drawing a line needs it. `From` is always the
@@ -77,11 +72,6 @@ namespace Vaelen::View
 		std::vector<RouteView> Routes;
 		std::vector<ColonyView> Colonies;
 	};
-
-	/// Takes the network. Const world in, numbers out. Out is left empty when
-	/// the sources carry neither trade nor a colony - a world with no economy
-	/// has no roads, and says so rather than refusing.
-	VAELEN_VIEW_API void TakeNetView(const World& W, const ViewSources& From, NetView& Out);
 
 	/// The route between two regions, in either order, or nullptr for none.
 	///

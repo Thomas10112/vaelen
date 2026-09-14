@@ -3,6 +3,7 @@
 //
 // STATUS: PROTOTYPE (Phase 13) - unit/integration/edge tests in Tests/View/Test_Eye.cpp
 #include "Vaelen/View/Eye.h"
+#include "Vaelen/View/Take.h"
 
 #include "Vaelen/Sim/World.h"
 

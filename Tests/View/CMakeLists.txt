@@ -18,6 +18,23 @@ foreach(TestSource IN LISTS VAELEN_VIEW_TEST_SOURCES)
   list(APPEND VAELEN_VIEW_TEST_NAMES View.${SuiteName})
 endforeach()
 
+# 14.02's probe: every view header but Take.h, with ONLY Core, View and Player
+# public headers on the include path and linked to NO LIBRARY - a linked
+# library's PUBLIC include directories propagate and would quietly hand this
+# file every kernel header. Its one link is vaelen_build_flags, options and
+# definitions with no include directory (CMakeLists.txt:36), so it is held to
+# the module's warnings-as-errors; any other link here defeats the fence. If a
+# leaf ever reaches the kernel again, the Build step goes red on every CI leg,
+# before the Test step.
+add_executable(VaelenViewLeafProbe ${CMAKE_CURRENT_SOURCE_DIR}/Probe_ViewLeaf.cpp)
+target_include_directories(VaelenViewLeafProbe PRIVATE
+  ${PROJECT_SOURCE_DIR}/Source/VaelenCore/Public
+  ${PROJECT_SOURCE_DIR}/Source/VaelenView/Public
+  ${PROJECT_SOURCE_DIR}/Source/VaelenPlayer/Public)
+target_link_libraries(VaelenViewLeafProbe PRIVATE vaelen_build_flags)
+add_test(NAME View.Leaf COMMAND VaelenViewLeafProbe)
+list(APPEND VAELEN_VIEW_TEST_NAMES View.Leaf)
+
 add_test(NAME View.Registry COMMAND VaelenViewTests --check-registry)
 add_test(NAME View.Shuffled COMMAND VaelenViewTests --shuffle 1)
 list(APPEND VAELEN_VIEW_TEST_NAMES View.Registry View.Shuffled)

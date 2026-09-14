@@ -12,6 +12,7 @@
 
 #include "Vaelen/View/Eye.h"
 #include "Vaelen/View/Frame.h"
+#include "Vaelen/View/Take.h"
 
 #include "Vaelen/Economy/Markets.h"
 #include "Vaelen/Economy/Production.h"

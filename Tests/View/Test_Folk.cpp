@@ -10,6 +10,7 @@
 //
 // STATUS: PROTOTYPE (Phase 13)
 #include "Vaelen/View/Folk.h"
+#include "Vaelen/View/Take.h"
 
 #include "Vaelen/Core/Log.h"
 #include "Vaelen/Population/Families.h"

@@ -3,6 +3,7 @@
 //
 // STATUS: PROTOTYPE (Phase 13) - unit/integration/deterministic tests in Tests/View/Test_Folk.cpp
 #include "Vaelen/View/Folk.h"
+#include "Vaelen/View/Take.h"
 
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Sim/PreHistory.h"

@@ -23,22 +23,9 @@
 
 #include "Vaelen/Core/CoreTypes.h"
 #include "Vaelen/Core/Hash.h"
-#include "Vaelen/Colony/Mining.h"
-#include "Vaelen/Economy/Trade.h"
-#include "Vaelen/Gameplay/Fame.h"
-#include "Vaelen/Infrastructure/Roads.h"
-#include "Vaelen/Player/Player.h"
-#include "Vaelen/Population/Persons.h"
-#include "Vaelen/Sim/PreHistory.h"
-#include "Vaelen/Society/Bondage.h"
 #include "Vaelen/View/ViewApi.h"
 
 #include <vector>
-
-namespace Vaelen
-{
-	class World;
-}
 
 namespace Vaelen::View
 {
@@ -84,30 +71,6 @@ namespace Vaelen::View
 		uint32 Reserved = 0;			 //
 		std::vector<RegionView> Regions; ///< in index order, always
 	};
-
-	/// What the view needs to be told to look at. Every field beyond the first
-	/// two is optional: a world without an economy still has a map and people,
-	/// and the view of it says 0 roads rather than refusing to be taken.
-	struct ViewSources
-	{
-		History::PreHistoryTypes Types;
-		Population::PersonTypes Persons;
-
-		bool HasBondage = false;
-		Society::BondageTypes Bondage;
-		bool HasTrade = false;
-		Economy::TradeTypes Trade;
-		bool HasFame = false;
-		Gameplay::FameTypes Fame;
-		bool HasPlayer = false;
-		Player::PlayerTypes Played;
-		bool HasColony = false;
-		Colony::ColonyTypes Colony_;
-	};
-
-	/// Takes the frame. Const world in, numbers out: the signature is the
-	/// promise, and it is the reason this function is worth a module.
-	VAELEN_VIEW_API void TakeView(const World& W, const ViewSources& From, WorldView& Out);
 
 	/// The view of one region, or nullptr when the view does not have it.
 	VAELEN_VIEW_API const RegionView* RegionIn(const WorldView& V, uint32 Region);

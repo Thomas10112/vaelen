@@ -9079,7 +9079,11 @@ entry and the suite: 157/157.
 
 ## ADR-0136 — The command surface as a leaf, and the played input as a stream
 
-**Status:** Proposed — applied by Phase 14 task 14.01.
+**Status:** **APPLIED 2026-09-14** — by task 14.01, in two commits: the change
+(bc8efe0) and the corrections its adversarial review and its first CI run
+found, listed at the end of this ADR. No symbol renamed, no layout changed,
+no save-format bump; `Player.Stream` 8 tests, `Player.IntentLeaf` a probe of
+both headers under the module's warning flags.
 **Date:** 2026-09-14
 **Phase:** 14 — UI, task 14.01
 
@@ -9128,15 +9132,83 @@ gives them `Replay()`; lifting the record type is the only edit they take.
 
 `Player.Stream`: round trip byte-identical for all three record kinds; a
 corrupt line counted in `BadLines`, not crashed on; a header of another seed
-or size refused. `Player.IntentLeaf`: a probe TU including only `Intent.h`
+or size refused. `Player.IntentLeaf`: a probe TU including only `Intent.h` and `Stream.h`
 compiles with `-I Source/VaelenCore/Public -I Source/VaelenPlayer/Public` and
 nothing else. Player suites unchanged on all presets. `Kernel.Purity` 0.
 
 ---
 
+### Applied — and what the review found before the CI did
+
+The change was pushed with the full suite and a three-lens adversarial review
+(layering, decoder, tests-and-build; every finding put to two refuters) still
+running. Eleven findings survived, four were refuted, and the first CI run went
+red on two legs on its own. Merged into seven corrections, all in the second
+commit:
+
+1. **A sentinel that was also a value.** `EncodeStream`'s three-way merge used
+   `~0` as "this vector is exhausted"; `Field()` admits `2^64-1` as a tick, and
+   rightly, so a taking at that tick with no commands read past the end of an
+   empty vector (an abort under `_GLIBCXX_ASSERTIONS`, a silent read in
+   release). Exhaustion is now three booleans. Test:
+   `TheLastPossibleTickIsARecordAndNotASentinel`.
+2. **The tie rule was backwards.** The gates take a person up at tick T and
+   issue that life's first command at the same T (`Test_PlayerGate.cpp:1451`,
+   `:1504`); the rule as written and as asserted was *commands, then takings*,
+   which a replay honouring line order would have submitted to nobody. The rule
+   is now **takings, then commands, then day turns**, in `Stream.h`, in the
+   merge and in `EqualTicksKeepTheirOrder`. The "what really happens" this ADR
+   claimed above was wrong on the first of its three clauses.
+3. **A version that did nothing.** The header's version was parsed and stored,
+   never compared. A `vaelen-stream 2` decoded under version-1 rules with every
+   unknown field a bad line and the result a success; with `Expect` it was
+   refused as "another world". `V != 1` now sets `StreamReport::VersionBad`
+   (the `Reserved` slot, renamed) and fails; `SameWorld` compares the world
+   only. Test: `AVersionThisBuildCannotReadIsNamedAsSuch`.
+4. **`Lines` over-counted by one** on any newline-terminated text and said 1 for
+   empty text. It is now what `wc -l` says, asserted in the round trip.
+5. **The probe fenced half the leaf.** The roadmap's done-when said a probe of
+   `Intent.h` *and* `Stream.h`; this ADR's verification paragraph said
+   `Intent.h`; the probe did the latter, so `Stream.h` could have grown a
+   kernel include with every leg green. The probe now includes both, and this
+   ADR's paragraph now agrees with the roadmap.
+6. **The probe compiled under no warning standard.** Linked to nothing, it
+   received none of `vaelen_build_flags`. That target is INTERFACE options and
+   definitions with no include directory, so it is now the probe's one link:
+   the fence stays two directories wide and the probe is held to `-Werror` /
+   `/WX`. The same link was given to 14.02's probe.
+7. **Formatting.** `Stream.cpp` went out unformatted because the fast checks
+   were skipped before the push — the second time, and the reason
+   `Tools/verify_fast.sh` exists. The clang-format leg was red.
+
+The first CI run also found what neither gcc 13 nor clang 18 had: MSVC's
+C4701, *potentially uninitialized local variable*, on the seven decoder fields
+assigned through a short-circuit `&&` chain and read only under `if (Ok)`. The
+review had raised it and both refuters dismissed it on the strength of the two
+compilers that were silent; the third was right that the chain leaves them
+unassigned on its failing path. They are initialised now. Eight of the ten
+legs were green on the first commit; every Linux leg and macOS ran 159 tests.
+
+Refuted and left as they are: `PlayerCommand::Why` is not in the text form
+(it is the world's verdict written back by the door, not an input; `Verdict`
+is the recorded answer); `Field()` accepts a single trailing space on a line
+(the encoder never writes one; two are rejected); and the record order of an
+unsorted vector (each iteration consumes one record, the output is a function
+of the input, a replay needs nothing more).
+
 ## ADR-0137 — The view headers as leaves: a read-only surface that could name the write
 
-**Status:** Proposed — applied by Phase 14 task 14.02.
+**Status:** **APPLIED 2026-09-14** — by task 14.02. Measured after the split
+with `g++ -M`: the closure of `Frame.h` went from 64 project headers to 4
+(CoreTypes.h, Hash.h, ViewApi.h and itself); `Land.h`, `Net.h`, `Folk.h`,
+`Delta.h`, `Eye.h` are 5 each; `Take.h` is 70, of which 57 outside Core and
+View. `Player/Commands.h` was in the old closure of `Frame.h` and is in none of
+the six. The probe (`Tests/View/Probe_ViewLeaf.cpp`, CTest `View.Leaf`) was
+mutation-tested before the commit: a kernel include regrown in `Frame.h`,
+`Eye.h` or `Folk.h`, and `Take.h` included by the probe itself, each fail the
+build; the control builds. `Atlas.Frozen128` holds the ADR-0135 pair and was
+shown red on a single changed digit of either digest. 162 tests locally, up
+from 159 by `View.Leaf`, `Atlas.Runs128` and `Atlas.Frozen128`.
 **Date:** 2026-09-14
 **Phase:** 14 — UI, task 14.02; corrects a defect in 13.01's closed API
 
@@ -9207,6 +9279,26 @@ plus `Vaelen/Player/Intent.h`, compiles with `-I Source/VaelenCore/Public -I
 Source/VaelenView/Public -I Source/VaelenPlayer/Public` and nothing else;
 `grep -lE 'Vaelen/(Sim|Population|Society|Economy|Colony|Infrastructure|Gameplay|Player/Player|Player/Commands)' Source/VaelenView/Public/Vaelen/View/*.h`
 returns only `Take.h`; the parse job green with the drawer untouched.
+
+### Applied — what moved and what did not
+
+Fifteen files gained the one line `#include "Vaelen/View/Take.h"`: the five
+`.cpp` of VaelenView, `VaelenViewActor.cpp`, eight view tests and
+`Tools/Atlas/Main.cpp` (the plan said twenty from a grep that also counted
+comments; fifteen compile anything). `VaelenViewDrawer.h` and `.cpp` changed
+nothing, which is the point: a drawer reads views and never takes one. `Eye.h`
+keeps `Unreached`, the value `BordersBetween` answers, because a renderer
+compares against it without ever taking a view; a note beside it says where
+the function went. The structs, their fields, their `static_assert`s and every
+`Measure*` are where they were; `VAELEN_VIEWGATE_FROZEN_VIEW` and `_STATE` are
+unmoved in `Test_ViewGate`, and the ADR-0135 pair - `0xabc5a5767c6cf9dd`,
+`0x8f7f4948f49b6e86` at 128/120 - is now asserted by
+`Tools/check_atlas_output.py --expect`, which has its own self-test case and
+fires on a wrong digest of either kind.
+
+The probe is linked to `vaelen_build_flags` and to nothing else (the finding
+of 14.01's review, applied here on the same day): held to `-Werror` / `/WX`
+without one include directory beyond Core, View and Player.
 
 ### The hazard this does not remove
 

@@ -34,11 +34,6 @@
 
 #include <vector>
 
-namespace Vaelen
-{
-	class World;
-}
-
 namespace Vaelen::View
 {
 	/// What a tile is, as far as anything drawing it is concerned. The first
@@ -92,11 +87,6 @@ namespace Vaelen::View
 		uint32 Reserved = 0;		 //
 		std::vector<TileView> Tiles; ///< empty when the world has no map yet
 	};
-
-	/// Takes the ground. Const world in, numbers out - the same signature and
-	/// the same promise as TakeView, and the reason both live in this module.
-	/// Out is left empty when the world's map has not been generated.
-	VAELEN_VIEW_API void TakeMapView(const World& W, const ViewSources& From, MapView& Out);
 
 	/// The tile at (X, Y), or nullptr when it is off the map.
 	VAELEN_VIEW_API const TileView* TileIn(const MapView& V, uint32 X, uint32 Y);

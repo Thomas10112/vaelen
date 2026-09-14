@@ -20,7 +20,6 @@
 #pragma once
 
 #include "Vaelen/Core/CoreTypes.h"
-#include "Vaelen/Sim/Regions.h"
 #include "Vaelen/View/Frame.h"
 #include "Vaelen/View/ViewApi.h"
 
@@ -50,23 +49,10 @@ namespace Vaelen::View
 	};
 	VAELEN_VIEW_API const char* GrainName(Grain G) noexcept;
 
-	/// Takes a frame for somebody looking from `At`. The regions come out in
-	/// index order as always, and each carries its own `Grain_` so a renderer
-	/// can switch on it.
-	///
-	/// The cache belongs to the caller, the way 10.05's Doings holds its own:
-	/// building the region graph is a walk of the whole map and a frame is taken
-	/// sixty times a second, so the choice is made where somebody can see it
-	/// rather than hidden in a static.
-	VAELEN_VIEW_API void TakeViewFor(const World& W, const ViewSources& From, const Eye& At,
-									 WorldGen::RegionGraphCache& Ways, WorldView& Out);
-
-	/// How far one region is from another across borders, or `Unreached` when no
-	/// chain of borders joins them. Public because "how far is that" is a
-	/// question a renderer asks about things other than drawing.
+	/// What BordersBetween (Take.h) answers when no chain of borders joins two
+	/// regions. Here rather than there because a renderer compares against it
+	/// without ever taking a view.
 	inline constexpr uint32 Unreached = 0xFFFFFFFFu;
-	VAELEN_VIEW_API uint32 BordersBetween(const World& W, const History::PreHistoryTypes& Types,
-										  WorldGen::RegionGraphCache& Ways, uint32 From, uint32 To);
 
 	struct EyeStats
 	{

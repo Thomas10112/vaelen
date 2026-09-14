@@ -3,6 +3,7 @@
 //
 // STATUS: PROTOTYPE (Phase 13) - unit/integration/deterministic tests in Tests/View/Test_Net.cpp
 #include "Vaelen/View/Net.h"
+#include "Vaelen/View/Take.h"
 
 #include "Vaelen/Sim/World.h"
 

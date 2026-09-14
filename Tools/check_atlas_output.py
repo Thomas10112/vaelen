@@ -231,6 +231,25 @@ def a_world():
   }
 
 
+def expect(doc, wants):
+  """Complaints for every KEY=HEX the document does not carry."""
+  bad = []
+  where = {"frame": ("frame", "digest"), "ground": ("ground", "digest"), "network": ("network", "digest")}
+  for want in wants:
+    if "=" not in want:
+      bad.append("--expect %r is not KEY=HEX" % want)
+      continue
+    key, value = want.split("=", 1)
+    if key not in where:
+      bad.append("--expect %r: no such digest (frame, ground, network)" % key)
+      continue
+    section, field = where[key]
+    have = str(doc.get(section, {}).get(field, ""))
+    if have.lower() != value.lower():
+      bad.append("%s digest is %s, frozen at %s" % (key, have or "missing", value))
+  return bad
+
+
 def self_test():
   """Every check gets a document that breaks it, and only it."""
   base = a_world()
@@ -302,6 +321,21 @@ def self_test():
   for line in failures:
     print("SELF-TEST: %s" % line, file=sys.stderr)
   print("self-test: %d checks exercised, %d failures" % (50, len(failures)))
+  # 14.02: --expect must fire on a wrong digest and stay quiet on the right one.
+  good = {"frame": {"digest": "0xabc"}, "ground": {"digest": "0xdef"}}
+  if expect(good, ["frame=0xABC", "ground=0xdef"]):
+    print("self-test: --expect fired on matching digests", file=sys.stderr)
+    failures += 1
+  if not expect(good, ["frame=0x123"]):
+    print("self-test: --expect did NOT fire on a wrong frame digest", file=sys.stderr)
+    failures += 1
+  if not expect(good, ["ground=0x123"]):
+    print("self-test: --expect did NOT fire on a wrong ground digest", file=sys.stderr)
+    failures += 1
+  if not expect(good, ["nothing=0x1"]) or not expect(good, ["garbage"]):
+    print("self-test: --expect accepted a key it does not know or a malformed want", file=sys.stderr)
+    failures += 1
+  print("self-test: --expect fires on a wrong digest and not on a right one")
   return 1 if failures else 0
 
 
@@ -340,6 +374,12 @@ def main():
   parser.add_argument("--self-test", action="store_true", help="prove every check fires")
   parser.add_argument("--same", nargs=2, metavar=("A", "B"),
                       help="two files of the same run: their digests must agree")
+  # 14.02: hold a file to FROZEN digests. `frame=0x...` compares doc["frame"]
+  # ["digest"], `ground=0x...` doc["ground"]["digest"]. This is how the
+  # ADR-0135 pair - the numbers the engine and the headless kernel agreed on -
+  # stops living only in a document and becomes a CTest entry (Atlas.Frozen128).
+  parser.add_argument("--expect", nargs="+", metavar="KEY=HEX",
+                      help="frozen digests the file must carry: frame=0x..., ground=0x...")
   args = parser.parse_args()
   if args.self_test:
     return self_test()
@@ -350,6 +390,7 @@ def main():
   with open(args.path, "r", encoding="utf-8") as handle:
     doc = json.load(handle)
   bad = check(doc)
+  bad += expect(doc, args.expect or [])
   for line in bad:
     print("%s: %s" % (args.path, line), file=sys.stderr)
   if bad:

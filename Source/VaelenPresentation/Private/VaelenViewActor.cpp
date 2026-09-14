@@ -48,6 +48,7 @@
 #include "Vaelen/Society/Norms.h"
 #include "Vaelen/Society/Organizations.h"
 #include "Vaelen/Society/Standing.h"
+#include "Vaelen/View/Take.h"
 
 #include <memory>
 

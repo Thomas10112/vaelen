@@ -38,11 +38,6 @@
 
 #include <vector>
 
-namespace Vaelen
-{
-	class World;
-}
-
 namespace Vaelen::View
 {
 	/// One person, as something drawing a figure needs them.
@@ -100,12 +95,6 @@ namespace Vaelen::View
 		uint32 Living = 0; ///< of the people below, how many are alive
 		std::vector<PersonView> People;
 	};
-
-	/// Takes the people. Const world in, numbers out - the same signature and
-	/// the same promise as TakeView and TakeNetView. Out is left empty when no
-	/// region is detailed, which is a world nobody is looking at closely and not
-	/// an error.
-	VAELEN_VIEW_API void TakePeopleView(const World& W, const ViewSources& From, PeopleView& Out);
 
 	/// The person with this index, or nullptr. Binary search: the vector is
 	/// ordered and this is the lookup that order exists for.

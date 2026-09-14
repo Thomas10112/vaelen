@@ -10,6 +10,7 @@
 
 #include "Vaelen/View/Delta.h"
 #include "Vaelen/View/Frame.h"
+#include "Vaelen/View/Take.h"
 
 #include "Vaelen/Economy/Markets.h"
 #include "Vaelen/Economy/Production.h"

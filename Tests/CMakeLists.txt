@@ -63,6 +63,20 @@ if(Python3_Interpreter_FOUND)
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_atlas_output.py
             --same ${VAELEN_ATLAS_A} ${VAELEN_ATLAS_B})
   set_tests_properties(Atlas.Deterministic PROPERTIES FIXTURES_REQUIRED "AtlasA;AtlasB" TIMEOUT 300)
+  # 14.02: the ADR-0135 pair, held by a test at last. These are the two digests
+  # the engine and the headless kernel were shown to agree on - frame and
+  # ground at 128/120, the same seed - and until this entry they lived in
+  # Docs/DECISIONS.md and nowhere a CI leg reads. A header split moves no
+  # bytes, and this is what says so on every leg rather than in a sentence.
+  set(VAELEN_ATLAS_128 ${CMAKE_CURRENT_BINARY_DIR}/atlas-128-120.json)
+  add_test(NAME Atlas.Runs128
+    COMMAND VaelenAtlas --size 128 --years 120 --out ${VAELEN_ATLAS_128})
+  set_tests_properties(Atlas.Runs128 PROPERTIES FIXTURES_SETUP Atlas128 TIMEOUT 900)
+  add_test(NAME Atlas.Frozen128
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_atlas_output.py ${VAELEN_ATLAS_128}
+            --expect frame=0xabc5a5767c6cf9dd ground=0x8f7f4948f49b6e86)
+  set_tests_properties(Atlas.Frozen128 PROPERTIES FIXTURES_REQUIRED Atlas128 TIMEOUT 300)
+
   # The checker's own regression suite: proves every rule still fires.
   add_test(NAME Atlas.OutputSelfTest
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_atlas_output.py --self-test)

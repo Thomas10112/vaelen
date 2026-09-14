@@ -48,6 +48,7 @@
 #include "Vaelen/View/Frame.h"
 #include "Vaelen/View/Land.h"
 #include "Vaelen/View/Net.h"
+#include "Vaelen/View/Take.h"
 
 #include <algorithm>
 #include <chrono>
