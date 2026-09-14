@@ -8,14 +8,35 @@ REM before, it worked, and nothing in the repository knew what it was. When the
 REM history went, so did the command, and the engine half of the project became
 REM unbuildable by anyone who had not built it already.
 REM
-REM The engine path is NOT hardcoded. It is asked for, in four ways, because
-REM the last guess - "C:\Program Files\Epic Games\UE_5.6" - was wrong on the
-REM very machine this project is built on.
+REM THE ENGINE PATH IS ASKED FOR, NEVER GUESSED, and the first version of this
+REM file got that wrong. It scanned "the usual folders" on drives C to H -
+REM D:\UE_5.6, D:\Epic Games\UE_5.6, and so on. The real answer on the machine
+REM this project is built on is:
 REM
-REM STATUS: UNVERIFIED - written on a Linux container with no Unreal Engine and
-REM no cmd.exe. Every line here is untested until it has run on Windows once.
+REM     D:\Users\Utilisateur\UE_5.6
+REM
+REM A user profile folder, on the second drive. No list of usual folders was
+REM ever going to contain it, and a longer list would only have failed later.
+REM So the guessing is gone. Windows already KNOWS where the engine is, in two
+REM authoritative places, and this file reads them instead:
+REM
+REM     LauncherInstalled.dat   what the Epic launcher installed, and where
+REM     the registry            what a source build registered about itself
+REM
+REM The lookup itself is Tools\find_unreal.ps1, a real file: one of those two
+REM places is JSON and the other is the registry, and a PowerShell one-liner
+REM long enough to read both would have to survive cmd's parser first, every
+REM pipe and quote escaped by hand. It can also be run on its own with
+REM -Explain, which says what each source answered.
+REM
+REM STATUS: PARTLY VERIFIED - run on Windows 2026-09-14. It read the version
+REM from the .uproject, reported where it had looked, and exited cleanly when
+REM its guesses failed, which is how the defect above was found. The lookup it
+REM now uses has not run yet.
 
-setlocal enabledelayedexpansion
+REM Plain setlocal: nothing here needs delayed expansion, and enabling it
+REM would quietly eat an exclamation mark in somebody's install path.
+setlocal
 set "ROOT=%~dp0"
 
 REM The version the project asks for, read from the .uproject rather than
@@ -30,37 +51,25 @@ if "%WANT%"=="" (
 )
 echo [vaelen] the project asks for Unreal Engine %WANT%
 
-REM 1. An explicit answer always wins.
+REM 1. An explicit answer always wins, and is the escape hatch if the two
+REM    authoritative sources below ever disagree with reality.
 set "UE=%VAELEN_UE_ROOT%"
 if not "%UE%"=="" (
 	echo [vaelen] using VAELEN_UE_ROOT
 	goto :found
 )
 
-REM 2. The registry, which is where the Epic installer records it.
-for /f "tokens=2,*" %%a in ('reg query "HKLM\SOFTWARE\EpicGames\Unreal Engine\%WANT%" /v InstalledDirectory 2^>nul ^| findstr /c:"InstalledDirectory"') do set "UE=%%b"
-if not "%UE%"=="" goto :found
-for /f "tokens=2,*" %%a in ('reg query "HKCU\SOFTWARE\EpicGames\Unreal Engine\%WANT%" /v InstalledDirectory 2^>nul ^| findstr /c:"InstalledDirectory"') do set "UE=%%b"
-if not "%UE%"=="" goto :found
-
-REM 3. A source build registers itself under Builds, keyed by a GUID.
-for /f "tokens=2,*" %%a in ('reg query "HKCU\SOFTWARE\Epic Games\Unreal Engine\Builds" 2^>nul ^| findstr /c:"REG_SZ"') do (
-	if exist "%%b\Engine\Build\BatchFiles\Build.bat" set "UE=%%b"
-)
-if not "%UE%"=="" goto :found
-
-REM 4. The usual places, on every drive letter that exists.
-for %%d in (C D E F G H) do (
-	for %%p in ("%%d:\UE_%WANT%" "%%d:\Epic Games\UE_%WANT%" "%%d:\Program Files\Epic Games\UE_%WANT%" "%%d:\UnrealEngine") do (
-		if exist "%%~p\Engine\Build\BatchFiles\Build.bat" set "UE=%%~p"
-	)
-)
+REM 2. Ask Windows, in Tools\find_unreal.ps1 - a real file rather than a
+REM    PowerShell one-liner wedged into a batch backtick, where every pipe and
+REM    quote would have to be escaped past cmd first. It can also be run on its
+REM    own, with -Explain, which is what to reach for when this fails.
+for /f "usebackq delims=" %%a in (`powershell -NoProfile -ExecutionPolicy Bypass -File "%ROOT%Tools\find_unreal.ps1" -Version %WANT%`) do set "UE=%%a"
 if not "%UE%"=="" goto :found
 
 echo.
 echo [vaelen] Unreal Engine %WANT% was not found.
-echo [vaelen] Looked in the registry (HKLM, HKCU, and source builds) and in the
-echo [vaelen] usual folders on drives C to H.
+echo [vaelen] To see every place that was asked and what each answered:
+echo [vaelen]     powershell -File Tools\find_unreal.ps1 -Version %WANT% -Explain
 echo.
 echo [vaelen] Say where it is and this file will stop guessing:
 echo [vaelen]     setx VAELEN_UE_ROOT "D:\your\path\to\UE_%WANT%"
