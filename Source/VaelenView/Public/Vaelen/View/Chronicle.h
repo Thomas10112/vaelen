@@ -21,14 +21,16 @@
 //
 // Fixed arrays, fixed size, no padding, every byte past what is used zero:
 // MeasureChronicleView hashes the bytes, a renderer copies the struct, and
-// 14.06's panel composes it with two others into text.
+// 14.06's panel composes it with two others into text. Verb and Refused are
+// the numbers of Player::Intent and Player::Refusal (Vaelen/Player/Intent.h),
+// carried as uint32 so that this header includes nothing but Core and
+// ViewApi; a panel that wants their names includes Intent.h itself.
 //
 // STATUS: PROTOTYPE (Phase 14) - unit/integration/deterministic tests in Tests/View/Test_Chronicle.cpp
 #pragma once
 
 #include "Vaelen/Core/CoreTypes.h"
 #include "Vaelen/Core/Hash.h"
-#include "Vaelen/Player/Intent.h"
 #include "Vaelen/View/ViewApi.h"
 
 namespace Vaelen::View
@@ -67,37 +69,40 @@ namespace Vaelen::View
 
 	struct ChronicleView
 	{
-		uint64 Tick = 0;   ///< the frame this brings the view up to
-		uint64 Since = 0;  ///< log events read so far: the cursor an incremental take resumes from
-		uint64 WhyOf = 0;  ///< id of the event the Why lines explain, 0 when nothing yet happened because of them
-		uint32 Person = 0; ///< whose life, 0 when nobody is played
+		uint64 Tick = 0;	 ///< the frame this brings the view up to
+		uint64 Since = 0;	 ///< log events read so far: the cursor an incremental take resumes from
+		uint64 LastHash = 0; ///< Event::Hash() of the last event read: another world's log is not resumed into
+		uint64 WhyOf = 0;	 ///< id of the event the Why lines explain, 0 when nothing yet happened because of them
+		uint32 Person = 0;	 ///< whose life, 0 when nobody is played
 		uint32 Year = 0;
-		uint32 LineCount = 0; ///< lines held, oldest first, at most ChronicleLines
-		uint32 Used = 0;	  ///< bytes of Text in use, terminators included
-		uint32 Dropped = 0;	  ///< lines that fell off the front to make room
-		uint32 Truncated = 0; ///< lines cut short because they alone would not fit
-		uint32 WhyCount = 0;  ///< Why lines held, at most WhyLines
-		uint32 WhyUsed = 0;	  ///< bytes of WhyText in use
+		uint32 LineCount = 0;	 ///< lines held, oldest first, at most ChronicleLines
+		uint32 Used = 0;		 ///< bytes of Text in use, terminators included
+		uint32 Dropped = 0;		 ///< lines that fell off the front to make room
+		uint32 Truncated = 0;	 ///< lines cut short because they alone would not fit
+		uint32 WhyCount = 0;	 ///< Why lines held, at most WhyLines
+		uint32 WhyUsed = 0;		 ///< bytes of WhyText in use
+		uint32 WhyTruncated = 0; ///< why lines cut short, of the why held now
+		uint32 Reserved = 0;
 		LineView Lines[ChronicleLines];
 		LineView Why[WhyLines];
 		char Text[ChronicleTextBytes] = {};
 		char WhyText[WhyTextBytes] = {};
 	};
-	static_assert(sizeof(ChronicleView) == 3 * sizeof(uint64) + 8 * sizeof(uint32) +
+	static_assert(sizeof(ChronicleView) == 4 * sizeof(uint64) + 10 * sizeof(uint32) +
 											   (ChronicleLines + WhyLines) * sizeof(LineView) + ChronicleTextBytes +
 											   WhyTextBytes,
 				  "ChronicleView must have no padding: MeasureChronicleView hashes it and a renderer copies it");
 	static_assert(sizeof(ChronicleView) <= 8192, "the chronicle view fits the row's 8 KiB");
 
-	struct ChronicleStats
+	struct ChronicleViewStats
 	{
 		uint32 Lines = 0;	   ///< lines held
 		uint32 Bytes = 0;	   ///< sizeof the view
 		uint32 EventsRead = 0; ///< log events read in the view's life (Since)
 		uint32 NonAscii = 0;   ///< bytes of any line outside printable ASCII
-		uint32 Truncated = 0;  ///< lines cut short
+		uint32 Truncated = 0;  ///< lines cut short, the why's included
 		uint32 WhyLines_ = 0;  ///< why lines held
 		Hash64 Digest = 0;	   ///< every byte of the view
 	};
-	VAELEN_VIEW_API ChronicleStats MeasureChronicleView(const ChronicleView& V);
+	VAELEN_VIEW_API ChronicleViewStats MeasureChronicleView(const ChronicleView& V);
 } // namespace Vaelen::View

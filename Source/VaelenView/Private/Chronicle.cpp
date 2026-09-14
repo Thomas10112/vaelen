@@ -147,6 +147,7 @@ namespace Vaelen::View
 		{
 			V.WhyCount = 0;
 			V.WhyUsed = 0;
+			V.WhyTruncated = 0;
 			for (LineView& L : V.Why)
 			{
 				L = LineView{};
@@ -162,7 +163,7 @@ namespace Vaelen::View
 			Player::ExportWhyWithLife(W, From.Types, Life, PersistentId{V.WhyOf}, All);
 			usize At = 0;
 			usize Step = 0;
-			while (At < All.size() && V.WhyCount < WhyLines)
+			while (At < All.size() && V.WhyCount < WhyLines && V.WhyUsed + 1 < WhyTextBytes)
 			{
 				usize End = All.find('\n', At);
 				if (End == std::string::npos)
@@ -170,10 +171,11 @@ namespace Vaelen::View
 					End = All.size();
 				}
 				uint32 Length = static_cast<uint32>(End - At);
-				if (V.WhyUsed + Length + 1 > WhyTextBytes)
+				const uint32 Room = WhyTextBytes - 1 - V.WhyUsed; // > 0 by the loop's condition
+				if (Length > Room)
 				{
-					Length = WhyTextBytes - 1 - V.WhyUsed;
-					++V.Truncated;
+					Length = Room;
+					++V.WhyTruncated;
 				}
 				LineView& L = V.Why[V.WhyCount];
 				for (; Step < Steps.size() && Steps[Step].Cause == nullptr; ++Step)
@@ -225,15 +227,16 @@ namespace Vaelen::View
 
 		const EventLog& Log = W.Log();
 		const uint64 Count = Log.Count();
-		const uint64 Was = Out.Since;
-		if (Was > Count)
+		if (Out.Since > Count || (Out.Since > 0 && Log.At(Out.Since - 1).Hash() != Out.LastHash))
 		{
-			// A log shorter than what was read is another world: start over.
+			// Another world: a log shorter than what was read, or one whose
+			// last event read is not the one this view read. Start over.
 			Out = ChronicleView{};
 			Out.Person = Played;
 			Out.Tick = static_cast<uint64>(W.Now());
 			Out.Year = static_cast<uint32>(Out.Tick / History::TicksPerYear);
 		}
+		const uint64 Was = Out.Since;
 		const uint64 WhyWas = Out.WhyOf;
 		bool Indexed = false;
 		Population::PersonIndex Index;
@@ -264,6 +267,10 @@ namespace Vaelen::View
 			}
 		}
 		Out.Since = Count;
+		if (Count > Was)
+		{
+			Out.LastHash = Log.At(Count - 1).Hash();
+		}
 		if (Out.WhyOf != WhyWas)
 		{
 			TakeWhy(W, From, Life, Out);
@@ -271,13 +278,13 @@ namespace Vaelen::View
 		return static_cast<uint32>(Count - Was);
 	}
 
-	ChronicleStats MeasureChronicleView(const ChronicleView& V)
+	ChronicleViewStats MeasureChronicleView(const ChronicleView& V)
 	{
-		ChronicleStats Out;
+		ChronicleViewStats Out;
 		Out.Lines = V.LineCount;
 		Out.Bytes = static_cast<uint32>(sizeof(ChronicleView));
 		Out.EventsRead = static_cast<uint32>(V.Since);
-		Out.Truncated = V.Truncated;
+		Out.Truncated = V.Truncated + V.WhyTruncated;
 		Out.WhyLines_ = V.WhyCount;
 		const auto Count = [&](const char* Text, uint32 Used)
 		{

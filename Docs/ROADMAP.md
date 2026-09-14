@@ -4155,7 +4155,7 @@ STATUS: PROTOTYPE. Next: 14.05, `ChronicleView`.
 
 ### 14.05 done - the last lines of the life, as the screen that shows them needs them
 
-`Vaelen/View/Chronicle.h`, the eighth leaf: `ChronicleView`, 7800 bytes, no
+`Vaelen/View/Chronicle.h`, the eighth leaf: `ChronicleView`, 7816 bytes, no
 padding, trivially copyable, standard layout - the last 32 lines about the
 played person as ONE flat `char` buffer (`Text[6144]`, each line
 NUL-terminated and packed from the front, oldest first) with a `LineView`
@@ -4166,17 +4166,25 @@ Length}` and TWO more, `Verb` and `Refused`: `Kind` is a `LineKind` (Acted,
 Refused, Walked, Born, Died - the five kinds `LifeTimeline` keeps), `Verb`
 the `Intent` of an act or a refusal and `Refused` the `Refusal` of a
 refusal, so 14.06's panel can grey or colour a row by code without parsing
-its text. `Chronicle.h` includes CoreTypes, Hash, ViewApi and
-`Player/Intent.h`; the probe includes it (`chronicle 7800 bytes`).
+its text. `Chronicle.h` includes CoreTypes, Hash and ViewApi, as the row
+says and nothing more - `Verb` and `Refused` are the numbers of `Intent` and
+`Refusal`, carried as `uint32`; a panel that wants their names includes
+`Intent.h` itself. The probe includes it (`chronicle 7816 bytes`).
 
 `TakeChronicleView(const World&, const ViewSources&, ChronicleView&)` is in
 `Take.h` and INCREMENTAL, as the row asked: `ChronicleView::Since` is the
 count of log events already read, the next take reads `Log.At(i)` from there
-to `Count()`, describes the ones about the played person with
-`DescribeLifeEvent` (so the words are `ExportLife`'s), appends each line
-dropping the oldest until it fits (`Dropped` counts them), and returns the
-events read. A change of played person, or a log shorter than what was read
-(another world), starts the view over. The why: any new event whose `Cause`
+to `Count()`, keeps the ones about the played person by the same five kinds
+`LifeTimeline` keeps (the filter is written out here rather than calling
+`LifeTimeline`, which walks the whole log every call - the one thing an
+incremental take must not do), describes them with `DescribeLifeEvent` (so
+the words are `ExportLife`'s), appends each line dropping the oldest until
+it fits (`Dropped` counts them), and returns the events read. A change of
+played person starts the view over, and so does another world: a log shorter
+than what was read, or one whose event at `Since - 1` does not hash
+(`Event::Hash()`, kept as `LastHash`) to the one this view read last - two
+worlds of the same seed that diverged before the cursor are told apart by
+that, and a view resumed into either is that world's fresh view. The why: any new event whose `Cause`
 is an event about the played person (`FindEvent`, a binary search) becomes
 `WhyOf`, the newest wins, and its text is retaken only when `WhyOf` moved -
 the first two lines of `ExportWhyWithLife`, which is the block `ExportLife`
@@ -4208,32 +4216,64 @@ nothing to do it with.` - `RefusalName(Refusal::Nothing)`, lower case, as
 and this task does not touch them). The test asserts the name and, beside
 it, `LineView::Refused == Refusal::Nothing`: the code IS the `Nothing`.
 
-`View.Chronicle`, 5 tests, 5438 checks, on the 96-map through `Run::Aelvor`
-and `Run::Door`: flat and padding-free (`sizeof 7800 <= 8192`); nobody played
+`View.Chronicle`, 7 tests, 5999 checks, on the 96-map through `Run::Aelvor`
+and `Run::Door`: flat and padding-free (`sizeof 7816 <= 8192`); nobody played
 is an empty chronicle with the clock on it and nothing read; the year of the
 eight verbs of Run.Door with the view taken after every day, then once from
-nothing - the same 7800 bytes; 32 lines held, 329 dropped, 1908 bytes of
+nothing - the same 7816 bytes; 32 lines held, 329 dropped, 1908 bytes of
 text, `Truncated 0`, `NonAscii 0`; every line held equals the matching line of
-`ExportLife` (every act, `MaxActs = 0`) word for word and both why lines
-equal its; every `Refused` line contains `could not` and its `RefusalName`,
-no other does; the tail is zero and every line terminated where `Length`
-says; sixty takes with nothing happening read 0 events and move nothing; a
-release starts the view over. A refused Eat with no grain - the grain within
-reach taken away by `Economy::AddStock`, the kernel's own, 55 units on that
-world - is `Year 300, age of era 4: Eikha could not ate: nothing to do it
-with.` with `Verb Eat` and `Refused Nothing`. The view outlives the world.
-`VAELEN_VIEWGATE_FROZEN_VIEW`, `_STATE` and the ADR-0135 pair unmoved.
+`ExportLife` (every act, `MaxActs = 0`) word for word and its `Tick`, `Kind`,
+`Verb` and `Refused` are the log's for the last 32 events about them; both
+why lines equal `ExportLife`'s and the cause is an Acted line; every
+`Refused` line contains `could not` and its `RefusalName`, no other does; the
+tail is zero and every line terminated where `Length` says; without the
+goods (`HasGoods` false) the lines and the `WhyOf` are the same; sixty takes
+with nothing happening read 0 events and move nothing; released, the view is
+empty, and taken up again it is the new life's from its first event. A walk
+- a neighbour detailed the kernel's way, then a Move - is two lines the same
+tick, `walked to Aigi` (Acted, Move) and `walked from Iakhas to Aigi`
+(Walked), and the why is those two the other way round, `ExportLife`'s to the
+byte. Another world - the same seed, five days of Work against five of Wait,
+or a world at its first moment - starts the view over into that world's
+fresh view. A refused Eat with no grain - the grain within reach taken away
+by `Economy::AddStock`, the kernel's own, 55 units on that world, and none
+left where `Doings::HasGoods` looks - is `Year 300, age of era 4: Eikha could
+not ate: nothing to do it with.` with `Verb Eat` and `Refused Nothing`. The
+view outlives the world. `VAELEN_VIEWGATE_FROZEN_VIEW`, `_STATE` and the
+ADR-0135 pair unmoved.
 
 Measured, not asserted: events read per day on the round-robin, min 1, max
-79821 (the day that crosses the year: everything the yearly systems publish
-is in the log, and the incremental take walks past it once), mean 223; the
-buffer is full on day 31; the fresh take reads the 80270 events of the
-60-year world in 1.55 ms (release gcc), 5438 checks in the suite.
+79821 (the first day, which crosses the year: everything the yearly systems
+publish is in the log, and the incremental take walks past it once; the
+next eleven days read `2 1 2 1 1 1 1 1 2 1 2`), mean 223; the buffer is full
+on day 31; the fresh take reads the 80270 events of the 60-year world in
+1.5 ms (release gcc).
+
+What the review of this commit found (five readers, two refuters per
+finding): the why's truncation path could underflow `WhyTextBytes - 1 -
+WhyUsed` once a why line had filled the buffer, and `Truncated` counted a
+why cut again at every retake, so a grown view could differ from a fresh
+one - the why now has its own `WhyTruncated`, reset with the why, a room
+that cannot go below zero, and `MeasureChronicleView` sums both; the
+`Since > Count` restart returned a wrapped count - it returns the events
+read from zero; a world of the same seed that had diverged was resumed into
+silently - `LastHash`, above; `Chronicle.h` included `Intent.h` it did not
+use - removed; `View::ChronicleStats` shared its name with
+`History::ChronicleStats` - `ChronicleViewStats`; and the tests asserted
+neither the line numbers against the log, nor a Walked line, nor the
+restart, nor the goods-less path, nor that the grain was gone - the 7 tests
+above do. Admitted rather than fixed: `RecordRefusals = 1` in `Run::Aelvor`
+lets a played life's refusals count against `MaxRecordsPerYear` (12) with
+its doings - the records are 10.07's, the row asked for the rule, and a life
+that is refused twelve times a year has its record say so; a Died line is
+never produced by these tests (nobody dies to order); `EventsRead per day`
+is printed for the first twelve days and summarised for the rest.
 
 Not done here, by name: the panel (14.06) that composes this with `LifeView`
 and `WorldView`; a why deeper than two steps (Phase 17); the record-side
 chronicle (`ExportChronicleWithLife`) in the view - the screen shows the
 life, the records are 10.07's. A line longer than the whole buffer is cut and
-counted (`Truncated`); nothing the kernel writes is that long.
+counted (`Truncated`); nothing the kernel writes is that long, and the cut
+runs under no test.
 
 STATUS: PROTOTYPE. Next: 14.06, the panel.
