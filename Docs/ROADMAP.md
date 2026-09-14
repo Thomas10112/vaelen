@@ -3141,7 +3141,7 @@ head.
 |---|---|---|
 | 13.06 | The first UBT build of all eleven kernel modules. This is the task the UNVERIFIED marks have been waiting for since Phase 00 | it builds, or it does not | **DONE 2026-09-10 - it builds** |
 | 13.07c | `VaelenPresentation`: the UE module, and the world drawn as regions **from that view alone** inside the engine. 13.07b proved the view is sufficient to draw from; this is the same claim in Unreal, and the first place ADR-0113's C4251 decision can be shown to do anything | a screenshot | **COMPILES 2026-09-10 (UE 5.6.1, MSVC 14.44, 14/14 DLLs) — NOT YET SEEN** |
-| 13.08b | A person, a colony and a road drawn from the view of 13.01 **inside the engine** | a screenshot | **WRITTEN 2026-09-11 — NO COMPILER HAS READ IT** |
+| 13.08b | A person, a colony and a road drawn from the view of 13.01 **inside the engine** | a screenshot | **DONE 2026-09-14 — 1467 people drawn on 117 tiles, seen** |
 | 13.09 | Phase 13 gate: the editor open on AELVOR at 256, a century running, and the frame rate written down | measured on the machine that has the engine |
 
 ### 13.06 The first UBT build - VALIDATED (UE 5.6, Win64 Development Editor)
@@ -3623,3 +3623,60 @@ disagree the shim is what gets fixed. A second guard is mechanical - the shim's
 `CoreMinimal.h` refuses to compile unless `VAELEN_SHIM_PARSE` is defined, which
 only the parse script defines, so it can never shadow the real engine header in
 a real build.
+
+### 13.08b done and seen - a crowd that outlived its world
+
+**What is on the screen.** AELVOR at 128, year 420, with a speckle of pink, red
+and white standing on one region of the east: 1467 people, one cube each, in
+three age bands. The world they belong to was destroyed before the first of
+them was placed.
+
+```
+AELVOR people: 4555 in the view, 1467 living in 1 regions, oldest 90,
+               182240 bytes, digest 34839c0c725fe825
+               - drawn 1467 on 117 tiles, 0 unplaced
+AELVOR 128x128, year 420: 16384 tiles (6459 land), 99 regions (65 peopled),
+               36374 living, 44 towns, 90 roads of 163, view 5600 bytes,
+               simulated in 1.02 s, 1467 people drawn on 117 tiles
+```
+
+**The three numbers that were named in advance, and what each settled.**
+
+`drawn 1467`, `living 1467`, `0 unplaced` - exact to the unit. Every living
+person the view reported was placed on ground the map agrees their region owns.
+Had the two views disagreed about which regions exist, the difference would be
+sitting in `unplaced`, which is what that counter is for.
+
+`on 117 tiles` - not 1. The crowd is spread over the ground the region actually
+holds rather than stacked on its centroid, which is the whole reason `DrawFolk`
+takes the map and not the frame. From above, a pillar of 1467 figures and a
+populated province are the same picture, so the count of distinct tiles is the
+only thing that tells them apart.
+
+`182240 bytes` - 4555 x 40 + 40, exactly. **`sizeof(PersonView) == 40` holds
+under MSVC**, not only under gcc and clang. The no-padding `static_assert` that
+`MeasurePeopleView` depends on survives the Microsoft compiler, which no
+headless CI leg could ever have shown.
+
+**A prediction that was wrong, and why.** The digest was announced in advance as
+`ec2dc961979d1743`. It came out `34839c0c725fe825`, and the announcement was
+simply wrong: `ec2dc961979d1743` is the headless suite's number for a **64x64
+map run 15 years**, and this is **128x128 run 120 years**. Two different worlds
+have two different digests. A digest is only ever comparable against the same
+configuration, and naming one across configurations is not a weak check - it is
+no check at all.
+
+**The real cross-check, run afterwards.** `Tools/Atlas --size 128 --years 120`
+at the same seed gives year 420, 6459 land tiles, 99 regions (65 peopled),
+36374 living, 90 roads open of 163 - every figure the engine printed, matching
+exactly. The engine and the headless kernel simulate the same AELVOR, and the
+people are drawn from it.
+
+**And a stale binary nearly turned that into a false alarm.** The first run of
+this comparison used `out/build/linux-gcc-debug/`, picked up by a `find` while a
+release build was what had just been compiled. It reported 85 roads of 271
+against the engine's 90 of 163, and for several minutes there was a divergence
+that did not exist - the debug tree simply predated ADR-0131 and ADR-0132.
+
+Twice now in this project a `find` for a binary has measured the wrong tree.
+**Name the build directory, never search for it.**

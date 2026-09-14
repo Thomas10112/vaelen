@@ -8924,3 +8924,91 @@ It does not prove the module BUILDS under UnrealBuildTool, that UHT accepts the
 DRAWS. **`VaelenPresentation` stays UNVERIFIED until an editor has run it**,
 and this ADR would have been wrong if it had moved one STATUS line. It moved
 none.
+
+---
+
+## ADR-0135 — Three wirings of one world, and the engine's has no bondage
+
+**Status:** Proposed — the project owner's call, because the fix moves world state.
+**Date:** 2026-09-14
+**Phase:** 13 — found while cross-checking 13.08b
+
+### The finding
+
+The same world is wired up in three places, and they are not the same wiring:
+
+| where | systems | BondageSystem |
+|---|---|---|
+| `AVaelenAtlasActor` — the game module's actor | 14 | **no** |
+| `AVaelenViewActor` — 13.07c / 13.08b's actor | 14 | **no** |
+| `Tools/Atlas/Main.cpp` — the headless atlas | 15 | **yes** |
+
+`Roads` vs `Roads_` is a rename of the same `TradeSystem`, and `Rock` is the
+`MiningSystem`, added only under `--colony`. The one unconditional difference
+is bondage.
+
+**`VaelenViewActor.cpp` did nothing wrong, and said so in advance.** Its
+`FWorldRun` carries this comment:
+
+> Copied deliberately from `AVaelenAtlasActor`'s `KernelRun` rather than
+> reinvented: [...] a second, subtly different wiring in the same project would
+> be a bug waiting for a year when the two disagree.
+
+It copied faithfully. What it copied from had already drifted from the headless
+tool, and the comment named the failure mode correctly — it was just pointed at
+the wrong pair.
+
+### What it costs today, measured rather than assumed
+
+`Tools/Atlas --size 128 --years 120`, run twice on the same release binary,
+once with `BondageSystem` and once with that one line removed. Every other
+figure is identical — 36374 living, 6459 land, 99 regions, 90 roads of 163.
+The full JSON differs in exactly two places:
+
+```
+/regions[25]/bound    with bondage 136    without 0
+/frame/digest         0xabc5a5767c6cf9dd  0x210a870a93735064
+```
+
+So today the cost is small and exact:
+
+1. **The engine draws a world in which nobody is ever in bondage.**
+   `RegionView::Bound` is 0 in every region of every frame the engine takes,
+   and no renderer can tell that apart from a world where bondage was simply
+   rare. By the project's own chronicle, bondage is — after death — the most
+   recorded fact of this world: 3170 entries over four centuries at 256.
+2. **The engine's frame digest can never be compared to the headless one.**
+   Which removes the strongest check the project has between the two halves,
+   for the sake of one system nobody meant to leave out.
+
+### Why it is not fixed in this commit
+
+Adding `BondageSystem` to the two actors changes what they simulate, so every
+figure either actor has ever reported becomes a figure of a different world.
+Nothing headless is frozen against those — they are printed, not asserted — but
+ADR-0095's rule is that a change which moves world state is understood and
+measured on its own, and this one arrived as a side finding of a cross-check.
+
+### The options
+
+1. **Add `BondageSystem` to both actors.** Smallest change, and it makes the
+   three agree. The engine's frame digest becomes comparable to the headless
+   one, which is worth more than the line costs.
+2. **One wiring, named once, used by all three.** The correct answer and a
+   larger one: the wiring would have to move into a kernel module that the game
+   module, the presentation module and the headless tool all depend on. It also
+   ends the class of bug rather than this instance of it — which is what the
+   comment in `VaelenViewActor.cpp` was actually asking for.
+3. **Leave it and write it down.** Cheapest, and it leaves a renderer unable to
+   see a fact the simulation spends most of its record on.
+
+Option 2 is right and option 1 buys most of it in one line. Option 1 first, as
+the thing that can be measured this week, with option 2 as the Phase 14 shape.
+
+### The rule this is an instance of
+
+A comment claiming two things are kept identical is worth nothing unless
+something checks it. `BiomeKinds` got a `static_assert` in 13.07c for exactly
+this reason, and `View::AliveState` got one in 13.08b. **A third wiring of the
+same world has no such guard, and this is what that absence looks like a year
+later.**
