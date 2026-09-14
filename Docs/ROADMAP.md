@@ -4293,13 +4293,19 @@ as its LAST row the page's own digest in hex.
 
 `RowView{Kind, Verb, Begin, Length}` per row and `VerbView{Verb, Cost,
 Offered, Foreseen, Key}` per verb, so a widget greys a row or binds a key by
-number without parsing text; `Lines(const PanelView&, char* Out, uint32
+number without parsing text; the keys are the letters 14.09 binds - `T` wait,
+`W` work, `R` rest, `E` eat, `M` move, `S` speak, `G` give, `K` take - and
+they live in the view, so the UI binds what the page says rather than
+agreeing with it by hand; `Lines(const PanelView&, char* Out, uint32
 Bytes)` writes the rows joined by newlines - the row's signature plus the
 buffer's size, because a writer that cannot be told how much room it has is
 not a writer this project ships. `MeasurePanel` reports Rows, Bytes,
-TextBytes, NonAscii, Truncated, Offered and the digest, RECOMPUTED from the
-text rather than read back from the field, so a page whose digest row lies
-fails rather than agrees with itself.
+TextBytes, NonAscii, Truncated, Dropped, Offered and the digest, RECOMPUTED
+from the text rather than read back from the field, so a page whose digest
+row lies fails rather than agrees with itself. `Truncated` counts a row that
+began and ran out of bytes; `Dropped` a row there was no room to begin at
+all - a page that quietly stopped would be a page whose reader cannot tell
+it stopped, and what does not fit is the NEWEST of the life.
 
 What the page foresees, from the three views and nothing else: `NoPlayer`,
 `Dead`, `Full` (the queue at 8), `Costly` (a verb costing more hours than the
@@ -4314,16 +4320,18 @@ as a chronicle line. `Press` fills Kind/Target/Amount with `Issued = 0` (the
 door stamps that) and answers `Unknown` for anything but the eight.
 
 Two pages frozen, and the second is the first screen itself:
-`VAELEN_PANEL_FROZEN_EMPTY 0x964aab6a9d4c3b03` on the unplayed 128/120 Run -
+`VAELEN_PANEL_FROZEN_EMPTY 0x54787451e65766c1` on the unplayed 128/120 Run -
 which is also, byte for byte, the empty play (the Play wiring with nobody
 taken up), asserted here and printed by `Tools/Atlas --empty --size 128
---years 120 --panel`, matched by CTest `Atlas.PanelEmpty` on its last row -
-and `VAELEN_PANEL_FROZEN_PLAYED 0xb119285dd7db9a5c` on the 96-map
-round-robin after thirty days. Both reproduce on linux-gcc-release and
+--years 120 --panel` - and `VAELEN_PANEL_FROZEN_PLAYED 0x26ef4024725cd4aa` on
+the 96-map round-robin after thirty days. Two CTest entries hold the tool's
+page and not one: `Atlas.PanelEmpty` is its exit code and `Atlas.PanelFrozen`
+its digest row, because a CMake test with `PASS_REGULAR_EXPRESSION` passes on
+the match alone and never looks at the exit code. Both reproduce on linux-gcc-release and
 linux-clang-debug here; the other six legs are the CI's to answer, and the
 row claims eight.
 
-`View.Panel`, 7 tests, 3354 checks: flat and 4064 bytes; three DEFAULT views
+`View.Panel`, 9 tests, 3493 checks: flat and 4064 bytes; three DEFAULT views
 - a world nobody has looked at - still compose a page, which is the claim
 that the screen needs no world; the two frozen pages; every verb's cost
 against `OrderRules::HoursOf` and `LifeView::Cost`, its key, its Offered rule
@@ -4336,18 +4344,50 @@ terminated where its `Length` says, the tail of the text is zero; one changed
 byte moves the digest and `MeasurePanel` then disagrees with the field; the
 page outlives the world and `Press` still answers on it.
 
+And every ROW, word for word, from three views written by hand in the test -
+no world at all, which is what a pure function allows: the date, `Eikha of
+Iakhas, 25`, `bound to Ordihumen since year 275`, `food 243  health 255
+rest 185`, `hours left 2 of 16`, the queue, `last: too far to walk`,
+`near: 27(412) 31(88)`, `here: Ukit, Aifus, ... and 852 more`, the chronicle
+line, and each verb row - `[T] wait      1h  ok`, `[W] work      4h  -  not
+today` when the hours are short, `[W] work      4h  -  longer than a day`
+when the whole day is, `[M] move      3h  -  too far to walk` with no
+neighbour, `[G] give      1h  -  nobody there` with nobody here. A free
+person has no bound row; a dead one is offered nothing and says `, dead`. A
+page that runs out counts what it lost: sixteen chronicle lines of two
+hundred letters drop one row (`Dropped 1`, `Truncated 0`), one line of three
+thousand is cut (`Truncated 1`), and both keep the digest row.
+
 Measured, not asserted: the 256 world with the colony, in `Run.Aelvor`'s
 already-logged day - `panel: bytes 1419, lines 32, truncated 0, digest
-9b26574202a26559, taken in 2.75 ms` (release gcc; the take of the three views
+9c2551479f7ea9cb, taken in 2.71 ms` (release gcc; the take of the three views
 is most of that, the page itself 0.04 ms at 128). The empty page is 16 rows
 and 514 bytes; the played one 33 rows and 1458 bytes.
+
+What the review of this commit found (five readers, two refuters each) and
+what it changed: the verb keys were `1`..`8` while 14.09 binds letters - the
+page now carries the letters, which moved both frozen digests before any UI
+was written against them; `Lines` wrote a PARTIAL page into a buffer that
+held some rows but not all, which its own header called impossible - it is
+all of the page or none of it now; the "the world never saw it" proof
+compared `Refused` and `Taken`, which a real `Submit` would not have moved
+either, and compares `Held` now, which it would; `Press` on a page nobody
+composed answered `Costly` for a verb that is not a verb, because slot zero
+matched `Intent::None` - empty slots are skipped now; the chronicle row was
+read as a C string from a `Begin` the view itself gave, and is read by
+`Length` within the buffer now, as `MeasurePanel` reads its rows; and a row
+that did not fit was simply gone, which `Dropped` now counts. The frozen
+pages are the pages after all of that. The findings the refuters killed: a
+forged `PanelView` (a struct no `TakePanel` wrote) is not a case this module
+defends against beyond not reading past its own buffers, and the digest is
+of the page's ROWS by design - the numbers beside them are asserted against
+the kernel in the verbs test rather than hashed.
 
 Not done here, by name: the UE side (14.08, 14.09) and the include fence that
 reads this header (14.07); a region NAME for a neighbour, which no view
 carries - the page prints the index and how many live there; the holder's
-CURRENT bond, which is 14.04's limit still. The verb keys are `1`..`8` and
-live in the view, so the UI binds what the page says rather than agreeing by
-hand.
+CURRENT bond, which is 14.04's limit still. A `PanelView` that no `TakePanel` wrote is read no
+further than its own buffers and is not otherwise trusted.
 
 STATUS: PROTOTYPE. Next: 14.07, the UI's includes read by the CI that cannot
 build the UI.

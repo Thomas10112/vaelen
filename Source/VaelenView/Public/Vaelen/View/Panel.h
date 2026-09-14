@@ -69,7 +69,7 @@ namespace Vaelen::View
 		uint32 Cost = 0;	 ///< hours it costs
 		uint32 Offered = 0;	 ///< 1 when the page offers it
 		uint32 Foreseen = 0; ///< Player::Refusal the page foresees, None when the only want is hours
-		uint8 Key = 0;		 ///< the ASCII key that presses it
+		uint8 Key = 0;		 ///< the ASCII key that presses it (14.09 binds what this says)
 		uint8 Reserved[3] = {};
 	};
 	static_assert(sizeof(VerbView) == 4 * sizeof(uint32) + 4, "VerbView must have no padding");
@@ -98,9 +98,9 @@ namespace Vaelen::View
 		uint32 Held = 0;	  ///< intents waiting
 		uint32 RowCount = 0;  ///< rows written, in the order they are drawn
 		uint32 Used = 0;	  ///< bytes of Text in use, terminators included
-		uint32 Truncated = 0; ///< rows cut short because the page had no room
+		uint32 Truncated = 0; ///< rows cut short because the page ran out of bytes
+		uint32 Dropped = 0;	  ///< rows the page had no room to begin at all
 		uint32 Offered = 0;	  ///< of the eight verbs, how many the page offers
-		uint32 Reserved = 0;
 		VerbView Verbs[PanelVerbs];
 		RowView Rows[PanelRows];
 		char Text[PanelTextBytes] = {};
@@ -128,8 +128,10 @@ namespace Vaelen::View
 										  Player::PlayerCommand& Out);
 
 	/// Writes the rows a widget draws, joined by '\n' and NUL-terminated, into
-	/// a buffer of Bytes. Returns the bytes written, terminator excluded, and
-	/// writes nothing but a terminator when the buffer is too small.
+	/// a buffer of Bytes. Returns the bytes written, terminator excluded. ALL
+	/// of the page or none of it: a buffer too small for the whole page is
+	/// given an empty string and 0, because half a page is one a widget draws
+	/// without anybody seeing that the bottom - the digest row - is missing.
 	/// PanelTextBytes is always enough.
 	VAELEN_VIEW_API uint32 Lines(const PanelView& V, char* Out, uint32 Bytes);
 
@@ -140,8 +142,10 @@ namespace Vaelen::View
 		uint32 TextBytes = 0; ///< bytes of the page itself
 		uint32 NonAscii = 0;  ///< bytes of any row outside printable ASCII
 		uint32 Truncated = 0; ///< rows cut short
+		uint32 Dropped = 0;	  ///< rows there was no room for
 		uint32 Offered = 0;	  ///< verbs the page offers
-		Hash64 Digest = 0;	  ///< recomputed from the text: what the last row prints
+		uint32 Reserved = 0;
+		Hash64 Digest = 0; ///< recomputed from the text: what the last row prints
 	};
 	VAELEN_VIEW_API PanelStats MeasurePanel(const PanelView& V);
 } // namespace Vaelen::View

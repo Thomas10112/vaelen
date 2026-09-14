@@ -16,6 +16,7 @@
 #include "Vaelen/Player/Commands.h"
 #include "Vaelen/Run/Aelvor.h"
 #include "Vaelen/Run/Door.h"
+#include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/World.h"
 
 #include "Vaelen/Core/Log.h"
@@ -31,8 +32,8 @@
 // The two pages, frozen. As macros for the reason Test_ViewGate gives: MSVC
 // C4127 forbids `if (constexpr != 0)`. 0 means "not frozen yet", and then the
 // test prints what it saw instead of asserting.
-#define VAELEN_PANEL_FROZEN_EMPTY 0x964aab6a9d4c3b03ull
-#define VAELEN_PANEL_FROZEN_PLAYED 0xb119285dd7db9a5cull
+#define VAELEN_PANEL_FROZEN_EMPTY 0x54787451e65766c1ull
+#define VAELEN_PANEL_FROZEN_PLAYED 0x26ef4024725cd4aaull
 
 using namespace Vaelen;
 using namespace Vaelen::Run;
@@ -90,6 +91,44 @@ namespace
 			n += V.Rows[i].Kind == static_cast<uint32>(Kind) ? 1u : 0u;
 		}
 		return n;
+	}
+
+	/// Puts a name into a view's fixed bytes, the way the kernel's own Put does.
+	void Named(char (&To)[LifeNameBytes], const char* From)
+	{
+		usize n = 0;
+		for (; From[n] != '\0' && n + 1 < LifeNameBytes; ++n)
+		{
+			To[n] = From[n];
+		}
+		To[n] = '\0';
+	}
+
+	/// The row of a kind, or "" when the page wrote none.
+	std::string RowOf(const PanelView& V, RowKind Kind, uint32 Which = 0)
+	{
+		uint32 Seen = 0;
+		for (uint32 i = 0; i < V.RowCount && i < PanelRows; ++i)
+		{
+			if (V.Rows[i].Kind == static_cast<uint32>(Kind) && Seen++ == Which)
+			{
+				return RowAt(V, i);
+			}
+		}
+		return std::string();
+	}
+
+	/// The row of one verb.
+	std::string VerbRow(const PanelView& V, Player::Intent Verb)
+	{
+		for (uint32 i = 0; i < V.RowCount && i < PanelRows; ++i)
+		{
+			if (V.Rows[i].Kind == static_cast<uint32>(RowKind::Verb) && V.Rows[i].Verb == static_cast<uint32>(Verb))
+			{
+				return RowAt(V, i);
+			}
+		}
+		return std::string();
 	}
 
 	/// The whole page as one string, the way Lines writes it for a widget.
@@ -282,7 +321,8 @@ VAELEN_TEST(Panel, TheVerbsAreTheKernelsAndPressIsTheOtherHalf)
 		VT_CHECK_EQ(Slot.Verb, i + 1);
 		VT_CHECK_EQ(Slot.Cost, Rules.HoursOf[i + 1]);
 		VT_CHECK_EQ(Slot.Cost, Life.Cost[i + 1]);
-		VT_CHECK_EQ(static_cast<uint32>(Slot.Key), static_cast<uint32>('1' + i));
+		// The keys 14.09 binds, in Intent order, read from the page itself.
+		VT_CHECK_EQ(static_cast<uint32>(Slot.Key), static_cast<uint32>("TWREMSGK"[i]));
 		const bool Foreseen = Slot.Foreseen != 0;
 		VT_CHECK_EQ(Slot.Offered, !Foreseen && Slot.Cost <= Life.Left ? 1u : 0u);
 		Offered += Slot.Offered;
@@ -335,11 +375,22 @@ VAELEN_TEST(Panel, TheVerbsAreTheKernelsAndPressIsTheOtherHalf)
 		VT_CHECK_EQ(Slot.Offered, 0u);
 		VT_CHECK_EQ(Slot.Foreseen, static_cast<uint32>(Player::Refusal::Full));
 	}
+	// The proof that the world was never asked is the queue's own count of what
+	// is IN it: a Submit that reached the world would add one (Player::Submit
+	// answers Full itself at 8, so the count is the honest witness either way,
+	// and Refused/Taken move only when the order system ticks - they would not
+	// have moved for a real Submit, which is why they prove nothing).
+	const uint32 Held = Q->Held;
 	const uint32 Refused = Q->Refused;
 	const uint32 Taken = Q->Taken;
 	VT_CHECK(Press(V, Player::Intent::Work, 0, 1, C) == Player::Refusal::Full);
-	VT_CHECK_EQ(Q->Refused, Refused); // the page refused it; the world never saw it
+	VT_CHECK_EQ(Q->Held, Held); // the page refused it; nothing was queued
+	VT_CHECK_EQ(Q->Refused, Refused);
 	VT_CHECK_EQ(Q->Taken, Taken);
+	// And a Press on a page nobody composed is not a verb at all.
+	PanelView Never;
+	VT_CHECK(Press(Never, Player::Intent::Work, 0, 1, C) == Player::Refusal::Unknown);
+	VT_CHECK(Press(Never, Player::Intent::None, 0, 1, C) == Player::Refusal::Unknown);
 	// The page's own words for it.
 	for (uint32 i = 0; i < V.RowCount; ++i)
 	{
@@ -407,13 +458,19 @@ VAELEN_TEST(Panel, LinesWriteWhatTheWidgetDraws)
 	VT_CHECK_EQ(At, Page.size());
 	VT_CHECK_EQ(static_cast<uint32>(std::count(Page.begin(), Page.end(), '\n')), V.RowCount);
 
-	// A buffer too small writes a terminator and nothing else; a buffer of
-	// nothing writes nothing.
+	// All of the page or none of it: a buffer one byte short writes nothing,
+	// a buffer of exactly the page writes the page.
 	char Tiny[8] = {'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'};
 	VT_CHECK_EQ(Lines(V, Tiny, 8), 0u);
 	VT_CHECK(Tiny[0] == '\0');
 	VT_CHECK_EQ(Lines(V, nullptr, 64), 0u);
 	VT_CHECK_EQ(Lines(V, Tiny, 0), 0u);
+	std::string Exact(V.Used + 1, 'x');
+	VT_CHECK_EQ(Lines(V, Exact.data(), V.Used + 1), V.Used);
+	VT_CHECK_EQ(std::string(Exact.c_str()), Page);
+	std::string Short(V.Used, 'x');
+	VT_CHECK_MSG(Lines(V, Short.data(), V.Used) == 0u, "one byte short is no page at all");
+	VT_CHECK(Short[0] == '\0');
 
 	// The digest row is the page's own, of every byte before it: changing one
 	// byte of the page moves it.
@@ -423,6 +480,238 @@ VAELEN_TEST(Panel, LinesWriteWhatTheWidgetDraws)
 	VT_CHECK(MeasurePanel(Moved).Digest != MeasurePanel(V).Digest);
 	VT_CHECK_EQ(MeasurePanel(Moved).Digest != Hash64{Moved.Digest},
 				true); // the field now lies, and the measure says so
+}
+
+VAELEN_TEST(Panel, EveryRowSaysWhatTheViewsSay)
+{
+	// No world at all: the three views are written here, field by field, so
+	// that every row the page can write IS written and read back word for
+	// word - including the ones a played 96-map never reaches (bound to,
+	// last:, the neighbours, the company that does not fit, a verb today
+	// cannot pay for). If a row ever takes its number from the wrong field,
+	// this is where it shows, and not only as a moved digest.
+	WorldView Frame;
+	Frame.People = 4096;
+	Frame.Regions.resize(3);
+	Frame.Regions[0].Index = 12;
+	Frame.Regions[1].Index = 27;
+	Frame.Regions[1].People = 412;
+	Frame.Regions[2].Index = 31;
+	Frame.Regions[2].People = 88;
+
+	LifeView Life;
+	Life.Tick = 301 * History::TicksPerYear + 11 * 24;
+	Life.Year = 301;
+	Life.Day = 11;
+	Life.Person = 7;
+	Life.Region = 12;
+	Life.Alive = 1;
+	Life.Years = 25;
+	Named(Life.Name, "Eikha");
+	Named(Life.RegionName, "Iakhas");
+	Life.StartRegion = 12;
+	Life.Holder = 9;
+	Life.StartYear = 275;
+	Life.Bond = 2;
+	Named(Life.HolderName, "Ordihumen");
+	Life.Awake = 16;
+	Life.Spent = 14;
+	Life.Left = 2;
+	Life.Food = 243;
+	Life.Health = 255;
+	Life.Rest = 185;
+	Life.Held = 1;
+	Life.Taken = 3;
+	Life.Refused = 2;
+	Life.LastRefusal = static_cast<uint32>(Player::Refusal::TooFar);
+	Life.Cost[static_cast<uint32>(Player::Intent::Wait)] = 1;
+	Life.Cost[static_cast<uint32>(Player::Intent::Work)] = 4;
+	Life.Cost[static_cast<uint32>(Player::Intent::Rest)] = 2;
+	Life.Cost[static_cast<uint32>(Player::Intent::Eat)] = 1;
+	Life.Cost[static_cast<uint32>(Player::Intent::Move)] = 3;
+	Life.Cost[static_cast<uint32>(Player::Intent::Speak)] = 1;
+	Life.Cost[static_cast<uint32>(Player::Intent::Give)] = 1;
+	Life.Cost[static_cast<uint32>(Player::Intent::Take)] = 1;
+	Life.Near[0] = 27;
+	Life.Near[1] = 31;
+	Life.NearCount = 2;
+	const char* Here[] = {"Ukit", "Aifus", "Inik", "Aiguk", "Uwum", "Gimfut", "Nobody"};
+	for (uint32 i = 0; i < 7; ++i)
+	{
+		Life.Company[i].Person = 100 + i;
+		Named(Life.Company[i].Name, Here[i]);
+	}
+	Life.CompanyCount = 7;
+	Life.CompanyThere = 858;
+
+	ChronicleView Told;
+	Told.Person = 7;
+	Told.LineCount = 1;
+	Told.Lines[0].Kind = static_cast<uint32>(LineKind::Refused);
+	Told.Lines[0].Verb = static_cast<uint32>(Player::Intent::Move);
+	Told.Lines[0].Refused = static_cast<uint32>(Player::Refusal::TooFar);
+	const std::string Said = "Year 301: Eikha could not walked: too far to walk.";
+	std::memcpy(Told.Text, Said.data(), Said.size());
+	Told.Lines[0].Length = static_cast<uint32>(Said.size());
+	Told.Used = static_cast<uint32>(Said.size()) + 1;
+
+	PanelView V;
+	TakePanel(Frame, Life, Told, V);
+
+	// Every row, word for word.
+	VT_CHECK_EQ(RowOf(V, RowKind::Date), std::string("AELVOR  year 301  day 12  4096 alive in 3 regions"));
+	VT_CHECK_EQ(RowOf(V, RowKind::Self, 0), std::string("Eikha of Iakhas, 25"));
+	VT_CHECK_EQ(RowOf(V, RowKind::Self, 1), std::string("bound to Ordihumen since year 275"));
+	VT_CHECK_EQ(RowOf(V, RowKind::Body), std::string("food 243  health 255  rest 185"));
+	VT_CHECK_EQ(RowOf(V, RowKind::Hours, 0), std::string("hours left 2 of 16"));
+	VT_CHECK_EQ(RowOf(V, RowKind::Hours, 1), std::string("queue 1 held, 3 taken, 2 refused"));
+	VT_CHECK_EQ(RowOf(V, RowKind::Hours, 2), std::string("last: ") + Player::RefusalName(Player::Refusal::TooFar));
+	VT_CHECK_EQ(RowOf(V, RowKind::Near), std::string("near: 27(412) 31(88)"));
+	VT_CHECK_EQ(RowOf(V, RowKind::Company), std::string("here: Ukit, Aifus, Inik, Aiguk, Uwum, Gimfut and 852 more"));
+	VT_CHECK_EQ(RowOf(V, RowKind::Chronicle), std::string("  ") + Said);
+
+	// The verbs: what the day can pay for, what it cannot, and what nobody is
+	// there for. Move is offered because a neighbour is near and it fits;
+	// Work costs more hours than are LEFT, which is not a refusal but not an
+	// offer either; Speak, Give and Take have company.
+	VT_CHECK_EQ(VerbRow(V, Player::Intent::Wait), std::string("[T] wait      1h  ok"));
+	VT_CHECK_EQ(VerbRow(V, Player::Intent::Work), std::string("[W] work      4h  -  not today"));
+	VT_CHECK_EQ(VerbRow(V, Player::Intent::Rest), std::string("[R] rest      2h  ok"));
+	VT_CHECK_EQ(VerbRow(V, Player::Intent::Move), std::string("[M] move      3h  -  not today"));
+	VT_CHECK_EQ(VerbRow(V, Player::Intent::Speak), std::string("[S] speak     1h  ok"));
+	VT_CHECK_EQ(V.Offered, 6u); // everything two hours can pay for: wait, rest, eat, speak, give, take
+	Player::PlayerCommand C;
+	VT_CHECK(Press(V, Player::Intent::Work, 0, 1, C) == Player::Refusal::Costly);
+	VT_CHECK_EQ(C.Kind, uint8{0}); // nothing was filled
+	VT_CHECK(Press(V, Player::Intent::Speak, 100, 1, C) == Player::Refusal::None);
+	VT_CHECK_EQ(C.Target, 100u);
+
+	// Nobody near and nobody here: the two rows say so, and the three verbs
+	// that need somebody are foreseen NoOne, the Move TooFar.
+	LifeView Alone = Life;
+	Alone.NearCount = 0;
+	Alone.CompanyCount = 0;
+	Alone.CompanyThere = 0;
+	Alone.Left = 16;
+	PanelView W;
+	TakePanel(Frame, Alone, Told, W);
+	VT_CHECK_EQ(RowOf(W, RowKind::Near), std::string("near: nowhere a walk reaches"));
+	VT_CHECK_EQ(RowOf(W, RowKind::Company), std::string("here: nobody"));
+	VT_CHECK_EQ(VerbRow(W, Player::Intent::Move), std::string("[M] move      3h  -  too far to walk"));
+	VT_CHECK_EQ(VerbRow(W, Player::Intent::Give), std::string("[G] give      1h  -  nobody there"));
+	VT_CHECK_EQ(VerbRow(W, Player::Intent::Work), std::string("[W] work      4h  ok"));
+	VT_CHECK(Press(W, Player::Intent::Give, 1, 1, C) == Player::Refusal::NoOne);
+
+	// A free person has no "bound to" row; a dead one says so and is offered
+	// nothing; a whole day that cannot pay for a verb is Costly, not "not
+	// today", and the page says the kernel's word for it.
+	LifeView Free = Life;
+	Free.Bond = 0;
+	PanelView F;
+	TakePanel(Frame, Free, Told, F);
+	VT_CHECK_EQ(RowOf(F, RowKind::Self, 1), std::string());
+	VT_CHECK_EQ(Rows(F, RowKind::Self), 1u);
+	LifeView Gone = Life;
+	Gone.Alive = 0;
+	PanelView G;
+	TakePanel(Frame, Gone, Told, G);
+	VT_CHECK_EQ(RowOf(G, RowKind::Self, 0), std::string("Eikha of Iakhas, 25, dead"));
+	VT_CHECK_EQ(G.Offered, 0u);
+	VT_CHECK_EQ(VerbRow(G, Player::Intent::Wait), std::string("[T] wait      1h  -  the person is dead"));
+	LifeView Tired = Life;
+	Tired.Awake = 2;
+	Tired.Left = 2;
+	PanelView T;
+	TakePanel(Frame, Tired, Told, T);
+	VT_CHECK_EQ(VerbRow(T, Player::Intent::Work), std::string("[W] work      4h  -  longer than a day"));
+	VT_CHECK(Press(T, Player::Intent::Work, 0, 1, C) == Player::Refusal::Costly);
+
+	// And the page is ASCII, fits, and its digest row is its own.
+	for (const PanelView* Page : {&V, &W, &F, &G, &T})
+	{
+		const PanelStats S = MeasurePanel(*Page);
+		VT_CHECK_EQ(S.NonAscii, 0u);
+		VT_CHECK_EQ(S.Truncated, 0u);
+		VT_CHECK_EQ(S.Dropped, 0u);
+		VT_CHECK(S.Rows <= PanelRows);
+		VT_CHECK_EQ(S.Digest, Hash64{Page->Digest});
+	}
+	VAELEN_LOG_INFO(LogPanel, "a page written from three views by hand: %u rows, %u bytes\n%s", V.RowCount, V.Used,
+					Drawn(V).c_str());
+}
+
+VAELEN_TEST(Panel, APageTooLongIsCutAndCounted)
+{
+	// Nothing the kernel writes is this long, which is why the cut path runs
+	// under no other test: sixteen chronicle lines of two hundred letters
+	// each is more than the page holds. What must hold anyway: the rows that
+	// fit are whole, one is cut and counted, no row runs past the buffer, and
+	// the DIGEST row is still written - the page keeps the one row a
+	// screenshot is checked by.
+	WorldView Frame;
+	Frame.People = 1;
+	LifeView Life;
+	Life.Person = 3;
+	Life.Alive = 1;
+	Named(Life.Name, "Eikha");
+	Named(Life.RegionName, "Iakhas");
+	Life.Awake = 16;
+	Life.Left = 16;
+	ChronicleView Told;
+	Told.Person = 3;
+	const std::string Long(200, 'a');
+	for (uint32 i = 0; i < PanelChronicle; ++i)
+	{
+		Told.Lines[i].Kind = static_cast<uint32>(LineKind::Acted);
+		Told.Lines[i].Begin = Told.Used;
+		Told.Lines[i].Length = static_cast<uint32>(Long.size());
+		std::memcpy(Told.Text + Told.Used, Long.data(), Long.size());
+		Told.Used += static_cast<uint32>(Long.size()) + 1;
+	}
+	Told.LineCount = PanelChronicle;
+
+	PanelView V;
+	TakePanel(Frame, Life, Told, V);
+	const PanelStats S = MeasurePanel(V);
+	VT_CHECK_MSG(S.Dropped >= 1, "a page of %u rows and %u bytes dropped %u", S.Rows, S.TextBytes, S.Dropped);
+	VT_CHECK_EQ(S.Truncated, 0u); // these rows did not fit at all; none was begun and cut
+	VT_CHECK(V.Used <= PanelTextBytes);
+	VT_CHECK_EQ(S.NonAscii, 0u);
+	VT_CHECK(S.Rows <= PanelRows);
+	VT_REQUIRE(V.RowCount >= 1);
+	VT_CHECK_EQ(V.Rows[V.RowCount - 1].Kind, static_cast<uint32>(RowKind::Digest));
+	VT_CHECK_EQ(S.Digest, Hash64{V.Digest});
+	for (uint32 i = 0; i < V.RowCount; ++i)
+	{
+		VT_REQUIRE(V.Rows[i].Begin + V.Rows[i].Length < PanelTextBytes);
+		VT_REQUIRE(V.Text[V.Rows[i].Begin + V.Rows[i].Length] == '\0');
+	}
+	VT_CHECK_EQ(static_cast<uint32>(Drawn(V).size()), V.Used);
+	VAELEN_LOG_INFO(LogPanel, "a page dropped: %u rows, %u bytes, %u dropped, %u truncated, digest %016llx", S.Rows,
+					S.TextBytes, S.Dropped, S.Truncated, static_cast<unsigned long long>(S.Digest));
+
+	// And one line longer than the whole page is CUT rather than dropped: it
+	// begins, runs out, and is counted - the page keeps its digest row either
+	// way, which is the row a screenshot is checked by.
+	ChronicleView Huge;
+	Huge.Person = 3;
+	const std::string Endless(3000, 'b');
+	Huge.LineCount = 1;
+	Huge.Lines[0].Kind = static_cast<uint32>(LineKind::Acted);
+	Huge.Lines[0].Length = static_cast<uint32>(Endless.size());
+	std::memcpy(Huge.Text, Endless.data(), Endless.size());
+	Huge.Used = static_cast<uint32>(Endless.size()) + 1;
+	PanelView Cut;
+	TakePanel(Frame, Life, Huge, Cut);
+	const PanelStats CS = MeasurePanel(Cut);
+	VT_CHECK_MSG(CS.Truncated >= 1, "one line of %zu letters is cut: %u truncated, %u dropped", Endless.size(),
+				 CS.Truncated, CS.Dropped);
+	VT_CHECK(Cut.Used <= PanelTextBytes);
+	VT_CHECK_EQ(CS.NonAscii, 0u);
+	VT_REQUIRE(Cut.RowCount >= 1);
+	VT_CHECK_EQ(Cut.Rows[Cut.RowCount - 1].Kind, static_cast<uint32>(RowKind::Digest));
+	VT_CHECK_EQ(CS.Digest, Hash64{Cut.Digest});
+	VT_CHECK_EQ(static_cast<uint32>(Drawn(Cut).size()), Cut.Used);
 }
 
 VAELEN_TEST(Panel, ThePageOutlivesTheWorld)

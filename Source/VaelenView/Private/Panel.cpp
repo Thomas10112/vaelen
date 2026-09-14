@@ -26,6 +26,10 @@ namespace Vaelen::View
 			{
 				if (Open || V.RowCount >= MaxRows || V.Used + 1 >= Stop)
 				{
+					// A row with nowhere to go is COUNTED. A page that quietly
+					// stops is a page whose reader cannot tell it stopped, and
+					// the rows that do not fit are the newest of the life.
+					++V.Dropped;
 					return false;
 				}
 				Open = true;
@@ -37,6 +41,22 @@ namespace Vaelen::View
 				R.Verb = Verb;
 				R.Begin = V.Used;
 				return true;
+			}
+
+			/// At most Most bytes of S, and never past a NUL: a view written
+			/// somewhere else can say a line is longer than its own buffer, and
+			/// a page that reads past a buffer is not a page.
+			void Put(const char* S, uint32 Most)
+			{
+				for (uint32 n = 0; S != nullptr && n < Most && *S != '\0'; ++n, ++S)
+				{
+					if (V.Used + 1 >= Stop)
+					{
+						Cut = true;
+						return;
+					}
+					V.Text[V.Used++] = *S;
+				}
 			}
 
 			void Put(const char* S)
@@ -167,7 +187,10 @@ namespace Vaelen::View
 
 		void FillVerbs(const LifeView& Life, PanelView& Out)
 		{
-			static const char Keys[PanelVerbs] = {'1', '2', '3', '4', '5', '6', '7', '8'};
+			// The keys 14.09 binds, in Intent order: Wait, Work, Rest, Eat, Move,
+			// Speak, Give, Take. They live in the view so that the UI binds what
+			// the page says rather than agreeing with it by hand.
+			static const char Keys[PanelVerbs] = {'T', 'W', 'R', 'E', 'M', 'S', 'G', 'K'};
 			Out.Offered = 0;
 			for (uint32 i = 0; i < PanelVerbs; ++i)
 			{
@@ -360,8 +383,14 @@ namespace Vaelen::View
 			{
 				break;
 			}
+			const LineView& L = Told.Lines[i];
+			if (L.Begin >= ChronicleTextBytes || L.Length > ChronicleTextBytes - L.Begin)
+			{
+				P.End(); // a chronicle nobody took: the row is empty rather than a read past its text
+				continue;
+			}
 			P.Put("  ");
-			P.Put(Told.Text + Told.Lines[i].Begin);
+			P.Put(Told.Text + L.Begin, L.Length);
 			P.End();
 		}
 
@@ -369,12 +398,14 @@ namespace Vaelen::View
 		Out.Digest = HashBytes(Out.Text, Out.Used);
 		P.Stop = PanelTextBytes;
 		P.MaxRows = PanelRows;
+		const uint32 Lost = Out.Dropped; // the digest row is not one of them
 		if (P.Begin(RowKind::Digest))
 		{
 			P.Put("digest ");
 			P.Hex(Out.Digest);
 			P.End();
 		}
+		Out.Dropped = Lost;
 	}
 
 	Player::Refusal Press(const PanelView& V, Player::Intent Verb, uint32 Target, uint32 Amount,
@@ -382,7 +413,9 @@ namespace Vaelen::View
 	{
 		for (const VerbView& Slot : V.Verbs)
 		{
-			if (Slot.Verb != static_cast<uint32>(Verb))
+			// Verb 0 is a slot no page filled: a view nobody took answers
+			// Unknown for everything, rather than reading its empty slots.
+			if (Slot.Verb == 0 || Slot.Verb != static_cast<uint32>(Verb))
 			{
 				continue;
 			}
@@ -413,15 +446,30 @@ namespace Vaelen::View
 		{
 			return 0;
 		}
+		// All of the page or none of it. Half a page is worse than no page: a
+		// widget would draw it and nobody would know the bottom was missing,
+		// and the digest row is the bottom. Every length is checked against
+		// the room LEFT, by subtraction, so nothing can wrap.
+		uint32 Needs = 0;
+		for (uint32 i = 0; i < V.RowCount && i < PanelRows; ++i)
+		{
+			const RowView& R = V.Rows[i];
+			if (R.Begin >= PanelTextBytes || R.Length > PanelTextBytes - R.Begin || R.Length > PanelTextBytes - Needs)
+			{
+				Out[0] = '\0'; // a view no TakePanel wrote: nothing is drawn from it
+				return 0;
+			}
+			Needs += R.Length + 1;
+		}
+		if (Needs + 1 > Bytes)
+		{
+			Out[0] = '\0';
+			return 0;
+		}
 		uint32 At = 0;
 		for (uint32 i = 0; i < V.RowCount && i < PanelRows; ++i)
 		{
 			const RowView& R = V.Rows[i];
-			if (At + R.Length + 1 >= Bytes)
-			{
-				Out[At] = '\0';
-				return At;
-			}
 			for (uint32 n = 0; n < R.Length; ++n)
 			{
 				Out[At++] = V.Text[R.Begin + n];
@@ -439,11 +487,19 @@ namespace Vaelen::View
 		Out.Bytes = static_cast<uint32>(sizeof(PanelView));
 		Out.TextBytes = V.Used;
 		Out.Truncated = V.Truncated;
+		Out.Dropped = V.Dropped;
 		Out.Offered = V.Offered;
-		uint32 Before = V.Used;
+		uint32 Before = V.Used < PanelTextBytes ? V.Used : PanelTextBytes;
 		for (uint32 i = 0; i < V.RowCount && i < PanelRows; ++i)
 		{
 			const RowView& R = V.Rows[i];
+			// A view this module wrote cannot say otherwise; one copied from
+			// somewhere else can, and a measure that reads past its own buffer
+			// is not a measure.
+			if (R.Begin >= PanelTextBytes || R.Length > PanelTextBytes - R.Begin)
+			{
+				continue;
+			}
 			if (R.Kind == static_cast<uint32>(RowKind::Digest))
 			{
 				Before = R.Begin;
