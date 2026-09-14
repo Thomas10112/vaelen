@@ -4523,6 +4523,16 @@ will: what the page does not offer costs the world nothing.
 `Vaelen.Stream.Write` prints the two lines this row quotes, which 14.10's
 checker compares with what `Tools/Atlas --replay` prints of the same stream.
 
+One reading settled, because the row can be read two ways: the second line,
+`verbs work W rest R eat E wait T speak S give G take K move M`, carries
+COUNTS and not key letters. The letters are placeholders that happen to be
+the keys 14.09 binds - a mnemonic, not the output - and 14.10's own clause
+(a) is what settles it: "the `LogVaelenPlay: verbs ...` line with every count
+>= 1 and `move M` counted among the taken". The code prints
+`verbs work %u rest %u eat %u wait %u speak %u give %u take %u move %u`,
+counted from the stream's own records: what was MEANT, whatever the world
+made of it.
+
 What the fence and the parse caught on the day they were needed: the witness
 UI of 14.07 had been written against a made-up API (`Page()`,
 `TurnTheDay()`), and the FIRST parse after the real header appeared failed on
