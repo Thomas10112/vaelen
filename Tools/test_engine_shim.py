@@ -41,10 +41,10 @@ ACTOR = os.path.join("Source", MODULE, "Private", "VaelenViewActor.cpp")
 DRAWER = os.path.join("Source", MODULE, "Private", "VaelenViewDrawer.cpp")
 HEADER = os.path.join("Source", MODULE, "Public", "VaelenViewDrawer.h")
 
-# 14.07's half: the UI, which is parsed with a restricted include set. Until
-# 14.09 writes Source/VaelenUI these are the witness's files (the copy below
-# takes each module from wherever the parser finds it), and after it they are
-# the real ones without a word changing here.
+# 14.07's half: the UI, which is parsed with a restricted include set. These
+# were the witness's files until 14.09 wrote the real module; the copy below
+# takes each module from wherever the parser finds it, so this did not have to
+# change when they became real - only the lines the mutations name did.
 HUD = os.path.join("Source", "VaelenUI", "Private", "VaelenHUD.cpp")
 KEYS = os.path.join("Source", "VaelenUI", "Private", "VaelenPlayerController.cpp")
 
@@ -120,15 +120,15 @@ MUTATIONS = [
     ),
     (
         "a field of the view the UI reads and the view does not have",
-        HUD,
-        "static_cast<float>(Page.RowCount)",
-        "static_cast<float>(Page.HoursRemaining)",
+        KEYS,
+        "Aim < Life.CompanyCount",
+        "Aim < Life.CompanyThere_",
     ),
     (
         "an argument dropped from Press",
         KEYS,
-        "Press(Held->Panel(), Kind, 0, 1, What)",
-        "Press(Held->Panel(), Kind, 1, What)",
+        "Press(Page, Kind, Target, 1, What)",
+        "Press(Page, Kind, 1, What)",
     ),
 ]
 

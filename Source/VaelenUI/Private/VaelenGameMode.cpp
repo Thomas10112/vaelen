@@ -1,6 +1,7 @@
-// VAELEN - Tools/UiWitness (14.07). Not built by anything: see the README.
+// VAELEN - VaelenUI
+// Phase 14 task 14.09: what names the HUD and the controller.
 //
-// STATUS: UNVERIFIED (Phase 14) - parsed against Tools/EngineShim, built by nothing
+// STATUS: UNVERIFIED (Phase 14) - parsed against Tools/EngineShim, not yet built by UnrealBuildTool
 #include "VaelenGameMode.h"
 
 #include "VaelenHUD.h"

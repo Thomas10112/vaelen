@@ -56,8 +56,11 @@ ROOT = Path(__file__).resolve().parent.parent
 
 # Where the UI lives. VaelenGame is policed in its PUBLIC directory only: it is
 # the module that holds the world, so its .cpp may name Run and Take.h, and its
-# header may not - that is the seam. Until 14.08 and 14.09 write the real
-# modules, the witness of 14.07 stands in for them (Tools/UiWitness/README.md).
+# header may not - that is the seam. 14.07 wrote this against a witness under
+# Tools/UiWitness because neither module existed yet; 14.08 and 14.09 wrote
+# them, the witness is gone, and the --witness path below is what is left of
+# it: a module of Source with no Public and no Private is not silently
+# skipped, it is reported.
 ROOTS = [
     ("VaelenUI", ("Public", "Private")),
     ("VaelenGame", ("Public",)),

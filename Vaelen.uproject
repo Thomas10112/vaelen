@@ -181,6 +181,19 @@
 			]
 		},
 		{
+			"Name": "VaelenUI",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine",
+				"InputCore",
+				"VaelenCore",
+				"VaelenPlayer",
+				"VaelenView",
+				"VaelenGame"
+			]
+		},
+		{
 			"Name": "VaelenPresentation",
 			"Type": "Runtime",
 			"LoadingPhase": "Default",

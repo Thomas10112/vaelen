@@ -1,10 +1,12 @@
-// VAELEN - Tools/UiWitness (14.07). Not built by anything: see the README.
+// VAELEN - VaelenUI
+// Phase 14 task 14.09: the first screen.
 //
-// What a screen is here: Lines() into a buffer, and the buffer drawn. No
-// World in this translation unit, no Take.h, no Submit - the page arrives
-// composed and the only way back is Press() through the subsystem.
+// No World in this translation unit, no Take, no Submit: the page arrives
+// composed from the one module that holds a world, and the only way back is
+// Press() through that same module. What is drawn is exactly what Lines()
+// wrote - one Canvas->DrawText per row, in order, no formatting of our own.
 //
-// STATUS: UNVERIFIED (Phase 14) - parsed against Tools/EngineShim, built by nothing
+// STATUS: UNVERIFIED (Phase 14) - parsed against Tools/EngineShim, not yet built by UnrealBuildTool
 #include "VaelenHUD.h"
 
 #include "Engine/Canvas.h"
@@ -26,20 +28,19 @@ void AVaelenHUD::DrawHUD()
 		return;
 	}
 	const Vaelen::View::PanelView& Page = Held->Panel();
-	const uint32 Written = Vaelen::View::Lines(Page, Rows, Vaelen::View::PanelTextBytes);
+	const Vaelen::uint32 Written = Vaelen::View::Lines(Page, Rows, Vaelen::View::PanelTextBytes);
 	if (Written == 0)
 	{
-		return;
+		return; // no page yet, or none that fits whole: half a page is not drawn
 	}
+
 	// One row per line of what Lines wrote, in the order it wrote them. The
 	// page is ASCII and every row is terminated where its Length says, so a
 	// line is a pointer into this buffer and nothing is copied twice.
-	// Bottom-aligned: the page grows upward from the foot of the screen, so
-	// the newest chronicle line is always in the same place.
 	const float Line = 14.0f;
-	float Y = Canvas->SizeY - Line * static_cast<float>(Page.RowCount) - Line;
-	uint32 Start = 0;
-	for (uint32 i = 0; i <= Written; ++i)
+	float Y = 16.0f;
+	Vaelen::uint32 Start = 0;
+	for (Vaelen::uint32 i = 0; i <= Written; ++i)
 	{
 		if (i != Written && Rows[i] != '\n')
 		{

@@ -35,4 +35,6 @@ namespace EKeys
 	extern const FKey K;
 	extern const FKey M;
 	extern const FKey SpaceBar;
+	extern const FKey Tab; ///< cycles what a verb is aimed at
+	extern const FKey F9;  ///< writes the stream
 } // namespace EKeys
