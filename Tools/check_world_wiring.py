@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The same world is wired in three places. Check that they agree. ADR-0135.
+"""The same world is wired in four places. Check that they agree. ADR-0135.
 
 WHY THIS EXISTS
 
@@ -25,6 +25,10 @@ WHAT IS COMPARED
                         declared in a different position is a different world
     the SYSTEM order    which systems are added to the schedule, and in what
                         order
+    the LISTENERS       which event listeners are attached (`X->Attach()`),
+                        in what order - a chronicle is not a system and the
+                        ADD pattern never sees it, which is how three of them
+                        sat in OPTIONAL_SYSTEMS for a week doing nothing
 
 WHAT IS NOT
 
@@ -43,33 +47,55 @@ WIRINGS = {
     "Tools/Atlas (headless)": "Tools/Atlas/Main.cpp",
     "AVaelenAtlasActor (game)": "Source/Vaelen/Private/VaelenAtlasActor.cpp",
     "AVaelenViewActor (presentation)": "Source/VaelenPresentation/Private/VaelenViewActor.cpp",
+    "Run::Aelvor (VaelenRun)": "Source/VaelenRun/Private/Aelvor.cpp",
 }
 
 # Deliberately present in some wirings and not others, each named ONE BY ONE
-# with its reason. Anything not named here is expected in all three, which is
+# with its reason. Anything not named here is expected in all four, which is
 # the whole point - a pattern like "ignore anything ending in Chronicle" would
 # wave through the next system nobody meant to make optional.
 #
-# Two lists, because the two things compared are different: a TYPE declared in
-# a different position shifts every component type id after it, while a SYSTEM
-# only changes the schedule. Colony is declared LAST in Tools/Atlas for exactly
-# that reason and this is the note that says so.
+# Three lists, because the three things compared are different: a TYPE declared
+# in a different position shifts every component type id after it, a SYSTEM
+# only changes the schedule, and a LISTENER only hears. Colony is declared LAST
+# in Tools/Atlas for exactly that reason, and Run::Aelvor declares its Play
+# and Lively types after Colony for the same one; this is the note that says so.
 OPTIONAL_DECLARES = {
-    "Colony": "Tools/Atlas only, behind --colony, declared after Polity so it shifts nothing",
+    "Colony": "Tools/Atlas and Run::Aelvor, behind --colony / Options::Colony, declared after Polity so it shifts nothing",
     "PersonChronicle": "Tools/Atlas only, behind --chronicle, declared after Polity",
     "SocietyChronicle": "Tools/Atlas only, behind --chronicle, declared after Polity",
     "EconomyChronicle": "Tools/Atlas only, behind --chronicle, declared after Polity",
+    "Player": "Run::Aelvor only, behind Options::Play, declared after Colony so it shifts nothing",
+    "Start": "Run::Aelvor only, behind Options::Play, declared after Colony",
+    "Hour": "Run::Aelvor only, behind Options::Play, declared after Colony",
+    "Order": "Run::Aelvor only, behind Options::Play, declared after Colony",
+    "Regard": "Run::Aelvor only, behind Options::Play, declared after Colony",
+    "LifeChronicle": "Run::Aelvor only, behind Options::Play, declared after Colony",
+    "Living": "Run::Aelvor only, behind Options::Lively, declared after Play's",
+    "Repute": "Run::Aelvor only, behind Options::Lively, declared after Play's",
+    "Fame": "Run::Aelvor only, behind Options::Lively, declared after Play's",
 }
 OPTIONAL_SYSTEMS = {
-    "MiningSystem": "Tools/Atlas only, behind --colony",
+    "MiningSystem": "Tools/Atlas and Run::Aelvor, behind --colony / Options::Colony",
+    "PlayerDaySystem": "Run::Aelvor only, behind Options::Play",
+    "PlayerOrderSystem": "Run::Aelvor only, behind Options::Play",
+    "RegardSystem": "Run::Aelvor only, behind Options::Play",
+    "LivingSystem": "Run::Aelvor only, behind Options::Lively",
+    "ReputeSystem": "Run::Aelvor only, behind Options::Lively",
+    "FameSystem": "Run::Aelvor only, behind Options::Lively",
+    "JudgementSystem": "Run::Aelvor only, behind Options::Lively",
+}
+OPTIONAL_LISTENERS = {
     "PersonChronicle": "Tools/Atlas only, behind --chronicle",
     "SocietyChronicle": "Tools/Atlas only, behind --chronicle",
     "EconomyChronicle": "Tools/Atlas only, behind --chronicle",
+    "LifeChronicle": "Run::Aelvor only, behind Options::Play",
 }
 
 DECLARE = re.compile(r"=\s*([A-Za-z_][A-Za-z0-9_]*)Types::Declare\s*\(")
 MAKE = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)\s*=\s*std::make_unique<\s*([A-Za-z_][A-Za-z0-9_]*)\s*>")
 ADD = re.compile(r"Systems\(\)\.Add\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\.get\(\)\s*\)")
+LISTEN = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)->Attach\(\)")
 
 
 def read(relative):
@@ -97,6 +123,14 @@ def systems(text):
     return out
 
 
+def listeners(text):
+    """The LISTENER CLASS names attached, in order, resolved through the same
+    make_unique map. A chronicle is wired by `->Attach()` and never by
+    `Systems().Add`, so the ADD pattern cannot see it."""
+    built = {name: cls for name, cls in MAKE.findall(text)}
+    return [built.get(name, f"<unresolved:{name}>") for name in LISTEN.findall(text)]
+
+
 def without_optional(names, optional):
     return [n for n in names if n not in optional]
 
@@ -120,14 +154,16 @@ def main():
 
     failures = 0
     for what, extract, optional in (("declarations", declares, OPTIONAL_DECLARES),
-                                    ("systems", systems, OPTIONAL_SYSTEMS)):
+                                    ("systems", systems, OPTIONAL_SYSTEMS),
+                                    ("listeners", listeners, OPTIONAL_LISTENERS)):
         found = {label: without_optional(extract(text), optional) for label, text in texts.items()}
         unresolved = [v for lst in found.values() for v in lst if v.startswith("<unresolved:")]
         if unresolved:
             print(f"[wiring] could not resolve {', '.join(sorted(set(unresolved)))} to a system class",
                   file=sys.stderr)
-            print("[wiring] a system added without a make_unique this script can see is a gap in the",
+            print("[wiring] a system or listener wired without a make_unique this script can see is a",
                   file=sys.stderr)
+            print("[wiring] gap in the", file=sys.stderr)
             print("[wiring] script, not a pass - fix Tools/check_world_wiring.py", file=sys.stderr)
             failures += 1
             continue
@@ -135,16 +171,17 @@ def main():
             report(what, found)
             failures += 1
         else:
-            print(f"[wiring] {what}: {len(next(iter(found.values())))} names, all three agree")
+            print(f"[wiring] {what}: {len(next(iter(found.values())))} names, all {len(WIRINGS)} agree")
 
     if failures:
-        print("\n[wiring] the three wirings of AELVOR have drifted apart - see ADR-0135.", file=sys.stderr)
-        print("[wiring] If a difference is deliberate, name it in OPTIONAL_DECLARES or", file=sys.stderr)
-        print("[wiring] OPTIONAL_SYSTEMS with its reason. Do not widen the pattern.", file=sys.stderr)
+        print(f"\n[wiring] the {len(WIRINGS)} wirings of AELVOR have drifted apart - see ADR-0135.",
+              file=sys.stderr)
+        print("[wiring] If a difference is deliberate, name it in OPTIONAL_DECLARES, OPTIONAL_SYSTEMS", file=sys.stderr)
+        print("[wiring] or OPTIONAL_LISTENERS with its reason. Do not widen the pattern.", file=sys.stderr)
         return 1
     print(f"[wiring] {len(WIRINGS)} wirings of AELVOR agree "
-          f"({len(OPTIONAL_DECLARES)} declarations and {len(OPTIONAL_SYSTEMS)} systems "
-          f"deliberately optional, each named)")
+          f"({len(OPTIONAL_DECLARES)} declarations, {len(OPTIONAL_SYSTEMS)} systems and "
+          f"{len(OPTIONAL_LISTENERS)} listeners deliberately optional, each named)")
     return 0
 
 

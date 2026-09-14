@@ -26,6 +26,7 @@
 #include "Vaelen/Economy/Stocks.h"
 #include "Vaelen/Economy/Trade.h"
 #include "Vaelen/Economy/Wealth.h"
+#include "Vaelen/Player/Stream.h"
 #include "Vaelen/Politics/Polities.h"
 #include "Vaelen/Population/Families.h"
 #include "Vaelen/Population/Lives.h"
@@ -34,6 +35,8 @@
 #include "Vaelen/Population/PersonHistory.h"
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Population/Traits.h"
+#include "Vaelen/Run/Aelvor.h"
+#include "Vaelen/Run/Door.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/Deposits.h"
 #include "Vaelen/Sim/HistoryText.h"
@@ -448,7 +451,9 @@ namespace
 		bool Colony = false;
 		bool Chronicle = false;
 		bool Why = false;
-		uint32 Every = 0; ///< years between kept frames; 0 = keep only the last
+		uint32 Every = 0;	///< years between kept frames; 0 = keep only the last
+		std::string Replay; ///< 14.03: a stream to replay into a fresh played Run; the world is the stream's
+		bool Empty = false; ///< 14.03: the empty play - the Play wiring, nobody taken up, no stream
 	};
 
 	/// Runs Years years, keeping a frame every Opt.Every of them. Taking a view
@@ -496,17 +501,20 @@ namespace
 
 	void Usage()
 	{
-		std::fprintf(stderr, "VaelenAtlas - generates AELVOR and writes what can be drawn of it.\n"
-							 "  --size N        map side in tiles (32..512, default 128)\n"
-							 "  --prehistory N  years run by the pre-history (default 300)\n"
-							 "  --years N       years run after it (default 120)\n"
-							 "  --seed V        decimal or 0x hex (default 0x41454c564f52)\n"
-							 "  --out PATH      where to write the JSON (default aelvor.json)\n"
-							 "  --no-tiles      write the regions only, not the ground\n"
-							 "  --colony        found a mining colony on the busiest region\n"
-							 "  --every N       also keep a frame every N years, for a timeline\n"
-							 "  --chronicle     remember what happened, and write it out in words\n"
-							 "  --why           and why: the cause of each thing, back to its root\n");
+		std::fprintf(stderr,
+					 "VaelenAtlas - generates AELVOR and writes what can be drawn of it.\n"
+					 "  --size N        map side in tiles (32..512, default 128)\n"
+					 "  --prehistory N  years run by the pre-history (default 300)\n"
+					 "  --years N       years run after it (default 120)\n"
+					 "  --seed V        decimal or 0x hex (default 0x41454c564f52)\n"
+					 "  --out PATH      where to write the JSON (default aelvor.json)\n"
+					 "  --no-tiles      write the regions only, not the ground\n"
+					 "  --colony        found a mining colony on the busiest region\n"
+					 "  --every N       also keep a frame every N years, for a timeline\n"
+					 "  --chronicle     remember what happened, and write it out in words\n"
+					 "  --why           and why: the cause of each thing, back to its root\n"
+					 "  --replay FILE   replay a vaelen-stream into a fresh played Run and write what it came to\n"
+					 "  --empty         the empty play: the Play wiring with nobody taken up, no stream\n");
 	}
 
 	bool ParseOptions(int Argc, char** Argv, Options& Out)
@@ -542,6 +550,14 @@ namespace
 			else if (std::strcmp(Arg, "--out") == 0 && HasValue)
 			{
 				Out.Out = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--replay") == 0 && HasValue)
+			{
+				Out.Replay = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--empty") == 0)
+			{
+				Out.Empty = true;
 			}
 			else if (std::strcmp(Arg, "--size") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
 			{
@@ -581,7 +597,7 @@ namespace
 		}
 		return true;
 	}
-	int Run(int Argc, char** Argv);
+	int RunAtlas(int Argc, char** Argv);
 } // namespace
 
 int main(int Argc, char** Argv)
@@ -593,20 +609,223 @@ int main(int Argc, char** Argv)
 	// top of main does by construction.
 	StdioLogSink Console;
 	Log::AddSink(&Console);
-	const int Code = Run(Argc, Argv);
+	const int Code = RunAtlas(Argc, Argv);
 	Log::RemoveSink(&Console);
 	return Code;
 }
 
 namespace
 {
-	int Run(int Argc, char** Argv)
+	/// Reads a whole file; false when it cannot be read.
+	bool ReadFile(const std::string& Path, std::string& Out)
+	{
+		std::FILE* File = std::fopen(Path.c_str(), "rb");
+		if (File == nullptr)
+		{
+			return false;
+		}
+		char Buffer[65536];
+		for (;;)
+		{
+			const usize Got = std::fread(Buffer, 1, sizeof(Buffer), File);
+			if (Got == 0)
+			{
+				break;
+			}
+			Out.append(Buffer, Got);
+		}
+		const bool Ok = std::ferror(File) == 0;
+		std::fclose(File);
+		return Ok;
+	}
+
+	/// --replay FILE and --empty (14.03): a played Run, the stream through its
+	/// door, and what it came to. Writes a REPLAY document and not an atlas -
+	/// "kind":"replay": the run, the stream's counts, the report of the replay
+	/// (answered, wrong, days, the three digests), and the three view digests
+	/// of the world after it. The world is the STREAM's (its header names the
+	/// seed, the size, the years) and not the command line's; --colony is the
+	/// host's configuration and is taken from the command line, as the start
+	/// rules are (the defaults). --empty is the same with no stream at all:
+	/// the Play wiring with nobody taken up, the baseline a played stream is
+	/// compared against. Exit 1 when the stream is of another world or any
+	/// answer differed, so a CTest entry can hold a stream to its world.
+	int RunReplay(const Options& Opt)
+	{
+		Player::InputStream S;
+		Player::StreamReport Report;
+		Vaelen::Run::Options RO;
+		RO.Size = Opt.Size;
+		RO.PreHistory = Opt.PreHistory;
+		RO.Years = Opt.Years;
+		RO.Seed = Opt.Seed;
+		RO.Colony = Opt.Colony;
+		RO.Play = true;
+		if (!Opt.Replay.empty())
+		{
+			std::string Text;
+			if (!ReadFile(Opt.Replay, Text))
+			{
+				std::fprintf(stderr, "AELVOR: cannot read %s\n", Opt.Replay.c_str());
+				return 1;
+			}
+			if (!Player::DecodeStream(Text, S, Report))
+			{
+				std::fprintf(stderr,
+							 "AELVOR: %s is not a stream this build reads (header bad %u, version bad %u, %u lines)\n",
+							 Opt.Replay.c_str(), Report.HeaderBad, Report.VersionBad, Report.Lines);
+				return 1;
+			}
+			RO.Size = S.Header.Size;
+			RO.PreHistory = S.Header.PreHistory;
+			RO.Years = S.Header.Years;
+			RO.Seed = S.Header.Seed;
+		}
+		const auto Started = std::chrono::steady_clock::now();
+		Vaelen::Run::Aelvor A(RO);
+		if (!A.Begin())
+		{
+			std::fprintf(stderr, "AELVOR: generation failed at %u x %u\n", RO.Size, RO.Size);
+			return 1;
+		}
+		if (Opt.Replay.empty())
+		{
+			S.Header = A.Header();
+		}
+		const Vaelen::Run::ReplayReport R = Vaelen::Run::Replay(A, S);
+		const double Seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - Started).count();
+
+		WorldView Frame;
+		MapView Ground;
+		NetView Net;
+		TakeView(A.Instance(), A.Sources(), Frame);
+		TakeNetView(A.Instance(), A.Sources(), Net);
+		TakeMapView(A.Instance(), A.Sources(), Ground);
+		const ViewStats FrameStats = MeasureView(Frame);
+		const MapStats GroundStats = MeasureMapView(Ground);
+		const NetStats NetStats_ = MeasureNetView(Net);
+
+		Json J;
+		J.Reserve(4096);
+		J.Put("{\"vaelen\":\"0.0.1\",\"world\":\"AELVOR\",\"schema\":1,\"kind\":\"replay\",\n\"run\":{");
+		J.Put("\"seed\":");
+		J.Hex(RO.Seed);
+		J.Put(",");
+		J.Field("size", RO.Size);
+		J.Put(",");
+		J.Field("prehistory", RO.PreHistory);
+		J.Put(",");
+		J.Field("years", RO.Years);
+		J.Put(",");
+		J.Field("colony", Opt.Colony ? 1u : 0u);
+		J.Put(",");
+		J.Field("tick", Frame.Tick);
+		J.Put(",");
+		J.Field("year", Frame.Year);
+		J.Put(",\"seconds\":");
+		{
+			char Buffer[32];
+			std::snprintf(Buffer, sizeof(Buffer), "%.2f", Seconds);
+			J.Put(Buffer);
+		}
+		J.Put("},\n\"stream\":{");
+		J.Field("commands", S.Commands.size());
+		J.Put(",");
+		J.Field("takings", S.Takings.size());
+		J.Put(",");
+		J.Field("days", S.Days.size());
+		J.Put(",");
+		J.Field("lines", Report.Lines);
+		J.Put(",");
+		J.Field("badLines", Report.BadLines);
+		J.Put("},\n\"replay\":{");
+		J.Field("answered", R.Answered);
+		J.Put(",");
+		J.Field("wrong", R.Wrong);
+		J.Put(",");
+		J.Field("days", R.Days);
+		J.Put(",");
+		J.Field("takings", R.Takings);
+		J.Put(",");
+		J.Field("left", R.Left);
+		J.Put(",");
+		J.Field("refused", R.Refused);
+		J.Put(",\"byKind\":[");
+		for (usize k = 0; k < Player::IntentCount; ++k)
+		{
+			if (k != 0)
+			{
+				J.Put(",");
+			}
+			J.Unsigned(R.ByKind[k]);
+		}
+		J.Put("],\"state\":");
+		J.Hex(R.State);
+		J.Put(",\"log\":");
+		J.Hex(R.Log);
+		J.Put(",\"life\":");
+		J.Hex(R.Life);
+		J.Put("},\n\"frame\":{");
+		J.Field("people", Frame.People);
+		J.Put(",");
+		J.Field("played", Frame.Played);
+		J.Put(",");
+		J.Field("regions", FrameStats.Regions);
+		J.Put(",\"digest\":");
+		J.Hex(FrameStats.Digest);
+		J.Put("},\n\"ground\":{");
+		J.Field("tiles", GroundStats.Tiles);
+		J.Put(",");
+		J.Field("land", GroundStats.Land);
+		J.Put(",\"digest\":");
+		J.Hex(GroundStats.Digest);
+		J.Put("},\n\"network\":{");
+		J.Field("routes", NetStats_.Routes);
+		J.Put(",");
+		J.Field("open", NetStats_.Open);
+		J.Put(",\"digest\":");
+		J.Hex(NetStats_.Digest);
+		J.Put("}\n}\n");
+
+		std::FILE* File = std::fopen(Opt.Out.c_str(), "wb");
+		if (File == nullptr)
+		{
+			std::fprintf(stderr, "AELVOR: cannot write %s\n", Opt.Out.c_str());
+			return 1;
+		}
+		const usize Written = std::fwrite(J.Text.data(), 1, J.Text.size(), File);
+		const bool Closed = std::fclose(File) == 0;
+		if (Written != J.Text.size() || !Closed)
+		{
+			std::fprintf(stderr, "AELVOR: %s is incomplete (%zu of %zu bytes)\n", Opt.Out.c_str(), Written,
+						 J.Text.size());
+			return 1;
+		}
+		VAELEN_LOG_INFO(LogAtlas,
+						"AELVOR %ux%u, seed 0x%llx: %s - %u answered, %u wrong, %u day(s), %u taking(s), %u left, "
+						"refused %u; state %016llx, log %016llx, life %016llx; frame %016llx, ground %016llx; "
+						"%u bytes to %s in %.2f s",
+						RO.Size, RO.Size, static_cast<unsigned long long>(RO.Seed),
+						Opt.Replay.empty() ? "the empty play" : Opt.Replay.c_str(), R.Answered, R.Wrong, R.Days,
+						R.Takings, R.Left, R.Refused, static_cast<unsigned long long>(R.State),
+						static_cast<unsigned long long>(R.Log), static_cast<unsigned long long>(R.Life),
+						static_cast<unsigned long long>(FrameStats.Digest),
+						static_cast<unsigned long long>(GroundStats.Digest), static_cast<uint32>(J.Text.size()),
+						Opt.Out.c_str(), Seconds);
+		return (R.Refused != 0 || R.Wrong != 0) ? 1 : 0;
+	}
+
+	int RunAtlas(int Argc, char** Argv)
 	{
 		Options Opt;
 		if (!ParseOptions(Argc, Argv, Opt))
 		{
 			Usage();
 			return 2;
+		}
+		if (!Opt.Replay.empty() || Opt.Empty)
+		{
+			return RunReplay(Opt);
 		}
 
 		const auto Started = std::chrono::steady_clock::now();

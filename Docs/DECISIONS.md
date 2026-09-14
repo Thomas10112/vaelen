@@ -9313,7 +9313,15 @@ compiler.
 
 ## ADR-0138 — The day turn is the one host input that is not a command, and it is recorded
 
-**Status:** Proposed — applied by Phase 14 tasks 14.03 and 14.08.
+**Status:** **APPLIED 2026-09-14, the kernel half** (task 14.03): `Run::Door::Day()`
+records `DayTurned{Now()}` and turns the day, `Replay()` is bounded by the
+records and returns `Days` beside `Answered`/`Wrong`, `Issued` is stamped by
+the world's clock whatever the caller wrote. The truncated-stream test
+(`Run.Door`: a year plus five empty days replays to the same state digest,
+the same stream minus its last `DayTurned` does not) is the evidence that the
+record is load-bearing. The host half - `VaelenGame`, the subsystem, the
+`-game -nullrhi` invocation and its named failure line - is 14.08's and is
+still Proposed.
 **Date:** 2026-09-14
 **Phase:** 14 — UI, tasks 14.03, 14.08
 

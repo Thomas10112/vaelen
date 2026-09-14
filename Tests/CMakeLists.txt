@@ -12,6 +12,7 @@ add_subdirectory(Colony)
 add_subdirectory(Player)
 add_subdirectory(Gameplay)
 add_subdirectory(View)
+add_subdirectory(Run)
 
 # Kernel purity: no engine headers, exceptions, RTTI or non-deterministic
 # randomness inside engine-agnostic modules. Python 3 is a hard requirement:
@@ -23,14 +24,15 @@ if(Python3_Interpreter_FOUND)
   # The checker's own regression suite: proves every rule still fires.
   add_test(NAME Kernel.PuritySelfTest
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_kernel_purity.py --self-test)
-  # The same world is wired in three places - the headless atlas, the game
-  # module's actor and the presentation actor - and ADR-0135 is what happened
-  # when they drifted: the engine drew a world in which nobody was ever in
-  # bondage, and nothing said so for as long as nobody cross-checked.
+  # The same world is wired in four places - the headless atlas, the game
+  # module's actor, the presentation actor and, since 14.03, Run::Aelvor, the
+  # wiring a host is meant to use - and ADR-0135 is what happened when they
+  # drifted: the engine drew a world in which nobody was ever in bondage, and
+  # nothing said so for as long as nobody cross-checked.
   #
   # A CTest entry rather than a CI-only step, so that it runs on every leg and
   # on every developer's machine, like the purity check it sits beside. It reads
-  # three source files and needs no compiler of its own.
+  # four source files and needs no compiler of its own.
   add_test(NAME Kernel.WorldWiring
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_world_wiring.py)
   set_tests_properties(Kernel.Purity Kernel.PuritySelfTest Kernel.WorldWiring PROPERTIES TIMEOUT 120)
@@ -76,6 +78,13 @@ if(Python3_Interpreter_FOUND)
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_atlas_output.py ${VAELEN_ATLAS_128}
             --expect frame=0xabc5a5767c6cf9dd ground=0x8f7f4948f49b6e86)
   set_tests_properties(Atlas.Frozen128 PROPERTIES FIXTURES_REQUIRED Atlas128 TIMEOUT 300)
+
+  # 14.03: the empty play - the Play wiring with nobody taken up and no
+  # stream, written as a replay document. Running it is the test; what the
+  # document says is read by 14.10's checker.
+  add_test(NAME Atlas.Empty
+    COMMAND VaelenAtlas --size 48 --prehistory 30 --years 10 --empty --out ${CMAKE_CURRENT_BINARY_DIR}/atlas-empty.json)
+  set_tests_properties(Atlas.Empty PROPERTIES TIMEOUT 900)
 
   # The checker's own regression suite: proves every rule still fires.
   add_test(NAME Atlas.OutputSelfTest

@@ -14,7 +14,7 @@
 #   purity         no engine header inside a kernel module
 #   shim self-test 7 mutations the engine-module parse must catch
 #   parse          the engine modules, against Tools/EngineShim
-#   wiring         the three wirings of AELVOR agree
+#   wiring         the four wirings of AELVOR agree
 #
 # Any failure stops the script and exits non-zero. No "warnings".
 set -euo pipefail

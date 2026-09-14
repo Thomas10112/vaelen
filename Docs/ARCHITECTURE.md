@@ -137,6 +137,7 @@ yet. Later kernel modules follow the same pattern with their own `VAELEN_<MODULE
 | `VaelenGameplay` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 12 | SIMULATION (what a person nobody plays does, and what the world BELIEVES: opinions, hearsay, documents, maps, and a name that travels the routes of 06.04) | UBT: `Core`, `VaelenCore`, `VaelenSim`, `VaelenPopulation`, `VaelenSociety`, `VaelenEconomy`, `VaelenPolitics`, `VaelenMilitary`, `VaelenInfrastructure`, `VaelenColony`, `VaelenPlayer`. CMake: `Vaelen::Player` and below. | PROTOTYPE headless (12.01-12.08, phase closed); UNVERIFIED under UBT |
 | `VaelenPlayer` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 10 | SIMULATION (the player as one simulated person, and their intent as commands) | UBT: `Core`, `VaelenCore`, `VaelenSim`, `VaelenPopulation`, `VaelenSociety`, `VaelenEconomy`, `VaelenPolitics`, `VaelenMilitary`, `VaelenInfrastructure`. CMake: `Vaelen::Infrastructure` and below. | VALIDATED headless (CI run 108: nine jobs green, Windows MSVC and macOS AppleClang included); UNVERIFIED under UBT |
 | `VaelenView` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 13 | The boundary between WORLD STATE and PRESENTATION: what a renderer needs to be told, taken once per frame and never written back. A view holds no pointer, handle or component type, so a renderer cannot reach the simulation even by accident (ADR-0104). Since 14.02 the six view headers (`Frame`, `Land`, `Net`, `Folk`, `Delta`, `Eye`) are leaves that include only Core and `ViewApi.h`; `Take.h` - `ViewSources` and every `Take*(const World&, ...)` - is the one header of the module that names the World, and the one a UI may never include (ADR-0137; CTest `View.Leaf` is the probe). | UBT: `Core`, `VaelenCore`, `VaelenSim`, `VaelenPopulation`, `VaelenSociety`, `VaelenEconomy`, `VaelenPolitics`, `VaelenMilitary`, `VaelenInfrastructure`, `VaelenColony`, `VaelenPlayer`, `VaelenGameplay`. CMake: `Vaelen::Gameplay` and below. | PROTOTYPE headless (13.01-13.05, 13.07a, 13.08a, 13.08b; 14.02 leaf split); VALIDATED under UBT since 13.06 |
+| `VaelenRun` | Kernel (UBT Runtime module, `PreDefault`; CMake static library), Phase 14 | GAMEPLAY's kernel half: one wiring of a played AELVOR (`Run::Aelvor` - the Atlas wiring verbatim behind `Options{Colony, Play, Lively}` that add and never reorder, ADR-0135), the door its host's inputs come through (`Run::Door::Mean` and `Day`, both recorded in the stream of ADR-0136), and `Replay` of a stream into a fresh Run, bounded by the records (ADR-0138). The module a host uses instead of copying a constructor. | UBT: `Core`, `VaelenCore` through `VaelenView`. CMake: `Vaelen::View` and below. | PROTOTYPE headless (14.03); UNVERIFIED under UBT until 14.08's build |
 | `Vaelen` | Unreal primary game module (`IMPLEMENT_PRIMARY_GAME_MODULE`, Runtime, `Default`) | Engine bridge (PRESENTATION side) | `Core`, `CoreUObject`, `Engine`, `InputCore`, `VaelenCore` | VALIDATED (UE 5.6, 2026-09-07): built and started in the editor |
 
 `Vaelen` installs a kernel log sink (`FVaelenLogSink`, routes `Vaelen::LogRecord` to
@@ -164,6 +165,7 @@ in `ExtraModuleNames`.
 | 12 GAMEPLAY | `VaelenGameplay` | Kernel | Exists: the module, and a person nobody is playing acting through the very verbs 10.05 hands the player, restricted to the ones that only move or say (12.01); an opinion between any two people plus the one thing no layer had - something HEARD rather than suffered (12.02); documents that carry knowledge between people, outlive them, are copied, are lost, and are wrong when their writer was (12.03); maps as the one document the world can check against 02.06, and a reader who names a forged road exactly as readily as a real one (12.04); and a name held by a PLACE rather than by eight people, travelling the routes of 06.04, thinner at every crossing, built on deeds counted over a whole life rather than on the average of eight recent opinions (12.05); and the first cost a reputation has ever carried - the worst-named people a place still speaks of bound to it through 05.04, the best-named among the bound let go, and Take restored to the verbs an unplayed person may use so that anybody can earn a bad name at all (12.06); and a chronicle of what was BELIEVED - a name remembering the telling that brought it, so a bondage walks back through History::CauseChain to what its place was told rather than to what was true (12.07); and the phase gate - a century at 256 of a colony whose people live, 14400 played intents over two lives, 327267 acts, 96 names in 12 places and 21 condemnations, replayed to the same seven digests (12.08). |
 | 10 PLAYER, 11 MINING COLONY, 12 GAMEPLAY | `VaelenGame` | Unreal | Player, input, gameplay commands; the mining colony start is content in the domain modules plus `VaelenGame`, not a separate module. |
 | 13 PRESENTATION | `VaelenPresentation` | Unreal | Rendering / audio / animation of world state, read-only. |
+| 14 UI | `VaelenRun` | Kernel | Exists since 14.03: `Run::Aelvor`, `Run::Door`, `Run::Replay` - the played world a host holds, and the proof that a life is a function of what came through the door. |
 | 14 UI | `VaelenUI` | Unreal | UI, read-only view plus command submission through `VaelenGame`. |
 | 15 STREAMING & LOD | no dedicated module listed | - | Simulation LOD belongs to `VaelenSim`; engine streaming to `VaelenPresentation` / `VaelenGame`. To be decided in Phase 15. |
 | 16 SAVE / PERSISTENCE | `VaelenPersistence` | Kernel | Save format, versioning (`VAELEN_SAVE_FORMAT_VERSION`), migration. |
@@ -193,6 +195,7 @@ flowchart BT
         PlayerMod["VaelenPlayer (Phase 10)"]
         GameplayMod["VaelenGameplay (Phase 12)"]
         ViewMod["VaelenView (Phase 13)"]
+        RunMod["VaelenRun (Phase 14)"]
         Persistence["VaelenPersistence (PLANNED)"]
         DevTools["VaelenDevTools (PLANNED)"]
         Modding["VaelenModding (PLANNED)"]
@@ -220,6 +223,7 @@ flowchart BT
     PlayerMod --> ColonyMod
     GameplayMod --> PlayerMod
     ViewMod --> GameplayMod
+    RunMod --> ViewMod
     Persistence --> Military
     Persistence --> Infrastructure
     DevTools --> Persistence
@@ -298,6 +302,7 @@ military, 50-51 knowledge (Phase 12). Values are part of the save format: append
     VaelenPlayer/                 KERNEL MODULE (Phase 10): Public/Vaelen/Player/*.h, Private/*.cpp, VaelenPlayer.Build.cs, CMakeLists.txt
     VaelenGameplay/               KERNEL MODULE (Phase 12): Public/Vaelen/Gameplay/*.h, Private/*.cpp, VaelenGameplay.Build.cs, CMakeLists.txt
     VaelenView/                   KERNEL MODULE (Phase 13): Public/Vaelen/View/*.h (six leaves + Take.h, 14.02), Private/*.cpp, VaelenView.Build.cs, CMakeLists.txt
+    VaelenRun/                    KERNEL MODULE (Phase 14): Public/Vaelen/Run/{RunApi,Aelvor,Door}.h, Private/{Aelvor,Door}.cpp, VaelenRun.Build.cs, CMakeLists.txt
       Public/Vaelen/Core/         CoreTypes.h Version.h Assert.h Log.h Hash.h Random.h Ids.h
       Private/                    Assert.cpp Log.cpp Random.cpp Ids.cpp Version.cpp
                                   VaelenCoreModule.cpp (Unreal-facing, UBT only)

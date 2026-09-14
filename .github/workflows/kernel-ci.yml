@@ -94,6 +94,14 @@ jobs:
       # hour: a wiring that has drifted should be known before the hour starts.
       - name: World wiring
         run: python3 Tools/check_world_wiring.py
+      - name: Kernel modules
+        # Thirteen kernel modules since 14.03 (VaelenRun). The count is what the
+        # purity checker enumerates from Tools/kernel_modules.txt, so a module
+        # missing from that list, or listed with no directory on disk, shows
+        # here in seconds rather than on a build leg an hour later.
+        run: |
+          python3 Tools/check_kernel_purity.py --root . --verbose | tee purity.log | tail -1
+          test "$(grep -c '^\[purity\] module ' purity.log)" = 13
 
   windows:
     name: Windows (MSVC)
