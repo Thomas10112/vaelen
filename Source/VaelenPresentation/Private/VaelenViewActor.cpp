@@ -223,8 +223,10 @@ namespace
 	{
 		UHierarchicalInstancedStaticMeshComponent* C =
 			Owner->CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(Name);
-		C->SetupAttachment(Under);
+		// Mobility BEFORE attachment: the engine checks the pair when the attach
+		// resolves, and the order this is written in is the order it reads.
 		C->SetMobility(EComponentMobility::Static);
+		C->SetupAttachment(Under);
 		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		C->SetCastShadow(false);
 		return C;
@@ -235,6 +237,25 @@ AVaelenViewActor::AVaelenViewActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	Plate = CreateDefaultSubobject<USceneComponent>(TEXT("Plate"));
+	// STATIC, and the four layers below would not attach to it otherwise.
+	//
+	// A USceneComponent is Movable by default, and Unreal refuses to attach a
+	// Static child to a Movable parent - correctly, since a static child cannot
+	// follow a parent that moves. 13.09's log said so four times and the world
+	// still drew, which is what made it worth writing down:
+	//
+	//     AttachTo : 'Plate' is not static, cannot attach 'Ground' which is
+	//     static. Aborting.
+	//
+	// Unattached, the layers are placed in world space and AELVOR appears at
+	// the world origin no matter where the actor is. It looked right for as
+	// long as the actor happened to be at the origin too, and the first person
+	// to DRAG this actor would have watched the world stay behind.
+	//
+	// Static rather than making the layers Movable: nothing here ever moves,
+	// and static instanced meshes are what lets 65536 slabs draw at 100 fps on
+	// an entry-level card.
+	Plate->SetMobility(EComponentMobility::Static);
 	RootComponent = Plate;
 	Ground = MakeLayer(this, Plate, TEXT("Ground"));
 	Towns = MakeLayer(this, Plate, TEXT("Towns"));

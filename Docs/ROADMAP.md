@@ -3142,7 +3142,7 @@ head.
 | 13.06 | The first UBT build of all eleven kernel modules. This is the task the UNVERIFIED marks have been waiting for since Phase 00 | it builds, or it does not | **DONE 2026-09-10 - it builds** |
 | 13.07c | `VaelenPresentation`: the UE module, and the world drawn as regions **from that view alone** inside the engine. 13.07b proved the view is sufficient to draw from; this is the same claim in Unreal, and the first place ADR-0113's C4251 decision can be shown to do anything | a screenshot | **COMPILES 2026-09-10 (UE 5.6.1, MSVC 14.44, 14/14 DLLs) — NOT YET SEEN** |
 | 13.08b | A person, a colony and a road drawn from the view of 13.01 **inside the engine** | a screenshot | **DONE 2026-09-14 — 1467 people drawn on 117 tiles, seen** |
-| 13.09 | Phase 13 gate: the editor open on AELVOR at 256, a century running, and the frame rate written down | measured on the machine that has the engine |
+| 13.09 | Phase 13 gate: the editor open on AELVOR at 256, a century running, and the frame rate written down | measured on the machine that has the engine | **PASSED 2026-09-14 — 100 fps / 11 ms on a T400 4GB** |
 
 ### 13.06 The first UBT build - VALIDATED (UE 5.6, Win64 Development Editor)
 
@@ -3680,3 +3680,72 @@ that did not exist - the debug tree simply predated ADR-0131 and ADR-0132.
 
 Twice now in this project a `find` for a binary has measured the wrong tree.
 **Name the build directory, never search for it.**
+
+### 13.09 PASSED - the phase gate, and what a gate is actually for
+
+**The number.** AELVOR at 256, a century run, drawn in the editor:
+
+```
+100 fps, ~11 ms per frame
+NVIDIA T400 4GB, driver 472.47, D3D11, 1920x1080 editor
+65536 ground slabs + 6996 people + 42 towns + 75 roads = 72649 instances
+```
+
+A T400 is an entry-level workstation card, not a gaming GPU, on a driver four
+years old that the engine itself warns about. 11 ms with 72649 instanced meshes
+is not a tight budget - it is a comfortable one on hardware chosen badly.
+
+**Everything the engine printed, against the headless kernel at the same seed
+and settings:**
+
+```
+                     engine          Tools/Atlas --size 256 --years 100
+year                 400             400
+land tiles           25842           25842
+regions (peopled)    126 (46)        126 (46)
+living               109394          109394
+roads open / total   75 / 163        75 of 163
+```
+
+Every figure. The engine and the headless kernel simulate the same AELVOR, and
+Phase 13's whole claim - that a renderer can be handed numbers and nothing else
+- is now measured on both sides of the engine boundary at the phase's own scale.
+
+```
+AELVOR people: 19925 in the view, 6996 living in 1 regions, oldest 92,
+               797040 bytes, digest 5a4466c1e1fb91aa
+               - drawn 6996 on 639 tiles, 0 unplaced
+```
+
+`797040 = 19925 x 40 + 40` exactly, as at 128. `sizeof(PersonView) == 40` holds
+under MSVC at both scales. 6996 people on 639 distinct tiles, `0 unplaced`.
+
+**AND THE GATE FOUND A DEFECT, which is the point of a gate.**
+
+The log carried this four times, once per layer, and the world drew anyway:
+
+```
+AttachTo : 'Plate' is not static, cannot attach 'Ground' which is static.
+Aborting.
+```
+
+`USceneComponent` is Movable by default; the four instanced-mesh layers are
+Static; Unreal refuses to attach a Static child to a Movable parent. So the
+ground, the towns, the roads and the people were **never attached to the
+actor's root**. They are placed in world space, and AELVOR appears at the world
+origin regardless of where the actor is.
+
+It looked correct for exactly as long as the actor happened to sit at the origin
+too. The first person to DRAG a "VAELEN View" actor across a level would have
+watched the world stay behind, and no test in this project could have found
+that - it is a message in a log that only appears when an editor is open, on a
+machine with a GPU, with somebody reading.
+
+Fixed by making `Plate` Static, and by setting mobility before attachment rather
+than after, since the engine checks the pair when the attach resolves.
+
+**What the gate is for, then.** Not the frame rate. The frame rate was never in
+doubt. A gate is for the things that only appear when the whole thing runs at
+full size in front of a person - and this one produced a defect that was
+invisible to 156 headless tests, to nine CI jobs, to a compiler, and to a
+screenshot that looked right.
