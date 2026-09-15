@@ -1,9 +1,10 @@
 # VAELEN — Build status
 
-STATUS: VALIDATED for the state it reports, checked on 2026-09-07 against the sources on
-branch `claude/vaelen-master-prompt-aw7zqj` after the Phase 00 review pass. This is the
-living status document: it is refreshed at the end of every task (section "How to
-refresh").
+STATUS: VALIDATED for the state it reports, checked on 2026-09-15 against the sources on
+branch `claude/vaelen-master-prompt-aw7zqj` at `28d0864`. This is the living status
+document: it is refreshed at the end of every task (section "How to refresh"). The
+per-phase breakdowns below are the record of each phase as it closed and are not
+rewritten afterwards; this block is the only part that tracks today.
 
 ## BUILD STATUS
 
@@ -12,53 +13,61 @@ refresh").
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 10 — PLAYER — CLOSED
-TASK        : 10.08 — THE PHASE 10 GATE, AND THE PHASE CLOSED
-STATUS      : VALIDATED (headless) / UNVERIFIED (engine, until the next UE 5.6 build)
+PHASE       : 14 — UI — IN PROGRESS
+TASK        : 14.10 — THE PHASE GATE (headless half done; engine half waiting)
+STATUS      : VALIDATED (headless, 14.01-14.07 and 14.10's headless half)
+              UNVERIFIED (engine: 14.08 VaelenGame and 14.09 VaelenUI, never built by UBT)
 
 PROGRESS
-██████████████████████████ 100%
+████████████████████████░░ 95%
 
 CURRENTLY
-→ CI run 108 on 494aa30: all nine jobs green - six Linux presets, clang-format 18, Windows MSVC and
-  macOS AppleClang. That is exit criterion 1, and the first complete green matrix Phase 10 has had.
+→ The first screen exists as text the kernel composes and the engine only copies. Nine view
+  leaves, a 4064-byte page whose LAST row is its own digest, one module that holds the world
+  (VaelenGame) and one that draws it and reads eight keys (VaelenUI), with a fence that reads
+  every #include of the interface and refuses thirteen words the UI may not write.
 
-  The phase claimed that a played life is a life of this world and not a second simulation beside
-  it, and the gate is the evidence: forty years at 256 with every system of Phases 04 to 10 running,
-  played across three lives out of 14400 intents and 3 takings, every invariant of every phase
-  checked each decade - then the same seed, the same takings and the same intents into a fresh
-  world, giving the same state digest, the same event log and the same life word for word.
-
-  What the phase cost in corrections is the honest measure of it. The gate took six runs and five
-  found something. Then the first CI run allowed to finish found that my fix for one of those had
-  moved the frozen digests of six CLOSED phases, because a component type registered inside a lower
-  module's Declare joins the registry of every world that declares it. Then the next run found that
-  the same fix had quietly broken 10.01's promise that carrying the mark changes nothing. Both were
-  mine, and both were invisible to a local loop that excludes the gates.
+  14.10 turned up the defect of the phase, and it was in the GAME and not in the test. The game
+  offered eight verbs and could take seven: only one region of a played AELVOR was ever detailed
+  (the busiest), while the LOD rules allow four, so the list of neighbours a Move may reach was
+  empty on every day of every played world. Measured at 256 over thirty days: NearCount 0, thirty
+  out of thirty. A month played at the keyboard meets the same wall. ADR-0139 is the fix - after a
+  taking, the world asks for detail on the neighbours of the played person's region - and it moved
+  exactly one frozen digest, the played page.
 
 COMPLETED
-✓ Phases 00-09 closed · Phase 10 PLAYER closed
-✓ 10.01 the mark · 10.02 the enslaved start · 10.03 the grain · 10.04 intent as commands
-✓ 10.05 the seven verbs · 10.06 what the people make of them · 10.07 the player in the chronicle
-✓ 10.08 the gate — frozen half=1346aac980b8c6b7 end=d51dc2a7d4a468e8 log=4a86e3f3bc62df03
-  life=7105a2243db1481e
-✓ ADR-0082 to ADR-0089 · Phase 11 breakdown (ROADMAP section 15)
+✓ Phases 00-13 closed · Phase 13 gate PASSED 2026-09-14, 256 at 100 fps on a T400, the engine and
+  the headless kernel agreeing on every figure
+✓ 14.01 intents as a leaf · 14.02 the view headers as leaves + Take.h · 14.03 VaelenRun (Aelvor,
+  Door, Replay) · 14.04 LifeView · 14.05 ChronicleView, incremental · 14.06 the page + two frozen
+  digests · 14.07 the UI include fence
+✓ 14.08 VaelenGame and 14.09 VaelenUI WRITTEN, parsed against Tools/EngineShim and fenced - not
+  built
+✓ 14.10 headless half: Atlas --want-bound/--stand/--panel lines, a checked-in stream, CTest
+  Replay.Played pinning four digests
+✓ ADR-0136 to ADR-0139
 
 NEXT
-→ Phase 11 — MINING COLONY. The starting place: one huge colony simulated at full detail while the
-  rest of AELVOR keeps its yearly grain, on the rule that it is the same systems at a different
-  setting. 11.01 is the LOD policy that holds it detailed, and what that costs per tick.
+→ The owner's UE 5.6 build. Vaelen.Play 256 100 in the 13.09 level, thirty days through the keys,
+  F9 - then the two LogVaelenPlay lines and the eight LogVaelenUI lines. That is clauses (a), (c)
+  and (d) of the gate and the last thing between Phase 14 and closed.
 
 TESTS
-✓ CI run 108, all nine jobs: six Linux presets, clang-format, Windows MSVC 19.44, macOS 15 AppleClang
-✓ VaelenPlayerTests 38 run, 38 passed · VaelenPopulationTests 39 run, 39 passed
-✓ linux-clang-debug locally: 119/119 CTest entries, 0 warnings, every gate of ten phases
-✓ Every closed phase's gate passes with the digest it was closed on
-✓ The gate's frozen digests reproduce across runs; its log and life digests never moved through the
-  whole repair, which is what says the fixes were to bookkeeping and not to the world
+✓ 175/175 CTest entries on linux-gcc-release, every gate of fourteen phases
+✓ CI: 10 jobs - six Linux presets, clang-format 18, Windows MSVC, macOS AppleClang, and the engine
+  modules parse (clang 18) that builds nothing and reads everything
+✓ verify_fast: purity 216 files 0 violations · shim self-test 13 mutations · 13 translation units
+  parsed · 4 wirings of AELVOR agree · UI fence 8 files, 16 mutations
+✓ Frozen and reproducing: the ADR-0135 pair (frame abc5a5767c6cf9dd, ground 8f7f4948f49b6e86), the
+  view gate 115c2ff70a5327c4, the page empty 54787451e65766c1 and played 703c838ca533a095, and the
+  replay's four (state cb69b72505aaa97d, log 34950d9a09dff0c4, life 51e2309a61765ff0, panel
+  f4014af16e5e60f0)
 
 BLOCKERS
-∅ (engine-side files of the module stay UNVERIFIED until the next UE 5.6 build)
+! 14.08 and 14.09 have never been compiled by UnrealBuildTool. The adversarial review of 2026-09-15
+  found a generated destructor that would have stopped that build on a file nobody in this
+  repository wrote (UHT emits it for a UCLASS holding a TUniquePtr to an incomplete type); it is
+  fixed, and it is the kind of thing no CI here can see.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ```
@@ -276,6 +285,76 @@ that density is 11.05's question.
 | 10.06 | What the people around them make of them: opinions read out of the acts in the log, weighed by the standing of whoever holds them | PROTOTYPE: Regard 6 tests |
 | 10.07 | The player in the chronicle: a life as records, every event with a sentence, and the why walked back through every layer below | PROTOTYPE: LifeHistory 6 tests |
 | 10.08 | Phase 10 gate: forty years at 256 played across three lives out of a recorded stream, every invariant each decade, and the stream replayed to the same life | PROTOTYPE: PlayerGate 1 test |
+
+## Phase 11 task breakdown (canonical numbering: `Docs/ROADMAP.md` section 15)
+
+| Task | Content | Status |
+|---|---|---|
+| 11.01 | A region the world keeps detailed by policy rather than by crowding, and what that costs | VALIDATED (headless) |
+| 11.02 | Its people live at the day while the world keeps the year; a year of days sums to the year exactly | VALIDATED (headless) |
+| 11.03 | Ore lifted from a seam that runs out, credited through `AddStock` and nothing else | VALIDATED (headless) |
+| 11.04 | Founded bound, held by the colony: bondage cannot GROW into a colony and no elite could carry it | VALIDATED (headless) |
+| 11.05 | The bond does not shorten a life; the ground does | VALIDATED (headless) |
+| 11.06 | A subsistence world cannot feed a colony, so a colony feeds itself | VALIDATED (headless) |
+| 11.07 | What the world does with no event behind it cannot be remembered | VALIDATED (headless) |
+| 11.08 | The gate: a century of the colony at full detail with the world at the year | VALIDATED (headless) |
+
+**Phase 11 CLOSED** — CI run 113 green on all nine jobs; engine side UNVERIFIED under UBT.
+
+## Phase 12 task breakdown (canonical numbering: `Docs/ROADMAP.md` section 16)
+
+| Task | Content | Status |
+|---|---|---|
+| 12.01 | `VaelenGameplay`; a person nobody plays acting through the verbs of 10.05, restricted to move and say | VALIDATED (headless) |
+| 12.02 | An opinion between any two people, and the thing no layer had: something HEARD rather than suffered | VALIDATED (headless) |
+| 12.03 | Documents that outlive their writer, are copied, are lost, and are wrong when the writer was | VALIDATED (headless) |
+| 12.04 | Maps, the one document the world can check — and a reader who names a forged road as readily as a real one | VALIDATED (headless) |
+| 12.05 | A name held by a PLACE, travelling the trade routes and thinner at every crossing | VALIDATED (headless) |
+| 12.06 | The first cost a reputation carries: the worst-named bound, the best-named among the bound let go | VALIDATED (headless) |
+| 12.07 | A chronicle of what was BELIEVED, so a bondage walks back to what a place was TOLD | VALIDATED (headless) |
+| 12.08 | The gate: a century at 256, 14 400 intents over two lives, 327 267 acts, replayed to seven digests | VALIDATED (headless) |
+
+**Phase 12 CLOSED.**
+
+## Phase 13 task breakdown (canonical numbering: `Docs/ROADMAP.md` section 17)
+
+| Task | Content | Status |
+|---|---|---|
+| 13.01 | A read-only VIEW of the world for a frame, taken once per frame, never written to | VALIDATED (headless) |
+| 13.02 | What changed since the last frame: the delta that rebuilds the new frame byte for byte | VALIDATED (headless) |
+| 13.03 | Level of detail for the EYE, which is not the simulation's | VALIDATED (headless) |
+| 13.04 | The view under a snapshot and a reload, because a frame taken across a save must not tear | VALIDATED (headless) |
+| 13.05 | Kernel gate: a century at 256, a year watched frame by frame, the screen built of deltas alone | VALIDATED (headless) |
+| 13.06 | The first UBT build of all eleven kernel modules — the task the UNVERIFIED marks waited for since Phase 00 | VALIDATED (engine) |
+| 13.07a-c | The ground in the view, the world drawn from it, and `VaelenPresentation` | VALIDATED |
+| 13.08a-f | The network, the world in time, what happened, why, and the page checked | VALIDATED |
+| 13.09 | The gate: the editor open on AELVOR at 256, a century running, the frame rate written down | VALIDATED (engine) |
+
+**Phase 13 CLOSED 2026-09-14** — gate PASSED at 100 fps on a T400; the engine and the
+headless kernel agree on every figure at 256. This is the phase that turned the oldest
+UNVERIFIED marks in the repository.
+
+## Phase 14 task breakdown (canonical numbering: `Docs/ROADMAP.md` section 20)
+
+| Task | Content | Status |
+|---|---|---|
+| 14.01 | The command surface as a leaf (`Player/Intent.h`), and the input stream | VALIDATED (headless) |
+| 14.02 | The view headers as leaves, `Take.h` the one header naming the World | VALIDATED (headless) |
+| 14.03 | `VaelenRun`, the thirteenth kernel module: `Aelvor`, `Door`, `Replay` | VALIDATED (headless) |
+| 14.04 | `LifeView` — the played life in one view | VALIDATED (headless) |
+| 14.05 | `ChronicleView` — the last lines about the played person, taken incrementally | VALIDATED (headless) |
+| 14.06 | The page (`View/Panel.h`), composed kernel-side, its last row its own digest | VALIDATED (headless) |
+| 14.07 | The UI include fence: the restricted parse, `check_ui_fence.py`, the shim | VALIDATED (the scripts) |
+| 14.08 | `VaelenGame` — the one place a world is held | **UNVERIFIED** (written, parsed, fenced; never built by UBT) |
+| 14.09 | `VaelenUI` — the HUD that copies the page, eight keys, no asset and no Blueprint | **UNVERIFIED** (same) |
+| 14.10 | The gate: a month played by hand at 256, replayed by no hand | **INCOMPLETE** — headless half VALIDATED (CTest `Replay.Played`); clauses (a), (c), (d) wait on the owner's build |
+
+Phase 14 against the exit criteria of `Docs/ROADMAP.md` section 2: (1) the CI matrix is
+green apart from what it cannot build; (2) determinism is the gate itself — a recorded
+month replays to four identical digests; (3) two files stay UNVERIFIED and say so;
+(4) unit, deterministic, frozen-digest and replay categories present; (5) ADR-0136 to
+ADR-0139 cover the phase's decisions. Verdict: **Phase 14 NOT closed.** The one thing
+missing is the owner's UE 5.6 build.
 
 ## File status
 
@@ -623,13 +702,24 @@ Enterprise 10.0.26200, .NET 8.0.300 bundled with the engine.
   configuration other than Development: the `VAELEN_ASSERTS_ENABLED=0` and
   `VAELEN_LOG_COMPILED_MIN_LEVEL=2` branches of the `Build.cs` files stay unexercised
   under UBT. `Docs/ARCHITECTURE.md` section 8.3 keeps the list.
-- Engine-backed CI: none. The first engine build was run by hand on the development PC,
-  once; nothing re-runs it.
+- Engine-backed CI: none, still. Every engine build this project has had was run by hand
+  on the development PC; nothing re-runs them, and no automation can (ADR-0134). The
+  `engine modules parse (clang 18)` CI job is NOT that: it parses the Unreal-facing
+  modules against `Tools/EngineShim`, a stand-in, and proves the SHAPE of a program and
+  nothing about the engine. Its own docstring says so.
+- `Source/VaelenGame` (14.08) and `Source/VaelenUI` (14.09): written, parsed against the
+  shim and fenced by `Tools/check_ui_fence.py`, and **never compiled by UnrealBuildTool**.
+  The 2026-09-15 adversarial review found a defect exactly there - UnrealHeaderTool emits
+  a destructor for a `UCLASS` that declares none, into a translation unit that never sees
+  the pimpl's definition, so the build stops on a file nobody in this repository wrote.
+  Fixed, and unfindable by anything here: there is no UnrealHeaderTool in the shim, so
+  the translation unit that breaks does not exist to be parsed.
 - The headless suites against the four kernel headers edited for that build
   (`ComponentStore.h`, `Population.h`, `Religion.h`, `Regions.h`): the development PC has
   no CMake, no Ninja and no system Python 3, so only the purity checker was re-run there
-  (102 files, 0 violations, through the Python bundled with UE). The GitHub matrix is
-  what confirms the 240+ tests and the frozen digests.
+  (102 files at the time, 0 violations, through the Python bundled with UE; the tree is
+  216 files today). The GitHub matrix is what confirms the tests and the frozen digests -
+  175 CTest entries as of 2026-09-15.
 - clang-cl on Windows: only Microsoft cl (MSVC 19.44) was exercised by CI; the
   `/clang:-ffp-contract=off` branch is untested.
 - Long-duration and integration test categories: deferred to Phase 01 (ROADMAP 01.07,
@@ -637,8 +727,13 @@ Enterprise 10.0.26200, .NET 8.0.300 bundled with the engine.
 
 ## Discrepancies
 
-None known between code, comments and documents after the 00.05 review pass. Findings of
-that pass that were deliberately NOT applied: adding `FPSemantics` to `VaelenCore.Build.cs`
+None known between code, comments and documents as of 2026-09-15, after the adversarial
+reviews of 14.05, 14.06, 14.07-14.09 and 14.10. The four the 14.07-14.09 review found in
+the documents themselves - a regex count that contradicted its own list, and three stale
+claims in `ARCHITECTURE.md` about modules that now exist - were corrected rather than
+annotated.
+
+Findings of the 00.05 review pass that were deliberately NOT applied: adding `FPSemantics` to `VaelenCore.Build.cs`
 (property not confirmable without an engine; the in-source `fp contract(off)` pragmas
 protect the kernel instead), pinning GitHub Actions to commit SHAs (major tags kept),
 and the `IdKind` placeholders for Phases 02-12 (kept, now documented as provisional).
