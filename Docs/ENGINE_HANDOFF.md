@@ -134,14 +134,24 @@ This is the phase gate, and four of its five clauses are yours.
 1. Open the 13.09 level and run `Vaelen.Play 256 100`. It takes seconds, not a
    frame: it generates AELVOR, runs 300 years of pre-history and 100 of the
    world, and takes somebody up.
-2. Play **thirty days** through the keys: `W` work, `R` rest, `E` eat, `T` wait,
+2. **Press `Space` once before anything else - and count it as the first of
+   your thirty.** On the day somebody is taken up
+   the hours of that day are already spent, so the page offers no verb at all
+   (every row reads `- not today`) and `near:` is empty. One day turn fixes
+   both. This is measured, not guessed: in the checked-in stand-in stream the
+   taking is at tick 3456000 and the first command the page accepted is at
+   3456024. If you press `W` first and nothing happens, this is why, and the
+   build is fine.
+3. Play the remaining **twenty-nine days** through the keys, so that the log
+   says `30 days` and not 31: `W` work, `R` rest, `E` eat, `T` wait,
    `S` speak, `G` give, `K` take, `M` move; `Tab` changes what the next Speak,
    Give, Take or Move is aimed at; `Space` turns the day. Every verb at least
    once. Get one refusal to appear on screen, and one `M` to a neighbour the
-   page lists under `near:`.
-3. Read `stat fps` with the HUD up, between day steps - not during one.
-4. Take one screenshot whose LAST line is the page's own digest in hex.
-5. Press `F9`. It writes the input stream to `Saved/Vaelen/`.
+   page lists under `near:` - if `near:` is ever empty, that is a finding worth
+   reporting rather than a key to press harder.
+4. Read `stat fps` with the HUD up, between day steps - not during one.
+5. Take one screenshot whose LAST line is the page's own digest in hex.
+6. Press `F9`. It writes the input stream to `Saved/Vaelen/`.
 
 **What to send back**, and it is four things:
 

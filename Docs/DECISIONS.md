@@ -9485,6 +9485,31 @@ load-bearing: a second host written against `Player::BeginEnslaved` directly
 gets no neighbours detailed and a `Move` that cannot be taken, and would be
 right to call that a defect.
 
+### The limit, measured on the stand-in stream
+
+The detail is REQUESTED here and promoted by the LOD bridge at its own yearly
+tick, so a neighbour is not walkable the instant somebody is taken up. The
+stand-in stream shows exactly where the line falls: the taking is at tick
+3456000, the first day turn at 3456000, and the first commands - the Move among
+them - at 3456024. **On the day of the taking, `Near` is empty and the page
+offers no verb at all** (the hours of that day are already spent, so everything
+reads `- not today`); after one day turn, every verb including `Move` is
+offered.
+
+That is harmless here because `Aelvor::Begin` leaves the world exactly on a year
+boundary, so the first day turn crosses into a new year and the yearly systems
+run. It would NOT be harmless for a host that took somebody up in the middle of
+a simulated year: the request would wait until the next yearly tick, up to some
+360 days, and `Move` would be unofferable for all of them. No host does that
+today - `Run::Door::TakeUp` is reached from `Begin` and from a death inside
+`Day()`, both on tick boundaries the bridge is about to serve - and this is
+written down rather than fixed because making a promotion immediate would put a
+host's request ahead of the rules that weigh it (ADR-0090), which is the thing
+this ADR deliberately did not do.
+
+What it means for anybody playing: **turn one day before expecting a verb.**
+`Docs/ENGINE_HANDOFF.md` says so where the keys are listed.
+
 ### What was considered and refused
 
 - **Amend 14.10 to drop the Move.** Closes the phase over a verb the world can
