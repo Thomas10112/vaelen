@@ -4644,10 +4644,29 @@ turn deleted from the stream - fails; one digit changed in the header's seed,
 so the stream belongs to another world - fails; the stream truncated mid-month
 - fails. It passes on the real file and on nothing else tried.
 
-`replay: 256/100 + 30 days in 4.76 s (release)` on this machine; the debug
-multiple is what the CI legs report. `TIMEOUT 1800` and `COST 4000` as the row
-asks - 1800 being about 370x the release measurement, which is headroom of the
-kind `Tests/Politics/CMakeLists.txt` now has a rule about.
+**The measurement the row asks for, and the decision that hangs on it:**
+
+```
+replay: 256/100 + 30 days in 4.76 s (release), 25.21 s (debug)
+```
+
+Release is `linux-gcc-release` (4.36 s under `linux-clang-release`); debug is
+`linux-gcc-debug`, assertions on, which is the multiple nobody had measured when
+the row was written: **5.3x**, not the order of magnitude a debug build of a
+whole-world gate usually costs, because the 100 years of generation dominate and
+the thirty detailed days are cheap. The row said `Replay.Played` stays on
+`windows-msvc-debug` unless the debug figure exceeds 600 s; 25.21 s is two
+percent of that, so it stays, and clause (e) names **eight legs** as written. No
+change to `.github/workflows/kernel-ci.yml`.
+
+`TIMEOUT 1800` and `COST 4000` as the row asks - 1800 being 71x the debug
+measurement and 378x the release one, which is headroom of the kind
+`Tests/Politics/CMakeLists.txt` now has a rule about.
+
+The four digests agree across three local presets before CI is asked at all -
+`linux-gcc-release`, `linux-clang-release` and `linux-gcc-debug`, which is two
+compilers and both assertion settings. That is the cheap half of the eight-leg
+claim; Windows and macOS are the half only CI can answer.
 
 STATUS: 14.10 INCOMPLETE - the headless half is VALIDATED, clauses (a), (c) and
 (d) wait on the owner's UE build (14.08/14.09). Clause (b) is half provable

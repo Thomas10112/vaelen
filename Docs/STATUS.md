@@ -44,7 +44,8 @@ COMPLETED
 ✓ 14.08 VaelenGame and 14.09 VaelenUI WRITTEN, parsed against Tools/EngineShim and fenced - not
   built
 ✓ 14.10 headless half: Atlas --want-bound/--stand/--panel lines, a checked-in stream, CTest
-  Replay.Played pinning four digests
+  Replay.Played pinning four digests - replay: 256/100 + 30 days in 4.76 s (release), 25.21 s
+  (debug), so the entry stays on windows-msvc-debug and clause (e) names eight legs
 ✓ ADR-0136 to ADR-0139
 
 NEXT
