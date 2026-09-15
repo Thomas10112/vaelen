@@ -25,7 +25,21 @@ list(APPEND VAELEN_POLITICS_TEST_NAMES Politics.Registry Politics.Shuffled)
 set_tests_properties(${VAELEN_POLITICS_TEST_NAMES} PROPERTIES TIMEOUT 300)
 set_tests_properties(Politics.Shuffled PROPERTIES TIMEOUT 5400)
 # The Phase 07 gate runs 500 years of a whole world with two powers, twice.
-set_tests_properties(Politics.PoliticsGate PROPERTIES TIMEOUT 2400)
+#
+# 5400 and not the 2400 it carried until CI run 193, where it was the ONE test
+# that failed - Timeout 2400.50 s on windows-msvc-debug - while its own weight
+# class finished beside it on the same leg: Military.MilitaryGate 2106 s
+# (TIMEOUT 3600), Infrastructure.InfrastructureGate 2146 s (TIMEOUT 5400),
+# Gameplay.GameplayGate 1509 s (TIMEOUT 7200). Nothing had got slower; the
+# budget was simply the tightest in the suite. A gate that finishes at 88% of
+# its own timeout has not passed, it has been lucky, and a shared runner ends
+# that luck sooner or later.
+#
+# THE RULE THIS SETS, for every gate added after it: a gate's TIMEOUT is at
+# least TWICE its measured time on the slowest leg (windows-msvc-debug), which
+# is the leg that decides. Under that, the entry is not measuring the gate any
+# more, it is measuring how busy the runner was.
+set_tests_properties(Politics.PoliticsGate PROPERTIES TIMEOUT 5400)
 
 # ── Scheduling ───────────────────────────────────────────────────────────────
 # The wall clock of a CI leg is set by when its LONGEST test starts, not by how

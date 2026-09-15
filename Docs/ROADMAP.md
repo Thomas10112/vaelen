@@ -81,7 +81,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 11 | MINING COLONY | The starting place: a huge autonomous mining colony simulated by the same systems at full detail. | CLOSED (11.01-11.08 VALIDATED headless, CI run 113 green on all nine jobs; UNVERIFIED under UBT) |
 | 12 | GAMEPLAY | Interaction verbs, knowledge (documents, maps), reputation and consequences without main quest or canonical ending. | BROKEN DOWN (12.01-12.08, section 16) |
 | 13 | PRESENTATION | Unreal rendering, animation and audio of the world state, strictly read-only. | CLOSED (13.01-13.09; gate PASSED 2026-09-14 at 100 fps on a T400; engine and headless kernel agree on every figure at 256) |
-| 14 | UI | Interface and read-only views; command submission through the gameplay layer. | IN PROGRESS (14.01-14.09 written 2026-09-14, 14.08 and 14.09 awaiting the owner's UE build; 14.10 next; the breakdown is section 20) |
+| 14 | UI | Interface and read-only views; command submission through the gameplay layer. | IN PROGRESS (14.01-14.07 VALIDATED headless; 14.08 and 14.09 written 2026-09-14, awaiting the owner's UE build; 14.10 BLOCKED - clause (a)'s Move cannot be played by anybody, see the 14.10 section; the breakdown is section 20) |
 | 15 | STREAMING & LOD | Engine streaming coupled to simulation LOD 0-4: what is simulated at which detail away from the player. | PLANNED |
 | 16 | SAVE/PERSISTENCE | Save format, serialisation of the whole world state, checkpoints on disk, migrations keyed on the save-format version. | PLANNED |
 | 17 | DEBUG TOOLS | Inspectors, replay tooling, determinism diff, world statistics, headless console. | PLANNED |
@@ -4556,6 +4556,77 @@ that one, which is worth writing down next to the rest.
 STATUS: VALIDATED for the scripts. 14.08 and 14.09 stay UNVERIFIED: the
 destructor fix is the strongest reason yet to want the owner's build, and it
 is still the owner's build that decides.
+
+### 14.10 blocked - the verb the world can never take
+
+The headless half of the gate is written as far as it can go, and it stopped on
+something the row did not foresee. Written here rather than carried in a commit
+message, because it is a decision and not a defect to be quietly fixed.
+
+`Tools/Atlas` gained three things. **`--want-bound N`** is a real defect caught
+on the way: the engine host takes up whoever the world offers
+(`VaelenWorldSubsystem.cpp:106` sets `StartRules::WantBound = 0`) and Atlas
+replayed with the kernel's default of 1. The rules are the host's configuration
+and deliberately NOT in the stream (`Door.h:44-45`), so a replay must be told
+them; a replay given the wrong ones takes up a different person, counts every
+answer `Wrong` and diverges on all four digests. Clause (b) would have failed
+for a reason that had nothing to do with the stream.
+
+**`--replay --panel`** now prints, after the page, the replay's own verdict and
+14.08's two `LogVaelenPlay` lines. The format strings are
+`VaelenPlayCommands.cpp:158-186`'s byte for byte with only `TEXT()` dropped,
+and every argument comes from the same field of the same view, because clause
+(b) is exactly that those bytes match after the log prefix. `printf` and not
+`VAELEN_LOG_INFO`, which prefixes every line and truncates at 2048 bytes.
+
+**`--stand FILE`** writes a month played by nobody: thirty recorded day turns,
+every verb pressed through `View::Press` exactly as a key presses it in 14.09,
+and a `Speak` aimed at somebody who is not there so that the WORLD refuses one
+intent rather than the door. It checks the month against the row's shape before
+writing and refuses to write otherwise.
+
+**And it refuses.** Clause (a) wants "one Move to a `Near` neighbour" and
+"`move M` counted among the taken". Measured over thirty days at 256:
+`LifeView::NearCount` is 0 on every one of them. `Aelvor::Begin` requests detail
+for exactly one region, the busiest (`Aelvor.cpp:371-377`), while
+`LodRules::MaxDetailed` allows four - three slots nobody uses. `Life.Near` lists
+only neighbours that are adjacent AND detailed (`Life.cpp:177`), so it is always
+empty; the page never offers `Move` (`Panel.cpp:422`, `Slot.Offered == 0`) and
+the world would refuse it `TooFar` (`Doings.cpp:84-101`). This is not a property
+of the generator: a month played by hand in the editor meets the same wall, so
+clause (a) cannot be satisfied by anybody today.
+
+Three ways out, and the choice is the owner's because two of them move frozen
+digests:
+
+**(A) Detail the neighbours when somebody is taken up.** `Run::Door::TakeUp`
+requests detail for the neighbouring regions of the played person's region, up
+to `MaxDetailed`. The Move becomes playable at the keys and in the replay, and
+this is the only option that makes the verb usable at all - the game currently
+offers eight verbs and can take seven. Cost: the digests of any PLAYED world
+with somebody taken up move (`VAELEN_PANEL_FROZEN_PLAYED`, the assertions of
+`Run.Door`, `View.Life`, `View.Chronicle`), re-frozen with an ADR as ADR-0131
+was. Worlds with nobody taken up do not move - `Atlas.Frozen128` and the empty
+play are untouched. RECOMMENDED.
+
+**(B) Amend clause (a): drop the Move.** Seven verbs of eight close the phase,
+`move 0` is accepted, nothing is re-frozen. The phase closes over a verb the
+world can never take.
+
+**(C) Request the detail host-side only.** `VaelenWorldSubsystem::Begin` asks
+after `TakeUp`, `VaelenRun` untouched. No headless digest moves - and no
+headless stream can carry a Move either, so only the owner's keyboard month
+would have one and the headless replay would diverge from it. This breaks
+exactly what the gate exists to prove.
+
+What waits on the answer: the stand-in stream under `Tests/Run/Streams/`,
+`Tests/Run/ReplayPlayed.cmake`, the CTest entry `Replay.Played` with its four
+pinned digests, and the measurement line
+`replay: 256/100 + 30 days in N s (release), M s (debug)`.
+
+STATUS: 14.10 INCOMPLETE. Clauses (a), (c) and (d) also wait on the owner's UE
+build (task 14.08/14.09); clause (b) is written and provable headless the day a
+stream exists.
 
 ### 14.08 written - VaelenGame, the one place a world is held
 

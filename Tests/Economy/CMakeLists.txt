@@ -23,7 +23,11 @@ add_test(NAME Economy.Shuffled COMMAND VaelenEconomyTests --shuffle 1)
 list(APPEND VAELEN_ECONOMY_TEST_NAMES Economy.Registry Economy.Shuffled)
 
 set_tests_properties(${VAELEN_ECONOMY_TEST_NAMES} PROPERTIES TIMEOUT 300)
-set_tests_properties(Economy.EconomyGate PROPERTIES TIMEOUT 1800)
+# 3600 and not 1800: measured at 1171 s on windows-msvc-debug in CI run 193,
+# which is 65% of an 1800 budget - the second-tightest in the suite after the
+# one that actually timed out in that run. Twice the measured time on the
+# slowest leg, the rule Tests/Politics/CMakeLists.txt writes down.
+set_tests_properties(Economy.EconomyGate PROPERTIES TIMEOUT 3600)
 set_tests_properties(Economy.Shuffled PROPERTIES TIMEOUT 5400)
 
 # ── Scheduling ───────────────────────────────────────────────────────────────

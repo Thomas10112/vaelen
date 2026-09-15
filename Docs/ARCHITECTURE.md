@@ -73,10 +73,10 @@ What exists today per layer:
 
 | Layer | Exists today | Where |
 |---|---|---|
-| SIMULATION | Foundation only: types, ids, random streams, hashing, logging, assertions, versions | `Source/VaelenCore` |
-| WORLD STATE | Identity primitives only (`PersistentId`, `IdAllocator`, `RandomStreamState`) | `Source/VaelenCore` |
-| GAMEPLAY | Nothing (PLANNED, Phases 10-12) | - |
-| PRESENTATION | Engine bridge (log and assertion routing into Unreal) and a first read-only view: `AVaelenAtlasActor` generates a world in the editor and lays it out as relief with its towns, seats and roads. It only reads; it never writes world state. | `Source/Vaelen` |
+| SIMULATION | Entities, components, the tick scheduler, the clock, the event bus and log, snapshots, replay, LOD 0-4; AELVOR generated from the seed, its pre-history, its people, societies, economies, polities, wars and roads | `Source/VaelenCore`, `Source/VaelenSim`, `Source/VaelenPopulation`, `Source/VaelenSociety`, `Source/VaelenEconomy`, `Source/VaelenPolitics`, `Source/VaelenMilitary`, `Source/VaelenInfrastructure`, `Source/VaelenColony` |
+| WORLD STATE | The world's own components and the digests that pin them; one wiring of a played AELVOR, its door and its replay | `Source/VaelenSim`, `Source/VaelenRun` |
+| GAMEPLAY | The player as a person the world already had: intents as commands, the queue that answers them, belief, repute, documents and maps | `Source/VaelenPlayer`, `Source/VaelenGameplay` |
+| PRESENTATION | Read-only views composed kernel-side (nine leaves and the page) and the Unreal side that draws them: the engine bridge, the atlas actor, the presentation module, and the HUD that copies the page byte for byte | `Source/VaelenView`, `Source/Vaelen`, `Source/VaelenPresentation`, `Source/VaelenUI` |
 | DIALOGUE / NARRATION | Nothing (PLANNED; no module assigned yet) | - |
 
 ## 2. Dual build: Unreal Build Tool and headless CMake
@@ -202,9 +202,9 @@ flowchart BT
     end
     subgraph Unreal["Unreal modules - compiled by UBT only"]
         Bridge["Vaelen"]
-        Game["VaelenGame (PLANNED)"]
+        Game["VaelenGame (Phase 14)"]
         Presentation["VaelenPresentation (Phase 13)"]
-        UI["VaelenUI (PLANNED)"]
+        UI["VaelenUI (Phase 14)"]
     end
 
     Sim --> Core
@@ -231,32 +231,47 @@ flowchart BT
     Modding --> Military
 
     Bridge --> Core
-    Game --> Bridge
-    Game --> Persistence
-    Game --> Modding
-    Presentation --> Game
-    UI --> Presentation
+    Presentation --> ViewMod
+    Game --> RunMod
+    Game --> ViewMod
+    Game --> PlayerMod
     UI --> Game
+    UI --> ViewMod
+    UI --> PlayerMod
 
     classDef existing fill:#d9ead3,stroke:#38761d,color:#000;
     classDef planned fill:#f3f3f3,stroke:#999,color:#000,stroke-dasharray: 4 2;
-    class Core,Bridge,Sim,Population,Society,Economy,Politics,Military,Infrastructure,PlayerMod existing;
-    class World,History,Persistence,DevTools,Modding,Game,Presentation,UI planned;
+    class Core,Bridge,Sim,Population,Society,Economy,Politics,Military,Infrastructure,ColonyMod,PlayerMod,GameplayMod,ViewMod,RunMod,Presentation existing;
+    class World,History,Persistence,DevTools,Modding,Game,UI planned;
 ```
 
-Arrows mean "depends on". Solid green nodes exist; dashed nodes are PLANNED and their
-exact edges are fixed when the corresponding phase starts. The rules below are fixed now:
+Arrows mean "depends on", and the Unreal-side edges are the ones the `Build.cs` files
+actually declare - not a plan. `VaelenGame` does NOT depend on the `Vaelen` bridge
+module, and `VaelenUI` does NOT depend on `VaelenPresentation`: the UI holds the page
+and the command surface, and nothing that draws the world. Solid green nodes exist;
+`VaelenGame` and `VaelenUI` are drawn dashed because they are WRITTEN but have never
+been compiled by UnrealBuildTool (Phase 14 tasks 14.08 and 14.09, STATUS UNVERIFIED).
+The rules below are fixed now:
 
 1. Kernel modules form a DAG with `VaelenCore` at the root. Every kernel module depends
    on `VaelenCore` directly or transitively; cycles are forbidden.
 2. No kernel module depends on an Unreal module or includes an engine header. Quoted
    includes inside a kernel module must start with `Vaelen/` (purity rule R1), so a
    kernel module can only see other kernel modules' `Public/` trees.
-3. Unreal modules may depend on any kernel module and on each other, downward only:
-   `VaelenUI` -> `VaelenPresentation` -> `VaelenGame` -> `Vaelen` -> kernel.
+3. Unreal modules may depend on any kernel module and on each other, downward only.
+   What 14.08 and 14.09 wrote is `VaelenUI` -> `VaelenGame` -> `VaelenRun` -> kernel,
+   with `VaelenPresentation` and `Vaelen` on their own branch: the UI does not draw the
+   world, so it does not depend on the module that does.
 4. `VaelenPresentation` and `VaelenUI` read world state; they never write it. Player
-   intent reaches the simulation only as commands through `VaelenGame` (interface
-   PLANNED in Phase 01/10).
+   intent reaches the simulation only as commands, and since 14.08 there is exactly one
+   place that submits them: `UVaelenWorldSubsystem::Mean` (`Source/VaelenGame`), through
+   `Run::Door::Mean`, which stamps the tick from the world's clock and records the
+   command in the input stream. The day turn is the one host input that is not a
+   command and it is recorded the same way (ADR-0138), so a played life is a function of
+   what came through that door and nothing else. `Tools/check_ui_fence.py` enforces the
+   half of this that a compiler cannot: the UI's includes reach no kernel header but the
+   view leaves, `Vaelen/Core/` and the command surface, and thirteen word-bounded
+   regexes refuse what an allowed include would still permit.
 5. Leaf kernel modules (`VaelenPersistence`, `VaelenDevTools`, `VaelenModding`) may
    depend on every domain module; no domain module depends on them.
 6. Each new kernel module must be: added to `Tools/kernel_modules.txt`, added with
