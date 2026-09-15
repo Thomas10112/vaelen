@@ -277,8 +277,18 @@ namespace Vaelen::Society
 				W.Components().GetPool(Types.Population.Population).TryGet(RegionHandles[Region]);
 			return P != nullptr ? P->Majority : 0u;
 		};
+		// INDICES, not pointers, and this is not a preference.
+		//
+		// Change() below ends in Context.Events->Publish, which appends to the
+		// very log this loop is reading (EventBus::Enqueue -> EventLog::Append,
+		// a push_back). A pointer into that vector dangles the moment it grows,
+		// and the next iteration dereferences it. Found at AELVOR 128 seed 476,
+		// which segfaulted deterministically in the pre-history; the log is
+		// append-only, so an index stays the same element however often the
+		// vector reallocates, and Events is a reference to the VECTOR, which
+		// does not move.
 		const std::vector<Event>& Events = W.Log().All();
-		std::vector<const Event*> Recent;
+		std::vector<usize> Recent;
 		for (usize i = Events.size(); i > 0; --i)
 		{
 			const Event& E = Events[i - 1];
@@ -288,12 +298,15 @@ namespace Vaelen::Society
 			}
 			if (E.Is(History::SchismEvent) || E.Is(History::DisasterStruckEvent))
 			{
-				Recent.push_back(&E);
+				Recent.push_back(i - 1);
 			}
 		}
 		std::reverse(Recent.begin(), Recent.end());
-		for (const Event* E : Recent)
+		for (const usize At : Recent)
 		{
+			// Re-read through the vector every time: the reference is to the
+			// container, and the element it hands back is the current one.
+			const Event* const E = &Events[At];
 			if (E->Is(History::SchismEvent))
 			{
 				const History::ReligionPayload P = E->Get<History::ReligionPayload>();

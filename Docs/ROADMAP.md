@@ -4572,10 +4572,17 @@ must be told them; given the wrong ones it takes up a different person, counts
 every answer `Wrong` and diverges on all four digests. Clause (b) would have
 failed for a reason with nothing to do with the stream.
 
+How much of a defect, measured rather than argued: replaying this stream with
+`--want-bound 1` takes up **a different person** - Grefu 15028 where the stream
+recorded Dukem 15019 - and answers 20 taken and 12 refused where the record says
+30 and 2. All four digests differ and Atlas exits 1. `Replay.Played` would have
+been red from birth for a reason with nothing to do with the stream.
+
 `--replay --panel` now prints, after the page, the replay's own verdict and
 14.08's two `LogVaelenPlay` lines. The format strings are
 `VaelenPlayCommands.cpp:158-186`'s byte for byte with only `TEXT()` dropped and
-every argument from the same field of the same view, because clause (b) is
+a trailing `\n` added, which `UE_LOG` supplies on its side, and every argument
+from the same field of the same view, because clause (b) is
 exactly that those bytes match after the log prefix. `printf` and not
 `VAELEN_LOG_INFO`, which prefixes every line and truncates at 2048 bytes.
 
@@ -4583,7 +4590,11 @@ exactly that those bytes match after the log prefix. `printf` and not
 every verb pressed through `View::Press` exactly as a key presses it in 14.09,
 and a `Speak` aimed at somebody who is not there so the WORLD refuses rather
 than the door. It checks the month against the row's shape before writing and
-refuses to write otherwise.
+refuses to write otherwise. One precision the review insisted on: the Move it
+requires is one `Press` offered and the door queued (`Recorded::Verdict` is the
+DOOR's answer, which `Stream.h` says outright), and what makes it a Move the
+world can take is that `Press` offered it at all - which needs a neighbour both
+adjacent and detailed.
 
 **And it refused, which is how the defect was found.** Clause (a) wants "one
 Move to a `Near` neighbour" and "`move M` counted among the taken". Measured
@@ -4602,12 +4613,15 @@ the ones `Run::Replay` applies out of a stream, which is the difference between
 a replay and a different world. One frozen digest moved,
 `VAELEN_PANEL_FROZEN_PLAYED` `0x26ef4024725cd4aa` -> `0x703c838ca533a095`;
 `Atlas.Frozen128`, the ADR-0135 pair, the empty play's page and every gate of
-Phases 04-12 did not, because none of them takes anybody up.
+Phases 04-12 did not - because none of them goes through `Run::Aelvor::TakeUp`,
+which is the only place `NearDetail` is reached from. Three of those gates DO
+take somebody up, through `Player::BeginEnslaved` in their own wiring; the
+review caught the first draft of this sentence claiming they did not.
 
 **What the headless half now proves.** `Tests/Run/Streams/` holds
 `aelvor256-stand-in-2026-09-15.stream` - 30 day turns, 32 intents, 2 refused by
 the world, every verb at least once and a Move among the taken - with a README
-that says in its first line that it is NOT a month played by hand and what has
+whose first heading says that it is NOT a month played by hand and what has
 to happen when the owner's is. CTest `Replay.Played` replays it through a `-P`
 driver (`Tests/Run/ReplayPlayed.cmake`) which holds BOTH the exit code and the
 three printed lines; `PASS_REGULAR_EXPRESSION` alone would have passed on the
@@ -4622,6 +4636,13 @@ LogVaelenPlay: verbs work 8 rest 9 eat 9 wait 1 speak 2 give 1 take 1 move 1
 
 Pinning the whole first line pins the four digests and the days, the intents,
 the three queue counters, the name, the person and the region with them.
+
+**And it fails when it should**, which is the only property of a pinned test
+worth anything. Checked one at a time against copies in a scratch directory,
+never the checked-in file: a wrong digest in the expectation - fails; a day
+turn deleted from the stream - fails; one digit changed in the header's seed,
+so the stream belongs to another world - fails; the stream truncated mid-month
+- fails. It passes on the real file and on nothing else tried.
 
 `replay: 256/100 + 30 days in 4.76 s (release)` on this machine; the debug
 multiple is what the CI legs report. `TIMEOUT 1800` and `COST 4000` as the row

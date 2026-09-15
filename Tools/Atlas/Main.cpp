@@ -811,7 +811,12 @@ namespace
 					: 0u;
 		}
 		Want(MovesTaken >= 1, "a Move the page offered");
-		Want(MovesTook >= 1, "a Move the world took");
+		// The door's verdict, which Stream.h says is exactly that: None means
+		// QUEUED, not "the world applied it". What makes this a Move the world
+		// could take is that Press offered it at all, which needs a neighbour
+		// in Life.Near - adjacent AND detailed. The world's own verdict on it
+		// is in the taken/refused counts of the line this month prints.
+		Want(MovesTook >= 1, "a Move the page offered and the door queued");
 		Want(Life.Person != 0, "somebody still played at the end");
 		for (usize k = 1; k < Player::IntentCount; ++k)
 		{

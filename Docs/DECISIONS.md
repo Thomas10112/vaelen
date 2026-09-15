@@ -9468,12 +9468,22 @@ Three properties matter more than the rule itself:
 
 ### What moved, and what did not
 
-The taking is the trigger, so only a world with somebody taken up changes.
-Measured on the whole headless suite at `linux-gcc-release`: **one** entry
-moved, `View.Panel`'s played page. Untouched: `Atlas.Frozen128`, the ADR-0135
-pair (`frame 0xabc5a5767c6cf9dd`, `ground 0x8f7f4948f49b6e86`), the empty play
-and its page `0x54787451e65766c1`, and every gate of Phases 04–12, none of
-which takes anybody up.
+The trigger is `Run::Aelvor::TakeUp`, so only a world taken up THROUGH THE RUN
+changes. Measured on the whole headless suite at `linux-gcc-release`: **one**
+entry moved, `View.Panel`'s played page. Untouched: `Atlas.Frozen128`, the
+ADR-0135 pair (`frame 0xabc5a5767c6cf9dd`, `ground 0x8f7f4948f49b6e86`), the
+empty play and its page `0x54787451e65766c1`, and every gate of Phases 04–12.
+
+Why those gates are untouched has to be stated exactly, because the 14.10
+review caught the first draft of this ADR getting it wrong. Three of them -
+`Player.PlayerGate`, `Colony.ColonyGate` and `Gameplay.GameplayGate` - DO take
+somebody up, through `Player::BeginEnslaved` in their own wiring, and they
+freeze the digests of the played world afterwards. They are untouched because
+they never call `Run::Aelvor::TakeUp`, which is the only place `NearDetail` is
+reached from - not because nobody is played in them. The distinction is
+load-bearing: a second host written against `Player::BeginEnslaved` directly
+gets no neighbours detailed and a `Move` that cannot be taken, and would be
+right to call that a defect.
 
 ### What was considered and refused
 

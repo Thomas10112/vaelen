@@ -23,7 +23,9 @@ piece of machinery around it — the replay, the two `LogVaelenPlay` lines, the
 four pinned digests, the CTest entry — is exercised and green before the real
 month arrives. `--stand` refuses to write a file that does not have that shape:
 thirty recorded day turns, every one of the eight verbs at least once, a Move
-the world took, and at least one intent the WORLD refused rather than the door.
+the page offered and the door queued - which it can only do when a neighbour is
+adjacent AND detailed - and at least one intent the WORLD refused rather than
+the door.
 
 Every command in it went through `View::Press` first, exactly as a key press
 does in 14.09, so it walks the path a keyboard walks.
