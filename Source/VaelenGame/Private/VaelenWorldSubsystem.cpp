@@ -59,15 +59,12 @@ struct FVaelenHeld
 	}
 };
 
-// Both out of line, and in THIS file, because FVaelenHeld is whole here and
-// nowhere else. See the header for what breaks when they are left implicit.
-UVaelenWorldSubsystem::UVaelenWorldSubsystem() = default;
-UVaelenWorldSubsystem::~UVaelenWorldSubsystem() = default;
-
 void UVaelenWorldSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-	Held = MakeUnique<FVaelenHeld>();
+	// MakePimpl here, where FVaelenHeld is complete: this call is what
+	// captures the deleter the header can then use from anywhere.
+	Held = MakePimpl<FVaelenHeld>();
 }
 
 void UVaelenWorldSubsystem::Deinitialize()
@@ -77,7 +74,7 @@ void UVaelenWorldSubsystem::Deinitialize()
 	{
 		Held->Door.Reset();
 		Held->World.Reset();
-		Held.Reset();
+		Held = nullptr;
 	}
 	Super::Deinitialize();
 }
