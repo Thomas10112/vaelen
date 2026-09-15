@@ -456,6 +456,14 @@ namespace
 		std::string Replay; ///< 14.03: a stream to replay into a fresh played Run; the world is the stream's
 		bool Empty = false; ///< 14.03: the empty play - the Play wiring, nobody taken up, no stream
 		bool Panel = false; ///< 14.06: print the first screen of the world the replay came to
+		/// 14.10: the host's StartRules::WantBound. The rules are the host's
+		/// configuration and deliberately NOT in the stream (Door.h), so a
+		/// replay must be told which ones the stream was recorded under. The
+		/// engine host takes whoever the world offers (VaelenWorldSubsystem.cpp
+		/// sets 0); the kernel's own default is 1, and so is this one.
+		uint32 WantBound = 1;
+		/// 14.10: write a stream of a month played by nobody, to this path.
+		std::string Stand;
 	};
 
 	/// Runs Years years, keeping a frame every Opt.Every of them. Taking a view
@@ -517,7 +525,10 @@ namespace
 					 "  --why           and why: the cause of each thing, back to its root\n"
 					 "  --replay FILE   replay a vaelen-stream into a fresh played Run and write what it came to\n"
 					 "  --empty         the empty play: the Play wiring with nobody taken up, no stream\n"
-					 "  --panel         with --replay or --empty: print the first screen it came to (14.06)\n");
+					 "  --panel         with --replay or --empty: print the first screen it came to (14.06)\n"
+					 "  --want-bound N  StartRules::WantBound for a replay (0 or 1, default 1; the engine host "
+					 "uses 0)\n"
+					 "  --stand FILE    write a stand-in stream: thirty days played by nobody (14.10)\n");
 	}
 
 	bool ParseOptions(int Argc, char** Argv, Options& Out)
@@ -565,6 +576,15 @@ namespace
 			else if (std::strcmp(Arg, "--panel") == 0)
 			{
 				Out.Panel = true;
+			}
+			else if (std::strcmp(Arg, "--stand") == 0 && HasValue)
+			{
+				Out.Stand = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--want-bound") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
+			{
+				++I;
+				Out.WantBound = Value != 0 ? 1u : 0u;
 			}
 			else if (std::strcmp(Arg, "--size") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
 			{
@@ -646,6 +666,237 @@ namespace
 		return Ok;
 	}
 
+	/// 14.10: a month played by nobody, so the replay has something to replay.
+	///
+	/// The owner's stream is thirty days through the KEYS in the editor, and
+	/// this is not it. What this writes is a stream of the same SHAPE - thirty
+	/// recorded day turns, every one of the eight verbs at least once, one Move
+	/// the world took, at least one intent the WORLD refused (not the door) -
+	/// so that Tools/Atlas --replay --panel, the CTest entry and the four
+	/// digests are all exercised before the engine half exists. The file it
+	/// writes is named stand-in and Tests/Run/Streams/README.md says the rest.
+	///
+	/// Every command goes through View::Press first, exactly as a key does in
+	/// 14.09, so this walks the same path the engine walks: the page answers
+	/// what it foresees, and only what the page offers is handed to the door.
+	int RunStand(const Options& Opt)
+	{
+		Vaelen::Run::Options RO;
+		RO.Size = Opt.Size;
+		RO.PreHistory = Opt.PreHistory;
+		RO.Years = Opt.Years;
+		RO.Seed = Opt.Seed;
+		RO.Play = true; // and nothing else: the host asks for exactly this
+		Vaelen::Run::Aelvor A(RO);
+		if (!A.Begin())
+		{
+			std::fprintf(stderr, "AELVOR: generation failed at %u x %u\n", RO.Size, RO.Size);
+			return 1;
+		}
+		Player::StartRules Rules;
+		Rules.WantBound = Opt.WantBound;
+		Vaelen::Run::Door D(A, Rules);
+		if (D.TakeUp() == 0)
+		{
+			std::fprintf(stderr, "AELVOR: the world offered nobody to take up\n");
+			return 1;
+		}
+
+		WorldGen::RegionGraphCache Ways;
+		WorldView Frame;
+		LifeView Life;
+		ChronicleView Told;
+		PanelView Page;
+		const auto Look = [&]()
+		{
+			TakeView(A.Instance(), A.Sources(), Frame);
+			TakeLifeView(A.Instance(), A.Sources(), Ways, Life);
+			TakeChronicleView(A.Instance(), A.Sources(), Told);
+			TakePanel(Frame, Life, Told, Page);
+		};
+
+		// What the month must contain: every one of the eight verbs at least
+		// once, one Move the world took, one intent the world refused. None of
+		// the three can be pinned to a chosen day - the page offers a verb only
+		// when the hours are there, and a Move only when a neighbouring region
+		// is DETAILED as well as adjacent, which the LOD decides and not this
+		// tool. So each day does the still-missing work it can do today, and
+		// the guard at the end says what the month never managed.
+		static const Player::Intent Order[7] = {Player::Intent::Work, Player::Intent::Rest,	 Player::Intent::Eat,
+												Player::Intent::Wait, Player::Intent::Speak, Player::Intent::Give,
+												Player::Intent::Take};
+		static const Player::Intent Filler[3] = {Player::Intent::Work, Player::Intent::Rest, Player::Intent::Eat};
+
+		uint32 Meant[Player::IntentCount] = {};
+		uint32 MovesTaken = 0;
+		uint32 WorldRefused = 0;
+		const auto Say = [&](Player::Intent Verb, uint32 Target, uint32 Amount)
+		{
+			Player::PlayerCommand What;
+			const Player::Refusal Foreseen = Press(Page, Verb, Target, Amount, What);
+			if (Foreseen != Player::Refusal::None)
+			{
+				// The page did not offer it, so nothing reached the world -
+				// exactly what a key press does in 14.09. Not an error: the
+				// day simply could not carry it, and another day will.
+				return false;
+			}
+			D.Mean(What);
+			++Meant[static_cast<usize>(Verb)];
+			return true;
+		};
+		const auto Somebody = [&]() -> uint32 { return Life.CompanyCount > 0 ? Life.Company[0].Person : 0u; };
+
+		const uint32 Days = 30;
+		for (uint32 Day = 0; Day < Days; ++Day)
+		{
+			Look();
+			// One intent the page offers and the WORLD refuses: a Speak aimed
+			// at somebody who is not there comes back NoOne on
+			// OrderStats::Refused, not at the door. Tried first because Speak
+			// is cheap and the day's hours go to whatever else is meant on it.
+			if (WorldRefused == 0 && Say(Player::Intent::Speak, 0xffffffffu, 0))
+			{
+				WorldRefused = A.Orders().Refused;
+				Look();
+			}
+			// The Move, the day a neighbour is near enough to walk to.
+			if (MovesTaken == 0 && Life.NearCount > 0 && Say(Player::Intent::Move, Life.Near[0], 0))
+			{
+				++MovesTaken;
+				Look();
+			}
+			// Then whichever of the other seven is still unsaid, else a cheap
+			// one, so that thirty days carry at least thirty intents.
+			Player::Intent Next = Filler[Day % 3];
+			for (const Player::Intent Verb : Order)
+			{
+				if (Meant[static_cast<usize>(Verb)] == 0)
+				{
+					Next = Verb;
+					break;
+				}
+			}
+			const bool Aimed =
+				Next == Player::Intent::Speak || Next == Player::Intent::Give || Next == Player::Intent::Take;
+			Say(Next, Aimed ? Somebody() : 0u, Next == Player::Intent::Give ? 1u : 0u);
+			D.Day();
+		}
+		Look();
+
+		// Refuse to write a stream that does not satisfy the row's shape: a
+		// stand-in that silently misses a clause is worse than none at all.
+		const Player::OrderStats Orders = A.Orders();
+		const Player::InputStream& Tape = D.Stream();
+		bool Shaped = true;
+		const auto Want = [&Shaped](bool Held, const char* What)
+		{
+			if (!Held)
+			{
+				std::fprintf(stderr, "AELVOR: the stand-in stream is not shaped like a played month: %s\n", What);
+				Shaped = false;
+			}
+		};
+		Want(Tape.Days.size() == Days, "thirty day turns");
+		Want(Tape.Commands.size() >= Days, "at least thirty intents");
+		Want(Orders.Refused >= 1, "at least one intent the world refused");
+		// The row asks for the Move among the TAKEN, so read the record's own
+		// verdict rather than trusting that the page offering it was enough.
+		uint32 MovesTook = 0;
+		for (const Player::Recorded& One : Tape.Commands)
+		{
+			MovesTook +=
+				(One.Command.Kind == static_cast<uint8>(Player::Intent::Move) && One.Verdict == Player::Refusal::None)
+					? 1u
+					: 0u;
+		}
+		Want(MovesTaken >= 1, "a Move the page offered");
+		Want(MovesTook >= 1, "a Move the world took");
+		Want(Life.Person != 0, "somebody still played at the end");
+		for (usize k = 1; k < Player::IntentCount; ++k)
+		{
+			Want(Meant[k] >= 1, Player::IntentName(static_cast<Player::Intent>(k)));
+		}
+		if (!Shaped)
+		{
+			return 1;
+		}
+
+		const std::string Text = Player::EncodeStream(Tape);
+		std::FILE* File = std::fopen(Opt.Stand.c_str(), "wb");
+		if (File == nullptr)
+		{
+			std::fprintf(stderr, "AELVOR: cannot write %s\n", Opt.Stand.c_str());
+			return 1;
+		}
+		const usize Written = std::fwrite(Text.data(), 1, Text.size(), File);
+		const bool Closed = std::fclose(File) == 0;
+		if (Written != Text.size() || !Closed)
+		{
+			std::fprintf(stderr, "AELVOR: %s is incomplete (%zu of %zu bytes)\n", Opt.Stand.c_str(), Written,
+						 Text.size());
+			return 1;
+		}
+		VAELEN_LOG_INFO(LogAtlas,
+						"AELVOR %u: stand-in stream of %u day(s), %zu intent(s), %u refused by the world, "
+						"%zu bytes to %s",
+						RO.Size, static_cast<uint32>(Tape.Days.size()), Tape.Commands.size(), Orders.Refused,
+						Text.size(), Opt.Stand.c_str());
+		return 0;
+	}
+
+	/// 14.10: what the replay came to, in the words the engine's own host uses.
+	///
+	/// THE TWO LINES. The format strings below are
+	/// Source/VaelenGame/Private/VaelenPlayCommands.cpp's, byte for byte with
+	/// only TEXT() dropped, and every argument comes from the same field of
+	/// the same view. That is the whole point of the clause: the engine prints
+	/// them after playing a month by hand and this prints them after replaying
+	/// the stream that month wrote, and the bytes after the log prefix are
+	/// compared. Change one of the four here and the other must change too -
+	/// they are quoted in ADR-0138 for that reason.
+	///
+	/// printf and not VAELEN_LOG_INFO: the log prefixes every line with
+	/// "[Info] LogAtlas: " and truncates at 2048 bytes, and this is a line a
+	/// checker matches whole.
+	void PlayedLines(const Player::InputStream& S, const Vaelen::Run::ReplayReport& R, const LifeView& Life,
+					 Hash64 PanelDigest)
+	{
+		// The replay's own verdict first: how many of the recorded answers the
+		// fresh world gave again, and how many days it turned.
+		std::printf("replay: %u of %u answered identically, %u of %u days\n", R.Answered - R.Wrong, R.Answered, R.Days,
+					static_cast<uint32>(S.Days.size()));
+
+		std::printf("LogVaelenPlay: AELVOR %u seed %012llx: played %s (person %u, region %u) %u days, %u intents "
+					"(%u taken, %u refused by the world, %u dropped at the door), state %016llx, log %016llx, "
+					"life %016llx, panel %016llx\n",
+					static_cast<unsigned>(S.Header.Size), static_cast<unsigned long long>(S.Header.Seed), Life.Name,
+					static_cast<unsigned>(Life.Person), static_cast<unsigned>(Life.Region),
+					static_cast<unsigned>(S.Days.size()), static_cast<unsigned>(S.Commands.size()),
+					static_cast<unsigned>(Life.Taken), static_cast<unsigned>(Life.Refused),
+					static_cast<unsigned>(Life.Dropped), static_cast<unsigned long long>(R.State),
+					static_cast<unsigned long long>(R.Log), static_cast<unsigned long long>(R.Life),
+					static_cast<unsigned long long>(PanelDigest));
+
+		// The verbs, counted from the stream itself: what was MEANT, whatever
+		// the world made of it. The letters are a mnemonic; the numbers are
+		// counts (14.08's done section says which reading this is).
+		uint32 Tally[Player::IntentCount] = {};
+		for (const Player::Recorded& One : S.Commands)
+		{
+			if (One.Command.Kind < static_cast<uint8>(Player::Intent::Count))
+			{
+				++Tally[One.Command.Kind];
+			}
+		}
+		const auto Of = [&Tally](Player::Intent Kind)
+		{ return static_cast<unsigned>(Tally[static_cast<usize>(Kind)]); };
+		std::printf("LogVaelenPlay: verbs work %u rest %u eat %u wait %u speak %u give %u take %u move %u\n",
+					Of(Player::Intent::Work), Of(Player::Intent::Rest), Of(Player::Intent::Eat),
+					Of(Player::Intent::Wait), Of(Player::Intent::Speak), Of(Player::Intent::Give),
+					Of(Player::Intent::Take), Of(Player::Intent::Move));
+	}
+
 	/// --replay FILE and --empty (14.03): a played Run, the stream through its
 	/// door, and what it came to. Writes a REPLAY document and not an atlas -
 	/// "kind":"replay": the run, the stream's counts, the report of the replay
@@ -699,7 +950,9 @@ namespace
 		{
 			S.Header = A.Header();
 		}
-		const Vaelen::Run::ReplayReport R = Vaelen::Run::Replay(A, S);
+		Player::StartRules Host;
+		Host.WantBound = Opt.WantBound;
+		const Vaelen::Run::ReplayReport R = Vaelen::Run::Replay(A, S, Host);
 		const double Seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - Started).count();
 
 		WorldView Frame;
@@ -728,6 +981,7 @@ namespace
 			std::vector<char> Rows(PanelTextBytes, '\0');
 			Lines(Page, Rows.data(), PanelTextBytes);
 			std::printf("%s\n", Rows.data());
+			PlayedLines(S, R, Life, MeasurePanel(Page).Digest);
 		}
 
 		Json J;
@@ -847,6 +1101,10 @@ namespace
 		{
 			Usage();
 			return 2;
+		}
+		if (!Opt.Stand.empty())
+		{
+			return RunStand(Opt);
 		}
 		if (!Opt.Replay.empty() || Opt.Empty)
 		{
