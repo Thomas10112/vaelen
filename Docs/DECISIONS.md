@@ -9411,3 +9411,75 @@ stream test in 14.03 (a stream minus its last day turn does **not** replay to
 the same state) is what shows the record is load-bearing rather than
 decorative. A reading of a rule is the kind of thing that gets argued about a
 year later, and this is where the argument is written down.
+
+---
+
+## ADR-0139 — A played world details the neighbours of the person being played
+
+**Status:** **APPLIED 2026-09-15** (task 14.10): `Run::Aelvor::NearDetail`,
+called by `TakeUp` after every taking. Moves one frozen digest:
+`VAELEN_PANEL_FROZEN_PLAYED` `0x26ef4024725cd4aa` → `0x703c838ca533a095`.
+
+### The defect
+
+The game offers eight verbs and could take seven.
+
+`Player::Doings` refuses a `Move` to anywhere that is not both ADJACENT to the
+person's region and simulated person by person (`IsDetailed`), which is right:
+walking into a region the world is only running at the year would be walking
+into somewhere nobody is. `View::LifeView::Near` therefore lists only those
+neighbours, and `View::Panel` offers the `Move` verb only when `Near` is not
+empty — the page refuses in advance what the world would refuse anyway, which
+is what a page is for.
+
+But the only region a played AELVOR ever asked to detail was **one**: the
+busiest, requested in `Aelvor::Begin`. `LodRules::MaxDetailed` is 4. Three
+slots were never used by anybody. So `Near` was empty on every day of every
+played world; `Move` was never offered, and had it been submitted anyway the
+world would have answered `TooFar`.
+
+Measured while writing 14.10's stand-in stream, at AELVOR 256 over thirty days:
+`NearCount` 0, thirty times out of thirty. It is not a property of the
+generator — a month played at the keyboard in the editor meets the same wall,
+which is why 14.10's clause (a) ("one Move to a `Near` neighbour",
+"`move M` counted among the taken") could not be satisfied by anybody.
+
+### The decision
+
+After a taking, the world asks for detail on the neighbours of the region the
+played person stands in, in ascending region index, up to `MaxDetailed` less
+the one their own region occupies.
+
+Three properties matter more than the rule itself:
+
+- **In `Aelvor::TakeUp` and not in a host.** Every taking gets it: the first
+  one, the one that follows a death in `Door::Day`, and the ones `Run::Replay`
+  applies out of a stream. Had the host asked instead, a stream would replay
+  into a different world than the one it was recorded in — which is the one
+  thing the whole of ADR-0136 exists to prevent.
+- **Ascending index, nothing weighed.** "The neighbour with the most people"
+  is a judgement that moves with the year and would have to be identical on
+  eight CI legs. An index order is an index order.
+- **A request, not a hold.** `RequestDetail` puts the region in `LodState`'s
+  wanted list, which the LOD bridge weighs at the next yearly tick against
+  `MaxDetailed` and against whatever else is wanted (`ADR-0090`). A colony's
+  `Held` still outranks it, and nothing is promoted that the rules do not
+  allow.
+
+### What moved, and what did not
+
+The taking is the trigger, so only a world with somebody taken up changes.
+Measured on the whole headless suite at `linux-gcc-release`: **one** entry
+moved, `View.Panel`'s played page. Untouched: `Atlas.Frozen128`, the ADR-0135
+pair (`frame 0xabc5a5767c6cf9dd`, `ground 0x8f7f4948f49b6e86`), the empty play
+and its page `0x54787451e65766c1`, and every gate of Phases 04–12, none of
+which takes anybody up.
+
+### What was considered and refused
+
+- **Amend 14.10 to drop the Move.** Closes the phase over a verb the world can
+  never take. The gate would have been green and the game still broken.
+- **Ask for the detail in `VaelenGame` only.** No headless digest moves, and no
+  headless stream can carry a `Move` either — so only a month played at the
+  keyboard would have one and the headless replay of it would diverge. It
+  breaks precisely what the gate exists to prove.

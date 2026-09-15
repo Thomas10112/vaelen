@@ -179,6 +179,11 @@ namespace Vaelen::Run
 		Options Given_;
 		std::unique_ptr<Kernel> K;
 		bool Begun_ = false;
+		/// ADR-0139: after a taking, ask for the neighbours of the played
+		/// person's region, so that a Move has somewhere the world will let it
+		/// go. See Aelvor.cpp for why it lives here and not in a host.
+		void NearDetail(uint32 Who);
+
 		uint32 Detail_ = 0;
 		uint32 Dug_ = 0;
 	};

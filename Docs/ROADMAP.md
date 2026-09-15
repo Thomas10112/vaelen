@@ -81,7 +81,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 11 | MINING COLONY | The starting place: a huge autonomous mining colony simulated by the same systems at full detail. | CLOSED (11.01-11.08 VALIDATED headless, CI run 113 green on all nine jobs; UNVERIFIED under UBT) |
 | 12 | GAMEPLAY | Interaction verbs, knowledge (documents, maps), reputation and consequences without main quest or canonical ending. | BROKEN DOWN (12.01-12.08, section 16) |
 | 13 | PRESENTATION | Unreal rendering, animation and audio of the world state, strictly read-only. | CLOSED (13.01-13.09; gate PASSED 2026-09-14 at 100 fps on a T400; engine and headless kernel agree on every figure at 256) |
-| 14 | UI | Interface and read-only views; command submission through the gameplay layer. | IN PROGRESS (14.01-14.07 VALIDATED headless; 14.08 and 14.09 written 2026-09-14, awaiting the owner's UE build; 14.10 BLOCKED - clause (a)'s Move cannot be played by anybody, see the 14.10 section; the breakdown is section 20) |
+| 14 | UI | Interface and read-only views; command submission through the gameplay layer. | IN PROGRESS (14.01-14.07 VALIDATED headless; 14.08 and 14.09 written 2026-09-14, awaiting the owner's UE build; 14.10 headless half VALIDATED 2026-09-15 - CTest Replay.Played, 175/175 - its clauses (a), (c), (d) wait on that build; ADR-0139 made the Move playable at all; the breakdown is section 20) |
 | 15 | STREAMING & LOD | Engine streaming coupled to simulation LOD 0-4: what is simulated at which detail away from the player. | PLANNED |
 | 16 | SAVE/PERSISTENCE | Save format, serialisation of the whole world state, checkpoints on disk, migrations keyed on the save-format version. | PLANNED |
 | 17 | DEBUG TOOLS | Inspectors, replay tooling, determinism diff, world statistics, headless console. | PLANNED |
@@ -4557,76 +4557,82 @@ STATUS: VALIDATED for the scripts. 14.08 and 14.09 stay UNVERIFIED: the
 destructor fix is the strongest reason yet to want the owner's build, and it
 is still the owner's build that decides.
 
-### 14.10 blocked - the verb the world can never take
+### 14.10 - the headless half, and the verb that could not be played
 
-The headless half of the gate is written as far as it can go, and it stopped on
-something the row did not foresee. Written here rather than carried in a commit
-message, because it is a decision and not a defect to be quietly fixed.
+The gate's engine half (clauses a, c, d) is the owner's machine and waits. Its
+headless half is written, measured and green, and getting there turned up a
+defect in the game rather than in the test.
 
-`Tools/Atlas` gained three things. **`--want-bound N`** is a real defect caught
-on the way: the engine host takes up whoever the world offers
+**`Tools/Atlas` gained three things.** `--want-bound N` is a defect caught on
+the way: the engine host takes up whoever the world offers
 (`VaelenWorldSubsystem.cpp:106` sets `StartRules::WantBound = 0`) and Atlas
-replayed with the kernel's default of 1. The rules are the host's configuration
-and deliberately NOT in the stream (`Door.h:44-45`), so a replay must be told
-them; a replay given the wrong ones takes up a different person, counts every
-answer `Wrong` and diverges on all four digests. Clause (b) would have failed
-for a reason that had nothing to do with the stream.
+replayed with the kernel's default of 1. The rules are the host's
+configuration and deliberately NOT in the stream (`Door.h:44-45`), so a replay
+must be told them; given the wrong ones it takes up a different person, counts
+every answer `Wrong` and diverges on all four digests. Clause (b) would have
+failed for a reason with nothing to do with the stream.
 
-**`--replay --panel`** now prints, after the page, the replay's own verdict and
+`--replay --panel` now prints, after the page, the replay's own verdict and
 14.08's two `LogVaelenPlay` lines. The format strings are
-`VaelenPlayCommands.cpp:158-186`'s byte for byte with only `TEXT()` dropped,
-and every argument comes from the same field of the same view, because clause
-(b) is exactly that those bytes match after the log prefix. `printf` and not
+`VaelenPlayCommands.cpp:158-186`'s byte for byte with only `TEXT()` dropped and
+every argument from the same field of the same view, because clause (b) is
+exactly that those bytes match after the log prefix. `printf` and not
 `VAELEN_LOG_INFO`, which prefixes every line and truncates at 2048 bytes.
 
-**`--stand FILE`** writes a month played by nobody: thirty recorded day turns,
+`--stand FILE` writes a month played by nobody: thirty recorded day turns,
 every verb pressed through `View::Press` exactly as a key presses it in 14.09,
-and a `Speak` aimed at somebody who is not there so that the WORLD refuses one
-intent rather than the door. It checks the month against the row's shape before
-writing and refuses to write otherwise.
+and a `Speak` aimed at somebody who is not there so the WORLD refuses rather
+than the door. It checks the month against the row's shape before writing and
+refuses to write otherwise.
 
-**And it refuses.** Clause (a) wants "one Move to a `Near` neighbour" and
-"`move M` counted among the taken". Measured over thirty days at 256:
-`LifeView::NearCount` is 0 on every one of them. `Aelvor::Begin` requests detail
-for exactly one region, the busiest (`Aelvor.cpp:371-377`), while
-`LodRules::MaxDetailed` allows four - three slots nobody uses. `Life.Near` lists
-only neighbours that are adjacent AND detailed (`Life.cpp:177`), so it is always
-empty; the page never offers `Move` (`Panel.cpp:422`, `Slot.Offered == 0`) and
-the world would refuse it `TooFar` (`Doings.cpp:84-101`). This is not a property
-of the generator: a month played by hand in the editor meets the same wall, so
-clause (a) cannot be satisfied by anybody today.
+**And it refused, which is how the defect was found.** Clause (a) wants "one
+Move to a `Near` neighbour" and "`move M` counted among the taken". Measured
+over thirty days at 256: `NearCount` 0 on every one of them. `Aelvor::Begin`
+requested detail for exactly one region, the busiest, while
+`LodRules::MaxDetailed` allows four - three slots nobody used. `Life.Near`
+lists only neighbours that are adjacent AND detailed, so it was always empty;
+the page never offered `Move` and the world would have refused it `TooFar`.
+Not a property of the generator: a month played at the keyboard meets the same
+wall. **The game offered eight verbs and could take seven.**
 
-Three ways out, and the choice is the owner's because two of them move frozen
-digests:
+ADR-0139 is the fix: after a taking, the world asks for detail on the
+neighbours of the played person's region, ascending index, up to `MaxDetailed`.
+In `Aelvor::TakeUp` and not in a host, so that every taking gets it - including
+the ones `Run::Replay` applies out of a stream, which is the difference between
+a replay and a different world. One frozen digest moved,
+`VAELEN_PANEL_FROZEN_PLAYED` `0x26ef4024725cd4aa` -> `0x703c838ca533a095`;
+`Atlas.Frozen128`, the ADR-0135 pair, the empty play's page and every gate of
+Phases 04-12 did not, because none of them takes anybody up.
 
-**(A) Detail the neighbours when somebody is taken up.** `Run::Door::TakeUp`
-requests detail for the neighbouring regions of the played person's region, up
-to `MaxDetailed`. The Move becomes playable at the keys and in the replay, and
-this is the only option that makes the verb usable at all - the game currently
-offers eight verbs and can take seven. Cost: the digests of any PLAYED world
-with somebody taken up move (`VAELEN_PANEL_FROZEN_PLAYED`, the assertions of
-`Run.Door`, `View.Life`, `View.Chronicle`), re-frozen with an ADR as ADR-0131
-was. Worlds with nobody taken up do not move - `Atlas.Frozen128` and the empty
-play are untouched. RECOMMENDED.
+**What the headless half now proves.** `Tests/Run/Streams/` holds
+`aelvor256-stand-in-2026-09-15.stream` - 30 day turns, 32 intents, 2 refused by
+the world, every verb at least once and a Move among the taken - with a README
+that says in its first line that it is NOT a month played by hand and what has
+to happen when the owner's is. CTest `Replay.Played` replays it through a `-P`
+driver (`Tests/Run/ReplayPlayed.cmake`) which holds BOTH the exit code and the
+three printed lines; `PASS_REGULAR_EXPRESSION` alone would have passed on the
+match and never looked at the exit code, which is the lesson
+`Atlas.PanelEmpty` taught in 14.06. The lines it pins:
 
-**(B) Amend clause (a): drop the Move.** Seven verbs of eight close the phase,
-`move 0` is accepted, nothing is re-frozen. The phase closes over a verb the
-world can never take.
+```
+replay: 32 of 32 answered identically, 30 of 30 days
+LogVaelenPlay: AELVOR 256 seed 41454c564f52: played Dukem (person 15019, region 31) 30 days, 32 intents (30 taken, 2 refused by the world, 0 dropped at the door), state cb69b72505aaa97d, log 34950d9a09dff0c4, life 51e2309a61765ff0, panel f4014af16e5e60f0
+LogVaelenPlay: verbs work 8 rest 9 eat 9 wait 1 speak 2 give 1 take 1 move 1
+```
 
-**(C) Request the detail host-side only.** `VaelenWorldSubsystem::Begin` asks
-after `TakeUp`, `VaelenRun` untouched. No headless digest moves - and no
-headless stream can carry a Move either, so only the owner's keyboard month
-would have one and the headless replay would diverge from it. This breaks
-exactly what the gate exists to prove.
+Pinning the whole first line pins the four digests and the days, the intents,
+the three queue counters, the name, the person and the region with them.
 
-What waits on the answer: the stand-in stream under `Tests/Run/Streams/`,
-`Tests/Run/ReplayPlayed.cmake`, the CTest entry `Replay.Played` with its four
-pinned digests, and the measurement line
-`replay: 256/100 + 30 days in N s (release), M s (debug)`.
+`replay: 256/100 + 30 days in 4.76 s (release)` on this machine; the debug
+multiple is what the CI legs report. `TIMEOUT 1800` and `COST 4000` as the row
+asks - 1800 being about 370x the release measurement, which is headroom of the
+kind `Tests/Politics/CMakeLists.txt` now has a rule about.
 
-STATUS: 14.10 INCOMPLETE. Clauses (a), (c) and (d) also wait on the owner's UE
-build (task 14.08/14.09); clause (b) is written and provable headless the day a
-stream exists.
+STATUS: 14.10 INCOMPLETE - the headless half is VALIDATED, clauses (a), (c) and
+(d) wait on the owner's UE build (14.08/14.09). Clause (b) is half provable
+here: Atlas prints the 14.08 format strings verbatim from the same fields,
+which is a code-level match; "byte-identical to what the engine printed" needs
+the engine to have printed.
 
 ### 14.08 written - VaelenGame, the one place a world is held
 

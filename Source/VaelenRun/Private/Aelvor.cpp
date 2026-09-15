@@ -467,7 +467,71 @@ namespace Vaelen::Run
 			Release();
 			return 0;
 		}
+		NearDetail(Who);
 		return Who;
+	}
+
+	void Aelvor::NearDetail(uint32 Who)
+	{
+		// ADR-0139. Ask for the neighbours of the region the played person
+		// stands in, so that a Move has somewhere to go.
+		//
+		// Until 14.10 the only region this world ever asked to detail was the
+		// busiest one (Begin, above), while LodRules::MaxDetailed allows four -
+		// three slots nobody used. View::Life lists a neighbour in Near only
+		// when it is adjacent AND detailed, because Player::Doings refuses a
+		// Move to anywhere else as TooFar, so Near was empty on every day of
+		// every played world: the page never offered Move and the world could
+		// never have taken it. The game offered eight verbs and could take
+		// seven. Measured over thirty days at AELVOR 256: NearCount 0, thirty
+		// times out of thirty.
+		//
+		// Here rather than in the host, and in Aelvor rather than in Door, so
+		// that every taking gets it - the first one, the one that follows a
+		// death, and the ones Run::Replay applies out of a stream. A host that
+		// asked for this itself would be a host whose stream replays into a
+		// different world.
+		//
+		// Ascending region index, and nothing weighed: the order has to be the
+		// same on every machine, and "the neighbour with the most people" is a
+		// judgement that would move with the year.
+		const Population::PersonIndex Index = Population::BuildPersonIndex(K->Instance, K->W.Persons);
+		const EntityHandle Self = Who < Index.Handles.size() ? Index.Handles[Who] : EntityHandle{};
+		if (Self.IsNull())
+		{
+			return;
+		}
+		const Population::PersonInfo* P = K->Instance.Components().GetPool(K->W.Persons.Person).TryGet(Self);
+		if (P == nullptr || P->Region == 0)
+		{
+			return;
+		}
+		const WorldGen::RegionGraph Graph =
+			WorldGen::BuildRegionGraph(K->Instance.Map(), K->Ages.Types().World.Regions);
+		if (P->Region >= Graph.Neighbours.size())
+		{
+			return;
+		}
+		// One slot is the played person's own region; the rest are the walk.
+		const LodRules Rules;
+		uint32 Asked = 0;
+		std::vector<uint16> Near(Graph.Neighbours[P->Region]);
+		std::sort(Near.begin(), Near.end());
+		for (const uint16 N : Near)
+		{
+			if (Rules.MaxDetailed == 0 || Asked + 1 >= Rules.MaxDetailed)
+			{
+				break;
+			}
+			if (N == 0 || IsWanted(K->Instance, K->W.Lod, N))
+			{
+				continue;
+			}
+			if (RequestDetail(K->Instance, K->W.Lod, N))
+			{
+				++Asked;
+			}
+		}
 	}
 
 	bool Aelvor::Release()

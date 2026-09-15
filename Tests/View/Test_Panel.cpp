@@ -33,7 +33,7 @@
 // C4127 forbids `if (constexpr != 0)`. 0 means "not frozen yet", and then the
 // test prints what it saw instead of asserting.
 #define VAELEN_PANEL_FROZEN_EMPTY 0x54787451e65766c1ull
-#define VAELEN_PANEL_FROZEN_PLAYED 0x26ef4024725cd4aaull
+#define VAELEN_PANEL_FROZEN_PLAYED 0x703c838ca533a095ull
 
 using namespace Vaelen;
 using namespace Vaelen::Run;
