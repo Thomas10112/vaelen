@@ -59,6 +59,11 @@ struct FVaelenHeld
 	}
 };
 
+// Both out of line, and in THIS file, because FVaelenHeld is whole here and
+// nowhere else. See the header for what breaks when they are left implicit.
+UVaelenWorldSubsystem::UVaelenWorldSubsystem() = default;
+UVaelenWorldSubsystem::~UVaelenWorldSubsystem() = default;
+
 void UVaelenWorldSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);

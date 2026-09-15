@@ -42,6 +42,21 @@ class VAELENGAME_API UVaelenWorldSubsystem : public UGameInstanceSubsystem
 	GENERATED_BODY()
 
 public:
+	// Declared here and defined in the .cpp, and NOT because this class has
+	// anything to do on the way in or out: because FVaelenHeld below is
+	// incomplete in this header. A UCLASS that declares neither gets both
+	// written by UnrealHeaderTool into VaelenWorldSubsystem.gen.cpp, a
+	// translation unit that includes this header and never the .cpp, so the
+	// destructor of TUniquePtr<FVaelenHeld> would be instantiated where
+	// FVaelenHeld is a forward declaration - "Can't delete an incomplete
+	// type", and the owner's build stops on a file nobody wrote. Declaring
+	// them means UHT writes neither and both are compiled in the one place
+	// the type is whole. Tools/parse_engine_modules.py cannot catch this:
+	// there is no UnrealHeaderTool in the shim, so the generated translation
+	// unit that breaks does not exist to be parsed.
+	UVaelenWorldSubsystem();
+	virtual ~UVaelenWorldSubsystem();
+
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 

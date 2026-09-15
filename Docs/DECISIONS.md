@@ -9339,6 +9339,14 @@ command surface. The honest limit is in both docstrings:
 UnrealBuildTool every kernel include path is transitive into the UI, and the
 restricted parse is a simulation. The closure check is the fence.
 
+What "the UI" means to both tools was corrected after 14.09's review: the
+MODULE, not a chosen pair of its subdirectories. Naming `Public` and `Private`
+left every other folder under a module - what UnrealBuildTool compiles just
+the same - read by neither tool, so a `Widgets/` holding a `World` passed. The
+tools walk the tree now and the exemption is what is written down:
+`VaelenGame/Private` is the seam, the one directory of the UI's two modules
+that may name a world, and it is the only name on that list.
+
 ### The hazard this does not remove
 
 Under UnrealBuildTool every `PublicDependencyModuleNames` include path is

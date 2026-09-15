@@ -54,16 +54,22 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# Where the UI lives. VaelenGame is policed in its PUBLIC directory only: it is
-# the module that holds the world, so its .cpp may name Run and Take.h, and its
-# header may not - that is the seam. 14.07 wrote this against a witness under
-# Tools/UiWitness because neither module existed yet; 14.08 and 14.09 wrote
-# them, the witness is gone, and the --witness path below is what is left of
-# it: a module of Source with no Public and no Private is not silently
-# skipped, it is reported.
+# Where the UI lives, and the ONE directory of each module this fence does not
+# read. Everything else under the module is read, because everything else under
+# the module is what UnrealBuildTool compiles: naming Public and Private and
+# stopping there left Source/VaelenUI/Widgets/ - or any folder somebody adds -
+# built by UBT and read by nobody, which is a fence with a gate in it. So the
+# list is what is EXEMPT, and the default is to read.
+#
+# VaelenGame/Private is the exemption and the whole seam: it is the module that
+# holds the world, so its .cpp may name Run and Take.h and its header may not.
+# 14.07 wrote this against a witness under Tools/UiWitness because neither
+# module existed yet; 14.08 and 14.09 wrote them, the witness is gone, and the
+# --witness path below is what is left of it: a module of Source that is not
+# there is not silently skipped, it is reported.
 ROOTS = [
-    ("VaelenUI", ("Public", "Private")),
-    ("VaelenGame", ("Public",)),
+    ("VaelenUI", ()),
+    ("VaelenGame", ("Private",)),
 ]
 
 ALLOWED = set(
@@ -114,24 +120,40 @@ INCLUDE = re.compile(r'^\s*#\s*include\s+"(Vaelen/[^"]+)"', re.MULTILINE)
 
 
 def ui_dirs(root, witness=True):
-    """Every directory this fence reads, in the order it reads them."""
+    """Every module this fence reads, as (directory, exempt subdirectories).
+
+    The directory is the MODULE, not a chosen subdirectory of it: what the
+    fence skips is named in the second half of the pair and nowhere else.
+    """
     out = []
-    for module, subs in ROOTS:
+    for module, exempt in ROOTS:
         under = Path(root) / "Source" / module
-        where = under if (under / "Private").is_dir() or (under / "Public").is_dir() else None
+        where = under if under.is_dir() else None
         if where is None and witness:
             wit = Path(root) / "Tools" / "UiWitness" / module
             where = wit if wit.is_dir() else None
         if where is None:
             continue
-        for sub in subs:
-            if (where / sub).is_dir():
-                out.append(where / sub)
+        out.append((where, exempt))
     return out
 
 
-def sources(folder):
-    return sorted(p for p in Path(folder).rglob("*") if p.suffix in (".h", ".cpp"))
+def sources(folder, exempt=()):
+    """Every header and .cpp under the module, minus the exempt subdirectories.
+
+    rglob over the module, not over one subdirectory of it: UBT compiles the
+    whole tree, so the whole tree is read unless this fence says out loud that
+    it does not.
+    """
+    out = []
+    for path in sorted(Path(folder).rglob("*")):
+        if path.suffix not in (".h", ".cpp"):
+            continue
+        parts = path.relative_to(folder).parts
+        if parts and parts[0] in exempt:
+            continue
+        out.append(path)
+    return out
 
 
 def allowed(include):
@@ -166,8 +188,8 @@ def check(root, witness=True):
     folders = ui_dirs(root, witness)
     if not folders:
         return ["no UI to check: neither Source/ nor Tools/UiWitness holds VaelenUI or VaelenGame"]
-    for folder in folders:
-        for path in sources(folder):
+    for folder, exempt in folders:
+        for path in sources(folder, exempt):
             with open(path, "r", encoding="utf-8") as handle:
                 text = handle.read()
             where = os.path.relpath(path, root)
@@ -214,6 +236,14 @@ MUTATIONS = [
     ("a Submit call", "void Go() { Submit(1); }\n"),
     ("a view taken", "void Go() { TakeLifeView(1, 2, 3, 4); }\n"),
     ("a clock read", "double Now() { return FPlatformTime::Seconds(); }\n"),
+    # The four below exist because a rule with no mutation is a rule nothing
+    # proves fires: delete or mistype any of these lines in TOKENS and, until
+    # 14.09's review, the self-test still printed "all caught" and exited 0.
+    # FDateTime is the one row 14.07 names in the roadmap by name.
+    ("a date read", "int When() { return FDateTime::Now(); }\n"),
+    ("the world's own view taken", "void Go() { TakeView(1, 2); }\n"),
+    ("the chronicle taken", "void Go() { TakeChronicleView(1, 2, 3, 4); }\n"),
+    ("a life begun", "void Go() { BeginEnslaved(1, 2); }\n"),
     ("a frame's length", "void Step(float DeltaSeconds) { (void)DeltaSeconds; }\n"),
     ("something ticked", "void Go() { Thing.Tick(0.1f); }\n"),
     ("randomness", "int Roll() { return rand(); }\n"),
@@ -271,10 +301,25 @@ def self_test(root):
         with open(leaf, "w", encoding="utf-8") as handle:
             handle.write(was)
 
+        # And the folder nobody named. UnrealBuildTool compiles every .cpp
+        # under a module, so a Widgets/ or Classes/ folder is built like the
+        # rest; a fence that reads Public and Private and stops there lets one
+        # hold the world in plain sight. Until 14.09's review, this passed.
+        aside = source / "VaelenUI" / "Widgets"
+        aside.mkdir(parents=True)
+        with open(aside / "SVaelenPanel.cpp", "w", encoding="utf-8") as handle:
+            handle.write('#include "Vaelen/Sim/World.h"\n'
+                         "void Cheat(Vaelen::World& W) { Submit(W, 1); }\n")
+        if not check(copy, witness=False):
+            print("self-test: a file outside Public and Private was NOT read", file=sys.stderr)
+            failures += 1
+        shutil.rmtree(aside)
+
     if failures:
         print("self-test: %d case(s) failed" % failures, file=sys.stderr)
         return 1
-    print("self-test: %d mutations and the closure, all caught, control clean" % len(MUTATIONS))
+    print("self-test: %d mutations, the closure and the unnamed folder, all caught, "
+          "control clean" % len(MUTATIONS))
     return 0
 
 
@@ -294,10 +339,13 @@ def main():
         print("[ui-fence] %d thing(s) the UI may not do" % len(bad), file=sys.stderr)
         return 1
     folders = ui_dirs(args.root, witness=not args.no_witness)
-    files = sum(len(sources(f)) for f in folders)
+    files = sum(len(sources(f, e)) for f, e in folders)
+    read = []
+    for folder, exempt in folders:
+        where = os.path.relpath(folder, args.root)
+        read.append(where if not exempt else "%s (all but %s)" % (where, ", ".join(exempt)))
     print("[ui-fence] %d file(s) under %s: every Vaelen include is a view leaf, the command "
-          "surface or Core, and nothing names a world"
-          % (files, ", ".join(os.path.relpath(f, args.root) for f in folders)))
+          "surface or Core, and nothing names a world" % (files, ", ".join(read)))
     print("[ui-fence] this is TEXT, not a compiler: VaelenView.Build.cs makes every kernel "
           "include path transitive under UBT, so this is the only thing standing between the "
           "UI and Commands.h")

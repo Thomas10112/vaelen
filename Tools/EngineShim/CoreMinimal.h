@@ -230,14 +230,14 @@ public:
 		Other.Ptr = nullptr;
 		return *this;
 	}
-	~TUniquePtr() { delete Ptr; }
+	~TUniquePtr() { Delete(Ptr); }
 	T* Get() const { return Ptr; }
 	T* operator->() const { return Ptr; }
 	T& operator*() const { return *Ptr; }
 	explicit operator bool() const { return Ptr != nullptr; }
 	void Reset(T* In = nullptr)
 	{
-		delete Ptr;
+		Delete(Ptr);
 		Ptr = In;
 	}
 	T* Release()
@@ -248,6 +248,17 @@ public:
 	}
 
 private:
+	/// The engine's TDefaultDelete refuses an incomplete type by static_assert
+	/// rather than by deleting a pointer to one, which is undefined behaviour.
+	/// The shim says the same thing, so a header that destroys a pimpl fails
+	/// here rather than on the owner's machine. What it still cannot see is
+	/// UnrealHeaderTool's own generated destructor - see VaelenWorldSubsystem.h.
+	static void Delete(T* What)
+	{
+		static_assert(sizeof(T) > 0, "Can't delete an incomplete type");
+		delete What;
+	}
+
 	T* Ptr = nullptr;
 };
 

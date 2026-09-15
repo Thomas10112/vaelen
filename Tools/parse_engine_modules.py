@@ -110,11 +110,29 @@ def kernel_include_dirs():
     return out
 
 
-def translation_units(source_root, module):
-    private = module_dir(source_root, module, "Private")
-    if not os.path.isdir(private):
+def module_files(source_root, module, suffixes):
+    """Every file of these kinds anywhere under the module, sorted.
+
+    UnrealBuildTool compiles what is UNDER a module directory, not what is
+    under its Private one: a Widgets/ or Classes/ folder, or a subdirectory of
+    Private, is built exactly like the rest. Reading only Private's top level
+    is how a translation unit gets built by UBT and parsed by nothing - so
+    this walks, and the fence (Tools/check_ui_fence.py) walks with it.
+    """
+    root = module_root(source_root, module)
+    if not os.path.isdir(root):
         return []
-    return [os.path.join(private, f) for f in sorted(os.listdir(private)) if f.endswith(".cpp")]
+    out = []
+    for here, folders, names in os.walk(root):
+        folders.sort()
+        for name in sorted(names):
+            if name.endswith(suffixes):
+                out.append(os.path.join(here, name))
+    return sorted(out)
+
+
+def translation_units(source_root, module):
+    return module_files(source_root, module, (".cpp",))
 
 
 def stub_generated_headers(source_root, modules, into):
@@ -128,19 +146,14 @@ def stub_generated_headers(source_root, modules, into):
     self-test parses the healthy tree with it to prove this is load-bearing.
     """
     made = []
-    for module, sub in [(m, s) for m in modules for s in ("Public", "Private")]:
-        folder = module_dir(source_root, module, sub)
-        if not os.path.isdir(folder):
-            continue
-        for name in sorted(os.listdir(folder)):
-            if not name.endswith((".h", ".cpp")):
-                continue
-            with open(os.path.join(folder, name), "r", encoding="utf-8") as f:
+    for module in modules:
+        for source in module_files(source_root, module, (".h", ".cpp")):
+            with open(source, "r", encoding="utf-8") as f:
                 text = f.read()
             for wanted in GENERATED_INCLUDE.findall(text):
-                path = os.path.join(into, wanted)
-                os.makedirs(os.path.dirname(path) or into, exist_ok=True)
-                with open(path, "w", encoding="utf-8") as f:
+                stub = os.path.join(into, wanted)
+                os.makedirs(os.path.dirname(stub) or into, exist_ok=True)
+                with open(stub, "w", encoding="utf-8") as f:
                     f.write(
                         "// Written by Tools/parse_engine_modules.py, not by UnrealHeaderTool.\n"
                         "// The real one declares reflection boilerplate; GENERATED_BODY() is a\n"

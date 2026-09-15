@@ -4419,18 +4419,26 @@ a step of the `parse` job, and a line of `verify_fast`: every
 surface (`Intent`, `Stream`, `PlayerApi`) or `Vaelen/Core/`; the TRANSITIVE
 closure of each of those is too, so an allowed header that grows a kernel
 include stops being allowed - which is exactly what `Frame.h` had done before
-14.02; and eleven word-bounded regexes refuse what an allowed include still
+14.02; and thirteen word-bounded regexes refuse what an allowed include still
 permits: `Submit(`, `ViewSources`, `Vaelen::World`, `TakeView*(`,
 `TakeLifeView(`, `TakeChronicleView(`, `BeginEnslaved(`, `Vaelen::Run`,
 `FPlatformTime`, `FDateTime`, `DeltaSeconds`, `Tick(`, `rand(`. `TakePanel` is
 deliberately absent: it takes views. Word-bounded and not substrings, and the
 self-test's CONTROL is a file saying "the operand" and "Ticker" - a checker
-that cries wolf is a checker somebody turns off. 12 mutations and the closure
-case, each caught, control clean.
+that cries wolf is a checker somebody turns off. 16 mutations, the closure and
+the unnamed folder, each caught, control clean. (Eleven regexes and 12
+mutations is what this paragraph said until the corrections below; the row at
+14.07 asks for eleven and puts `ViewSources` among the refused prefixes,
+the implementation moved it into the token list and added `TakeChronicleView`,
+and four of the thirteen had no mutation at all.)
 
-`VaelenGame` is fenced in its PUBLIC directory only, and that is the seam: the
-module that owns the world may name `Vaelen::Run` and `Take.h` in its `.cpp`
-and may not in its header. The witness proves both halves compile that way.
+`VaelenGame` is read everywhere but its `Private` directory, and that
+exemption is the seam: the module that owns the world may name `Vaelen::Run`
+and `Take.h` in its `.cpp` and may not in its header. What the fence reads is
+the MODULE and what it skips is named out loud, because UnrealBuildTool
+compiles the whole module tree and a list of two subdirectory names left the
+rest of it unread - see the corrections below. The witness proved both halves
+compile that way.
 
 `Tools/parse_engine_modules.py` gained the four things the row asked and one
 the witness forced. `ENGINE_MODULES` has four names now; `stub_generated_headers`
@@ -4491,6 +4499,63 @@ real one, and the shim's new headers are UNVERIFIED until an editor has built
 against the real Unreal ones.
 
 STATUS: VALIDATED (the scripts). Next: 14.08, `VaelenGame`.
+
+### 14.07-14.09 corrected - what the adversarial review found
+
+Five confirmed findings over the fence, VaelenGame and VaelenUI; two of the
+five were the same doc error counted twice, so four distinct things. Each was
+written by one reviewer and then put to two refuters; these are what survived.
+
+**A generated destructor nobody wrote** (`VaelenWorldSubsystem.h`). The class
+declared no constructor and no destructor, so UnrealHeaderTool writes both
+into `VaelenWorldSubsystem.gen.cpp` - a translation unit that includes the
+public header and never the `.cpp`. `TUniquePtr<FVaelenHeld>` would then be
+destroyed where `FVaelenHeld` is a forward declaration, which the engine's
+`TDefaultDelete` refuses by `static_assert(sizeof(T) > 0)`. The owner's build
+would have stopped on a file nobody in this repository wrote, and the pimpl
+that makes the header world-free is exactly what causes it. Both are now
+declared in the header and defined in the `.cpp`, where `FVaelenHeld` is
+whole. Reproduced before and after by compiling the `.gen.cpp` UHT would
+write: before, `invalid application of 'sizeof' to an incomplete type
+'FVaelenHeld'`; after, clean. `Tools/EngineShim`'s `TUniquePtr` now carries
+the same `static_assert` as the engine's, which is what makes that
+reproduction say the engine's own words - though it still cannot catch the
+real case, because there is no UnrealHeaderTool in the shim and so no
+generated translation unit to parse. The comment in the header says that.
+
+**A folder the fence did not know about** (`check_ui_fence.py`,
+`parse_engine_modules.py`). Both tools read `Public` and `Private` and nothing
+else; UnrealBuildTool compiles every `.cpp` UNDER a module. A
+`Source/VaelenUI/Widgets/` - or `Classes/`, or a subdirectory of `Private` -
+was therefore built by UBT and read by neither tool. Demonstrated on a copy:
+a `Widgets/SVaelenWorldPanel.cpp` including `Vaelen/Sim/World.h` and calling
+`Submit()` on a `World` passed the fence at `c9de288` with rc=0. Both tools
+now walk the module tree, and what is NOT read is named: `ROOTS` lists the
+exempt subdirectories (`VaelenGame/Private`, and nothing else) rather than the
+included ones, so the default is to read and a new folder is fenced the day it
+appears. The self-test gained that case as its own mutation.
+
+**Four rules nothing proved fire** (`check_ui_fence.py`). Thirteen token
+regexes, twelve mutations, and the four without one were `FDateTime` - the
+case the 14.07 row names by name - `TakeView*(`, `TakeChronicleView(` and
+`BeginEnslaved(`. Delete any of the four from `TOKENS` and the self-test still
+said "all caught" and exited 0. Four mutations added, and each verified the
+only way that means anything: with its own rule deleted from `TOKENS`, the
+self-test fails naming that mutation.
+
+**Eleven that were thirteen** (this file). The 14.07 done section said
+"eleven word-bounded regexes" and then listed thirteen in the same sentence.
+Corrected above, with what moved and why.
+
+Twenty-two other findings were refuted by both of their refuters. One of them
+- the `parse` job's "Generated stubs" step globbing the deleted
+`Tools/UiWitness` - was real, and was found and fixed independently at
+`c9de288` while the review was still running; the refuters were wrong about
+that one, which is worth writing down next to the rest.
+
+STATUS: VALIDATED for the scripts. 14.08 and 14.09 stay UNVERIFIED: the
+destructor fix is the strongest reason yet to want the owner's build, and it
+is still the owner's build that decides.
 
 ### 14.08 written - VaelenGame, the one place a world is held
 
