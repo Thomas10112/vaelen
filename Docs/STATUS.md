@@ -32,13 +32,22 @@ STATUS      : Phase 14's gate is met on (a), (b), (c) and (d). Eighty-three days
               opens on five defects the planning found, all five confirmed in the code;
               15.01 to 15.04 are VALIDATED and 15.05 is INCOMPLETE by its own admission.
 
-              AND A NUMBER FROM THAT RUN THAT NEEDS ACTING ON. linux-clang-debug spent
-              115 min 59 s in its Test step and 119 minutes in the job, against
-              timeout-minutes 120. ONE MINUTE OF HEADROOM. ADR-0119 already records two
-              debug legs cancelled at 117 minutes; the suite has grown since. The next
-              test added to a debug leg blows it, and the failure will look like a hang
-              rather than a slow suite. This is now the most urgent thing in the tree
-              that is not a feature.
+              WHAT THE RUN ACTUALLY COSTS, and a correction. The longest job,
+              linux-clang-debug, took 119 minutes against timeout-minutes 180 — 66 % of
+              its budget, 61 minutes spare. An earlier entry here called that ONE minute
+              of headroom against a budget of 120. That was wrong: 120 was the budget
+              ADR-0119 found too small in Phase 13, and the same ADR is what raised it
+              to 180 and gave the long poles a COST so ctest starts them first. The
+              number was repeated from a planning note instead of being read out of
+              .github/workflows/kernel-ci.yml, which says 180 on the line above the
+              matrix. Nothing needed fixing and nothing was changed.
+
+              Run 215, job by job, so the next person reads figures rather than a mood:
+              clang-format 7 s · parse 1 min 46 s · gcc-noasserts 10 min ·
+              gcc-release 14 min · clang-noasserts 19 min · clang-release 24 min ·
+              macOS 82 min · gcc-debug 94 min · Windows MSVC 99 min ·
+              clang-debug 119 min. Budget 180 on the Linux, Windows and macOS legs,
+              10 on clang-format and parse.
 
 PROGRESS
 ████████████████████████░░ 95%
