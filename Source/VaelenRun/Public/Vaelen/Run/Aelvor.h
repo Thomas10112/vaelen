@@ -157,9 +157,17 @@ namespace Vaelen::Run
 		/// path. Kept on the Run and not in the world: a replay rebuilds it by
 		/// applying the same looks in the same order, so nothing here enters a
 		/// digest.
+		/// 15.07: and, with Options::Stream, the warden runs - a deterministic
+		/// function from attention to detail REQUESTS. It writes requests and
+		/// never promotions, so ADR-0037 holds by construction rather than by
+		/// anybody remembering it; the bridge is still the only thing that
+		/// promotes, and it still decides on its own cadence.
 		void LookAt(const Attention& At);
 		/// The last attention this Run was told about.
 		const Attention& Attending() const noexcept { return Eyes_; }
+		/// What the warden currently asks to have detailed, ascending. Empty
+		/// without Options::Stream, and host-side either way.
+		const std::vector<uint16>& Watching() const noexcept { return Watched_; }
 
 		/// What a stream of this world is headed with (Stream.h).
 		Player::StreamHeader Header() const;
@@ -214,5 +222,13 @@ namespace Vaelen::Run
 		/// so nothing here enters a digest.
 		std::vector<uint16> Near_;
 		Attention Eyes_; ///< 15.06: the last look, host-side and out of every digest
+		/// 15.07: what the last look asked for, so the next one can give back
+		/// what it no longer wants. Host-side, rebuilt by a replay from the same
+		/// Looked records in the same order, and therefore in no digest.
+		std::vector<uint16> Watched_;
+		/// Derived, and rebuilt only when the map it came from is replaced.
+		WorldGen::RegionGraphCache Ways_;
+		/// The warden's decision, out of LookAt so it can be read on its own.
+		void Reside(const Attention& At);
 	};
 } // namespace Vaelen::Run

@@ -5,11 +5,13 @@
 // STATUS: PROTOTYPE (Phase 14)
 #include "Vaelen/Run/Aelvor.h"
 #include "Vaelen/Run/Door.h"
+#include "Vaelen/Sim/Regions.h"
 
 #include "Vaelen/Core/Log.h"
 #include "VaelenTest.h"
 
 #include <string>
+#include <algorithm>
 #include <string_view>
 
 using namespace Vaelen;
@@ -348,5 +350,113 @@ VAELEN_TEST(Door, ALookIsARecordedInputAndAStreamWithoutOneStillReads)
 		VT_CHECK_MSG(R.Looks == 3, "three looks recorded, three applied");
 		VT_CHECK_MSG(Fresh.Attending().Region == 0u, "and the world ends where the last look left it");
 		VT_CHECK_MSG(Fresh.Attending().Most == 0u, "with Most from the host and not from the stream");
+	}
+}
+
+VAELEN_TEST(Door, TheWardenTurnsALookIntoRequestsAndDoesNotThrashOnABorder)
+{
+	// Phase 15 task 15.07. The warden is a function from attention to detail
+	// REQUESTS - never a promotion, because the bridge is the only thing that
+	// promotes and it decides on its own cadence (ADR-0037, ADR-0141). What is
+	// asserted here is that it is deterministic, that it obeys the host's
+	// budget, that it gives back what a new look no longer wants, and that
+	// walking back and forth over one border does not thrash.
+	Options O;
+	O.Size = 128;
+	O.Years = 100;
+	O.Play = true;
+	O.Stream = true;
+
+	const auto Wardened = [](Options Ask, const std::vector<Attention>& Looks)
+	{
+		Aelvor A(Ask);
+		std::vector<std::vector<uint16>> Seen;
+		if (!A.Begin())
+		{
+			return Seen; // the caller checks it is not empty
+		}
+		for (const Attention& At : Looks)
+		{
+			A.LookAt(At);
+			Seen.push_back(A.Watching());
+		}
+		return Seen;
+	};
+
+	// ── Deterministic: the same looks into the same world give the same asks,
+	// every time, in the same order. This is the property a replay lives on.
+	const std::vector<Attention> Walk = {{5u, 1u, 4u}, {6u, 1u, 4u}, {5u, 1u, 4u}, {6u, 1u, 4u}};
+	const std::vector<std::vector<uint16>> Once = Wardened(O, Walk);
+	const std::vector<std::vector<uint16>> Twice = Wardened(O, Walk);
+	VT_CHECK_MSG(Once == Twice, "the same attention makes the same requests, or no replay is possible");
+
+	// ── The host's budget is obeyed, and ascending order is what it is.
+	for (const std::vector<uint16>& Asked : Once)
+	{
+		VT_CHECK_MSG(Asked.size() <= 4u, "never more than the host said it would pay for");
+		VT_CHECK(std::is_sorted(Asked.begin(), Asked.end()));
+	}
+	Options Tight = O;
+	const std::vector<std::vector<uint16>> Small = Wardened(Tight, {{5u, 2u, 1u}});
+	VT_CHECK_MSG(Small[0].size() <= 1u, "a budget of one buys one");
+
+	// ── A look at nowhere gives everything back.
+	const std::vector<std::vector<uint16>> Away = Wardened(O, {{5u, 1u, 4u}, {0u, 0u, 4u}});
+	VT_CHECK_MSG(!Away[0].empty(), "looking somewhere asks for something");
+	VT_CHECK_MSG(Away[1].empty(), "and looking nowhere asks for nothing");
+
+	// ── HYSTERESIS. Walking back and forth over one border must not promote
+	// and demote the same places every day: a promotion costs about 65 ms
+	// (14.10) and a demotion destroys every person it made, so thrashing there
+	// is not a stutter, it is a world that keeps forgetting a place and
+	// inventing it again. The Keep band is one step wider than the Want band,
+	// so a neighbour stays asked-for while the camera is next door.
+	{
+		Aelvor A(O);
+		VT_REQUIRE(A.Begin());
+		// Two regions that are ACTUALLY neighbours, read out of the graph
+		// rather than guessed: a band one step wide does nothing between two
+		// places that do not touch, and the first draft of this assertion
+		// picked 5 and 6 out of the air and measured ten changes because the
+		// camera was teleporting, not walking.
+		const WorldGen::RegionGraph Graph = WorldGen::BuildRegionGraph(A.Instance().Map(), A.Ages().World.Regions);
+		uint32 Here = 0;
+		uint32 There = 0;
+		for (uint32 R = 1; R < Graph.Neighbours.size() && Here == 0; ++R)
+		{
+			for (const uint16 N : Graph.Neighbours[R])
+			{
+				if (N != 0)
+				{
+					Here = R;
+					There = N;
+					break;
+				}
+			}
+		}
+		VT_REQUIRE(Here != 0 && There != 0);
+		A.LookAt(Attention{Here, 1u, 4u});
+		uint32 Changes = 0;
+		std::vector<uint16> Last = A.Watching();
+		for (uint32 i = 0; i < 10; ++i)
+		{
+			A.LookAt(Attention{(i % 2) == 0 ? There : Here, 1u, 4u});
+			Changes += A.Watching() == Last ? 0u : 1u;
+			Last = A.Watching();
+		}
+		VAELEN_LOG_INFO(LogDoor, "ten crossings of one border changed the watched set %u time(s)", Changes);
+		VT_CHECK_MSG(Changes <= 2u, "ten crossings of one border are not ten changes of mind");
+	}
+
+	// ── And a world that did not ask for streaming has no warden at all, which
+	// is what keeps every frozen digest of fourteen phases where it is.
+	{
+		Options Plain = O;
+		Plain.Stream = false;
+		Aelvor A(Plain);
+		VT_REQUIRE(A.Begin());
+		A.LookAt(Attention{5u, 1u, 4u});
+		VT_CHECK_MSG(A.Attending().Region == 5u, "the look is still remembered");
+		VT_CHECK_MSG(A.Watching().empty(), "and nothing was asked of the world");
 	}
 }

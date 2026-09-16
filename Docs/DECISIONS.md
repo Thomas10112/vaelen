@@ -9816,3 +9816,52 @@ requests is 15.07's warden, and it will do it there — in `Aelvor`, not in a ho
 — for the reason `NearDetail` gives: a host that asked for detail itself would
 be a host whose stream replays into a different world.
 
+---
+
+## ADR-0144 — The warden writes requests, and keeps a band wider than it wants
+
+**Status:** **APPLIED 2026-09-16** (task 15.07): `Aelvor::Reside`, called by
+`LookAt` when `Options::Stream` is set. Moves no frozen digest: a world that did
+not ask for streaming has no warden, and `Watching()` is empty there.
+
+### What it is
+
+A function from attention to detail REQUESTS. Breadth first from the region
+looked at, ties broken by ascending region index, nothing weighed, no clock read
+and no random stream drawn — so the same looks into the same world make the same
+requests on every leg of the matrix, which is the property a replay lives on and
+the test asserts first.
+
+**It never promotes.** The bridge is the only thing that promotes and it decides
+on its own cadence (ADR-0037, ADR-0141). That is not a convention the warden
+observes, it is the only vocabulary it has: `RequestDetail` and `ReleaseDetail`.
+
+### The band, and why it is wider than the want
+
+Want is what lies within `Reach` steps, capped by what the host says it will pay
+for. Keep is what lies within `Reach + 1`. The ring between them is hysteresis.
+
+Without it, a camera walking back and forth over one border promotes and demotes
+the same two regions every day. A promotion costs about 65 ms (measured, 14.10)
+and a demotion destroys every person it made, so thrashing there is not a
+stutter — it is a world that keeps forgetting a place and inventing it again,
+with different people each time. Measured: ten crossings of one border change
+the watched set **zero** times.
+
+### The defect the first draft had
+
+The survivors of the band were released-checked and then dropped from the
+warden's own list, so a region kept by the band was one this warden would never
+release again — it only ever releases what it remembers asking for. A slot
+leaked per crossing, and `LodState::MaxWanted` is 8. The list now keeps them.
+
+### And the test's premise had to be built
+
+The hysteresis assertion first picked two region indices out of the air and
+measured ten changes out of ten. They were not neighbours: a band one step wide
+does nothing between two places that do not touch, and the camera was
+teleporting rather than walking. The test now reads a region and one of its
+actual neighbours out of the graph. This is the third time in Phase 15 that an
+assertion failed because its premise was assumed instead of constructed, and
+each of the three was a real thing to learn about the world rather than a slip.
+

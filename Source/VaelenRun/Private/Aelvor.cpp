@@ -434,11 +434,104 @@ namespace Vaelen::Run
 
 	void Aelvor::LookAt(const Attention& At)
 	{
-		// 15.06 remembers and no more. The warden of 15.07 turns this into
-		// detail requests, and it will do it HERE rather than in a host, for
-		// the reason NearDetail gives: a host that asked for detail itself
-		// would be a host whose stream replays into a different world.
 		Eyes_ = At;
+		// HERE rather than in a host, for the reason NearDetail gives: a host
+		// that asked for detail itself would be a host whose stream replays
+		// into a different world. And only when asked for, because a world that
+		// pays attention to where somebody is looking is a different world from
+		// the same seed (ADR-0141).
+		if (Given_.Stream && Begun_)
+		{
+			Reside(At);
+		}
+	}
+
+	void Aelvor::Reside(const Attention& At)
+	{
+		// The warden. A function from attention to detail REQUESTS, and never a
+		// promotion: the bridge is the only thing that promotes and it decides
+		// on its own cadence (ADR-0037, ADR-0141). Deterministic in the only
+		// way that matters for a replay - breadth first from the region looked
+		// at, ties broken by ascending region index, nothing weighed, no clock
+		// read and no random stream drawn.
+		const uint32 Most = At.Most == 0 ? K->Bridging.MaxDetailed : At.Most;
+		const WorldGen::RegionGraph& Graph = Ways_.Of(K->Instance.Map(), K->Ages.Types().World.Regions);
+
+		// Want: within Reach steps, capped by what the host will pay for.
+		// Keep: within Reach + 1. The band between them is the hysteresis, and
+		// it is what stops a camera walking back and forth over one border from
+		// promoting and demoting the same two regions every day - a promotion
+		// costs about 65 ms (14.10) and a demotion throws away every person it
+		// made, so thrashing there is not a stutter, it is a world that keeps
+		// forgetting a place and inventing it again.
+		std::vector<uint16> Want;
+		std::vector<uint16> Keep;
+		if (At.Region != 0 && At.Region < Graph.Neighbours.size())
+		{
+			std::vector<uint32> Step(Graph.Neighbours.size(), 0xFFFFFFFFu);
+			std::vector<uint32> Edge{At.Region};
+			Step[At.Region] = 0;
+			for (uint32 Far = 0; Far <= At.Reach + 1u && !Edge.empty(); ++Far)
+			{
+				std::sort(Edge.begin(), Edge.end());
+				std::vector<uint32> Next;
+				for (const uint32 R : Edge)
+				{
+					if (Far <= At.Reach && Want.size() < Most)
+					{
+						Want.push_back(static_cast<uint16>(R));
+					}
+					Keep.push_back(static_cast<uint16>(R));
+					for (const uint16 N : Graph.Neighbours[R])
+					{
+						if (N != 0 && Step[N] == 0xFFFFFFFFu)
+						{
+							Step[N] = Far + 1u;
+							Next.push_back(N);
+						}
+					}
+				}
+				Edge.swap(Next);
+			}
+		}
+		std::sort(Want.begin(), Want.end());
+		std::sort(Keep.begin(), Keep.end());
+
+		// Give back what this look no longer wants. Never Begin's region, which
+		// is the world's floor, and never one the taking of ADR-0139 asked for,
+		// which is what a Move needs. The region the played person stands in is
+		// safe without being named here: 15.01's fence refuses to demote a
+		// region holding somebody, so releasing it costs them nothing.
+		//
+		// What survives stays IN Watched_, and that is not bookkeeping tidiness:
+		// a region kept by the band and forgotten here would be one this warden
+		// never released again, because releasing is only ever done to something
+		// it remembers asking for. The first draft dropped them and leaked a
+		// slot per crossing.
+		std::vector<uint16> Now;
+		for (const uint16 Old : Watched_)
+		{
+			const bool Held = uint32{Old} == Detail_ || std::find(Near_.begin(), Near_.end(), Old) != Near_.end() ||
+							  std::binary_search(Keep.begin(), Keep.end(), Old);
+			if (Held)
+			{
+				Now.push_back(Old);
+			}
+			else
+			{
+				ReleaseDetail(K->Instance, K->W.Lod, Old);
+			}
+		}
+		for (const uint16 R : Want)
+		{
+			if (RequestDetail(K->Instance, K->W.Lod, R))
+			{
+				Now.push_back(R);
+			}
+		}
+		std::sort(Now.begin(), Now.end());
+		Now.erase(std::unique(Now.begin(), Now.end()), Now.end());
+		Watched_.swap(Now);
 	}
 
 	Player::StreamHeader Aelvor::Header() const
