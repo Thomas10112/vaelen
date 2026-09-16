@@ -414,6 +414,12 @@ namespace Vaelen::WorldGen
 		return true;
 	}
 
+	// Out of line so that VaelenSim actually EMITS them and the DLL exports
+	// them; see the comment on the declarations in Regions.h. Defaulted, so the
+	// in-class initialisers are what they always were and no digest moves.
+	RegionGraphCache::RegionGraphCache() = default;
+	RegionGraphCache::~RegionGraphCache() = default;
+
 	const RegionGraph& RegionGraphCache::Of(const WorldMap& Map, const RegionLayers& Regions)
 	{
 		const WorldGrid Bounds = Map.Grid();
