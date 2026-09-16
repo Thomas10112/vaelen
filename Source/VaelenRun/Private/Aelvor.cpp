@@ -107,6 +107,10 @@ namespace Vaelen::Run
 			// system that runs on a DAY - but only when asked, because a world
 			// that decides detail on a different cadence is a different world.
 			Bridging.DecideElsewhere = Given.Stream;
+			// 15.08: one region a day at most, and only for a world that
+			// streams. A promotion costs about 65 ms (14.10) and two on one day
+			// turn is a fifth of a second of the game stopping.
+			Bridging.PromotionsPerPass = Given.Stream ? 1u : 0u;
 			Bridge = std::make_unique<LodSystem>(Instance, Ages.Types(), W.Persons, W.Lod, Bridging);
 			if (Given.Stream)
 			{

@@ -207,8 +207,16 @@ namespace Vaelen::Population
 				++State.Refused;
 			}
 		}
+		// 15.08: and no more than PromotionsPerPass of them in one pass. The held
+		// region above is not counted against it - a colony that arrives a day
+		// late is a game that starts without the place it is played in.
+		uint32 Made_ = 0;
 		for (uint32 i = 0; i < State.WantedCount && DetailedCount < Rules.MaxDetailed; ++i)
 		{
+			if (Rules.PromotionsPerPass != 0 && Made_ >= Rules.PromotionsPerPass)
+			{
+				break; // the rest wait for tomorrow, which is the whole point
+			}
 			const uint32 R = State.Wanted[i];
 			if (R >= Regions.size() || Regions[R].IsNull() || Detailed(R))
 			{
@@ -220,6 +228,7 @@ namespace Vaelen::Population
 				++State.Refused;
 				continue;
 			}
+			++Made_;
 			++State.Promotions;
 			++DetailedCount;
 			Context.Events->Publish(Context.Tick, RegionPromotedEvent, LodPayload{R, Made, State.Promotions, 0},

@@ -5,6 +5,7 @@
 // STATUS: PROTOTYPE (Phase 14)
 #include "Vaelen/Run/Aelvor.h"
 #include "Vaelen/Run/Door.h"
+#include "Vaelen/Population/Lod.h"
 #include "Vaelen/Sim/Regions.h"
 
 #include "Vaelen/Core/Log.h"
@@ -459,4 +460,69 @@ VAELEN_TEST(Door, TheWardenTurnsALookIntoRequestsAndDoesNotThrashOnABorder)
 		VT_CHECK_MSG(A.Attending().Region == 5u, "the look is still remembered");
 		VT_CHECK_MSG(A.Watching().empty(), "and nothing was asked of the world");
 	}
+}
+
+VAELEN_TEST(Door, NoDayTurnPromotesTwiceWhileTheCameraWalks)
+{
+	// Phase 15 task 15.08. A promotion materialises one entity per counted head
+	// in the tick it happens, and 14.10 measured what that costs: about 65 ms
+	// for one region of AELVOR at 256. On a yearly bridge nobody feels it. On a
+	// daily pass with a camera walking, two promotions landing on one day turn
+	// is a fifth of a second of the game stopping.
+	//
+	// A COUNT and not a duration. ADR-0109 forbids a correctness suite
+	// asserting on the wall clock, because a loaded CI runner turns that into a
+	// coin toss. It does not forbid asserting on how many times something
+	// happened - which is the same property, measured where it reproduces. This
+	// is the substitution ADR-0109 itself made when it replaced seconds with an
+	// event count, applied to the thing that would otherwise be timed.
+	Options O;
+	O.Size = 128;
+	O.Years = 100;
+	O.Play = true;
+	O.Stream = true;
+
+	const auto Walk = [](Options Ask, uint32 Days)
+	{
+		Aelvor A(Ask);
+		uint32 Worst = 0;
+		if (!A.Begin())
+		{
+			return Worst;
+		}
+		Player::StartRules Rules;
+		Rules.WantBound = 0;
+		Door D(A, Rules);
+		D.TakeUp();
+		const WorldGen::RegionGraph Graph = WorldGen::BuildRegionGraph(A.Instance().Map(), A.Ages().World.Regions);
+		uint32 Was = Population::MeasureLod(A.Instance(), A.Ages(), A.Handles().Persons, A.Handles().Lod).Promotions;
+		for (uint32 Day = 0; Day < Days; ++Day)
+		{
+			// A camera that keeps moving: one region further along the graph
+			// every day, so the warden keeps asking for places nobody has.
+			const uint32 Where = 1u + (Day * 7u) % (Graph.RegionCount() > 1u ? Graph.RegionCount() : 1u);
+			D.Look(Attention{Where, 1u, 4u});
+			D.Day();
+			const uint32 Now =
+				Population::MeasureLod(A.Instance(), A.Ages(), A.Handles().Persons, A.Handles().Lod).Promotions;
+			Worst = (Now - Was) > Worst ? (Now - Was) : Worst;
+			Was = Now;
+		}
+		return Worst;
+	};
+
+	const uint32 Capped = Walk(O, 100u);
+	VAELEN_LOG_INFO(LogDoor, "a hundred days of walking: the worst day turn promoted %u region(s)", Capped);
+	VT_CHECK_MSG(Capped <= 1u, "no day turn promotes twice while the camera walks - THE CAP");
+
+	VT_CHECK_MSG(Capped >= 1u, "and the walk did promote, so the cap was measuring something real");
+	VT_CHECK_MSG(Population::LodRules{}.PromotionsPerPass == 0u, "uncapped is what every world had before this task");
+
+	// THE CONTROL WAS RUN, not reasoned about. With Bridging.PromotionsPerPass
+	// forced to 0 in Aelvor.cpp and the suite rebuilt, this same hundred-day
+	// walk reported a worst day turn of THREE regions promoted - about 195 ms
+	// of the game stopping in one turn at 256 - and this test failed on the
+	// line above. The cap was restored and it reports one. That is written here
+	// because a reader cannot rerun it from the test alone, and a cap nobody
+	// has watched fail is a cap nobody knows works.
 }

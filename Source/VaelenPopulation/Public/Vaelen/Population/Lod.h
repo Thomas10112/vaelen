@@ -123,6 +123,29 @@ namespace Vaelen::Population
 		/// the RULES rather than in LodState for the reason the field above
 		/// gives.
 		bool DecideElsewhere = false;
+
+		/// At most this many regions promoted in one pass; 0 is no limit, which
+		/// is what every world had before Phase 15.
+		///
+		/// 15.08. A promotion materialises one entity per counted head, in the
+		/// tick it happens, and 14.10 measured what that costs: about 65 ms for
+		/// one region of AELVOR at 256. On a yearly bridge nobody feels it. On
+		/// a daily pass with a camera walking, two promotions landing on one day
+		/// turn is a fifth of a second of the game stopping, and a streamer that
+		/// freezes whenever somebody crosses a corner is the thing this phase
+		/// exists to avoid.
+		///
+		/// A COUNT and not a duration, deliberately: ADR-0109 forbids a
+		/// correctness suite asserting on the wall clock, because a loaded CI
+		/// runner makes that a coin toss. It does not forbid asserting on how
+		/// many times something happened, which is the same property measured
+		/// where it is reproducible - the same substitution ADR-0109 itself
+		/// made when it replaced seconds with an event count.
+		///
+		/// What is NOT capped is the region a host holds (LodRules::Held) or the
+		/// first pass of a world: a colony that arrives one day late is a game
+		/// that starts without the place it is played in.
+		uint32 PromotionsPerPass = 0;
 	};
 
 	struct LodPayload

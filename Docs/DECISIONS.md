@@ -9865,3 +9865,50 @@ actual neighbours out of the graph. This is the third time in Phase 15 that an
 assertion failed because its premise was assumed instead of constructed, and
 each of the three was a real thing to learn about the world rather than a slip.
 
+---
+
+## ADR-0145 — The promotion hitch is bounded as a count, because ADR-0109 forbids timing it
+
+**Status:** **APPLIED 2026-09-16** (task 15.08): `LodRules::PromotionsPerPass`,
+set to 1 by `Run::Aelvor` when `Options::Stream`. Moves no frozen digest: the
+default is 0, no limit, which is what every world had before Phase 15.
+
+### The cost being bounded
+
+`PromoteRegion` materialises one entity per counted head, in the tick it
+happens. 14.10 measured it: about 65 ms for one region of AELVOR at 256, which
+is where the 340 ms of a played world's first day turn came from.
+
+On a yearly bridge nobody feels it. On the daily pass of ADR-0141 with a camera
+walking, promotions land whenever the warden's requests come due, and measured
+over a hundred days of walking at 128 **the worst day turn promoted three
+regions** — about 195 ms of the game stopping in one turn. A streamer that
+freezes whenever somebody crosses a corner is the thing this phase exists to
+avoid.
+
+### Why a count and not a duration
+
+ADR-0109 forbids a correctness suite asserting on the wall clock: run 128 failed
+one job of nine on a timing ratio that a loaded CI runner turned into a coin
+toss. It does **not** forbid asserting on how many times something happened,
+and that is the same property measured where it reproduces — the substitution
+ADR-0109 itself made when it replaced seconds with an event count.
+
+So the rule is "at most N regions promoted in one pass", the test asserts on
+`LodStats::Promotions` between day turns, and the number it produces is the same
+on every leg of the matrix.
+
+### What is not capped
+
+The region a host holds (`LodRules::Held`), and the first pass of a world. A
+colony that arrives one day late is a game that starts without the place it is
+played in.
+
+### The control was run
+
+With the cap forced off and the suite rebuilt, the same hundred-day walk
+reported a worst day turn of three promotions and the test failed. With it
+restored, one. A cap nobody has watched fail is a cap nobody knows works, and
+the test says so in its own text because a reader cannot rerun that from the
+test alone.
+
