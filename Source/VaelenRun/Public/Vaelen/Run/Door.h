@@ -34,6 +34,7 @@
 #include "Vaelen/Player/Start.h"
 #include "Vaelen/Player/Stream.h"
 #include "Vaelen/Run/Aelvor.h"
+#include "Vaelen/Run/Attention.h"
 #include "Vaelen/Run/RunApi.h"
 
 namespace Vaelen::Run
@@ -51,6 +52,18 @@ namespace Vaelen::Run
 		/// Stamps Issued with the world's clock, submits, records the answer -
 		/// unless it is NoPlayer, which touched nothing and is not a record.
 		Player::Refusal Mean(Player::PlayerCommand C);
+		/// Records where the host is looking, stamped with the world's clock
+		/// exactly as Mean stamps Issued - a host that passes its own tick is
+		/// passing a number the replay would have to trust (ADR-0138). The
+		/// Attention's Most is NOT recorded: it is the host's configuration,
+		/// like the StartRules above, and a replay is told it.
+		///
+		/// 15.06 records the look and hands it to the world; what the world
+		/// does with it is 15.07's warden. A look at region 0 is a host looking
+		/// nowhere and is recorded as such, because "the camera left" is as
+		/// much an input as where it went.
+		void Look(const Attention& At);
+
 		/// Records DayTurned{Now()} and turns the day. When the played person
 		/// is no longer alive afterwards they are released and another is
 		/// taken up, recorded; returns the tick it is now.
@@ -74,6 +87,7 @@ namespace Vaelen::Run
 		uint32 Wrong = 0;	 ///< answers that differed from the record, persons that were not the recorded one
 		uint32 Days = 0;	 ///< day turns made - exactly the DayTurned records
 		uint32 Takings = 0;	 ///< takings applied
+		uint32 Looks = 0;	 ///< looks put back through the door (15.06)
 		uint32 Left = 0;	 ///< records on ticks the days never reached
 		uint32 Refused = 0;	 ///< 1 when nothing was replayed: another world, no Play, or not Begun
 		uint32 ByKind[Player::IntentCount] = {}; ///< commands by Intent; an unknown kind counts under None

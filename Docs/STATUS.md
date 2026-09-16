@@ -14,7 +14,7 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 15 — STREAMING & LOD (14 CLOSED 2026-09-16, all five clauses)
-TASK        : 15.06 — Attention as a recorded input (15.01-15.05 VALIDATED 2026-09-16)
+TASK        : 15.07 — the warden (15.01-15.06 VALIDATED 2026-09-16)
               15.05 is covered now. The harness it wanted exists: the two systems that
               write RegionFaith are removed from the scheduler once the region is
               detailed, so the faiths hold still long enough for the crossing to be

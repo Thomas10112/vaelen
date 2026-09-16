@@ -48,6 +48,7 @@
 #include "Vaelen/Population/Needs.h"
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Population/Traits.h"
+#include "Vaelen/Run/Attention.h"
 #include "Vaelen/Run/RunApi.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/World.h"
@@ -150,6 +151,16 @@ namespace Vaelen::Run
 		/// The region the colony was founded on, 0 when none was.
 		uint32 Founded() const noexcept { return Dug_; }
 
+		/// Told where the host is looking. 15.06 remembers it and no more; the
+		/// warden of 15.07 is what turns attention into detail requests, and it
+		/// will do it from here so that a replay and a live host go through one
+		/// path. Kept on the Run and not in the world: a replay rebuilds it by
+		/// applying the same looks in the same order, so nothing here enters a
+		/// digest.
+		void LookAt(const Attention& At);
+		/// The last attention this Run was told about.
+		const Attention& Attending() const noexcept { return Eyes_; }
+
 		/// What a stream of this world is headed with (Stream.h).
 		Player::StreamHeader Header() const;
 		/// What the view needs to be told to look at this world.
@@ -202,5 +213,6 @@ namespace Vaelen::Run
 		/// replay rebuilds it by applying the same takings in the same order,
 		/// so nothing here enters a digest.
 		std::vector<uint16> Near_;
+		Attention Eyes_; ///< 15.06: the last look, host-side and out of every digest
 	};
 } // namespace Vaelen::Run

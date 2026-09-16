@@ -432,6 +432,15 @@ namespace Vaelen::Run
 		return K->Ages.Types();
 	}
 
+	void Aelvor::LookAt(const Attention& At)
+	{
+		// 15.06 remembers and no more. The warden of 15.07 turns this into
+		// detail requests, and it will do it HERE rather than in a host, for
+		// the reason NearDetail gives: a host that asked for detail itself
+		// would be a host whose stream replays into a different world.
+		Eyes_ = At;
+	}
+
 	Player::StreamHeader Aelvor::Header() const
 	{
 		Player::StreamHeader H;

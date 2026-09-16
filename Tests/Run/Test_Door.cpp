@@ -10,6 +10,7 @@
 #include "VaelenTest.h"
 
 #include <string>
+#include <string_view>
 
 using namespace Vaelen;
 using namespace Vaelen::Player;
@@ -245,4 +246,107 @@ VAELEN_TEST(Door, AStreamOfAnotherWorldOrIntoAnUnplayedRunIsRefused)
 	VT_REQUIRE(B.Begin());
 	S.Header = B.Header();
 	VT_CHECK_MSG(Replay(B, S).Refused == 1, "a Run without Play has no door");
+}
+
+VAELEN_TEST(Door, ALookIsARecordedInputAndAStreamWithoutOneStillReads)
+{
+	// Phase 15 task 15.06. Where the host is looking is an INPUT: it goes
+	// through the door, it is stamped with the world's clock, it is written to
+	// the stream and a replay puts it back. What the world DOES with it is
+	// 15.07's warden - this task is the road, not the traffic.
+	Options O;
+	O.Size = 128;
+	O.Years = 100;
+	O.Play = true;
+	Aelvor A(O);
+	VT_REQUIRE(A.Begin());
+	Player::StartRules Rules;
+	Rules.WantBound = 0;
+	Door D(A, Rules);
+	VT_REQUIRE(D.TakeUp() != 0);
+
+	// The door stamps the tick, whatever the host thinks the time is - the same
+	// rule Mean follows for Issued (ADR-0138).
+	const uint64 At = A.Now();
+	D.Look(Attention{7u, 2u, 4u});
+	VT_REQUIRE(D.Stream().Looks.size() == 1);
+	VT_CHECK_MSG(D.Stream().Looks[0].Tick == At, "the world's clock, not the host's");
+	VT_CHECK(D.Stream().Looks[0].Region == 7u);
+	VT_CHECK(D.Stream().Looks[0].Reach == 2u);
+	VT_CHECK_MSG(A.Attending().Region == 7u, "and the world was told at once");
+	VT_CHECK_MSG(A.Attending().Most == 4u, "including what the host will pay for, which is not recorded");
+
+	// Through the DOOR and not the Run: a day turned outside the door is a day
+	// the stream never heard about, and then the replay never reaches the ticks
+	// the later looks were stamped with. The first draft of this test called
+	// Aelvor::Day directly and lost two of its three looks that way, which is
+	// the same lesson Door.h states at the top of the file.
+	D.Day();
+	D.Look(Attention{9u, 1u, 4u});
+	D.Day();
+	D.Look(Attention{0u, 0u, 4u}); // the camera left, which is as much an input
+	VT_REQUIRE(D.Stream().Looks.size() == 3);
+
+	// The text form round trips, and the look lines carry no Most.
+	const std::string Text = Player::EncodeStream(D.Stream());
+	Player::InputStream Back;
+	Player::StreamReport Report;
+	VT_REQUIRE(Player::DecodeStream(Text, Back, Report));
+	VT_CHECK_MSG(Report.BadLines == 0, "every line of it is a record this build knows");
+	VT_CHECK(Back.Looks.size() == 3);
+	VT_CHECK_MSG(Player::EncodeStream(Back) == Text, "encode, decode, encode: the same bytes");
+	for (usize i = 0; i < Back.Looks.size(); ++i)
+	{
+		VT_CHECK(Back.Looks[i].Tick == D.Stream().Looks[i].Tick);
+		VT_CHECK(Back.Looks[i].Region == D.Stream().Looks[i].Region);
+		VT_CHECK(Back.Looks[i].Reach == D.Stream().Looks[i].Reach);
+	}
+
+	// A STREAM WRITTEN BEFORE LOOKS EXISTED STILL READS, which is why the text
+	// form's version did not change and why Replay.Played still pins the
+	// owner's month. Same stream with every `l` line taken out.
+	{
+		std::string Older;
+		usize From = 0;
+		while (From < Text.size())
+		{
+			const usize End = Text.find('\n', From);
+			const usize Stop = End == std::string::npos ? Text.size() : End;
+			const std::string_view Line(Text.data() + From, Stop - From);
+			if (Line.empty() || Line[0] != 'l')
+			{
+				Older.append(Line);
+				Older.push_back('\n');
+			}
+			From = Stop + 1;
+		}
+		Player::InputStream Old;
+		Player::StreamReport OldReport;
+		VT_REQUIRE(Player::DecodeStream(Older, Old, OldReport));
+		VT_CHECK_MSG(OldReport.BadLines == 0, "a stream with no looks is not a stream with bad lines");
+		VT_CHECK(Old.Looks.empty());
+		VT_CHECK(Old.Days.size() == D.Stream().Days.size());
+		VT_CHECK(Old.Takings.size() == D.Stream().Takings.size());
+	}
+
+	// A corrupt look line is counted and skipped, never crashed on.
+	{
+		Player::InputStream Bad;
+		Player::StreamReport BadReport;
+		const std::string Broken = Text + "l 12 notanumber 3\n";
+		VT_REQUIRE(Player::DecodeStream(Broken, Bad, BadReport));
+		VT_CHECK_MSG(BadReport.BadLines == 1, "one line neither blank nor a record");
+		VT_CHECK(Bad.Looks.size() == 3);
+	}
+
+	// And a replay puts the looks back through the same door, in order.
+	{
+		Aelvor Fresh(O);
+		VT_REQUIRE(Fresh.Begin());
+		const ReplayReport R = Replay(Fresh, D.Stream(), Rules);
+		VT_CHECK(R.Refused == 0);
+		VT_CHECK_MSG(R.Looks == 3, "three looks recorded, three applied");
+		VT_CHECK_MSG(Fresh.Attending().Region == 0u, "and the world ends where the last look left it");
+		VT_CHECK_MSG(Fresh.Attending().Most == 0u, "with Most from the host and not from the stream");
+	}
 }

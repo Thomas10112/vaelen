@@ -76,6 +76,26 @@ namespace Vaelen::Player
 	};
 	static_assert(sizeof(DayTurned) == 8, "DayTurned is one tick");
 
+	/// Where the host was looking, at this tick. Phase 15 task 15.06.
+	///
+	/// A look is an INPUT and not a frame: what a camera did between two of
+	/// these is the presentation layer's business and no replay's. Only the
+	/// region it settled on and how far it reached are recorded, because only
+	/// those can change what the world pays attention to (ADR-0037: the
+	/// presentation writes requests and never promotions).
+	///
+	/// What is NOT here is how many regions the host will pay for at once. That
+	/// is the host's configuration, like StartRules, and a replay is told it
+	/// rather than reading it - see Run/Door.h for why the rules stay out of
+	/// the stream.
+	struct Looked
+	{
+		uint64 Tick = 0;
+		uint32 Region = 0; ///< the region looked at, 0 for nowhere
+		uint32 Reach = 0;  ///< how far beyond it, in regions
+	};
+	static_assert(sizeof(Looked) == 16, "Looked must stay padding free");
+
 	/// The world the stream belongs to. A stream replayed into another world is
 	/// refused at the header, not discovered by a digest that will not match.
 	struct StreamHeader
@@ -98,6 +118,10 @@ namespace Vaelen::Player
 		std::vector<Recorded> Commands;
 		std::vector<TakenUp> Takings;
 		std::vector<DayTurned> Days;
+		/// 15.06. A stream written before this existed simply has none, which is
+		/// why the text form's version did not change: the decoder that reads
+		/// `l` lines reads a file without them exactly as it always did.
+		std::vector<Looked> Looks;
 	};
 
 	/// How many records of each kind, and what they weigh.
@@ -110,6 +134,10 @@ namespace Vaelen::Player
 	///   c <tick> <kind> <target> <amount> <hours> <issued> <verdict>
 	///   t <tick> <person>
 	///   d <tick>
+	///   l <tick> <region> <reach>
+	///
+	/// At equal ticks a look comes before everything: somebody looks, and then
+	/// acts on what they saw.
 	///
 	/// Every number decimal, so a person can read it and a diff can show it.
 	VAELEN_PLAYER_API std::string EncodeStream(const InputStream& S);

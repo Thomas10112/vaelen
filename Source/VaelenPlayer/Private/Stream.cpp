@@ -56,6 +56,16 @@ namespace Vaelen::Player
 			Append(Out, Buffer, Wrote, sizeof(Buffer));
 		}
 
+		void WriteLook(std::string& Out, const Looked& L)
+		{
+			char Buffer[80];
+			const int Wrote = std::snprintf(Buffer, sizeof(Buffer), "l %llu %llu %llu",
+											static_cast<unsigned long long>(L.Tick),
+											static_cast<unsigned long long>(L.Region),
+											static_cast<unsigned long long>(L.Reach));
+			Append(Out, Buffer, Wrote, sizeof(Buffer));
+		}
+
 		void WriteDay(std::string& Out, const DayTurned& D)
 		{
 			char Buffer[48];
@@ -114,7 +124,7 @@ namespace Vaelen::Player
 
 	usize StreamRecords(const InputStream& S)
 	{
-		return S.Commands.size() + S.Takings.size() + S.Days.size();
+		return S.Commands.size() + S.Takings.size() + S.Days.size() + S.Looks.size();
 	}
 
 	std::string EncodeStream(const InputStream& S)
@@ -135,16 +145,28 @@ namespace Vaelen::Player
 		// tick: the first version used ~0 as "no more" and a genuine record at
 		// tick 2^64-1 - which Field() admits, and rightly - read past the end
 		// of an empty vector. Found by review before it shipped.
-		usize c = 0, t = 0, d = 0;
-		while (c < S.Commands.size() || t < S.Takings.size() || d < S.Days.size())
+		//
+		// 15.06 added a fourth arm for looks, FIRST at equal ticks: somebody
+		// looks and then acts on what they saw. A stream with no looks leaves
+		// Hl false on every pass, so the three arms below decide exactly what
+		// they decided before and the encoder's output for every stream written
+		// until now is byte for byte what it was.
+		usize c = 0, t = 0, d = 0, l = 0;
+		while (c < S.Commands.size() || t < S.Takings.size() || d < S.Days.size() || l < S.Looks.size())
 		{
 			const bool Hc = c < S.Commands.size();
 			const bool Ht = t < S.Takings.size();
 			const bool Hd = d < S.Days.size();
+			const bool Hl = l < S.Looks.size();
 			const uint64 Tc = Hc ? S.Commands[c].Tick : 0;
 			const uint64 Tt = Ht ? S.Takings[t].Tick : 0;
 			const uint64 Td = Hd ? S.Days[d].Tick : 0;
-			if (Ht && (!Hc || Tt <= Tc) && (!Hd || Tt <= Td))
+			const uint64 Tl = Hl ? S.Looks[l].Tick : 0;
+			if (Hl && (!Ht || Tl <= Tt) && (!Hc || Tl <= Tc) && (!Hd || Tl <= Td))
+			{
+				WriteLook(Out, S.Looks[l++]);
+			}
+			else if (Ht && (!Hc || Tt <= Tc) && (!Hd || Tt <= Td))
 			{
 				WriteTaking(Out, S.Takings[t++]);
 			}
@@ -269,6 +291,16 @@ namespace Vaelen::Player
 				if (Ok)
 				{
 					Read.Days.push_back(DayTurned{Tick});
+				}
+			}
+			else if (L[0] == 'l')
+			{
+				uint64 Tick = 0, Region = 0, Reach = 0;
+				Ok = Field(Rest, Tick) && Field(Rest, Region) && Field(Rest, Reach) && Rest.empty() &&
+					 Fits32(Region) && Fits32(Reach);
+				if (Ok)
+				{
+					Read.Looks.push_back(Looked{Tick, static_cast<uint32>(Region), static_cast<uint32>(Reach)});
 				}
 			}
 			if (Ok)

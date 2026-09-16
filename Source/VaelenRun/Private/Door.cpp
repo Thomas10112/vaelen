@@ -61,6 +61,12 @@ namespace Vaelen::Run
 		return After;
 	}
 
+	void Door::Look(const Attention& At)
+	{
+		Tape.Looks.push_back(Player::Looked{W.Now(), At.Region, At.Reach});
+		W.LookAt(At);
+	}
+
 	ReplayReport Replay(Aelvor& Fresh, const Player::InputStream& S, const Player::StartRules& Rules)
 	{
 		ReplayReport R;
@@ -71,6 +77,20 @@ namespace Vaelen::Run
 		}
 		usize Next = 0;
 		usize Took = 0;
+		usize Saw = 0;
+		// 15.06: the looks go back through the same door they came out of, in
+		// tick order with everything else. Most is not in the record - it is
+		// the host's configuration - so a replay gives the Rules' own, which is
+		// the same argument SameWorld makes about the header.
+		const auto LookDue = [&]()
+		{
+			while (Saw < S.Looks.size() && S.Looks[Saw].Tick <= Fresh.Now())
+			{
+				Fresh.LookAt(Attention{S.Looks[Saw].Region, S.Looks[Saw].Reach, 0});
+				++R.Looks;
+				++Saw;
+			}
+		};
 		// Whoever the record says was taken up, on the tick it says - releasing
 		// whoever was played, so a replay never has to know why a life ended.
 		const auto TakeUpDue = [&]()
@@ -100,18 +120,21 @@ namespace Vaelen::Run
 				++Next;
 			}
 		};
+		LookDue();
 		TakeUpDue();
 		for (usize d = 0; d < S.Days.size(); ++d)
 		{
+			LookDue();
 			SubmitDue();
 			Fresh.Day();
 			++R.Days;
 			TakeUpDue();
 		}
 		// What was recorded after the last day turn, on the tick it is now.
+		LookDue();
 		SubmitDue();
 		TakeUpDue();
-		R.Left = static_cast<uint32>((S.Commands.size() - Next) + (S.Takings.size() - Took));
+		R.Left = static_cast<uint32>((S.Commands.size() - Next) + (S.Takings.size() - Took) + (S.Looks.size() - Saw));
 		R.State = Fresh.StateDigest();
 		R.Log = Fresh.LogDigest();
 		const std::string Story = Fresh.Life();

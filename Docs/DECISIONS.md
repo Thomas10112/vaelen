@@ -9756,3 +9756,63 @@ required to stay under the ceiling, `Near` required non-empty every time, and
 finally three fresh `RequestDetail` calls that must all succeed — the property
 a saturated list destroys, because a full list refuses everything for good.
 
+---
+
+## ADR-0143 — A look is an input, and Attention is not the Eye
+
+**Status:** **APPLIED 2026-09-16** (task 15.06): `Run::Attention`,
+`Player::Looked`, `Door::Look`, `Aelvor::LookAt`, and the fourth arm of the
+stream's encoder and decoder. Moves no frozen digest, and the text form's
+version is unchanged.
+
+### Two types with the same three numbers, kept apart on purpose
+
+`View::Eye` (`Vaelen/View/Eye.h`) is an input to the VIEW. It says what to put
+in a frame, `TakeViewFor` reads it, and nothing it holds may reach the
+simulation — ADR-0106 is the rule that the renderer reads and never writes.
+
+`Run::Attention` is an input to the RUN. It goes through the `Door`, it is
+recorded, a replay applies it, and from 15.07 it will change what the world
+simulates in detail.
+
+They carry the same three numbers today and they are still not the same thing,
+because **one of them is allowed to change what the world does and the other is
+forbidden to**. Merging them, or having the Run take a `View::Eye`, would be the
+shortest path from "the renderer may not write" to "the renderer writes through
+a type that used to be read-only". The comment at the top of `Attention.h` says
+so where somebody about to merge them will read it.
+
+### What is recorded, and what is not
+
+`Looked{Tick, Region, Reach}`. The tick is stamped by the door from the world's
+clock, exactly as `Door::Mean` stamps `Issued`: a host that passed its own tick
+would be passing a number the replay has to trust (ADR-0138).
+
+`Attention::Most` — how many regions the host will pay to keep in detail — is
+**not** in the stream. It is the host's configuration, like `StartRules`, and a
+replay is told it rather than reading it. This is the same argument `Door.h`
+already makes about rules, and the reason `Replay.Played` passes
+`--want-bound 0`.
+
+A look at region 0 is recorded like any other. "The camera left" is as much an
+input as where it went, and a replay that skipped it would end up attending to
+somewhere the host had stopped looking.
+
+### Why the text form is still version 1
+
+A stream written before looks existed simply has no `l` lines, and a decoder
+that knows `l` reads such a file exactly as it always did. Bumping the version
+would have refused every stream ever written — including the eighty-three days
+of 14.10, which `Replay.Played` pins — to announce a record they do not contain.
+The encoder gained a fourth arm placed FIRST at equal ticks, because somebody
+looks and then acts on what they saw; with no looks the arm is never taken and
+the other three decide exactly what they decided before, so every stream written
+until now encodes byte for byte as it did.
+
+### What 15.06 does NOT do
+
+`Aelvor::LookAt` remembers the attention and no more. Turning it into detail
+requests is 15.07's warden, and it will do it there — in `Aelvor`, not in a host
+— for the reason `NearDetail` gives: a host that asked for detail itself would
+be a host whose stream replays into a different world.
+
