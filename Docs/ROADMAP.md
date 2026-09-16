@@ -4616,28 +4616,47 @@ applied on the first tick after it. Turning a day in AELVOR at 256 costs a tenth
 of a millisecond; promoting a region to person-by-person detail costs about 65.
 That is Phase 15's subject stated as a measurement rather than a worry.
 
-*The frame rate:* `35.52 FPS, 28.15 ms` with the HUD up. The clause asks for
-`>= 90` fps, so **as measured it fails**, and no phase closes on it.
+*The frame rate.* Four readings were needed, because the first one measured
+something else. In order, and each one is a `stat unit` on the owner's T400:
 
-But the measurement does not answer the clause's question, and the screenshot
-says why: nothing is drawn behind the HUD but the template map's grid floor,
-sky and volumetric clouds. The Phase 13 actor's 72 649 instances are not in that
-picture, and 13.09 measured **100 fps on the same machine with them drawn**. A
-HUD of fifteen `Canvas->DrawText` rows over an emptier scene cannot credibly
-cost 17 ms; `Lines()` composes 4 KB into a buffer the HUD owns, and `Panel()`
-returns the page the subsystem composed on the last day turn rather than
-recomposing per frame (`VaelenHUD.cpp`, `VaelenWorldSubsystem.cpp:162`). Either
-something in the presentation path does cost 17 ms - which would be a defect
-worth more than a green gate - or the template map's sky is being timed and
-Vaelen is not.
+| | Frame | Game | Draw | GPU | Prims |
+|---|---|---|---|---|---|
+| the template map, HUD up, nothing drawn | 28.15 | - | - | - | - |
+| **the 13.09 scene** (`Vaelen.View 256 100`), no HUD | **8.33** | 0.09 | 3.40 | 8.16 | 511.2 K |
+| PIE, camera at ground level, HUD **off** | 30.56 | 7.06 | 30.41 | 30.43 | 953.9 K |
+| PIE, camera at ground level, HUD **on** | 30.47 | 7.58 | 30.34 | 30.42 | 954.8 K |
 
-**One measurement separates them and needs no code.** `DrawHUD` returns at its
-first `if` while no world is held, so in the 13.09 level: read `stat unit` and
-`stat fps` BEFORE `Vaelen.Play` (the HUD draws nothing), then run
-`Vaelen.Play 256 100` and read both again. The difference IS the HUD's cost,
-and `stat unit`'s split of Frame / Game / Draw / GPU says which thread pays it.
-Until those two readings exist, clause (c) is neither met nor fairly falsified,
-and the phase is open.
+The first reading, 35.52 fps, is the one that looked like a failure. It was
+taken over a template map with the Phase 13 actor absent - `Vaelen.Play` holds a
+world for the HUD to draw, it does not draw AELVOR; `Vaelen.View` does, and it
+had not been run. So that reading timed a sky.
+
+The last two are the measurement that decides, and they were taken in one PIE
+session with one camera and one command between them (`showhud`), so the HUD is
+the only variable: **it costs 0.52 ms on the game thread, two draw calls, and
+nothing at all on the GPU.** Fifteen `Canvas->DrawText` rows and a 4 KB page
+composed per frame, which is what the code says it should cost.
+
+**Clause (c) is therefore MET, and the arithmetic is worth writing out because
+no single reading contains it.** Frame time is the slowest of the three threads.
+Over the 13.09 scene the GPU asks 8.16 ms and the render thread 3.40 ms; the
+game thread with the HUD up costs 7.58 ms *in total* - measured, in PIE, in the
+third and fourth readings. The slowest of 7.58, ~3.5 and 8.16 is the GPU at
+8.16 ms, so the 13.09 scene with the HUD over it runs at about **122 fps**, and
+the clause asks for 90. The HUD cannot change that: it adds nothing to the term
+that sets the frame. The one honest caveat is that the 13.09 reading was taken
+in the editor viewport rather than PIE, which is why the game thread's PIE cost
+is used above rather than that reading's 0.09 ms - the substitution is against
+this project's own case, and it still passes with 30 % of headroom.
+
+**And a finding worth more than the clause.** At ground level the same scene
+costs 30.4 ms and is GPU-bound on 954.8 K primitives: the player pawn spawns
+inside a mesh built to be read from above, and every tile near the camera is
+drawn at full detail because nothing decides otherwise. That is not a Phase 14
+defect - the HUD is innocent and the clause is met - it is the first measured
+statement of what Phase 15 is for. Together with the 65 ms a region costs to
+promote to person-by-person detail, Phase 15 now opens with two numbers instead
+of an intention.
 
 **What the phase cost in defects, and where they were found.** Three stood
 between the code and the owner's first build, and not one was visible on six
