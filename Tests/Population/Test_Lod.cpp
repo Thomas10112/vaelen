@@ -880,3 +880,83 @@ VAELEN_TEST(Lod, DetailIsDecidedOnADayAndTheCrossingsKeepTheirYear)
 		VT_CHECK_MSG(Crossed == 0, "a month of daily detail passes pays no yearly migration");
 	}
 }
+
+VAELEN_TEST(Lod, TheAuditCountsBothGrainsAndCanBeMadeToSayNo)
+{
+	// Phase 15 task 15.04. The instrument the next task is measured by, and the
+	// point of this test is not that it returns zeros on a healthy world - a
+	// function returning zeros unconditionally would do that. It is that every
+	// number it reports can be MADE to move by breaking exactly the thing that
+	// number is about, and goes back when the break is undone. An audit that
+	// cannot be made to say no has never said yes.
+	Run W(AelvorSeed, LodRules{});
+	VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
+	const uint32 Region = W.Ranked()[0];
+	VT_REQUIRE(Region != 0);
+	VT_REQUIRE(RequestDetail(W.Instance, W.Lod, Region));
+	W.Ages.Run(1);
+	VT_REQUIRE(W.Detailed(Region));
+
+	const AuditReport Clean = Audit(W.Instance, W.Ages.Types(), W.Persons);
+	VAELEN_LOG_INFO(LogLod, "%u regions, %u detailed, %llu coarse heads, %llu fine, %u at the faith ceiling",
+					Clean.Regions, Clean.Detailed, static_cast<unsigned long long>(Clean.CoarseHeads),
+					static_cast<unsigned long long>(Clean.FineHeads), Clean.FaithCeiling);
+	VT_CHECK(Clean.Regions > 0);
+	VT_CHECK_MSG(Clean.Detailed == 1, "one region is detailed, so one has two grains to compare");
+	VT_CHECK(Clean.FineHeads > 0);
+	VT_CHECK_MSG(Clean.Disagreeing == 0, "and they agree");
+	VT_CHECK_MSG(Clean.SlotSumWrong == 0, "every region's culture slots sum to its total");
+	VT_CHECK_MSG(Clean.FaithsOverHeads == 0, "and nowhere do the believers outnumber the people");
+
+	// ── Control 1: break the head count of the detailed region.
+	{
+		RegionPopulation* const Counts = W.Counts(Region);
+		VT_REQUIRE(Counts != nullptr);
+		const uint32 Was = Counts->Total;
+		Counts->Total = Was + 1u;
+		const AuditReport Broken = Audit(W.Instance, W.Ages.Types(), W.Persons);
+		VT_CHECK_MSG(Broken.Disagreeing == 1, "one head too many and the audit says which region");
+		VT_CHECK(Broken.FirstDisagreeing == Region);
+		VT_CHECK_MSG(Broken.SlotSumWrong == 1, "and that the slots no longer sum to the total");
+		Counts->Total = Was;
+		VT_CHECK_MSG(Audit(W.Instance, W.Ages.Types(), W.Persons).Disagreeing == 0,
+					 "and it goes back, because it recomputes rather than remembers");
+	}
+
+	// ── Control 2: more believers than people.
+	{
+		RegionFaith* const F = W.Faith(Region);
+		VT_REQUIRE(F != nullptr);
+		const RegionPopulation* const Counts = W.Counts(Region);
+		VT_REQUIRE(Counts != nullptr);
+		VT_REQUIRE(F->Add(1u, Counts->Total + 1u));
+		const AuditReport Broken = Audit(W.Instance, W.Ages.Types(), W.Persons);
+		VT_CHECK_MSG(Broken.FaithsOverHeads == 1, "believers cannot outnumber the people they are");
+		VT_CHECK_MSG(Broken.Disagreeing == 1, "and the fine grain disagrees about the faith too");
+		F->Remove(1u, Counts->Total + 1u);
+		F->Recount();
+		const AuditReport Again = Audit(W.Instance, W.Ages.Types(), W.Persons);
+		VT_CHECK(Again.FaithsOverHeads == 0);
+		VT_CHECK(Again.Disagreeing == 0);
+	}
+
+	// ── The ceiling is a precondition and not a fault, and the audit says so
+	// by counting it apart from everything else. Fill one region's four faith
+	// slots: nothing is wrong, and 15.05's defect is now possible there.
+	{
+		RegionFaith* const F = W.Faith(Region);
+		VT_REQUIRE(F != nullptr);
+		uint32 Free = 0;
+		for (uint32 S = 0; S < RegionFaith::MaxFaiths; ++S)
+		{
+			Free += F->Religion[S] == 0 ? 1u : 0u;
+		}
+		for (uint32 i = 0; i < Free; ++i)
+		{
+			VT_REQUIRE(F->Add(900u + i, 1u)); // a slot is taken by a believer, not by a name
+		}
+		const AuditReport Full = Audit(W.Instance, W.Ages.Types(), W.Persons);
+		VT_CHECK_MSG(Full.FaithCeiling >= 1, "a region with every faith slot taken is counted, and not as a fault");
+		VT_CHECK_MSG(Full.FaithsOverHeads == 0, "because nothing is wrong with it yet");
+	}
+}

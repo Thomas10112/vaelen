@@ -269,6 +269,84 @@ namespace Vaelen::Population
 		return C;
 	}
 
+	AuditReport Audit(const World& W, const History::PreHistoryTypes& Types, const PersonTypes& Persons)
+	{
+		AuditReport Out;
+		// The fine grain first, in one walk: living persons by region, so that
+		// the comparison below is a lookup and not a second traversal per
+		// region. Dead persons are kept in a detailed region as history and are
+		// in neither grain's head count.
+		std::vector<uint32> Living;
+		W.Components()
+			.GetPool(Persons.Person)
+			.ForEach(
+				[&](EntityHandle, const PersonInfo& P)
+				{
+					if (P.State != static_cast<uint8>(LifeState::Alive))
+					{
+						return;
+					}
+					if (P.Region >= Living.size())
+					{
+						Living.resize(usize{P.Region} + 1u, 0u);
+					}
+					++Living[P.Region];
+					++Out.FineHeads;
+				});
+
+		W.Components()
+			.GetPool(Types.World.RegionTypes_.Region)
+			.ForEach(
+				[&](EntityHandle H, const WorldGen::RegionInfo& R)
+				{
+					const RegionPopulation* const Counts =
+						W.Components().GetPool(Types.Population.Population).TryGet(H);
+					if (Counts == nullptr)
+					{
+						return;
+					}
+					++Out.Regions;
+					Out.CoarseHeads += Counts->Total;
+
+					uint32 Slots = 0;
+					uint32 Taken = 0;
+					for (uint32 S = 0; S < RegionPopulation::MaxCultures; ++S)
+					{
+						Slots += Counts->Count[S];
+						Taken += Counts->Culture[S] != 0 ? 1u : 0u;
+					}
+					Out.SlotSumWrong += Slots != Counts->Total ? 1u : 0u;
+					Out.CultureCeiling += Taken == RegionPopulation::MaxCultures ? 1u : 0u;
+
+					const RegionFaith* const F = W.Components().GetPool(Types.Religion.Faith).TryGet(H);
+					if (F != nullptr)
+					{
+						uint32 Believers = 0;
+						uint32 Faiths = 0;
+						for (uint32 S = 0; S < RegionFaith::MaxFaiths; ++S)
+						{
+							Believers += F->Adherents[S];
+							Faiths += F->Religion[S] != 0 ? 1u : 0u;
+						}
+						Out.FaithsOverHeads += Believers > Counts->Total ? 1u : 0u;
+						Out.FaithCeiling += Faiths == RegionFaith::MaxFaiths ? 1u : 0u;
+					}
+
+					if (W.Components().GetPool(Persons.Detail).TryGet(H) == nullptr)
+					{
+						return; // coarse: there is no fine grain to compare it with
+					}
+					++Out.Detailed;
+					const uint32 Fine = R.Index < Living.size() ? Living[R.Index] : 0u;
+					if (Fine != Counts->Total || !IsConsistent(W, Types, Persons, R.Index))
+					{
+						++Out.Disagreeing;
+						Out.FirstDisagreeing = Out.FirstDisagreeing == 0 ? R.Index : Out.FirstDisagreeing;
+					}
+				});
+		return Out;
+	}
+
 	bool IsConsistent(const World& W, const History::PreHistoryTypes& Types, const PersonTypes& Persons, uint32 Region)
 	{
 		const EntityHandle H = RegionHandle(W, Types, Region);

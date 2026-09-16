@@ -14,7 +14,7 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 14 gate PASSED on (a)-(d) — 15 BROKEN DOWN and startable
-TASK        : 15.04 — the conservation audit (15.01-15.03 VALIDATED 2026-09-16)
+TASK        : 15.05 — the vanishing believer (15.01-15.04 VALIDATED 2026-09-16)
 STATUS      : Phase 14's gate is met on (a), (b), (c) and (d). Eighty-three days
               played at the keyboard in UE 5.6 replay headlessly to the same four
               digests byte for byte; the HUD costs 0.52 ms of game thread and nothing

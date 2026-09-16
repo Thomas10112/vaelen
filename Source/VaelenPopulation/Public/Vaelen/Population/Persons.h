@@ -155,6 +155,54 @@ namespace Vaelen::Population
 										  const PersonTypes& Persons, uint32 Region);
 	/// The fine grain of a region counted.
 	VAELEN_POPULATION_API RegionCensus CountPersons(const World& W, const PersonTypes& Persons, uint32 Region);
+	/// What an audit of the two grains found. Phase 15 task 15.04.
+	///
+	/// RECOMPUTED, never accumulated: every field below is counted from the
+	/// world as it stands when Audit is called. A counter that is incremented
+	/// as things happen agrees with itself by construction and is therefore no
+	/// instrument at all - it would have counted the crossing that lost a
+	/// believer as a crossing that went fine.
+	///
+	/// It declares no component and writes nothing, so calling it moves no
+	/// digest and a test may call it on any world of any closed phase.
+	struct AuditReport
+	{
+		uint32 Regions = 0;	 ///< regions carrying a population count
+		uint32 Detailed = 0; ///< of those, simulated person by person
+		/// Detailed regions whose living persons do not agree with their coarse
+		/// counts (IsConsistent, region by region), and the first of them.
+		uint32 Disagreeing = 0;
+		uint32 FirstDisagreeing = 0;
+		uint64 CoarseHeads = 0; ///< sum of RegionPopulation::Total over the world
+		uint64 FineHeads = 0;	///< living persons counted one by one
+		/// Regions whose culture slots do not sum to Total. Recount() exists to
+		/// make this 0 and nothing else should ever make it otherwise.
+		uint32 SlotSumWrong = 0;
+		/// Regions where the believers outnumber the people. Believers FEWER
+		/// than people is normal - somebody may hold no religion - so the
+		/// reverse is the only direction that is always a fault.
+		uint32 FaithsOverHeads = 0;
+		/// Regions with every slot taken. Not faults: the PRECONDITION of the
+		/// defect 15.05 fixes, because RegionFaith::Add refuses a fifth faith
+		/// and the crossing that calls it ignores the refusal. A world where
+		/// this is 0 cannot lose a believer that way, and a world where it
+		/// climbs is a world where the fix matters more.
+		uint32 FaithCeiling = 0;
+		uint32 CultureCeiling = 0;
+	};
+	/// Counts both grains of the whole world and compares them where both
+	/// exist. See AuditReport for what each number means and, as importantly,
+	/// what it does not mean.
+	///
+	/// WHAT IT CANNOT SEE, said plainly because an instrument that is trusted
+	/// past its range is worse than none: a believer lost into a COARSE region
+	/// leaves no trace to recompute from. There are no persons there to count,
+	/// so Total - sum(Adherents) cannot be told apart from the irreligious. The
+	/// loss is observable at the moment it happens and not afterwards, which is
+	/// why 15.05 is a fix in the crossing and not a second audit.
+	VAELEN_POPULATION_API AuditReport Audit(const World& W, const History::PreHistoryTypes& Types,
+											const PersonTypes& Persons);
+
 	/// True when the living persons of a detailed region agree with its coarse
 	/// counts, culture by culture and faith by faith.
 	VAELEN_POPULATION_API bool IsConsistent(const World& W, const History::PreHistoryTypes& Types,
