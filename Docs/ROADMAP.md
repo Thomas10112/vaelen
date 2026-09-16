@@ -4590,8 +4590,54 @@ for 30 or more, 23 refusals by the WORLD where it asks for one, every one of the
 eight verb counts at least 1, and 27 Moves among the taken - the verb that was
 unplayable by anybody until ADR-0139 the day before. (b) byte-identical after
 the prefix, above. (d) the screenshot carries `last: too far to walk`, a refusal
-the world gave, and the panel digest as its last line. (c) the frame rate is the
-one figure not yet taken.
+the world gave, and the panel digest as its last line. (c) **NOT MET, and the phase
+stays open for it** - see below.
+
+**Clause (c), measured on 2026-09-16, and what it did and did not settle.**
+
+*The ms per `Vaelen.Day` at 256, reported and not gated:* the engine printed
+246.4 ms for the first day turn and then 1.5 to 2.0 ms for each of the next
+nine, over a world of 110 048 people in 126 regions. Both numbers were then
+reproduced headlessly - gcc release, this container - and the reproduction
+decomposes them, which the engine's single figure could not:
+
+| | day 1 | day 2 and after |
+|---|---|---|
+| nobody taken up | 78.3 ms | 0.01 ms |
+| somebody taken up | 339.8 ms | 0.10 ms |
+| the five `Take*` calls the subsystem makes per day | 11.1 ms | 1.6 ms |
+
+So the steady 1.6 ms the engine reports is **not the simulation**: the day
+itself is 0.10 ms and the view-taking around it is 1.6 ms, sixteen times the
+world it describes. And the first-day spike is real but has a name: 78 ms of it
+is the detail promotion asked for at `Begin`, and the other 262 ms is the
+promotion of the played person's neighbours that ADR-0139 asks for at `TakeUp`,
+applied on the first tick after it. Turning a day in AELVOR at 256 costs a tenth
+of a millisecond; promoting a region to person-by-person detail costs about 65.
+That is Phase 15's subject stated as a measurement rather than a worry.
+
+*The frame rate:* `35.52 FPS, 28.15 ms` with the HUD up. The clause asks for
+`>= 90` fps, so **as measured it fails**, and no phase closes on it.
+
+But the measurement does not answer the clause's question, and the screenshot
+says why: nothing is drawn behind the HUD but the template map's grid floor,
+sky and volumetric clouds. The Phase 13 actor's 72 649 instances are not in that
+picture, and 13.09 measured **100 fps on the same machine with them drawn**. A
+HUD of fifteen `Canvas->DrawText` rows over an emptier scene cannot credibly
+cost 17 ms; `Lines()` composes 4 KB into a buffer the HUD owns, and `Panel()`
+returns the page the subsystem composed on the last day turn rather than
+recomposing per frame (`VaelenHUD.cpp`, `VaelenWorldSubsystem.cpp:162`). Either
+something in the presentation path does cost 17 ms - which would be a defect
+worth more than a green gate - or the template map's sky is being timed and
+Vaelen is not.
+
+**One measurement separates them and needs no code.** `DrawHUD` returns at its
+first `if` while no world is held, so in the 13.09 level: read `stat unit` and
+`stat fps` BEFORE `Vaelen.Play` (the HUD draws nothing), then run
+`Vaelen.Play 256 100` and read both again. The difference IS the HUD's cost,
+and `stat unit`'s split of Frame / Game / Draw / GPU says which thread pays it.
+Until those two readings exist, clause (c) is neither met nor fairly falsified,
+and the phase is open.
 
 **What the phase cost in defects, and where they were found.** Three stood
 between the code and the owner's first build, and not one was visible on six

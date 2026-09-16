@@ -143,12 +143,35 @@ the log and the pixels agree.
 Clauses (a) the format verbatim, (b) byte-identical, (d) the screenshot with the
 digest as its last row: **met**. Clause (c) is not.
 
-**The one thing still wanted: the frame rate.** Two numbers, and the phase
-closes on them:
+**The ms per `Vaelen.Day` is in.** 246.4 ms for the first day turn, then 1.5 to
+2.0 ms for each of the next nine, at 256 with 110 048 alive. Reproduced
+headlessly and decomposed there: the day itself is 0.10 ms, the five `Take*`
+calls the subsystem makes around it are 1.6 ms, and the first day's spike is the
+detail promotion of the played person's neighbours (ADR-0139) landing on the
+first tick - about 65 ms per region promoted. Reported, not gated.
 
-- `stat fps` with the HUD up over the 13.09 scene, read **between** day steps,
-  never during one;
-- the milliseconds one `Vaelen.Day` costs at size 256.
+**The frame rate is not in, and one reading decides it.** 35.52 fps (28.15 ms)
+was read with the HUD up on 2026-09-16, against a clause that asks for `>= 90`.
+It fails as measured - but the screenshot shows nothing behind the HUD except
+the template map's grid floor, sky and volumetric clouds: the Phase 13 actor's
+72 649 instances are not in the picture, and 13.09 measured **100 fps on this
+same machine with them drawn**. So the number may be timing a sky rather than
+this project.
+
+`DrawHUD` returns at its first `if` while no world is held, which gives a clean
+before-and-after. **In the 13.09 level** (the one with the presentation actor in
+it, not an empty template map):
+
+1. `stat unit` and `stat fps` - read them with nothing running. The HUD draws
+   nothing here, so this is the scene's own cost.
+2. `Vaelen.Play 256 100`
+3. `stat unit` and `stat fps` again.
+
+Send both readings, all four figures each (Frame / Game / Draw / GPU, and fps).
+The difference between them is the HUD's cost exactly, and `stat unit` says
+which thread pays it. If the HUD costs ~17 ms, that is a defect on this side and
+worth more than a green gate. If GPU sits at 28 ms in BOTH readings, the clause
+was written against a scene nobody was measuring and it gets amended with an ADR.
 
 Nothing else is asked of the engine machine for Phase 14.
 

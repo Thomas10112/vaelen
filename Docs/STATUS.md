@@ -14,10 +14,12 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 14 — UI — IN PROGRESS
-TASK        : 14.10 — THE PHASE GATE (headless half done; engine half waiting)
-STATUS      : VALIDATED (headless AND engine). 14.08 and 14.09 built by UBT and RUN
-              2026-09-16; a month played at the keyboard replays headlessly to the same
-              four digests, byte for byte. Only the frame rate is outstanding.
+TASK        : 14.10 — THE PHASE GATE (clauses a, b, d met; c measured and NOT met)
+STATUS      : INCOMPLETE. 14.08 and 14.09 built by UBT and RUN 2026-09-16; a month
+              played at the keyboard replays headlessly to the same four digests,
+              byte for byte. Clause (c) asks for >= 90 fps and 35.52 was measured —
+              but over a scene with nothing drawn in it, so it settles nothing.
+              One reading of stat unit in the 13.09 level decides it.
 
 PROGRESS
 ████████████████████████░░ 95%
@@ -70,8 +72,17 @@ TESTS
   f4014af16e5e60f0)
 
 BLOCKERS
-! One figure: clause (c), the frame rate with the HUD over the 13.09 scene, and the ms per
-  Vaelen.Day at 256. Phase 14 closes when it is written down.
+! Clause (c). The ms per Vaelen.Day at 256 is IN: 246.4 ms for the first day turn, then
+  1.5 to 2.0 ms, reproduced headlessly and decomposed there — the day itself is 0.10 ms,
+  the five Take* calls around it are 1.6 ms, and the first day's spike is the detail
+  promotion of the played person's neighbours (ADR-0139) landing on the first tick,
+  about 65 ms per region promoted. The frame rate is NOT in: 35.52 fps (28.15 ms) was
+  read with the HUD up, below the 90 the clause asks for, but over the template map's
+  grid floor and clouds with the Phase 13 actor's 72649 instances absent — and 13.09
+  measured 100 fps on the same machine WITH them drawn. Wanted, in the 13.09 level:
+  stat unit and stat fps read BEFORE Vaelen.Play (DrawHUD returns at its first if while
+  no world is held), then both again after. The difference is the HUD's cost exactly.
+  Phase 14 closes when those two readings exist and say what they say.
   For the record, the three defects that stood between the code and the owner's first build,
   none visible headless: UnrealHeaderTool's generated destructor on an incomplete pimpl;
   DEFINE_VTABLE_PTR_HELPER_CTOR, which instantiates that same destructor whatever the class
@@ -358,7 +369,7 @@ UNVERIFIED marks in the repository.
 | 14.07 | The UI include fence: the restricted parse, `check_ui_fence.py`, the shim | VALIDATED (the scripts) |
 | 14.08 | `VaelenGame` — the one place a world is held | **UNVERIFIED** (written, parsed, fenced; never built by UBT) |
 | 14.09 | `VaelenUI` — the HUD that copies the page, eight keys, no asset and no Blueprint | **UNVERIFIED** (same) |
-| 14.10 | The gate: a month played by hand at 256, replayed by no hand | **INCOMPLETE** — headless half VALIDATED (CTest `Replay.Played`); clauses (a), (c), (d) wait on the owner's build |
+| 14.10 | The gate: a month played by hand at 256, replayed by no hand | **INCOMPLETE** — (a), (b), (d) VALIDATED on the owner's build of 2026-09-16 and CTest `Replay.Played`; (c) measured at 35.52 fps against a `>= 90` clause, over a scene with nothing drawn, so it is neither met nor fairly falsified |
 
 Phase 14 against the exit criteria of `Docs/ROADMAP.md` section 2: (1) the CI matrix is
 green apart from what it cannot build; (2) determinism is the gate itself — a recorded
