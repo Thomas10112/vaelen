@@ -13,7 +13,7 @@ rewritten afterwards; this block is the only part that tracks today.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 14 gate PASSED on (a)-(d) — 15 BROKEN DOWN and startable
+PHASE       : 15 — STREAMING & LOD (14 CLOSED 2026-09-16, all five clauses)
 TASK        : 15.05 — the vanishing believer — INCOMPLETE (15.01-15.04 VALIDATED)
               The fix is in: the crossing reads RegionFaith::Add's answer and puts the
               mover back rather than moving them without their faith. What is missing is
@@ -25,13 +25,20 @@ STATUS      : Phase 14's gate is met on (a), (b), (c) and (d). Eighty-three days
               played at the keyboard in UE 5.6 replay headlessly to the same four
               digests byte for byte; the HUD costs 0.52 ms of game thread and nothing
               on the GPU, over a scene that runs at about 122 fps against a bar of 90.
-              Clause (e) — Replay.Played green on the eight CTest legs and Kernel.UiFence
-              in the parse job — is proven on three Linux legs and the parse job so far
-              (run 209, which was then cancelled by the next push); the remaining five
-              legs want one run that nobody cancels. The phase closes on that run and
-              on nothing else. Phase 15 is broken down into 15.01-15.10 (ROADMAP
-              section 21) and opens on five defects the planning found, all five
-              confirmed in the code.
+              Clause (e) is MET: CI run 215 on 4137b08 finished with ten jobs of ten
+              green — six Linux presets, Windows MSVC, macOS AppleClang, clang-format
+              and the engine-modules parse that carries Kernel.UiFence. PHASE 14 IS
+              CLOSED. Phase 15 is broken down into 15.01-15.10 (ROADMAP section 21) and
+              opens on five defects the planning found, all five confirmed in the code;
+              15.01 to 15.04 are VALIDATED and 15.05 is INCOMPLETE by its own admission.
+
+              AND A NUMBER FROM THAT RUN THAT NEEDS ACTING ON. linux-clang-debug spent
+              115 min 59 s in its Test step and 119 minutes in the job, against
+              timeout-minutes 120. ONE MINUTE OF HEADROOM. ADR-0119 already records two
+              debug legs cancelled at 117 minutes; the suite has grown since. The next
+              test added to a debug leg blows it, and the failure will look like a hang
+              rather than a slow suite. This is now the most urgent thing in the tree
+              that is not a feature.
 
 PROGRESS
 ████████████████████████░░ 95%
