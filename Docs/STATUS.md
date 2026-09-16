@@ -13,15 +13,19 @@ rewritten afterwards; this block is the only part that tracks today.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 14 — UI — IN PROGRESS
-TASK        : 14.10 — THE PHASE GATE (a, b, c, d MET; e waits on one green CI run)
-STATUS      : Clauses (a), (b), (d) met on 2026-09-16 — a month played at the keyboard
-              replays headlessly to the same four digests, byte for byte. Clause (c)
-              met the same day: the HUD costs 0.52 ms of game thread and nothing on
-              the GPU (measured with showhud, one camera, one PIE session), and the
-              13.09 scene is GPU-bound at 8.16 ms, so about 122 fps against a bar of
-              90. Clause (e) needs one CI run to finish green on the head: the three
-              pushes since the stream landed each cancelled the one before.
+PHASE       : 14 gate PASSED on (a)-(d) — 15 BROKEN DOWN and startable
+TASK        : 15.01 — the fence that must exist before anything may demote
+STATUS      : Phase 14's gate is met on (a), (b), (c) and (d). Eighty-three days
+              played at the keyboard in UE 5.6 replay headlessly to the same four
+              digests byte for byte; the HUD costs 0.52 ms of game thread and nothing
+              on the GPU, over a scene that runs at about 122 fps against a bar of 90.
+              Clause (e) — Replay.Played green on the eight CTest legs and Kernel.UiFence
+              in the parse job — is proven on three Linux legs and the parse job so far
+              (run 209, which was then cancelled by the next push); the remaining five
+              legs want one run that nobody cancels. The phase closes on that run and
+              on nothing else. Phase 15 is broken down into 15.01-15.10 (ROADMAP
+              section 21) and opens on five defects the planning found, all five
+              confirmed in the code.
 
 PROGRESS
 ████████████████████████░░ 95%

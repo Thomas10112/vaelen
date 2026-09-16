@@ -9420,6 +9420,29 @@ year later, and this is where the argument is written down.
 called by `TakeUp` after every taking. Moves one frozen digest:
 `VAELEN_PANEL_FROZEN_PLAYED` `0x26ef4024725cd4aa` → `0x703c838ca533a095`.
 
+**AMENDED 2026-09-16 — the guarantee below is CONDITIONAL, and Phase 15 task
+15.03 is what makes it unconditional.** The Phase 15 planning found that
+`Population::ReleaseDetail` has no caller outside the tests, while
+`RequestDetail` only appends and refuses everything once `LodState::MaxWanted`
+= 8 is reached. `NearDetail` asks for up to three neighbours on every taking and
+releases none, and `Door::Day` takes somebody new up whenever the played person
+dies — so after roughly three deaths the wanted list saturates, `Near` is empty
+again and every `Move` is refused `TooFar` for the rest of that world's life.
+What this ADR claims holds for the FIRST taking of a world and decays from
+there. It was not caught because the checked-in month has exactly one taking.
+
+A second condition, found the same day: the promote/demote bridge runs at
+`SimLod::World`, one firing every 8640 ticks — one simulated year. A region
+requested mid-year is not walkable until the next firing. This ADR appears to
+work immediately only because `Aelvor::Begin` ends exactly on a year boundary,
+so the first day turn after a taking carries the bridge's next firing. Phase 15
+task 15.02 moves the decision onto a daily pass.
+
+Neither condition is a reason to revert this ADR — without it the verb is
+unplayable by anybody, which is what the defect below describes. They are the
+reason its two tasks come early in Phase 15, and the reason 15.10's gate asks
+that `near:` was never empty across at least four takings rather than one.
+
 ### The defect
 
 The game offers eight verbs and could take seven.

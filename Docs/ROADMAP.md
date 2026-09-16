@@ -81,8 +81,8 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 11 | MINING COLONY | The starting place: a huge autonomous mining colony simulated by the same systems at full detail. | CLOSED (11.01-11.08 VALIDATED headless, CI run 113 green on all nine jobs; UNVERIFIED under UBT) |
 | 12 | GAMEPLAY | Interaction verbs, knowledge (documents, maps), reputation and consequences without main quest or canonical ending. | BROKEN DOWN (12.01-12.08, section 16) |
 | 13 | PRESENTATION | Unreal rendering, animation and audio of the world state, strictly read-only. | CLOSED (13.01-13.09; gate PASSED 2026-09-14 at 100 fps on a T400; engine and headless kernel agree on every figure at 256) |
-| 14 | UI | Interface and read-only views; command submission through the gameplay layer. | IN PROGRESS (14.01-14.07 VALIDATED headless; 14.08 and 14.09 written 2026-09-14, awaiting the owner's UE build; 14.10 headless half VALIDATED 2026-09-15 - CTest Replay.Played, 175/175 - its clauses (a), (c), (d) wait on that build; ADR-0139 made the Move playable at all; the breakdown is section 20) |
-| 15 | STREAMING & LOD | Engine streaming coupled to simulation LOD 0-4: what is simulated at which detail away from the player. | PLANNED |
+| 14 | UI | Interface and read-only views; command submission through the gameplay layer. | GATE PASSED ON (a)-(d) 2026-09-16, clause (e) pending one uncancelled CI run - CLOSED the moment it is green (14.01-14.10 - eighty-three days played at the keyboard in UE 5.6, replayed headlessly to the same four digests byte for byte, and the HUD measured at 0.52 ms of game thread over a scene that runs at about 122 fps; the breakdown is section 20) |
+| 15 | STREAMING & LOD | Engine streaming coupled to simulation LOD 0-4: what is simulated at which detail away from the player. | BROKEN DOWN (15.01-15.10, section 21; the planning found five defects first, among them that ADR-0139's fix expires after roughly three deaths and that a demotion would destroy the played person) |
 | 16 | SAVE/PERSISTENCE | Save format, serialisation of the whole world state, checkpoints on disk, migrations keyed on the save-format version. | PLANNED |
 | 17 | DEBUG TOOLS | Inspectors, replay tooling, determinism diff, world statistics, headless console. | PLANNED |
 | 18 | STRESS TEST | Long-duration and large-world runs, performance budgets, determinism at scale. | PLANNED |
@@ -4832,3 +4832,91 @@ build as 14.08, and the log carrying `LogVaelenUI: <verb> -> queued` for each
 of the eight verbs pressed once in PIE. The screenshot is 14.10's.
 
 Next: 14.10, the gate.
+
+---
+
+## 21. Phase 15 - STREAMING & LOD: task breakdown
+
+Planned on 2026-09-16 by four readers over the existing machinery, three
+competing breakdowns and three judges. Two judges picked the headless-first
+shape, one picked the player-first shape; the section below is the headless-first
+one with the grafts all three judges demanded, in the order they demanded them.
+
+**What the planning found before a line of it existed.** Five things, every one
+confirmed against the code here rather than taken on the planners' word.
+
+1. **`ReleaseDetail` has no caller outside the tests.** `RequestDetail`
+   (`Population/Lod.cpp:75`) only appends and returns false for good once
+   `LodState::MaxWanted = 8` is reached. `Aelvor::NearDetail` asks for up to
+   three neighbours on every taking; `Door::Day` takes somebody new up whenever
+   the played person dies. One region at `Begin`, three per taking: after
+   roughly three deaths the list saturates, `near:` goes empty and the world
+   refuses every Move as `TooFar` for the rest of that world's life. **ADR-0139's
+   fix expires.** The checked-in month has exactly one taking, which is why CI is
+   green and why the Phase 14 gate is honest - and is exactly the shape of defect
+   a stream with one taking cannot catch.
+
+2. **`DemoteRegion` would destroy the played person.** `Persons.cpp:371-386`
+   walks every entity whose `PersonInfo.Region` matches and destroys it, with no
+   `PersonHeld` check anywhere in the file, while the crossings in `Lod.cpp`
+   honour `PersonHeld` explicitly. Unreachable today precisely because nothing
+   releases - and reachable the moment (1) is fixed. **So (1) is not the first
+   task.**
+
+3. **The detail bridge fires once per simulated year.** `LodSystem::GetLod()`
+   returns `SimLod::World` (`Lod.h:166`) and `LodSchedule::Period[4] = 8640`
+   ticks (`Sim/System.h`), against a calendar of 1 tick = 1 hour and 8640 hours
+   to the year. So a region requested mid-year is not detailed until up to a
+   year later, and any phase gate asking for N promotions inside thirty days
+   cannot be satisfied by any implementation. ADR-0139 works at all today only
+   because `Begin` ends exactly on a year boundary, so the bridge's next firing
+   lands on the first day turn. That is also where 14.10's measured 340 ms first
+   day comes from.
+
+4. **A believer vanishes on a crossing into a full neighbour.** `Lod.cpp:304-310`
+   checks `Dest.Add(Culture, 1)` and breaks when it fails, then calls
+   `DestFaith->Add(Religion, 1)` and ignores its answer -
+   `RegionFaith::Add` returns false when none of its `MaxFaiths = 4` slots is
+   free (`Sim/Religion.h:78`). The person joins the head count and leaves the
+   faith count. A conservation leak with no instrument watching it.
+
+5. **`RegionLod::Level` is a boolean wearing a five-value costume.**
+   `Sim/Population.h:73-78` declares `uint32 Level = 4` with
+   `DetailedLevel = 2`; the only value ever written is 2 (`Persons.cpp:218`),
+   and the component is added at 2 and removed, never re-levelled. Levels 0, 1
+   and 3 are unreachable. The phase's own row says "simulation LOD 0-4". The
+   phase must deliver gradations or rewrite the row; inheriting the number is
+   how Phase 16 inherits the confusion.
+
+**The design rule for the whole phase, and what makes ten tasks survivable.**
+Phase 15 declares no new component type and changes no stored layout. Residency
+lives in a host-side object rebuilt from the recorded inputs, so nothing enters
+the state digest and a replay loses nothing. Every new behaviour sits behind
+`Options::Stream = false`. The consequence is clause (f) of the gate rather than
+a hope: **of the frozen constants of fourteen closed phases, zero move.**
+
+| Task | What | Test | Where |
+|---|---|---|---|
+| 15.01 | A held person pins its region. `LodSystem` phase 1 skips a region holding a played person, AND `DemoteRegion` refuses when called directly - two layers, because the system should decide and the function should not be trickable. Publishes `RegionPinnedEvent`. No field added to `LodState`. | `Population.Pinned`: demotion attempted on the held region, refused both ways; the played entity still alive and `Population::IsConsistent` true; `PopulationGate` and `GameplayGate` digests unmoved (no world in them holds anybody). | headless |
+| 15.02 | The cadence. Detail decisions move off `SimLod::World` (8640 ticks) onto a pass at `SimLod::Aggregate` (24 ticks, one day), so a requested region is walkable the next day rather than up to a year later. Costed before it is written: the pass runs ~36 000 times over a 100-year pre-history, and ADR-0119 records CI with no headroom, so the TIMEOUT/COST estimate and the `-E` branch are decided in the task, not after it. | `Run.Cadence`: a region requested on day 1 is detailed by day 2, not day 361. The 83-day month still replays to its four digests. | headless |
+| 15.03 | `ReleaseDetail` gets its first production caller. `NearDetail` releases the previous taking's neighbours before asking for the new ones, never releasing the played person's own region or `Begin`'s, and reads the `LodRules` the `LodSystem` was built with rather than a fresh default. | `Run.Detail`: **the saturation itself as the control** - twelve takings reach `Wanted == 8` and refuse before the fix, stay under it after, and no taking ever finds `near:` empty. `Replay.Played` and `Atlas.Frozen128` unmoved. | headless |
+| 15.04 | The conservation audit: `Population::Audit`, recomputed and never accumulated, declaring no component - heads, cultures and faiths counted both ways across every promote, demote and crossing. The instrument the next three tasks are measured by. | `Population.Audit`, with reverse controls: a seventh-culture mutation must make `Dropped >= 1` and a full-faith mutation must make the faith gap `>= 1`, or the audit measures nothing. | headless |
+| 15.05 | The vanishing believer of finding 4, and any sibling the audit turns up. | The audit's faith gap is 0 over a 120-year world that crosses into full neighbours; the mutation that removes the fix makes it non-zero. | headless |
+| 15.06 | `Attention{Region, Reach, Most}` as a leaf of `VaelenRun` - deliberately NOT `View::Eye`, because the eye is an input to the VIEW and this is an input to the RUN. `Looked{Tick, Region, Reach}` becomes a fourth stream record; `Door::Look` stamps the tick from the world's clock as `Door::Mean` stamps `Issued`. A version-1 stream simply carries no `Looked` line, so the checked-in month still loads. | `Run.Attention`: a stream of 400 `Looked` records replays to the same digests; the same stream minus its last record does not. `Replay.Played` unmoved, proving the decoder still reads a stream written before the record existed. | headless |
+| 15.07 | The warden: the residency policy itself, a deterministic function from attention to detail requests, host-side, writing requests and never promotions, so ADR-0037 holds by construction. | `Run.Warden`: the same attention sequence yields the same requests on all eight legs; hysteresis proved by a walk back and forth over one border producing a bounded number of changes. | headless |
+| 15.08 | The promotion hitch, bounded as a COUNT and not a wall clock, which is what ADR-0109 actually forbids. At most one region may be promoted on any single day turn, and the heads materialised per day turn are capped. | `Run.Hitch`: a 100-day walk crossing borders never promotes twice in one day turn; the cap is asserted, and removing it makes the test fail. | headless |
+| 15.09 | `RegionLod::Level`: either the gradations the number promises, or the row rewritten to say two grains and an ADR saying why. Decided in the open, not inherited. | Whichever it is, the test pins the reachable set of levels, so the next phase cannot read five where there are two. | headless |
+| 15.10 | The engine half, one build and one sitting: the camera's region and reach handed to `Door::Look` each day, and a stream written with `Vaelen.Stream.Write` that carries `Looked` records. | The phase gate below. | engine |
+
+**The gate.** A walk, recorded on the engine machine and replayed here, that
+proves all of: (a) the stream carries `Looked` records and at least one region
+was pinned while held - the fence fired rather than merely existed; (b) the
+replay reproduces the walk's four digests byte for byte, as 14.10's did;
+(c) over the walk, the audit's head, culture and faith gaps are all 0;
+(d) no day turn promoted more than one region; (e) `near:` was never empty on a
+day the played person was alive, across at least four takings - the property
+ADR-0139 claimed and could not keep; (f) every frozen constant of Phases 00-14
+unmoved, checked rather than asserted. Any one missing and the phase stays open.
+
+Next: 15.01, the fence that has to exist before anything else is allowed to
+demote.
