@@ -2,8 +2,8 @@
 // The ONLY Unreal-facing translation unit of the run module.
 // Excluded from the headless CMake build (see Source/VaelenRun/CMakeLists.txt).
 //
-// STATUS: UNVERIFIED (engine-only) - not yet compiled by UnrealBuildTool; the
-// first build is 14.08's, on the machine that has the engine.
+// STATUS: BUILT (engine-only) - compiled and linked by UnrealBuildTool on
+// 2026-09-16 with 14.08's first build, on the machine that has the engine.
 #include "Modules/ModuleManager.h"
 
 class FVaelenRunModule : public IModuleInterface

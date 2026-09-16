@@ -1,9 +1,11 @@
 // VAELEN - VaelenGame module rules. Phase 14 task 14.08.
 //
-// STATUS: UNVERIFIED - parsed against Tools/EngineShim by the CI that cannot
-// build it (ADR-0134), and not yet compiled by UnrealBuildTool. Nothing here
-// may be called VALIDATED until the owner's machine has built it and pasted
-// the line the roadmap names.
+// STATUS: BUILT - compiled and linked by UnrealBuildTool on 2026-09-16 (UE 5.6,
+// MSVC 19.51, Win64 Development Editor), after three defects nothing headless
+// could see: UnrealHeaderTool's generated destructor on an incomplete pimpl,
+// DEFINE_VTABLE_PTR_HELPER_CTOR instantiating the same one whatever the class
+// declares, and RegionGraphCache exported whole while emitting nothing. NOT yet
+// run: nothing here is VALIDATED until 14.10's two lines come out of a log.
 //
 // THE MODULE THAT HOLDS THE WORLD. VaelenUI (14.09) draws and presses keys and
 // has no name for a World in its whole vocabulary; this is where the World

@@ -1,8 +1,8 @@
 // VAELEN - VaelenRun module rules.
 //
-// STATUS: UNVERIFIED (engine-only) - not yet compiled by UnrealBuildTool; the
-// first build is 14.08's, on the machine that has the engine. Compiled and
-// tested headless by CMake on every CI leg since 14.03.
+// STATUS: BUILT (engine-only) - compiled and linked by UnrealBuildTool on
+// 2026-09-16 with 14.08's first build, on the machine that has the engine.
+// Compiled and tested headless by CMake on every CI leg since 14.03.
 //
 // VaelenRun is the thirteenth engine-agnostic kernel module: one wiring of a
 // played AELVOR (Run::Aelvor), the door its host's inputs come through

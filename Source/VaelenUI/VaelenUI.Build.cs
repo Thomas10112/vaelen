@@ -1,8 +1,9 @@
 // VAELEN - VaelenUI module rules. Phase 14 task 14.09.
 //
-// STATUS: UNVERIFIED - parsed against Tools/EngineShim under the RESTRICTED
-// include set of 14.07 and fenced by Tools/check_ui_fence.py, and not yet
-// compiled by UnrealBuildTool.
+// STATUS: BUILT - parsed against Tools/EngineShim under the RESTRICTED include
+// set of 14.07, fenced by Tools/check_ui_fence.py, and compiled and linked by
+// UnrealBuildTool on 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development Editor).
+// NOT yet run: the eight LogVaelenUI lines of 14.09 have never been printed.
 //
 // THE MODULE THAT DRAWS AND PRESSES KEYS, AND HOLDS NOTHING.
 //

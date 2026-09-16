@@ -5,7 +5,7 @@
 // page: the target a key aims at, whether the page offers the verb at all,
 // and what it foresaw when it does not.
 //
-// STATUS: UNVERIFIED (Phase 14) - parsed against Tools/EngineShim, not yet built by UnrealBuildTool
+// STATUS: BUILT (Phase 14) - compiled and linked by UnrealBuildTool 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development Editor); NOT yet run, so nothing here is VALIDATED until 14.10's lines come out of a log
 #include "VaelenPlayerController.h"
 
 #include "Components/InputComponent.h"
