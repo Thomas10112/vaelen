@@ -6,6 +6,7 @@
 #include "Vaelen/Population/Persons.h"
 
 #include "Vaelen/Core/Assert.h"
+#include "Vaelen/Population/Lod.h"
 #include "Vaelen/Sim/Noise.h"
 #include "Vaelen/Sim/World.h"
 
@@ -325,6 +326,17 @@ namespace Vaelen::Population
 
 	uint32 DemoteRegion(World& W, const History::PreHistoryTypes& Types, const PersonTypes& Persons, uint32 Region)
 	{
+		// 15.01, the second of two layers. The bridge decides not to ask
+		// (Lod.cpp, where the reason can be published); this refuses anyway, so
+		// that a caller reaching past the bridge cannot destroy the person
+		// somebody is playing. The loop below walks every entity of the region
+		// and destroys it, and it has never had any idea that one of them might
+		// be the player. 0 is what this already returns for "nothing folded".
+		if (HoldsSomebody(W, Persons, Region))
+		{
+			return 0;
+		}
+
 		const EntityHandle H = RegionHandle(W, Types, Region);
 		if (H.IsNull() || W.Components().GetPool(Persons.Detail).TryGet(H) == nullptr)
 		{

@@ -9541,3 +9541,76 @@ What it means for anybody playing: **turn one day before expecting a verb.**
   headless stream can carry a `Move` either — so only a month played at the
   keyboard would have one and the headless replay of it would diverge. It
   breaks precisely what the gate exists to prove.
+
+---
+
+## ADR-0140 — A region holding somebody is not the bridge's to give up, and the function that would destroy them refuses on its own
+
+**Status:** **APPLIED 2026-09-16** (task 15.01): `Population::HoldsSomebody`,
+`RegionPinnedEvent`, the skip in `LodSystem`'s demotion phase and the refusal
+inside `DemoteRegion`. Moves no frozen digest: a world that holds nobody takes
+the path it always took, and no world in any closed phase's gate holds anybody.
+
+### The defect
+
+`DemoteRegion` folds a detailed region's people back into its counts and then
+destroys every entity whose `PersonInfo.Region` matches — the dead included,
+which is deliberate, and the person somebody is playing, which was not. There is
+no mention of `PersonHeld` anywhere in `Persons.cpp`, while the crossings in
+`Lod.cpp` have honoured it since 04.06: a held person is not moved across a
+border by the migration rules, and then was destroyed wholesale by the demotion.
+
+It has never fired. Nothing in `Source/` or `Tools/` calls `ReleaseDetail`
+(twenty call sites, every one under `Tests/`), so no region the bridge detailed
+was ever given up, so no demotion ever reached a held person. Task 15.03 gives
+`ReleaseDetail` its first production caller, and the hole becomes a way to
+destroy the player by walking two regions from home.
+
+**That is why this task comes first, and why the phase's breakdown puts it
+ahead of the task that motivated the whole phase.** A fence built after the gate
+is opened is not a fence.
+
+### The decision
+
+Two layers, and the reason for two is the decision rule: robust before simple.
+
+1. **The system decides.** `LodSystem`'s demotion phase asks
+   `HoldsSomebody(W, Persons, R)` and skips the region, publishing
+   `RegionPinnedEvent` with the head count that a demotion would have destroyed.
+   The decision belongs here because this is where the reason can be published
+   and where a run can be measured.
+
+2. **The function refuses anyway.** `DemoteRegion` asks the same question and
+   returns 0 — which is already its answer for "nothing folded". A caller that
+   reaches past the bridge, in this repository or in a host written later,
+   cannot destroy the played person by not knowing about the rule.
+
+**`HoldsSomebody` looks the component type up by NAME rather than taking it as
+an argument, and that is the load-bearing part.** `PersonHeld` is an observed
+type, deliberately not a member of `LodTypes`: registering it inside a lower
+module's `Declare` would add it to the type registry of every world that
+declares 04.06 and move all their state digests, which is what ADR-0090 records
+and what broke six closed phases at once when it was tried the other way round.
+So there is no member to consult. Taking the type as a parameter would put the
+fence in the caller's gift, which is exactly the property that made this defect
+possible. `FindByName` reads the registry without touching it; a world that
+never declared a `PersonHeld` answers false and behaves precisely as it did
+before this ADR.
+
+### What it costs
+
+One lookup and a walk of the held pool per demotion the bridge considers. The
+held pool has at most one entry in every world this project has built, so the
+walk is over the marks and not over the people.
+
+### What was considered and refused
+
+**A field on `LodState`.** It is a component, it is in every state digest, and
+ADR-0090 exists because of the last time somebody added one.
+
+**Only the system layer.** Simpler, and it leaves a public function in a shipped
+module that destroys the player when called directly. Robust wins.
+
+**Only the function layer.** The refusal would be silent: the bridge would count
+a demotion that did not happen, and nothing would say why.
+

@@ -109,6 +109,10 @@ namespace Vaelen::Population
 	};
 	inline constexpr EventType<LodPayload> RegionPromotedEvent = MakeEventType<LodPayload>("RegionPromoted");
 	inline constexpr EventType<LodPayload> RegionDemotedEvent = MakeEventType<LodPayload>("RegionDemoted");
+	/// The bridge wanted to give a region up and did not, because somebody held
+	/// is standing in it. LodPayload::Persons carries the heads that were NOT
+	/// folded away, which is the number a demotion would have destroyed.
+	inline constexpr EventType<LodPayload> RegionPinnedEvent = MakeEventType<LodPayload>("RegionPinned");
 	/// PersonPayload::Other carries the other region.
 	inline constexpr EventType<PersonPayload> PersonLeftEvent = MakeEventType<PersonPayload>("PersonLeft");
 	inline constexpr EventType<PersonPayload> PersonArrivedEvent = MakeEventType<PersonPayload>("PersonArrived");
@@ -137,6 +141,23 @@ namespace Vaelen::Population
 	VAELEN_POPULATION_API bool FreePerson(World& W, const PersonTypes& Persons, ComponentType<PersonHeld> Held,
 										  uint32 Person);
 	/// Whether the crossings will leave this person where they are.
+	/// True when a LIVING person carrying PersonHeld stands in this region.
+	///
+	/// Phase 15 task 15.01. DemoteRegion destroys every person of a region, the
+	/// dead included, and had no idea that one of them might be the person
+	/// somebody is playing - while the crossings of this file have honoured
+	/// PersonHeld since 04.06. Nothing released detail until 15.03, so no
+	/// demotion ever reached a held person and the hole was only ever one fix
+	/// away from being fatal. This is the question both layers ask.
+	///
+	/// It looks the type up BY NAME rather than taking it as an argument, and
+	/// that is the point: PersonHeld is an observed type (see above - putting it
+	/// in LodTypes would move the state digest of every world that declares
+	/// 04.06), so there is no member to consult and no caller to trust. A world
+	/// that never declared one answers false and behaves exactly as it did. A
+	/// caller that would rather not pass the type cannot thereby skip the check.
+	VAELEN_POPULATION_API bool HoldsSomebody(const World& W, const PersonTypes& Persons, uint32 Region);
+
 	VAELEN_POPULATION_API bool IsHeld(const World& W, const PersonTypes& Persons, ComponentType<PersonHeld> Held,
 									  uint32 Person);
 

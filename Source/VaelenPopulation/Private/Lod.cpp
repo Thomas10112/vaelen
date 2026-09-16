@@ -171,6 +171,17 @@ namespace Vaelen::Population
 			{
 				continue; // a held region is not something the bridge may give up
 			}
+			// 15.01, the first of two layers: the SYSTEM decides not to ask.
+			// DemoteRegion refuses as well, so that a caller who reaches past
+			// the bridge cannot destroy the person somebody is playing - but the
+			// decision belongs here, where the reason can be published.
+			if (HoldsSomebody(W, Persons, R))
+			{
+				const RegionCensus Kept = CountPersons(W, Persons, R);
+				Context.Events->Publish(Context.Tick, RegionPinnedEvent, LodPayload{R, Kept.Alive, 0, 0},
+										W.Entities().GetId(Regions[R]));
+				continue;
+			}
 			const uint32 Folded = DemoteRegion(W, Types, Persons, R);
 			++State.Demotions;
 			Context.Events->Publish(Context.Tick, RegionDemotedEvent, LodPayload{R, Folded, State.Demotions, 0},
@@ -509,6 +520,36 @@ namespace Vaelen::Population
 		}
 		W.Components().GetPool(Held).Remove(Found);
 		return true;
+	}
+
+	bool HoldsSomebody(const World& W, const PersonTypes& Persons, uint32 Region)
+	{
+		if (Region == 0)
+		{
+			return false;
+		}
+		// By name, so that no caller can decline to ask: see Lod.h.
+		const ComponentTypeId Id = W.Types().FindByName("PersonHeld");
+		if (Id == InvalidComponentTypeId || !W.Components().HasPool(Id))
+		{
+			return false; // a world that holds nobody, which is most of them
+		}
+		ComponentType<PersonHeld> Held;
+		Held.Id = Id;
+		bool Out = false;
+		// The held pool has at most one entry in every world this project has
+		// ever built, so this walks the marks and not the people.
+		W.Components().GetPool(Held).ForEach(
+			[&](EntityHandle H, const PersonHeld&)
+			{
+				if (Out)
+				{
+					return;
+				}
+				const PersonInfo* const P = W.Components().GetPool(Persons.Person).TryGet(H);
+				Out = P != nullptr && P->Region == Region && P->State == static_cast<uint8>(LifeState::Alive);
+			});
+		return Out;
 	}
 
 	bool IsHeld(const World& W, const PersonTypes& Persons, ComponentType<PersonHeld> Held, uint32 Person)

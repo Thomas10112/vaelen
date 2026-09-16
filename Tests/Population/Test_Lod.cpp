@@ -692,3 +692,112 @@ VAELEN_TEST(Lod, WhatHoldingARegionCostsPerTick)
 	// record; they are just not something to fail a build over.
 	VT_CHECK_MSG(WarmWork > ColdWork, "holding a region at the fine grain costs something real");
 }
+
+VAELEN_TEST(Lod, APinnedPersonSurvivesTheDemotionTheBridgeWanted)
+{
+	// Phase 15 task 15.01. DemoteRegion folds a region's counts back and then
+	// destroys every person in it, the dead included - and until this task it
+	// had no idea that one of them might be the person somebody is playing.
+	// The crossings of Lod.cpp have honoured PersonHeld since 04.06; the
+	// demotion never had a chance to, because until 15.03 nothing in the
+	// project released detail, so no demotion the bridge ran ever reached a
+	// held person. The fence comes first precisely because 15.03 is what makes
+	// that reachable.
+	//
+	// Both halves are proved below: the world where nobody is held loses the
+	// person, and the world where somebody is held does not. The first half is
+	// the control - without it this test would pass against a bridge that
+	// demotes nothing at all.
+	const auto Somebody = [](Run& W, uint32 Region) -> uint32
+	{
+		uint32 Who = 0;
+		W.Instance.Components()
+			.GetPool(W.Persons.Person)
+			.ForEach(
+				[&](EntityHandle, const PersonInfo& P)
+				{
+					if (Who == 0 && P.Region == Region && P.State == static_cast<uint8>(LifeState::Alive))
+					{
+						Who = P.Index;
+					}
+				});
+		return Who;
+	};
+	const auto Alive = [](const Run& W, uint32 Person)
+	{
+		bool Out = false;
+		W.Instance.Components()
+			.GetPool(W.Persons.Person)
+			.ForEach([&](EntityHandle, const PersonInfo& P)
+					 { Out = Out || (P.Index == Person && P.State == static_cast<uint8>(LifeState::Alive)); });
+		return Out;
+	};
+
+	LodRules Rules;
+	Rules.MaxDetailed = 2;
+
+	// ── The control: nobody held, and the bridge takes the region away.
+	uint32 Region = 0;
+	uint32 Lost = 0;
+	{
+		Run W(AelvorSeed, Rules);
+		VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
+		Region = W.Ranked()[0];
+		VT_REQUIRE(Region != 0);
+		VT_REQUIRE(RequestDetail(W.Instance, W.Lod, Region));
+		W.Ages.Run(1);
+		VT_REQUIRE(W.Detailed(Region));
+		Lost = Somebody(W, Region);
+		VT_REQUIRE(Lost != 0);
+
+		ReleaseDetail(W.Instance, W.Lod, Region);
+		const usize From = W.Instance.Log().All().size();
+		W.Ages.Run(1);
+		VT_CHECK_MSG(!W.Detailed(Region), "nobody holds it, so the bridge gives it up");
+		VT_CHECK_MSG(!Alive(W, Lost), "and the person in it is destroyed - this is what 15.01 is about");
+		VT_CHECK(Events(W.Instance, From, RegionDemotedEvent, Region) == 1);
+		VT_CHECK_MSG(Events(W.Instance, From, RegionPinnedEvent, Region) == 0,
+					 "a world that holds nobody publishes no pin, so no log digest of any closed phase moves");
+	}
+
+	// ── The same world, the same release, one person held.
+	{
+		Run W(AelvorSeed, Rules);
+		VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
+		VT_REQUIRE(RequestDetail(W.Instance, W.Lod, Region));
+		W.Ages.Run(1);
+		VT_REQUIRE(W.Detailed(Region));
+		const uint32 Who = Somebody(W, Region);
+		VT_REQUIRE(Who != 0);
+		VT_CHECK_MSG(Who == Lost, "the same seed takes the same world to the same person");
+
+		const ComponentType<PersonHeld> Held = DeclareHold(W.Instance);
+		VT_REQUIRE(HoldPerson(W.Instance, W.Persons, Held, Who, 1));
+		VT_CHECK(HoldsSomebody(W.Instance, W.Persons, Region));
+
+		ReleaseDetail(W.Instance, W.Lod, Region);
+		const usize From = W.Instance.Log().All().size();
+		W.Ages.Run(1);
+		VT_CHECK_MSG(W.Detailed(Region), "the bridge wanted the region and did not take it");
+		VT_CHECK_MSG(Alive(W, Who), "because the person somebody is playing is standing in it");
+		VT_CHECK_MSG(Events(W.Instance, From, RegionPinnedEvent, Region) == 1, "and it said so, once");
+		VT_CHECK(Events(W.Instance, From, RegionDemotedEvent, Region) == 0);
+		VT_CHECK_MSG(IsConsistent(W.Instance, W.Ages.Types(), W.Persons, Region),
+					 "and the two grains still agree about a region that was not folded");
+
+		// The second layer: a caller that reaches past the bridge is refused
+		// too. The system decides, and the function cannot be tricked.
+		const uint32 Folded = DemoteRegion(W.Instance, W.Ages.Types(), W.Persons, Region);
+		VT_CHECK_MSG(Folded == 0, "DemoteRegion called directly on a pinned region folds nobody");
+		VT_CHECK_MSG(W.Detailed(Region), "and leaves it detailed");
+		VT_CHECK_MSG(Alive(W, Who), "and leaves the player alive");
+
+		// Let the person go and the region is ordinary again: the fence is the
+		// mark, not the region.
+		VT_REQUIRE(FreePerson(W.Instance, W.Persons, Held, Who));
+		VT_CHECK(!HoldsSomebody(W.Instance, W.Persons, Region));
+		const uint32 Now = DemoteRegion(W.Instance, W.Ages.Types(), W.Persons, Region);
+		VT_CHECK_MSG(Now > 0, "an unheld region folds as it always did");
+		VT_CHECK(!W.Detailed(Region));
+	}
+}
