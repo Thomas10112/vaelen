@@ -358,9 +358,29 @@ namespace Vaelen::Population
 						{
 							break;
 						}
-						if (DestFaith != nullptr && R.Info.Religion != 0)
+						// 15.05: read the answer. RegionFaith::Add refuses when
+						// none of its MaxFaiths slots is free, and this line
+						// ignored it - so a believer crossing into a region that
+						// already holds four faiths joined the head count and
+						// left the faith count, every time, silently. The
+						// culture above was checked from the first day; the
+						// faith beside it was not, which is the whole defect.
+						//
+						// The mover is put back rather than moved without their
+						// faith. A region that cannot record what somebody
+						// believes has no room for them, and conservation is
+						// worth more than one migrant: the alternative is a
+						// world that quietly disagrees with itself about how
+						// many people hold a religion, which is exactly what no
+						// recomputed audit can find afterwards (Audit, in
+						// Persons.h, says so in those words).
+						//
+						// continue and not break: another mover may belong to a
+						// faith the table already holds, and that one may go.
+						if (DestFaith != nullptr && R.Info.Religion != 0 && !DestFaith->Add(R.Info.Religion, 1))
 						{
-							DestFaith->Add(R.Info.Religion, 1);
+							Dest.Remove(R.Info.Culture, 1);
+							continue;
 						}
 						Context.Events->Publish(Context.Tick, PersonLeftEvent,
 												PersonPayload{R.Info.Index, D, AgeYears(R.Info, Context.Tick), Best},

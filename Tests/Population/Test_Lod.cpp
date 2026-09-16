@@ -960,3 +960,63 @@ VAELEN_TEST(Lod, TheAuditCountsBothGrainsAndCanBeMadeToSayNo)
 		VT_CHECK_MSG(Full.FaithsOverHeads == 0, "because nothing is wrong with it yet");
 	}
 }
+
+VAELEN_TEST(Lod, AFifthFaithIsRefusedAndTheCrossingNowReadsTheAnswer)
+{
+	// Phase 15 task 15.05, and this test does NOT cover the fix. It covers the
+	// precondition and the invariant around it, and it says so out loud rather
+	// than passing quietly and being mistaken for cover.
+	//
+	// THE FIX: the crossing in LodSystem called RegionFaith::Add for a mover's
+	// religion and ignored the answer. Add refuses when none of its four slots
+	// is free, so a believer crossing into a region that already held four
+	// faiths joined the head count and left the faith count. It now reads the
+	// answer and puts the mover back.
+	//
+	// WHAT COULD NOT BE STAGED, and it is worth writing down because the next
+	// person to try will try the same three things. To reach that line a test
+	// needs a crowded detailed region whose movers hold a faith, crossing into
+	// a neighbour whose four slots are already taken by other faiths. Setting
+	// the destination's table once does not survive: the pre-history's religion
+	// systems rewrite faith tables between years. Refilling it before each year
+	// does not survive either: those systems run before the crossing inside the
+	// same year. Giving the movers their faith through the source region's
+	// table does not work at all, because PromoteRegion reads that table and
+	// the same systems have already rewritten it - the first draft measured 181
+	// crossings either way, because not one mover believed anything. Writing
+	// the faith directly onto the people fixes the movers and still leaves the
+	// destination's table rewritten under the test.
+	//
+	// So the crossing path wants a world built for it - a harness that runs the
+	// bridge without the pre-history's religion systems - and that is the rest
+	// of 15.05 rather than something to fake here.
+	VT_CHECK_MSG(RegionFaith::MaxFaiths == 4, "the ceiling the defect needs");
+	{
+		RegionFaith F;
+		VT_CHECK(F.Add(11u, 1u));
+		VT_CHECK(F.Add(12u, 1u));
+		VT_CHECK(F.Add(13u, 1u));
+		VT_CHECK(F.Add(14u, 1u));
+		VT_CHECK_MSG(!F.Add(15u, 1u), "a fifth faith is refused - this is the answer the crossing used to ignore");
+		VT_CHECK_MSG(F.Add(13u, 1u), "and one it already holds is not");
+	}
+
+	// And the invariant the fix protects, over a crowded run: believers never
+	// outnumber the people they are, anywhere in the world.
+	Run W(AelvorSeed);
+	VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
+	const uint32 Region = W.Ranked()[0];
+	VT_REQUIRE(RequestDetail(W.Instance, W.Lod, Region));
+	W.Ages.Run(1);
+	VT_REQUIRE(W.Detailed(Region));
+	RegionPopulation* const Counts = W.Counts(Region);
+	VT_REQUIRE(Counts != nullptr);
+	Counts->Capacity = Counts->Total / 2u;
+	W.Ages.Run(3);
+	const AuditReport After = Audit(W.Instance, W.Ages.Types(), W.Persons);
+	VAELEN_LOG_INFO(LogLod,
+					"after a crowded three years: %u disagreeing, %u with believers over heads, %u at the ceiling",
+					After.Disagreeing, After.FaithsOverHeads, After.FaithCeiling);
+	VT_CHECK_MSG(After.FaithsOverHeads == 0, "nowhere do the believers outnumber the people");
+	VT_CHECK_MSG(After.Disagreeing == 0, "and every detailed region agrees with its coarse counts");
+}
