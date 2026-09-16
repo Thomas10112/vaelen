@@ -4557,122 +4557,74 @@ STATUS: VALIDATED for the scripts. 14.08 and 14.09 stay UNVERIFIED: the
 destructor fix is the strongest reason yet to want the owner's build, and it
 is still the owner's build that decides.
 
-### 14.10 - the headless half, and the verb that could not be played
+### 14.10 - a month played by hand, replayed by no hand
 
-The gate's engine half (clauses a, c, d) is the owner's machine and waits. Its
-headless half is written, measured and green, and getting there turned up a
-defect in the game rather than in the test.
-
-**`Tools/Atlas` gained three things.** `--want-bound N` is a defect caught on
-the way: the engine host takes up whoever the world offers
-(`VaelenWorldSubsystem.cpp:106` sets `StartRules::WantBound = 0`) and Atlas
-replayed with the kernel's default of 1. The rules are the host's
-configuration and deliberately NOT in the stream (`Door.h:44-45`), so a replay
-must be told them; given the wrong ones it takes up a different person, counts
-every answer `Wrong` and diverges on all four digests. Clause (b) would have
-failed for a reason with nothing to do with the stream.
-
-How much of a defect, measured rather than argued: replaying this stream with
-`--want-bound 1` takes up **a different person** - Grefu 15028 where the stream
-recorded Dukem 15019 - and answers 20 taken and 12 refused where the record says
-30 and 2. All four digests differ and Atlas exits 1. `Replay.Played` would have
-been red from birth for a reason with nothing to do with the stream.
-
-`--replay --panel` now prints, after the page, the replay's own verdict and
-14.08's two `LogVaelenPlay` lines. The format strings are
-`VaelenPlayCommands.cpp:158-186`'s byte for byte with only `TEXT()` dropped and
-a trailing `\n` added, which `UE_LOG` supplies on its side, and every argument
-from the same field of the same view, because clause (b) is
-exactly that those bytes match after the log prefix. `printf` and not
-`VAELEN_LOG_INFO`, which prefixes every line and truncates at 2048 bytes.
-
-`--stand FILE` writes a month played by nobody: thirty recorded day turns,
-every verb pressed through `View::Press` exactly as a key presses it in 14.09,
-and a `Speak` aimed at somebody who is not there so the WORLD refuses rather
-than the door. It checks the month against the row's shape before writing and
-refuses to write otherwise. One precision the review insisted on: the Move it
-requires is one `Press` offered and the door queued (`Recorded::Verdict` is the
-DOOR's answer, which `Stream.h` says outright), and what makes it a Move the
-world can take is that `Press` offered it at all - which needs a neighbour both
-adjacent and detailed.
-
-**And it refused, which is how the defect was found.** Clause (a) wants "one
-Move to a `Near` neighbour" and "`move M` counted among the taken". Measured
-over thirty days at 256: `NearCount` 0 on every one of them. `Aelvor::Begin`
-requested detail for exactly one region, the busiest, while
-`LodRules::MaxDetailed` allows four - three slots nobody used. `Life.Near`
-lists only neighbours that are adjacent AND detailed, so it was always empty;
-the page never offered `Move` and the world would have refused it `TooFar`.
-Not a property of the generator: a month played at the keyboard meets the same
-wall. **The game offered eight verbs and could take seven.**
-
-ADR-0139 is the fix: after a taking, the world asks for detail on the
-neighbours of the played person's region, ascending index, up to `MaxDetailed`.
-In `Aelvor::TakeUp` and not in a host, so that every taking gets it - including
-the ones `Run::Replay` applies out of a stream, which is the difference between
-a replay and a different world. One frozen digest moved,
-`VAELEN_PANEL_FROZEN_PLAYED` `0x26ef4024725cd4aa` -> `0x703c838ca533a095`;
-`Atlas.Frozen128`, the ADR-0135 pair, the empty play's page and every gate of
-Phases 04-12 did not - because none of them goes through `Run::Aelvor::TakeUp`,
-which is the only place `NearDetail` is reached from. Three of those gates DO
-take somebody up, through `Player::BeginEnslaved` in their own wiring; the
-review caught the first draft of this sentence claiming they did not.
-
-**What the headless half now proves.** `Tests/Run/Streams/` holds
-`aelvor256-stand-in-2026-09-15.stream` - 30 day turns, 32 intents, 2 refused by
-the world, every verb at least once and a Move among the taken - with a README
-whose first heading says that it is NOT a month played by hand and what has
-to happen when the owner's is. CTest `Replay.Played` replays it through a `-P`
-driver (`Tests/Run/ReplayPlayed.cmake`) which holds BOTH the exit code and the
-three printed lines; `PASS_REGULAR_EXPRESSION` alone would have passed on the
-match and never looked at the exit code, which is the lesson
-`Atlas.PanelEmpty` taught in 14.06. The lines it pins:
+On 2026-09-16, in UE 5.6 on the owner's machine, somebody played eighty-three
+days of a life in AELVOR at 256 and pressed `Vaelen.Stream.Write`. The engine
+printed this:
 
 ```
-replay: 32 of 32 answered identically, 30 of 30 days
-LogVaelenPlay: AELVOR 256 seed 41454c564f52: played Dukem (person 15019, region 31) 30 days, 32 intents (30 taken, 2 refused by the world, 0 dropped at the door), state cb69b72505aaa97d, log 34950d9a09dff0c4, life 51e2309a61765ff0, panel f4014af16e5e60f0
-LogVaelenPlay: verbs work 8 rest 9 eat 9 wait 1 speak 2 give 1 take 1 move 1
+LogVaelenPlay: AELVOR 256 seed 41454c564f52: played Dukem (person 15019, region 37) 83 days, 99 intents (76 taken, 23 refused by the world, 0 dropped at the door), state 2ffed5236a593c1b, log 1fdd4211695649bc, life 654e2de6455d8b7a, panel 7de2c5faf3cc1813
+LogVaelenPlay: verbs work 34 rest 1 eat 2 wait 2 speak 5 give 2 take 26 move 27
 ```
 
-Pinning the whole first line pins the four digests and the days, the intents,
-the three queue counters, the name, the person and the region with them.
+`Tools/Atlas --replay Tests/Run/Streams/aelvor256-2026-09-16.stream --panel
+--want-bound 0`, on Linux, from a world rebuilt out of the stream's header
+alone, prints those two lines back **byte for byte** - compared as files, same
+MD5, nothing eyeballed - above `replay: 99 of 99 answered identically, 83 of 83
+days`.
 
-**And it fails when it should**, which is the only property of a pinned test
-worth anything. Checked one at a time against copies in a scratch directory,
-never the checked-in file: a wrong digest in the expectation - fails; a day
-turn deleted from the stream - fails; one digit changed in the header's seed,
-so the stream belongs to another world - fails; the stream truncated mid-month
-- fails. It passes on the real file and on nothing else tried.
+That is ADR-0136 met in the only way that counts. Ninety-nine verdicts recorded
+by the engine, ninety-nine reproduced by a kernel that has never seen Unreal;
+eighty-three day turns, eighty-three replayed; and the four digests of the
+world - its state, its event log, the life in words, the page on screen -
+identical. **A played life is a function of what came through the door, and of
+nothing else the engine did.**
 
-**The measurement the row asks for, and the decision that hangs on it:**
+The `panel` digest `7de2c5faf3cc1813` is also the last line of the screenshot
+taken that day: the log and the pixels agree, which is what putting the page's
+digest inside the page was for.
 
-```
-replay: 256/100 + 30 days in 4.76 s (release), 25.21 s (debug)
-```
+**Against the row's clauses.** (a) the format verbatim, 99 intents where it asks
+for 30 or more, 23 refusals by the WORLD where it asks for one, every one of the
+eight verb counts at least 1, and 27 Moves among the taken - the verb that was
+unplayable by anybody until ADR-0139 the day before. (b) byte-identical after
+the prefix, above. (d) the screenshot carries `last: too far to walk`, a refusal
+the world gave, and the panel digest as its last line. (c) the frame rate is the
+one figure not yet taken.
 
-Release is `linux-gcc-release` (4.36 s under `linux-clang-release`); debug is
-`linux-gcc-debug`, assertions on, which is the multiple nobody had measured when
-the row was written: **5.3x**, not the order of magnitude a debug build of a
-whole-world gate usually costs, because the 100 years of generation dominate and
-the thirty detailed days are cheap. The row said `Replay.Played` stays on
-`windows-msvc-debug` unless the debug figure exceeds 600 s; 25.21 s is two
-percent of that, so it stays, and clause (e) names **eight legs** as written. No
-change to `.github/workflows/kernel-ci.yml`.
+**What the phase cost in defects, and where they were found.** Three stood
+between the code and the owner's first build, and not one was visible on six
+Linux presets, on macOS, on the Windows CI leg or in the clang parse against the
+shim: UnrealHeaderTool's generated destructor on an incomplete pimpl; then
+`DEFINE_VTABLE_PTR_HELPER_CTOR`, which instantiates that same destructor
+whatever the class declares, and which defeated the first fix; then
+`RegionGraphCache`, exported whole while emitting neither of its implicit
+special members, because nothing inside VaelenSim ever constructs one - a defect
+that needs DLLs to exist at all, and CMake builds static libraries. The parse
+job caught renamed members and wrong argument counts for four tasks running. It
+cannot catch what a code generator writes, and it cannot catch what a linker
+wants. That is the honest measure of it.
 
-`TIMEOUT 1800` and `COST 4000` as the row asks - 1800 being 71x the debug
-measurement and 378x the release one, which is headroom of the kind
-`Tests/Politics/CMakeLists.txt` now has a rule about.
+**The machinery, and the stand-in that is gone.** `Tools/Atlas` gained
+`--want-bound N` (the host's `StartRules`, deliberately not in the stream, so a
+replay must be told them - replaying this month with `--want-bound 1` takes up a
+different person and diverges on all four digests), the three printed lines, and
+`--stand`, which writes a month played by nobody. The stand-in stood for one day
+so that the replay, the two lines, the four pinned digests and the CTest entry
+were green before a human was available - and it is how ADR-0139's defect was
+found, because `--stand` refused to write a file without a Move. It is deleted;
+`--stand` stays.
 
-The four digests agree across three local presets before CI is asked at all -
-`linux-gcc-release`, `linux-clang-release` and `linux-gcc-debug`, which is two
-compilers and both assertion settings. That is the cheap half of the eight-leg
-claim; Windows and macOS are the half only CI can answer.
+CTest `Replay.Played` now replays the owner's month through a `-P` driver that
+holds both the exit code and the three lines, and refuses an expectation too
+short to contain a digest - the guard the review's own finding earned, when
+unquoted parentheses cut `-DPLAYED` at its first `(` and the entry pinned
+nothing at all. `TIMEOUT 1800`, `COST 4000`.
 
-STATUS: 14.10 INCOMPLETE - the headless half is VALIDATED, clauses (a), (c) and
-(d) wait on the owner's UE build (14.08/14.09). Clause (b) is half provable
-here: Atlas prints the 14.08 format strings verbatim from the same fields,
-which is a code-level match; "byte-identical to what the engine printed" needs
-the engine to have printed.
+STATUS: 14.10 clauses (a), (b) and (d) MET. (c) - the frame rate with the HUD
+over the 13.09 scene - is the one figure outstanding, and the phase closes when
+it is written down.
 
 ### 14.08 written - VaelenGame, the one place a world is held
 

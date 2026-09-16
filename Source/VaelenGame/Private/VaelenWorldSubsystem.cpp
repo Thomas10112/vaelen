@@ -7,7 +7,10 @@
 // simulation. Tools/check_ui_fence.py reads Public and deliberately not
 // Private, which is that seam written down.
 //
-// STATUS: BUILT (Phase 14) - compiled and linked by UnrealBuildTool 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development Editor); NOT yet run, so nothing here is VALIDATED until 14.10's lines come out of a log
+// STATUS: VALIDATED (Phase 14) - built by UnrealBuildTool and RUN on
+// 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development Editor): eighty-three days
+// played at the keyboard, and Tools/Atlas replayed the stream headlessly to the
+// same four digests, byte for byte. Tests/Run/Streams/README.md has the lines.
 #include "VaelenWorldSubsystem.h"
 
 #include "Misc/FileHelper.h"

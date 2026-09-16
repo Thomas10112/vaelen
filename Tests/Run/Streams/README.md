@@ -1,4 +1,4 @@
-# The streams a replay is held to
+# The stream a replay is held to
 
 A `.stream` here is the text form of `Vaelen::Player::InputStream` (14.01): one
 header line naming the world, then one record per line in time order — takings,
@@ -6,29 +6,28 @@ commands, day turns. `Tools/Atlas --replay <file>` builds a fresh world from
 that header and puts the records back through `Run::Door`, and the four digests
 it comes to are what CTest `Replay.Played` pins.
 
-## `aelvor256-stand-in-2026-09-15.stream` — NOT a month played by hand
+## `aelvor256-2026-09-16.stream` — a month somebody played
 
-This file was written by
+Eighty-three days at the keyboard, in UE 5.6 on 2026-09-16, written out with
+`Vaelen.Stream.Write`. Not generated. Somebody pressed W, R, E, T, S, G, K and M
+ninety-nine times and turned the day eighty-three times, and this is what came
+through the door.
+
+What the engine printed that day:
 
 ```
-VaelenAtlas --size 256 --years 100 --want-bound 0 \
-            --stand Tests/Run/Streams/aelvor256-stand-in-2026-09-15.stream
+LogVaelenPlay: AELVOR 256 seed 41454c564f52: played Dukem (person 15019, region 37) 83 days, 99 intents (76 taken, 23 refused by the world, 0 dropped at the door), state 2ffed5236a593c1b, log 1fdd4211695649bc, life 654e2de6455d8b7a, panel 7de2c5faf3cc1813
+LogVaelenPlay: verbs work 34 rest 1 eat 2 wait 2 speak 5 give 2 take 26 move 27
 ```
 
-**It did not come from the editor.** Nobody pressed a key to make it. Task
-14.10's clause (a) asks for thirty days played at the keyboard in the 13.09
-level and written out with `F9`, and that is the owner's machine and has not
-happened yet. What this is instead is a month of the same SHAPE, so that every
-piece of machinery around it — the replay, the two `LogVaelenPlay` lines, the
-four pinned digests, the CTest entry — is exercised and green before the real
-month arrives. `--stand` refuses to write a file that does not have that shape:
-thirty recorded day turns, every one of the eight verbs at least once, a Move
-the page offered and the door queued - which it can only do when a neighbour is
-adjacent AND detailed - and at least one intent the WORLD refused rather than
-the door.
+`Tools/Atlas --replay … --panel --want-bound 0` prints those two lines back,
+byte for byte — same MD5 — from a world rebuilt out of the header alone. That
+is the claim of ADR-0136 met in the one way that counts: a played life is a
+function of what came through the door, and of nothing else the engine did.
 
-Every command in it went through `View::Press` first, exactly as a key press
-does in 14.09, so it walks the path a keyboard walks.
+The `panel` digest, `7de2c5faf3cc1813`, is also the last line of the screenshot
+taken that day. The log and the pixels agree, which is what putting the page's
+digest inside the page was for.
 
 The host configuration it was recorded under, which a replay must be given
 because the rules are deliberately not in the stream (`Run/Door.h`):
@@ -40,22 +39,25 @@ because the rules are deliberately not in the stream (`Run/Door.h`):
 | `StartRules::WantBound` | **0** — whoever the world offers, as `VaelenWorldSubsystem` does |
 | colony, lively | neither: the host asks for `Play` and nothing else |
 
-The header line says the first three and the seed, so the world it belongs to
-is readable without tooling. `WantBound` is the one that is not in the file,
-which is why `Replay.Played` passes `--want-bound 0`.
+The header line carries the first three and the seed, so the world it belongs to
+is readable without tooling. `WantBound` is the one thing that is not in the
+file, which is why `Replay.Played` passes `--want-bound 0`.
 
-## When the owner's month lands
+## The stand-in that used to be here
 
-Check it in beside this one as `aelvor256-<date>.stream`, re-pin the three
-expected lines in `Tests/Run/CMakeLists.txt` from its own replay, and delete
-the stand-in in the same commit. Until then, no clause of 14.10 that names a
-month played by hand may be called satisfied.
+`aelvor256-stand-in-2026-09-15.stream` was written by `VaelenAtlas --stand`, not
+by anybody, and existed for one day so that the replay, the two lines, the four
+pinned digests and the CTest entry were exercised and green before the real
+month could arrive. It did its job — it is how the Move defect of ADR-0139 was
+found, because `--stand` refused to write a file without one — and it is gone.
+`--stand` stays: the next time this machinery needs testing before a human is
+available, it is there.
 
-## What makes a stream here go stale
+## What makes this stream go stale
 
 The digests are of a whole simulated world, so anything that changes what the
-world does moves them: the wiring order in `Run/Aelvor.cpp` ("a type declared
-in a different position is a different world"), any system's arithmetic, the
+world does moves them: the wiring order in `Run/Aelvor.cpp` ("a type declared in
+a different position is a different world"), any system's arithmetic, the
 pre-history rules, worldgen, the panel's text layout, `ExportLife`. That is the
 same class as `Atlas.Frozen128` and the fix is the same: re-freeze deliberately,
 with an ADR, never by quietly editing a number until the test goes green.

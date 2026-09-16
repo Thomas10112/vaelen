@@ -15,9 +15,9 @@ VAELEN BUILD STATUS
 
 PHASE       : 14 — UI — IN PROGRESS
 TASK        : 14.10 — THE PHASE GATE (headless half done; engine half waiting)
-STATUS      : VALIDATED (headless, 14.01-14.07 and 14.10's headless half)
-              BUILT (engine: 14.08 VaelenGame, 14.09 VaelenUI and VaelenRun's module TU,
-              compiled and linked by UBT 2026-09-16 - not yet RUN)
+STATUS      : VALIDATED (headless AND engine). 14.08 and 14.09 built by UBT and RUN
+              2026-09-16; a month played at the keyboard replays headlessly to the same
+              four digests, byte for byte. Only the frame rate is outstanding.
 
 PROGRESS
 ████████████████████████░░ 95%
@@ -42,9 +42,12 @@ COMPLETED
 ✓ 14.01 intents as a leaf · 14.02 the view headers as leaves + Take.h · 14.03 VaelenRun (Aelvor,
   Door, Replay) · 14.04 LifeView · 14.05 ChronicleView, incremental · 14.06 the page + two frozen
   digests · 14.07 the UI include fence
-✓ 14.08 VaelenGame and 14.09 VaelenUI BUILT - UnrealBuildTool compiled and linked both on
-  2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development Editor), after three defects nothing here
-  could see. No file in Source/ carries STATUS: UNVERIFIED any more.
+✓ 14.08 VaelenGame and 14.09 VaelenUI BUILT AND RUN - UnrealBuildTool on 2026-09-16 (UE 5.6,
+  MSVC 19.51), after three defects nothing here could see; then eighty-three days played at the
+  keyboard. No file in Source/ carries STATUS: UNVERIFIED any more.
+✓ 14.10 clauses (a), (b), (d): the engine's two LogVaelenPlay lines and the headless replay of
+  the same stream are byte-identical - same MD5 - and the panel digest 7de2c5faf3cc1813 is also
+  the last line of the screenshot. 99 of 99 verdicts reproduced, 83 of 83 days.
 ✓ 14.10 headless half: Atlas --want-bound/--stand/--panel lines, a checked-in stream, CTest
   Replay.Played pinning four digests - replay: 256/100 + 30 days in 4.76 s (release), 25.21 s
   (debug), so the entry stays on windows-msvc-debug and clause (e) names eight legs
@@ -67,13 +70,15 @@ TESTS
   f4014af16e5e60f0)
 
 BLOCKERS
-! 14.08 and 14.09 are BUILT but have never been RUN. Three defects stood between the code and
-  that build, and not one was visible headless: UnrealHeaderTool's generated destructor on an
-  incomplete pimpl; DEFINE_VTABLE_PTR_HELPER_CTOR, which instantiates the same destructor
-  whatever the class declares; and RegionGraphCache, exported whole while emitting neither of
-  its implicit special members, because nothing inside VaelenSim ever constructs one. The last
-  needs DLLs to show at all - CMake builds static libraries, where the class is present whether
-  or not anybody exported it.
+! One figure: clause (c), the frame rate with the HUD over the 13.09 scene, and the ms per
+  Vaelen.Day at 256. Phase 14 closes when it is written down.
+  For the record, the three defects that stood between the code and the owner's first build,
+  none visible headless: UnrealHeaderTool's generated destructor on an incomplete pimpl;
+  DEFINE_VTABLE_PTR_HELPER_CTOR, which instantiates that same destructor whatever the class
+  declares; and RegionGraphCache, exported whole while emitting neither of its implicit special
+  members, because nothing inside VaelenSim ever constructs one. The last needs DLLs to show at
+  all - CMake builds static libraries, where the class is present whether or not anybody
+  exported it.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ```

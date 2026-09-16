@@ -11,7 +11,10 @@
 // module: ADR-0138's day turn is a recorded input, and a world that also moved
 // on the frame clock could not be replayed from a key sequence.
 //
-// STATUS: BUILT (Phase 14) - compiled and linked by UnrealBuildTool 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development Editor); NOT yet run, so nothing here is VALIDATED until 14.10's lines come out of a log
+// STATUS: VALIDATED (Phase 14) - built by UnrealBuildTool and RUN on
+// 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development Editor): eighty-three days
+// played at the keyboard, and Tools/Atlas replayed the stream headlessly to the
+// same four digests, byte for byte. Tests/Run/Streams/README.md has the lines.
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
