@@ -14,13 +14,15 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 15 — STREAMING & LOD (14 CLOSED 2026-09-16, all five clauses)
-TASK        : 15.05 — the vanishing believer — INCOMPLETE (15.01-15.04 VALIDATED)
-              The fix is in: the crossing reads RegionFaith::Add's answer and puts the
-              mover back rather than moving them without their faith. What is missing is
-              a test that reaches that line. Three stagings were tried and each was
-              defeated by the pre-history's religion systems rewriting faith tables
-              before the crossing runs in the same year. It wants a harness that runs
-              the bridge without them. Not marked VALIDATED and not claimed as covered.
+TASK        : 15.06 — Attention as a recorded input (15.01-15.05 VALIDATED 2026-09-16)
+              15.05 is covered now. The harness it wanted exists: the two systems that
+              write RegionFaith are removed from the scheduler once the region is
+              detailed, so the faiths hold still long enough for the crossing to be
+              watched. The control was RUN and not reasoned about — the fix reverted,
+              the suite rebuilt, 181 believers crossing into a destination with no room
+              for their faith, the test failing; the fix restored, 0 crossing, the test
+              passing. 181 lost believers per three years, in one crossing, in one
+              world, is the size of the defect.
 STATUS      : Phase 14's gate is met on (a), (b), (c) and (d). Eighty-three days
               played at the keyboard in UE 5.6 replay headlessly to the same four
               digests byte for byte; the HUD costs 0.52 ms of game thread and nothing

@@ -963,33 +963,16 @@ VAELEN_TEST(Lod, TheAuditCountsBothGrainsAndCanBeMadeToSayNo)
 
 VAELEN_TEST(Lod, AFifthFaithIsRefusedAndTheCrossingNowReadsTheAnswer)
 {
-	// Phase 15 task 15.05, and this test does NOT cover the fix. It covers the
-	// precondition and the invariant around it, and it says so out loud rather
-	// than passing quietly and being mistaken for cover.
+	// Phase 15 task 15.05. The crossing in LodSystem called RegionFaith::Add
+	// for a mover's religion and ignored what it returned. Add refuses when
+	// none of its four slots is free, so a believer crossing into a region that
+	// already held four faiths joined the head count and left the faith count.
+	// Every time, silently, and unfindable afterwards: a coarse region has no
+	// persons to recount, so the missing believer cannot be told from the
+	// irreligious. It now reads the answer and puts the mover back.
 	//
-	// THE FIX: the crossing in LodSystem called RegionFaith::Add for a mover's
-	// religion and ignored the answer. Add refuses when none of its four slots
-	// is free, so a believer crossing into a region that already held four
-	// faiths joined the head count and left the faith count. It now reads the
-	// answer and puts the mover back.
-	//
-	// WHAT COULD NOT BE STAGED, and it is worth writing down because the next
-	// person to try will try the same three things. To reach that line a test
-	// needs a crowded detailed region whose movers hold a faith, crossing into
-	// a neighbour whose four slots are already taken by other faiths. Setting
-	// the destination's table once does not survive: the pre-history's religion
-	// systems rewrite faith tables between years. Refilling it before each year
-	// does not survive either: those systems run before the crossing inside the
-	// same year. Giving the movers their faith through the source region's
-	// table does not work at all, because PromoteRegion reads that table and
-	// the same systems have already rewritten it - the first draft measured 181
-	// crossings either way, because not one mover believed anything. Writing
-	// the faith directly onto the people fixes the movers and still leaves the
-	// destination's table rewritten under the test.
-	//
-	// So the crossing path wants a world built for it - a harness that runs the
-	// bridge without the pre-history's religion systems - and that is the rest
-	// of 15.05 rather than something to fake here.
+	// The precondition first, so the ceiling this depends on is known to be
+	// real rather than assumed.
 	VT_CHECK_MSG(RegionFaith::MaxFaiths == 4, "the ceiling the defect needs");
 	{
 		RegionFaith F;
@@ -997,26 +980,124 @@ VAELEN_TEST(Lod, AFifthFaithIsRefusedAndTheCrossingNowReadsTheAnswer)
 		VT_CHECK(F.Add(12u, 1u));
 		VT_CHECK(F.Add(13u, 1u));
 		VT_CHECK(F.Add(14u, 1u));
-		VT_CHECK_MSG(!F.Add(15u, 1u), "a fifth faith is refused - this is the answer the crossing used to ignore");
+		VT_CHECK_MSG(!F.Add(15u, 1u), "a fifth faith is refused - the answer the crossing used to ignore");
 		VT_CHECK_MSG(F.Add(13u, 1u), "and one it already holds is not");
 	}
 
-	// And the invariant the fix protects, over a crowded run: believers never
-	// outnumber the people they are, anywhere in the world.
-	Run W(AelvorSeed);
-	VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
-	const uint32 Region = W.Ranked()[0];
-	VT_REQUIRE(RequestDetail(W.Instance, W.Lod, Region));
-	W.Ages.Run(1);
-	VT_REQUIRE(W.Detailed(Region));
-	RegionPopulation* const Counts = W.Counts(Region);
-	VT_REQUIRE(Counts != nullptr);
-	Counts->Capacity = Counts->Total / 2u;
-	W.Ages.Run(3);
-	const AuditReport After = Audit(W.Instance, W.Ages.Types(), W.Persons);
-	VAELEN_LOG_INFO(LogLod,
-					"after a crowded three years: %u disagreeing, %u with believers over heads, %u at the ceiling",
-					After.Disagreeing, After.FaithsOverHeads, After.FaithCeiling);
-	VT_CHECK_MSG(After.FaithsOverHeads == 0, "nowhere do the believers outnumber the people");
-	VT_CHECK_MSG(After.Disagreeing == 0, "and every detailed region agrees with its coarse counts");
+	// THE HARNESS, and why it has to exist. Three earlier stagings of this were
+	// defeated the same way: the pre-history's own systems rewrite faith tables
+	// between years, and they run BEFORE the crossing inside the same year. Set
+	// the destination's table once and it dissolves; refill it every year and it
+	// dissolves before the crossing reads it; give the movers a faith through
+	// the source region's table and PromoteRegion reads that same rewritten
+	// table - the first draft measured 181 crossings either way, because not one
+	// mover believed anything.
+	//
+	// So the two systems that write RegionFaith - "Religions" and "Disasters" -
+	// are taken out of the scheduler once the world is generated and the region
+	// is detailed. Nothing else is changed: the bridge, the lives and the
+	// crossings all still run. What is under test is the crossing, and now the
+	// faiths hold still long enough to see it.
+	const auto Freeze = [](Run& W)
+	{
+		const bool Gone = W.Instance.Systems().Remove("Religions") && W.Instance.Systems().Remove("Disasters");
+		return Gone && W.Instance.Build();
+	};
+	const auto Believe = [](Run& W, uint32 Region, uint32 Faith)
+	{
+		uint32 Given = 0;
+		W.Instance.Components()
+			.GetPool(W.Persons.Person)
+			.ForEach(
+				[&](EntityHandle, PersonInfo& P)
+				{
+					if (P.Region == Region && P.State == static_cast<uint8>(LifeState::Alive))
+					{
+						P.Religion = Faith;
+						++Given;
+					}
+				});
+		RegionFaith* const F = W.Faith(Region);
+		if (F == nullptr || Given == 0)
+		{
+			return 0u;
+		}
+		for (uint32 S = 0; S < RegionFaith::MaxFaiths; ++S)
+		{
+			F->Religion[S] = 0u;
+			F->Adherents[S] = 0u;
+		}
+		F->Religion[0] = Faith;
+		F->Adherents[0] = Given;
+		F->Recount();
+		return Given;
+	};
+	const auto Landed = [](const Run& W, usize From, uint32 Where)
+	{
+		uint32 N = 0;
+		const std::vector<Event>& All = W.Instance.Log().All();
+		for (usize i = From; i < All.size(); ++i)
+		{
+			N += All[i].Is(PersonLeftEvent) && All[i].Get<PersonPayload>().Other == Where ? 1u : 0u;
+		}
+		return N;
+	};
+
+	// ── Control: the movers hold a faith, the destination has room for it.
+	uint32 Region = 0;
+	uint32 Where = 0;
+	uint32 Moved = 0;
+	{
+		Run W(AelvorSeed);
+		VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
+		Region = W.Ranked()[0];
+		VT_REQUIRE(Region != 0);
+		VT_REQUIRE(RequestDetail(W.Instance, W.Lod, Region));
+		W.Ages.Run(1);
+		VT_REQUIRE(W.Detailed(Region));
+		VT_REQUIRE(Freeze(W));
+		VT_REQUIRE(Believe(W, Region, 800u) > 0);
+		W.Counts(Region)->Capacity = W.Counts(Region)->Total / 2u;
+		const usize From = W.Instance.Log().All().size();
+		W.Ages.Run(3);
+		const std::vector<Event>& All = W.Instance.Log().All();
+		for (usize i = From; i < All.size() && Where == 0; ++i)
+		{
+			Where = All[i].Is(PersonLeftEvent) ? All[i].Get<PersonPayload>().Other : 0u;
+		}
+		VT_REQUIRE(Where != 0);
+		Moved = Landed(W, From, Where);
+		VT_CHECK_MSG(Moved > 0, "with room for their faith, they go");
+	}
+
+	// ── The same world, the same movers, the same faith - and a destination
+	// whose four slots are taken by faiths none of them holds.
+	{
+		Run W(AelvorSeed);
+		VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
+		VT_REQUIRE(RequestDetail(W.Instance, W.Lod, Region));
+		W.Ages.Run(1);
+		VT_REQUIRE(W.Detailed(Region));
+		VT_REQUIRE(Freeze(W));
+		VT_REQUIRE(Believe(W, Region, 800u) > 0);
+		RegionFaith* const F = W.Faith(Where);
+		VT_REQUIRE(F != nullptr);
+		for (uint32 S = 0; S < RegionFaith::MaxFaiths; ++S)
+		{
+			F->Religion[S] = 900u + S;
+			F->Adherents[S] = 1u;
+		}
+		W.Counts(Region)->Capacity = W.Counts(Region)->Total / 2u;
+		const usize From = W.Instance.Log().All().size();
+		W.Ages.Run(3);
+		const uint32 Now = Landed(W, From, Where);
+
+		VAELEN_LOG_INFO(LogLod, "region %u -> %u: %u crossed with room for their faith, %u with none", Region, Where,
+						Moved, Now);
+		VT_CHECK_MSG(Now == 0, "a destination with no room for their faith takes none of them - THE FIX");
+		const AuditReport After = Audit(W.Instance, W.Ages.Types(), W.Persons);
+		VT_CHECK_MSG(After.FaithsOverHeads == 0, "nobody is counted twice");
+		VT_CHECK_MSG(After.Disagreeing == 0, "and the region they did not leave still agrees with itself");
+		VT_CHECK_MSG(After.FaithCeiling >= 1, "the ceiling the audit counts apart is the one this test built");
+	}
 }
