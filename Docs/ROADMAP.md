@@ -4586,12 +4586,27 @@ taken that day: the log and the pixels agree, which is what putting the page's
 digest inside the page was for.
 
 **Against the row's clauses.** (a) the format verbatim, 99 intents where it asks
-for 30 or more, 23 refusals by the WORLD where it asks for one, every one of the
-eight verb counts at least 1, and 27 Moves among the taken - the verb that was
-unplayable by anybody until ADR-0139 the day before. (b) byte-identical after
-the prefix, above. (d) the screenshot carries `last: too far to walk`, a refusal
-the world gave, and the panel digest as its last line. (c) **NOT MET, and the phase
-stays open for it** - see below.
+for 30 or more, 23 refusals by the WORLD where it asks for one, and every one of
+the eight verb counts at least 1.
+
+The row also asks that a Move be among the TAKEN, and the verbs line does not
+say that: it counts what was MEANT, whatever the world made of it
+(`VaelenPlayCommands.cpp`, the tally walks `Tape.Commands`). Two things settle
+it anyway, and both are in the line itself. By arithmetic: 27 Moves were meant,
+23 intents in total were refused and 0 dropped, so at least four Moves were
+taken whatever the other verbs did. And by where the man ends up: a fresh
+`Vaelen.Play 256 100` of this seed takes person 15019 up in **region 42** - the
+engine printed it, and the headless probe of the same seed agrees - while the
+played line ends `person 15019, region 37`. A person changes region only by a
+Move the world took. The verb ADR-0139 made playable the day before was played,
+and it carried him five regions over.
+
+(b) byte-identical after the prefix, above. (d) the screenshot carries
+`last: too far to walk`, and that is a WORLD refusal rather than a foreseen one:
+`Refusal::TooFar` is returned by `Player/Doings.cpp` when the day runs the
+order, the page's own foresight would have kept the command from ever being
+submitted, and the line says 0 dropped at the door. The panel digest is its last
+row. (c) **MET** - see below, and it took four readings.
 
 **Clause (c), measured on 2026-09-16, and what it did and did not settle.**
 

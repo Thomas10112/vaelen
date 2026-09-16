@@ -58,9 +58,21 @@ COMPLETED
 ✓ ADR-0136 to ADR-0139
 
 NEXT
-→ The owner's UE 5.6 build. Vaelen.Play 256 100 in the 13.09 level, thirty days through the keys,
-  F9 - then the two LogVaelenPlay lines and the eight LogVaelenUI lines. That is clauses (a), (c)
-  and (d) of the gate and the last thing between Phase 14 and closed.
+→ Phase 15 — STREAMING & LOD. Nothing is asked of the engine machine any more: the build
+  happened, the month was played, the frame rate was read. The phase-15 breakdown is planned
+  headless-first and opens on three defects the planning itself found, all three confirmed in
+  the code rather than suspected:
+  · ReleaseDetail (Population/Lod.cpp) has NO caller outside the tests, while RequestDetail
+    appends monotonically and refuses everything once LodState::MaxWanted = 8 is reached.
+    Aelvor::NearDetail asks for up to three neighbours on EVERY taking and releases none, and
+    Door::Day takes somebody new up whenever the played person dies. So after roughly three
+    deaths the wanted list saturates, Near goes empty and every Move is refused TooFar for
+    good — ADR-0139's fix expires. The checked-in month has exactly one taking, which is why
+    CI is green and why the Phase 14 gate is still honest.
+  · Aelvor.cpp's NearDetail reads a fresh `const LodRules Rules;` rather than the rules the
+    LodSystem was built with. Not a defect today — both are default-constructed — but the day
+    one is parameterised they part company silently.
+  · This file listed the STAND-IN replay's four digests until 2026-09-16. Corrected above.
 
 TESTS
 ✓ 175/175 CTest entries on linux-gcc-release, every gate of fourteen phases
@@ -70,8 +82,9 @@ TESTS
   parsed · 4 wirings of AELVOR agree · UI fence 8 files, 16 mutations
 ✓ Frozen and reproducing: the ADR-0135 pair (frame abc5a5767c6cf9dd, ground 8f7f4948f49b6e86), the
   view gate 115c2ff70a5327c4, the page empty 54787451e65766c1 and played 703c838ca533a095, and the
-  replay's four (state cb69b72505aaa97d, log 34950d9a09dff0c4, life 51e2309a61765ff0, panel
-  f4014af16e5e60f0)
+  replay's four, which are the OWNER'S MONTH and no longer the stand-in's (state
+  2ffed5236a593c1b, log 1fdd4211695649bc, life 654e2de6455d8b7a, panel 7de2c5faf3cc1813 —
+  the four Tests/Run/CMakeLists.txt pins)
 
 BLOCKERS
 ! One CI run, green on the head, for clause (e): Replay.Played on the eight CTest legs
