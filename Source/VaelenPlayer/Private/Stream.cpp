@@ -59,10 +59,9 @@ namespace Vaelen::Player
 		void WriteLook(std::string& Out, const Looked& L)
 		{
 			char Buffer[80];
-			const int Wrote = std::snprintf(Buffer, sizeof(Buffer), "l %llu %llu %llu",
-											static_cast<unsigned long long>(L.Tick),
-											static_cast<unsigned long long>(L.Region),
-											static_cast<unsigned long long>(L.Reach));
+			const int Wrote =
+				std::snprintf(Buffer, sizeof(Buffer), "l %llu %llu %llu", static_cast<unsigned long long>(L.Tick),
+							  static_cast<unsigned long long>(L.Region), static_cast<unsigned long long>(L.Reach));
 			Append(Out, Buffer, Wrote, sizeof(Buffer));
 		}
 
@@ -296,8 +295,8 @@ namespace Vaelen::Player
 			else if (L[0] == 'l')
 			{
 				uint64 Tick = 0, Region = 0, Reach = 0;
-				Ok = Field(Rest, Tick) && Field(Rest, Region) && Field(Rest, Reach) && Rest.empty() &&
-					 Fits32(Region) && Fits32(Reach);
+				Ok = Field(Rest, Tick) && Field(Rest, Region) && Field(Rest, Reach) && Rest.empty() && Fits32(Region) &&
+					 Fits32(Reach);
 				if (Ok)
 				{
 					Read.Looks.push_back(Looked{Tick, static_cast<uint32>(Region), static_cast<uint32>(Reach)});
