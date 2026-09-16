@@ -9692,3 +9692,67 @@ fourteen closed phases, with no instrument able to say that a recomputed digest
 is right rather than merely new. A mass re-freeze is where robustness goes to
 die.
 
+---
+
+## ADR-0142 — A taking gives back what the taking before it asked for
+
+**Status:** **APPLIED 2026-09-16** (task 15.03): the release loop in
+`Run::Aelvor::NearDetail`, and the live `LodRules` beside it. Moves no frozen
+digest: the checked-in month has exactly one taking, so the loop has nothing to
+give back and asks for precisely what it asked for before.
+
+### The defect
+
+`Population::RequestDetail` only ever appends. It walks the wanted list, returns
+true if the region is already on it, and otherwise refuses outright once
+`LodState::MaxWanted = 8` is reached. `ReleaseDetail` compacts the list
+correctly and, until this task, **had no caller anywhere outside the tests** —
+twenty call sites, every one under `Tests/`.
+
+`Aelvor::NearDetail` runs on every taking: the first, the one `Door::Day` makes
+when the played person dies, and every `TakenUp` a replay applies. It asked for
+up to `MaxDetailed - 1` neighbours each time and released none. One region at
+`Begin` and three per taking, so after roughly three takings the list saturated.
+From then on `RequestDetail` refused everything, no new neighbour was ever
+detailed, `LifeView::Near` was empty on every day, and `Player::Doings` answered
+`TooFar` to every Move for the rest of that world's life.
+
+**ADR-0139's fix expired after about three deaths**, and nothing said so. The
+checked-in month cannot show it, because a month played by one person who did
+not die has exactly one taking.
+
+### The decision
+
+Before asking, give back what the last taking asked for. Two regions are never
+given back: the one the new person is standing in, and `Begin`'s busiest, which
+is the colony's floor and the world's.
+
+The set is kept on the `Aelvor` and not in the world. It is host bookkeeping: a
+replay rebuilds it by applying the same takings in the same order, so it stays
+out of every digest, which is the same reasoning ADR-0090 applies to `LodState`.
+
+`NearDetail` now also reads the `LodRules` the `LodSystem` was **built** with
+rather than a fresh `const LodRules Rules;`. The two agreed, and agreed only
+because both were default-constructed — a coincidence, not a guarantee, and one
+that would have parted company silently the first time anybody parameterised the
+bridge.
+
+### It is half of a fix, and the test says which half
+
+Giving the slots back lets a request be MADE. It does not make the region
+DETAILED: that is the bridge's job, and at `SimLod::World` the bridge answers
+once a year (ADR-0141). So the test asserts twelve takings with the wanted list
+never reaching its ceiling **and** `Near` offered on every one of them, and it
+needs `Options::Stream` for the second half. Written without it, the wanted-list
+assertions pass and the `Near` assertion fails — which is how the two were told
+apart while it was written, and why that sentence is in the test rather than
+here alone.
+
+### The control
+
+The saturation itself, asserted first: `LodState::MaxWanted` is 8 and a fresh
+`LodState` wants nothing. Then twelve takings, the highest wanted count kept and
+required to stay under the ceiling, `Near` required non-empty every time, and
+finally three fresh `RequestDetail` calls that must all succeed — the property
+a saturated list destroys, because a full list refuses everything for good.
+

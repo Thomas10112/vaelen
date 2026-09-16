@@ -106,7 +106,6 @@ namespace Vaelen::Run
 			// crowd that leaves in a YEAR, and hands the detail decisions to a
 			// system that runs on a DAY - but only when asked, because a world
 			// that decides detail on a different cadence is a different world.
-			LodRules Bridging;
 			Bridging.DecideElsewhere = Given.Stream;
 			Bridge = std::make_unique<LodSystem>(Instance, Ages.Types(), W.Persons, W.Lod, Bridging);
 			if (Given.Stream)
@@ -331,6 +330,12 @@ namespace Vaelen::Run
 		std::unique_ptr<FamilySystem> Houses;
 		std::unique_ptr<NeedSystem> Body;
 		std::unique_ptr<TraitSystem> Minds;
+		/// The rules the bridge was BUILT with, kept so that NearDetail reads
+		/// them instead of a fresh default. 15.03: they agreed only because
+		/// both were default-constructed, which is a coincidence and not a
+		/// guarantee, and the day one is parameterised they would part company
+		/// with nothing to say so.
+		LodRules Bridging;
 		std::unique_ptr<LodSystem> Bridge;
 		std::unique_ptr<DetailSystem> Grain; ///< only with Options::Stream
 		std::unique_ptr<OrganizationSystem> Orgs;
@@ -527,8 +532,35 @@ namespace Vaelen::Run
 		{
 			return;
 		}
+		// 15.03: GIVE BACK what the last taking asked for, before asking again.
+		//
+		// RequestDetail only ever appends and returns false for good once
+		// LodState::MaxWanted = 8 is reached (Population/Lod.cpp). This runs on
+		// EVERY taking - the first, the one after a death, and every TakenUp
+		// that Run::Replay applies - and until this line released nothing. One
+		// region at Begin and three per taking: after roughly three deaths the
+		// wanted list saturated, Near went empty and the world refused every
+		// Move as TooFar for the rest of that world's life. ADR-0139's fix
+		// expired, silently, in a way the checked-in month cannot show because
+		// it has exactly one taking.
+		//
+		// Two regions are never given back: the one the new person is standing
+		// in, and Begin's busiest, which is the colony's and the world's floor.
+		// The 15.01 fence is what makes this safe to ship at all - releasing is
+		// what finally lets the bridge demote, and a demotion used to destroy
+		// whoever was being played.
+		for (const uint16 Old : Near_)
+		{
+			if (uint32{Old} == P->Region || uint32{Old} == Detail_)
+			{
+				continue;
+			}
+			ReleaseDetail(K->Instance, K->W.Lod, Old);
+		}
+		Near_.clear();
+
 		// One slot is the played person's own region; the rest are the walk.
-		const LodRules Rules;
+		const LodRules& Rules = K->Bridging;
 		uint32 Asked = 0;
 		std::vector<uint16> Near(Graph.Neighbours[P->Region]);
 		std::sort(Near.begin(), Near.end());
@@ -545,6 +577,7 @@ namespace Vaelen::Run
 			if (RequestDetail(K->Instance, K->W.Lod, N))
 			{
 				++Asked;
+				Near_.push_back(N);
 			}
 		}
 	}

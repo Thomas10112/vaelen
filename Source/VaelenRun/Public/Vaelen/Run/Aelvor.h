@@ -58,6 +58,7 @@
 #include "Vaelen/View/Take.h"
 
 #include <memory>
+#include <vector>
 #include <string>
 
 namespace Vaelen::Run
@@ -196,5 +197,10 @@ namespace Vaelen::Run
 
 		uint32 Detail_ = 0;
 		uint32 Dug_ = 0;
+		/// What the LAST taking asked to have detailed, so that the next one can
+		/// give it back (15.03). Host-side bookkeeping and not world state: a
+		/// replay rebuilds it by applying the same takings in the same order,
+		/// so nothing here enters a digest.
+		std::vector<uint16> Near_;
 	};
 } // namespace Vaelen::Run

@@ -10,6 +10,7 @@
 // the frame and the ground where they were.
 //
 // STATUS: PROTOTYPE (Phase 14)
+#include "Vaelen/Population/Lod.h"
 #include "Vaelen/Run/Aelvor.h"
 #include "Vaelen/Run/Door.h"
 #include "Vaelen/View/Frame.h"
@@ -21,6 +22,7 @@
 #include "VaelenTest.h"
 
 #include <chrono>
+#include <vector>
 
 using namespace Vaelen;
 using namespace Vaelen::Run;
@@ -230,4 +232,83 @@ VAELEN_TEST(Aelvor, ADayAt256WithTheColonyIsMeasured)
 		"the world built in %.1f s); panel: bytes %u, lines %u, truncated %u, digest %016llx, taken in %.2f ms",
 		Sum / Days, Max, Days, Who, A.Founded(), Built / 1000.0, PS.TextBytes, PS.Rows, PS.Truncated,
 		static_cast<unsigned long long>(PS.Digest), Drawn);
+}
+
+VAELEN_TEST(Aelvor, TwelveTakingsDoNotSaturateTheWantedListAndNearIsNeverEmpty)
+{
+	// Phase 15 task 15.03. RequestDetail only ever appends and returns false
+	// for good once LodState::MaxWanted = 8 is reached. NearDetail runs on
+	// EVERY taking - the first, the one after a death, and every TakenUp a
+	// replay applies - and released nothing until this task. One region at
+	// Begin and three per taking: after roughly three takings the list
+	// saturates, Near goes empty, and the world refuses every Move as TooFar
+	// for the rest of that world's life. ADR-0139's fix expired silently.
+	//
+	// The checked-in month cannot show it: it has exactly one taking. This does
+	// twelve.
+	//
+	// THE CONTROL IS THE SATURATION ITSELF, asserted first, so that this test
+	// is measuring a real ceiling and not a number nobody enforces.
+	{
+		Population::LodState Ceiling;
+		VT_CHECK_MSG(Population::LodState::MaxWanted == 8, "the ceiling this task is about");
+		VT_CHECK(Ceiling.WantedCount == 0);
+	}
+
+	// Options::Stream, and that is a claim rather than a convenience: ADR-0139's
+	// promise is keepable only with BOTH halves of this phase. 15.03 gives the
+	// slots back so a request can be made at all; 15.02 makes the request
+	// answered on the next DAY instead of the next YEAR. Without the cadence
+	// this test fails on an empty Near while every wanted-list assertion below
+	// still passes - which is how the two were told apart while it was written.
+	Options O;
+	O.Size = 128;
+	O.PreHistory = 300;
+	O.Years = 100;
+	O.Play = true;
+	O.Stream = true;
+	Aelvor A(O);
+	VT_REQUIRE(A.Begin());
+	Player::StartRules Rules;
+	Rules.WantBound = 0;
+
+	WorldGen::RegionGraphCache Ways;
+	LifeView Life;
+	uint32 Takings = 0;
+	uint32 EmptyNear = 0;
+	uint32 Highest = 0;
+	for (uint32 i = 0; i < 12; ++i)
+	{
+		const uint32 Who = A.TakeUp(Rules);
+		if (Who == 0)
+		{
+			break; // the world offered nobody; that is not this test's subject
+		}
+		++Takings;
+		A.Day(); // one day, so the daily pass of 15.02 answers the request
+		const Population::LodStats Now =
+			Population::MeasureLod(A.Instance(), A.Ages(), A.Handles().Persons, A.Handles().Lod);
+		Highest = Now.Wanted > Highest ? Now.Wanted : Highest;
+		VT_CHECK_MSG(Now.Wanted <= Population::LodState::MaxWanted,
+					 "the wanted list never reaches the ceiling that would refuse every request after it");
+		TakeLifeView(A.Instance(), A.Sources(), Ways, Life);
+		EmptyNear += Life.NearCount == 0 ? 1u : 0u;
+		VT_REQUIRE(A.Release());
+	}
+	VAELEN_LOG_INFO(LogRun, "%u takings, highest wanted %u of %u, %u of them with an empty Near", Takings, Highest,
+					unsigned{Population::LodState::MaxWanted}, EmptyNear);
+	VT_CHECK_MSG(Takings == 12, "twelve takings and twelve releases, which is three deaths' worth and then some");
+	VT_CHECK_MSG(Highest < Population::LodState::MaxWanted,
+				 "the list is given back between takings, so it never fills - this is the fix");
+	VT_CHECK_MSG(EmptyNear == 0, "and Near is offered on every one of them, which is what ADR-0139 promised");
+
+	// And a request still succeeds afterwards, which is the property the
+	// saturation destroyed: a full list refuses everything for good.
+	const std::vector<uint32> Free = {2u, 3u, 5u};
+	uint32 Took = 0;
+	for (const uint32 R : Free)
+	{
+		Took += Population::RequestDetail(A.Instance(), A.Handles().Lod, R) ? 1u : 0u;
+	}
+	VT_CHECK_MSG(Took == Free.size(), "and the world still accepts a request, which a saturated list never would");
 }
