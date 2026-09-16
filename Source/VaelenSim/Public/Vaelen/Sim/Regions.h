@@ -126,6 +126,10 @@ namespace Vaelen::WorldGen
 		// TakeLifeView. Nothing headless could find this: CMake builds static
 		// libraries, where the whole class is present whether or not anything
 		// exported it. Found by the owner's UnrealBuildTool build, 2026-09-16.
+		//
+		// Regions.cpp gives them REAL BODIES rather than `= default`. Defaulting
+		// them out of line was the first attempt and it linked no better: MSVC
+		// treats that as implicitly defined and elides it just the same.
 		RegionGraphCache();
 		~RegionGraphCache();
 

@@ -414,11 +414,20 @@ namespace Vaelen::WorldGen
 		return true;
 	}
 
-	// Out of line so that VaelenSim actually EMITS them and the DLL exports
-	// them; see the comment on the declarations in Regions.h. Defaulted, so the
-	// in-class initialisers are what they always were and no digest moves.
-	RegionGraphCache::RegionGraphCache() = default;
-	RegionGraphCache::~RegionGraphCache() = default;
+	// REAL BODIES, not `= default`, and that distinction is the whole fix.
+	//
+	// Out of line with `= default` was the first attempt and the owner's link
+	// failed again on the same two symbols: MSVC treats a special member
+	// defaulted OUTSIDE the class as implicitly defined, and an implicitly
+	// defined member of a dllexport class is elided when nothing in the module
+	// uses it - which is exactly the situation (see Regions.h). A user-provided
+	// body is a definition MSVC cannot elide, so the DLL contains it and the
+	// export is real.
+	//
+	// Empty on purpose: the members carry in-class initialisers and RegionGraph
+	// builds itself, so these do nothing and no digest moves.
+	RegionGraphCache::RegionGraphCache() {}
+	RegionGraphCache::~RegionGraphCache() {}
 
 	const RegionGraph& RegionGraphCache::Of(const WorldMap& Map, const RegionLayers& Regions)
 	{
