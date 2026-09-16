@@ -105,37 +105,41 @@ namespace Vaelen::WorldGen
 	/// ticked would then leave every system walking the adjacency of a world that
 	/// no longer exists: every distance, every hold, every march and every retreat
 	/// computed on the wrong graph, silently. This keys on the map's own revision.
-	class VAELEN_SIM_API RegionGraphCache
+	// NOT exported whole, and the two attempts it took to learn why are worth
+	// the paragraph.
+	//
+	// It was `class VAELEN_SIM_API RegionGraphCache`, and the constructor and
+	// destructor were implicit. An implicitly-declared special member is only
+	// DEFINED when something uses it, and being used inside the module is what
+	// makes MSVC emit it into the DLL - but nothing in VaelenSim ever
+	// constructs one, because the class is only reached through Of() and every
+	// caller owns the cache itself. So neither was emitted, neither was
+	// exported, and the first module to OWN one - Source/VaelenGame (14.08),
+	// which holds one for TakeLifeView - got dllimport declarations with
+	// nothing behind them:
+	//
+	//   error LNK2019: unresolved external symbol __declspec(dllimport)
+	//   Vaelen::WorldGen::RegionGraphCache::RegionGraphCache(void)
+	//
+	// Declaring them and writing `= default` out of line did NOT fix it: MSVC
+	// treats that as implicitly defined and elides it the same way.
+	//
+	// So the class is not exported at all. Every member below is visible here,
+	// so any module can construct and destroy one for itself with no import to
+	// resolve; only Of() has a body in the .cpp, and only Of() is exported.
+	// That is also the honest shape of the thing - a cache is owned by its
+	// caller, and the only thing VaelenSim really provides is the building.
+	//
+	// Nothing headless could have found the original defect: CMake builds
+	// static libraries, where the whole class is present whether or not
+	// anything exported it. Found by the owner's UnrealBuildTool build,
+	// 2026-09-16.
+	class RegionGraphCache
 	{
 	public:
-		// DECLARED, and defined out of line in Regions.cpp, and not because this
-		// class needs anything done on the way in or out: because it is exported
-		// whole and nothing inside VaelenSim ever constructs one.
-		//
-		// An implicitly-declared special member is only DEFINED when it is used,
-		// and use inside the module is what makes MSVC emit it into the DLL. This
-		// class is only ever reached through Of(), so the constructor and the
-		// destructor were never emitted and never exported - and the first module
-		// outside VaelenSim to OWN one got dllimport declarations with nothing to
-		// link against:
-		//
-		//   error LNK2019: unresolved external symbol __declspec(dllimport)
-		//   Vaelen::WorldGen::RegionGraphCache::RegionGraphCache(void)
-		//
-		// That module is Source/VaelenGame (14.08), which holds one for
-		// TakeLifeView. Nothing headless could find this: CMake builds static
-		// libraries, where the whole class is present whether or not anything
-		// exported it. Found by the owner's UnrealBuildTool build, 2026-09-16.
-		//
-		// Regions.cpp gives them REAL BODIES rather than `= default`. Defaulting
-		// them out of line was the first attempt and it linked no better: MSVC
-		// treats that as implicitly defined and elides it just the same.
-		RegionGraphCache();
-		~RegionGraphCache();
-
 		/// The graph of this map, built on the first call and whenever the map has
 		/// been replaced since the last one.
-		const RegionGraph& Of(const WorldMap& Map, const RegionLayers& Regions);
+		VAELEN_SIM_API const RegionGraph& Of(const WorldMap& Map, const RegionLayers& Regions);
 		/// Times the graph has actually been built, for the tests.
 		uint32 Builds() const noexcept { return Built; }
 
