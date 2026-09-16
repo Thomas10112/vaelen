@@ -6,12 +6,13 @@ container with clang, gcc, cmake and ninja and **no engine at all**. That
 container cannot build the engine-facing modules. This file is what it hands
 over.
 
-**Where this stands on 2026-09-15.** Phase 13 is CLOSED - its gate passed on
-2026-09-14, the editor open on AELVOR at 256 at 100 fps, every figure the engine
-printed equal to the headless kernel's. What is handed over now is **Phase 14**:
-two modules that have never been compiled, and the month of play that closes the
-phase. Phase 13's sections are kept below as the record of how the last hand-off
-went.
+**Where this stands on 2026-09-16.** Phase 13 is CLOSED. Phase 14's two modules
+are BUILT - `VaelenGame` and `VaelenUI` compiled and ran in the editor on
+2026-09-16 - and its month is PLAYED: eighty-three days at the keyboard, and the
+headless replay reproduced them byte for byte. One figure is outstanding and the
+phase closes on it: the frame rate, clause (c) of 14.10, at the end of the
+Phase 14 section below. Phases 13's sections are kept as the record of how the
+last hand-off went.
 
 ## The standing rule, first, because it is the one that matters
 
@@ -47,21 +48,13 @@ Thirteen of the seventeen were compiled and linked as DLLs by UBT on 2026-09-14
 Editor) and the phase-13 gate ran the editor on AELVOR at 256 afterwards. Those
 marks are paid for.
 
-**What UBT has never seen** is exactly what carries `STATUS: UNVERIFIED` today,
-and the list is short enough to print:
-
-```
-Source/VaelenRun/VaelenRun.Build.cs          Source/VaelenRun/Private/VaelenRunModule.cpp
-Source/VaelenGame/   (Build.cs + 4 files)    Source/VaelenUI/   (Build.cs + 7 files)
-```
-
-`VaelenRun` is the thirteenth kernel module and was written after that build, so
-its rules file and its one Unreal-facing translation unit have not been read by
-UBT either - though everything under its `Public/` and `Private/` has compiled
-under gcc, clang, MSVC and AppleClang through CMake and is covered by the CTest
-suite. The mark is accurate rather than pessimistic: UBT has its own rules about
-module dependencies, IWYU and what a `Build.cs` may say, and UnrealHeaderTool
-generates code that no compiler here ever sees.
+The remaining four - `VaelenRun`'s rules file and Unreal-facing translation unit,
+`Source/VaelenGame` and `Source/VaelenUI` - were built by UBT on 2026-09-16, in
+the same editor configuration, and the modules were then RUN: a life was played
+through `VaelenUI`'s eight keys for eighty-three days. **No file in the
+repository carries `STATUS: UNVERIFIED` any more.** The fifteen that did now say
+VALIDATED with the date and what was run; getting there cost three defects that
+nothing headless could see, listed under Phase 14 below.
 
 ## 13.06 - the first UBT build of all twelve kernel modules
 
@@ -98,79 +91,79 @@ are worth more than one optimistic VALIDATED.
 - **13.09** the editor open on AELVOR at 256, a century running, and the frame
   rate written down. Measured on the machine that has the engine.
 
-## PHASE 14 - what is waiting for you now
+## PHASE 14 - what happened on 2026-09-16, and the one figure still missing
 
-Two modules and one month of play. Nothing else in the repository is blocked on
-anything but these.
+Both modules are built and a month is played. What follows is the record, and
+then the single thing still outstanding.
 
-### 14.08 and 14.09 - build `VaelenGame` and `VaelenUI`
+### 14.08 and 14.09 - `VaelenGame` and `VaelenUI`, BUILT
 
-Both are written, both are parsed by CI against a stand-in for Unreal
-(`Tools/EngineShim`), both are fenced, and **neither has ever been compiled by
-UnrealBuildTool**. There is no asset, no Blueprint and no UMG: the game mode is
-named in `Config/DefaultEngine.ini` and everything else is C++.
+Both were compiled by UnrealBuildTool on 2026-09-16 (UE 5.6, MSVC 19.51, Win64
+Development Editor) and run. It took three defects to get there, and **not one
+of them was visible on this side**, which is the honest measure of what the
+parse job buys:
 
-- `Source/VaelenGame` - `UVaelenWorldSubsystem`, the ONE place a world is held,
-  plus four console commands. Its `.cpp` may name a `World`, a `Run` and
-  `Take.h`; its public header may not, and a CI check enforces that.
-- `Source/VaelenUI` - `AVaelenHUD` draws the page, `AVaelenPlayerController`
-  binds eight letters, `AVaelenGameMode` names the two in C++.
+1. **UnrealHeaderTool's generated destructor.** `UVaelenWorldSubsystem`
+   declared neither constructor nor destructor, so UHT wrote both into
+   `VaelenWorldSubsystem.gen.cpp` - a translation unit that includes the public
+   header and never the `.cpp`, where the pimpl's type is only forward
+   declared. `TDefaultDelete` refuses that by `static_assert`. There is no UHT
+   in the shim, so the file that breaks does not exist to be parsed.
+2. **`DEFINE_VTABLE_PTR_HELPER_CTOR`.** Declaring the two and defining them
+   `= default` out of line did NOT fix it: MSVC treats an out-of-line `= default`
+   special member of a dllexport class as implicitly defined and elides it, and
+   UHT emits that macro whatever the class declares. The fix that held is
+   `TPimplPtr` (`Templates/PimplPtr.h`), which binds its deleter at
+   construction, in the `.cpp`, where the type is complete.
+3. **`RegionGraphCache` LNK2019.** Exporting the class exported nothing usable;
+   the fix is to stop exporting the class and export only `Of()`. Invisible
+   headless because CMake builds static libraries, where a missing dllexport
+   costs nothing.
 
-**One defect to expect, already fixed, and the reason to build early.** The
-adversarial review of 2026-09-15 found that `UVaelenWorldSubsystem` declared
-neither constructor nor destructor, so UnrealHeaderTool writes both into
-`VaelenWorldSubsystem.gen.cpp` - a translation unit that includes the public
-header and never the `.cpp`, where the type held by the pimpl is only forward
-declared. `TDefaultDelete` refuses that by `static_assert`, and your build would
-have stopped on a file nobody here wrote. It is fixed. Nothing on this side
-could have caught it: there is no UnrealHeaderTool in the shim, so the
-translation unit that breaks does not exist to be parsed. Expect more of that
-shape, and **report rather than repair**.
+Expect more of that shape, and **report rather than repair**.
 
-### 14.10 - the month, and the two lines
+### 14.10 - the month, and the two lines: DONE, byte for byte
 
-This is the phase gate, and four of its five clauses are yours.
+Eighty-three days played at the keyboard, ninety-nine intents, written out with
+the console command `Vaelen.Stream.Write`. The engine printed:
 
-1. Open the 13.09 level and run `Vaelen.Play 256 100`. It takes seconds, not a
-   frame: it generates AELVOR, runs 300 years of pre-history and 100 of the
-   world, and takes somebody up.
-2. **Press `Space` once before anything else - and count it as the first of
-   your thirty.** On the day somebody is taken up
-   the hours of that day are already spent, so the page offers no verb at all
-   (every row reads `- not today`) and `near:` is empty. One day turn fixes
-   both. This is measured, not guessed: in the checked-in stand-in stream the
-   taking is at tick 3456000 and the first command the page accepted is at
-   3456024. If you press `W` first and nothing happens, this is why, and the
-   build is fine.
-3. Play the remaining **twenty-nine days** through the keys, so that the log
-   says `30 days` and not 31: `W` work, `R` rest, `E` eat, `T` wait,
-   `S` speak, `G` give, `K` take, `M` move; `Tab` changes what the next Speak,
-   Give, Take or Move is aimed at; `Space` turns the day. Every verb at least
-   once. Get one refusal to appear on screen, and one `M` to a neighbour the
-   page lists under `near:` - if `near:` is ever empty, that is a finding worth
-   reporting rather than a key to press harder.
-4. Read `stat fps` with the HUD up, between day steps - not during one.
-5. Take one screenshot whose LAST line is the page's own digest in hex.
-6. Press `F9`. It writes the input stream to `Saved/Vaelen/`.
+```
+LogVaelenPlay: AELVOR 256 seed 41454c564f52: played Dukem (person 15019, region 37) 83 days, 99 intents (76 taken, 23 refused by the world, 0 dropped at the door), state 2ffed5236a593c1b, log 1fdd4211695649bc, life 654e2de6455d8b7a, panel 7de2c5faf3cc1813
+LogVaelenPlay: verbs work 34 rest 1 eat 2 wait 2 speak 5 give 2 take 26 move 27
+```
 
-**What to send back**, and it is four things:
+`Tools/Atlas --replay Tests/Run/Streams/aelvor256-2026-09-16.stream --panel
+--want-bound 0` printed those two lines back on Linux, from a world rebuilt out
+of the stream's header alone. Compared as files rather than by eye: same MD5,
+zero bytes differ, and above them `replay: 99 of 99 answered identically, 83 of
+83 days`. CTest `Replay.Played` now pins exactly that. The panel digest
+`7de2c5faf3cc1813` is also the last line of the screenshot taken that day, so
+the log and the pixels agree.
 
-- the two `LogVaelenPlay:` lines from the log, verbatim, whole;
-- the eight `LogVaelenUI: <verb> -> ...` lines, one per key;
-- the fps figure and the ms per `Vaelen.Day` at 256;
-- the screenshot, and the `.stream` file.
+Clauses (a) the format verbatim, (b) byte-identical, (d) the screenshot with the
+digest as its last row: **met**. Clause (c) is not.
 
-The stream is the point. This side replays it headlessly through
-`Tools/Atlas --replay <file> --panel --want-bound 0` and prints the same two
-lines; if the bytes after the log prefix differ, the engine and the kernel
-disagree about a played life and the phase does not close. That comparison is
-already wired and green against a stand-in stream
-(`Tests/Run/Streams/README.md` says exactly what a stand-in is and is not), so
-the only thing missing is a month somebody actually played.
+**The one thing still wanted: the frame rate.** Two numbers, and the phase
+closes on them:
 
-**Do not fix `Source/VaelenRun`, `Source/VaelenView` or `Source/VaelenPlayer`
-to make the numbers agree.** If they disagree, that is the finding, and it is
-worth more than a green gate.
+- `stat fps` with the HUD up over the 13.09 scene, read **between** day steps,
+  never during one;
+- the milliseconds one `Vaelen.Day` costs at size 256.
+
+Nothing else is asked of the engine machine for Phase 14.
+
+### How the stream is written, for the next time
+
+`F9` is NOT it. `F9` writes the input stream to `Saved/Vaelen/` and prints
+nothing; the two `LogVaelenPlay:` lines come from the console command
+**`Vaelen.Stream.Write`**, which writes the file AND prints the gate lines. Ask
+for the lines and you are asking for that command. (The hand-off said `F9` here
+until 2026-09-16, and the first `.stream` that reached this side was written at
+day 8 because of it.)
+
+`Vaelen.Play` needs a game instance: it is a `UGameInstanceSubsystem`, so it
+runs under PIE or `-game`, and answers `no game instance` from an editor
+commandlet.
 
 ## What the kernel half already hands you
 
