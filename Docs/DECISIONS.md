@@ -9614,3 +9614,81 @@ module that destroys the player when called directly. Robust wins.
 **Only the function layer.** The refusal would be silent: the bridge would count
 a demotion that did not happen, and nothing would say why.
 
+---
+
+## ADR-0141 — The bridge keeps its year for the crossings and gives up the day for the detail
+
+**Status:** **APPLIED 2026-09-16** (task 15.02): `Population::DetailSystem`,
+`LodRules::DecideElsewhere`, `Run::Options::Stream`. Moves no frozen digest: a
+world that does not ask keeps the cadence it has had since 04.06.
+
+### The arithmetic, which is the whole finding
+
+`LodSystem::GetLod()` returns `SimLod::World`. `LodSchedule::Period[4]` is 8640
+ticks. The scheduler runs a level when `Tick % Period == 0`. AELVOR's calendar
+is one tick to the hour and 8640 hours to the year. **The whole bridge —
+demotions, promotions and crossings — therefore fires once per simulated year.**
+
+That is right for the crossings. Their rates are shares of a crowd that leaves
+in a year (`LeaveSharePerMille`, `ArriveSharePerMille`), and running them daily
+would pay a year's migration three hundred and sixty times.
+
+It is useless for the only question a player asks of the LOD system: *may I walk
+there?* A region asked for in the spring is not walkable until the following
+spring. ADR-0139 looks like it works immediately only because `Aelvor::Begin`
+ends exactly on a year boundary, so the bridge's next firing lands on the first
+day turn after a taking — which is also where 14.10's measured 340 ms first day
+comes from. A phase gate asking for N promotions inside thirty days could never
+have been satisfied by any implementation, and one was drafted.
+
+### The decision
+
+Split the bridge along the ladder it already has. `DetailSystem` runs at
+`SimLod::Aggregate` — 24 ticks, one day — and does the demotions and the
+promotions. `LodSystem` keeps the crossings at `SimLod::World` and, when
+`LodRules::DecideElsewhere` is set, does nothing else.
+
+The two phases were lifted into one function, `DecideDetail`, called by both, so
+that the code a yearly world runs is the same code a daily world runs and not a
+copy of it — the lesson of ADR-0135, where three copies of a wiring were three
+chances to diverge.
+
+`DetailSystem` touches no random stream. Deciding what the world pays attention
+to is not something chance should have a say in, and a system that draws nothing
+cannot shift anybody else's sequence.
+
+### Why it is an option and not simply the new behaviour
+
+Because it changes what is detailed **when**, and everything a detailed region
+does follows from that: who is materialised, in which tick, drawing from which
+stream, marrying whom. A world with `Options::Stream` set is a different world
+from the same seed. Every frozen digest this project owns belongs to a world
+without it, and fourteen closed phases sit behind those digests.
+
+So the default is the old cadence, exactly, and the CI matrix proves it rather
+than the comment: 45 suites including `PopulationGate`, `GameplayGate`,
+`Replay.Played`, `Atlas.Frozen128` and `Population.Lod` — which carries the
+frozen bridge digest — pass unchanged.
+
+**Turning it on for the played world is 15.10's business**, and it is not free:
+the four digests of the checked-in month belong to a world whose detail was
+decided yearly. A played world that decides daily will not reproduce them, so
+that day needs a fresh month played at the keyboard, not a re-freeze of numbers
+nobody watched being made. That is the honest price and it is written here
+rather than discovered later.
+
+### What was considered and refused
+
+**Running the whole bridge daily.** Simplest, and it pays a year of migration
+every day. The rates would all have to be recalibrated, and every phase from 04
+on would move.
+
+**A period field on the existing system.** Same thing with more arithmetic: the
+crossings and the detail decisions want different cadences because they are
+different questions, and one number cannot hold two answers.
+
+**Doing it unconditionally and re-freezing.** Roughly eighty digests across
+fourteen closed phases, with no instrument able to say that a recomputed digest
+is right rather than merely new. A mass re-freeze is where robustness goes to
+die.
+

@@ -98,6 +98,31 @@ namespace Vaelen::Population
 		/// state digest: adding a field there would move the frozen digest of
 		/// every phase that ever declared 04.06, which is what ADR-0090 is about.
 		uint32 Held = 0;
+
+		/// When true, LodSystem does the CROSSINGS only, and something else
+		/// decides what is detailed - a DetailSystem, below, running on a day
+		/// instead of on a year.
+		///
+		/// Phase 15 task 15.02, and it defaults to false because of what the
+		/// cadence is worth. LodSystem runs at SimLod::World: LodSchedule gives
+		/// that level a period of 8640 ticks and AELVOR's calendar is one tick
+		/// to the hour, so the whole bridge - demotions, promotions, crossings -
+		/// fires ONCE PER SIMULATED YEAR. That is right for the crossings, whose
+		/// rates are shares of a crowd that leaves in a year, and it is useless
+		/// for the question "may I walk there": a region asked for in the spring
+		/// is not walkable until the following spring. ADR-0139 appears to work
+		/// immediately only because Aelvor::Begin ends exactly on a year
+		/// boundary, so the next firing lands on the first day turn after a
+		/// taking.
+		///
+		/// Splitting them is therefore not a tidy-up, it is the phase's
+		/// premise - and it changes what is detailed WHEN, which changes
+		/// everything downstream of it. So it is a rule and not a rewrite: a
+		/// world that does not ask takes the path it has taken since 04.06, and
+		/// the frozen digests of fourteen closed phases do not move. It lives in
+		/// the RULES rather than in LodState for the reason the field above
+		/// gives.
+		bool DecideElsewhere = false;
 	};
 
 	struct LodPayload
@@ -174,7 +199,41 @@ namespace Vaelen::Population
 	VAELEN_POPULATION_API bool MovePerson(World& W, const History::PreHistoryTypes& Types, const PersonTypes& Persons,
 										  uint32 Person, uint32 To, SimTick Now, PersistentId Cause = {});
 
-	/// Yearly: demotions, promotions, then the crossings.
+	/// Daily: demotions and promotions, and nothing else.
+	///
+	/// Phase 15 task 15.02. This is the half of the bridge that answers "what is
+	/// the world paying attention to", and it is the half that cannot wait a
+	/// year. It runs at SimLod::Aggregate - 24 ticks, one day of AELVOR - and it
+	/// touches no random stream, because deciding what to detail is not a thing
+	/// chance should have a say in.
+	///
+	/// A world that adds one MUST set LodRules::DecideElsewhere on the LodSystem
+	/// beside it, or the two will both promote and both demote. Nothing enforces
+	/// that here; Run::Aelvor does it in one place, which is what that class is
+	/// for.
+	class VAELEN_POPULATION_API DetailSystem final : public ISystem
+	{
+	public:
+		DetailSystem(World& InWorld, const History::PreHistoryTypes& InTypes, PersonTypes InPersons, LodTypes InLod,
+					 LodRules InRules) noexcept
+			: Owner(&InWorld), Types(InTypes), Persons(InPersons), Lod(InLod), Rules(InRules)
+		{
+		}
+		const char* GetName() const noexcept override { return "Detail"; }
+		SimLod GetLod() const noexcept override { return SimLod::Aggregate; }
+		std::vector<std::string_view> GetDependencies() const override { return {"Lives"}; }
+		void Tick(TickContext& Context) override;
+
+	private:
+		World* Owner;
+		History::PreHistoryTypes Types;
+		PersonTypes Persons;
+		LodTypes Lod;
+		LodRules Rules;
+	};
+
+	/// Yearly: demotions, promotions, then the crossings - unless
+	/// LodRules::DecideElsewhere, in which case the crossings only.
 	class VAELEN_POPULATION_API LodSystem final : public ISystem
 	{
 	public:

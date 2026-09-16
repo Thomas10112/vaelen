@@ -45,7 +45,7 @@ namespace
 
 	struct Run
 	{
-		explicit Run(uint64 Seed, LodRules InRules = LodRules{})
+		explicit Run(uint64 Seed, LodRules InRules = LodRules{}, bool Daily = false)
 			: Instance(Config(Seed)), Ages(Instance, PreHistoryRules{})
 		{
 			Persons = PersonTypes::Declare(Instance, Ages);
@@ -54,6 +54,13 @@ namespace
 			Bridge = std::make_unique<LodSystem>(Instance, Ages.Types(), Persons, Lod, InRules);
 			Instance.Systems().Add(Lives.get());
 			Instance.Systems().Add(Bridge.get());
+			if (Daily)
+			{
+				// 15.02: the detail decisions leave the yearly bridge for a
+				// daily pass. A world that does not ask for one adds nothing.
+				Grain = std::make_unique<DetailSystem>(Instance, Ages.Types(), Persons, Lod, InRules);
+				Instance.Systems().Add(Grain.get());
+			}
 			Instance.Build();
 		}
 		static WorldConfig Config(uint64 Seed)
@@ -131,6 +138,7 @@ namespace
 		LodTypes Lod;
 		std::unique_ptr<LifeSystem> Lives;
 		std::unique_ptr<LodSystem> Bridge;
+		std::unique_ptr<DetailSystem> Grain;
 	};
 
 	uint64 WorldPeople(const Run& W)
@@ -799,5 +807,76 @@ VAELEN_TEST(Lod, APinnedPersonSurvivesTheDemotionTheBridgeWanted)
 		const uint32 Now = DemoteRegion(W.Instance, W.Ages.Types(), W.Persons, Region);
 		VT_CHECK_MSG(Now > 0, "an unheld region folds as it always did");
 		VT_CHECK(!W.Detailed(Region));
+	}
+}
+
+VAELEN_TEST(Lod, DetailIsDecidedOnADayAndTheCrossingsKeepTheirYear)
+{
+	// Phase 15 task 15.02, and the arithmetic first, because it is the finding
+	// that made this task exist. LodSystem reports SimLod::World; LodSchedule
+	// gives that level a period of 8640 ticks; AELVOR's calendar is one tick to
+	// the hour and 8640 hours to the year. So the whole bridge - demotions,
+	// promotions, crossings - fires ONCE A YEAR. That is right for crossings
+	// whose rates are shares of a crowd that leaves in a year, and useless for
+	// "may I walk there": a region asked for in the spring is not walkable
+	// until the following spring.
+	//
+	// Both halves are asserted below: the old cadence is still the old cadence
+	// (which is what keeps fourteen phases frozen), and a world that asks for
+	// the new one has its answer the next day.
+	VT_CHECK_MSG(LodSchedule{}.Period[static_cast<usize>(SimLod::World)] == 8640,
+				 "a year, which is why the bridge alone cannot answer a walking question");
+	VT_CHECK_MSG(LodSchedule{}.Period[static_cast<usize>(SimLod::Aggregate)] == 24, "a day, which can");
+
+	LodRules Rules;
+	Rules.MaxDetailed = 2;
+
+	// ── The bridge as it has always been: ask on the first day of a year, and
+	// wait for the next one.
+	{
+		Run W(AelvorSeed, Rules);
+		VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
+		const uint32 Region = W.Ranked()[0];
+		VT_REQUIRE(Region != 0);
+		// Generate leaves the clock ON a year boundary, and the scheduler fires
+		// a level when Tick % Period == 0, so the very next tick would run the
+		// bridge whatever this test asked for. Step one day off the boundary
+		// first: that is where a player's request actually arrives.
+		W.Instance.TickMany(24);
+		VT_REQUIRE(RequestDetail(W.Instance, W.Lod, Region));
+		W.Instance.TickMany(24 * 30); // a month
+		VT_CHECK_MSG(!W.Detailed(Region), "thirty days later the yearly bridge has not run");
+		W.Ages.Run(1);
+		VT_CHECK_MSG(W.Detailed(Region), "and a year later it has");
+	}
+
+	// ── The same world, deciding on a day.
+	{
+		LodRules Split = Rules;
+		Split.DecideElsewhere = true;
+		Run W(AelvorSeed, Split, /*Daily*/ true);
+		VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
+		const uint32 Region = W.Ranked()[0];
+		VT_REQUIRE(Region != 0);
+		W.Instance.TickMany(24); // off the year boundary, as above
+		VT_REQUIRE(RequestDetail(W.Instance, W.Lod, Region));
+		W.Instance.TickMany(24);
+		VT_CHECK_MSG(W.Detailed(Region), "asked for today, detailed tomorrow");
+		VT_CHECK_MSG(IsConsistent(W.Instance, W.Ages.Types(), W.Persons, Region),
+					 "and both grains agree about it on the day it arrives");
+
+		// The crossings did NOT come with it: they are still the bridge's, and
+		// the bridge is still yearly. Running a month must move nobody, or the
+		// migration rates - shares of a crowd that leaves in a YEAR - would be
+		// paid 360 times over.
+		const usize From = W.Instance.Log().All().size();
+		W.Instance.TickMany(24 * 29);
+		uint32 Crossed = 0;
+		const std::vector<Event>& All = W.Instance.Log().All();
+		for (usize i = From; i < All.size(); ++i)
+		{
+			Crossed += All[i].Is(PersonLeftEvent) ? 1u : 0u;
+		}
+		VT_CHECK_MSG(Crossed == 0, "a month of daily detail passes pays no yearly migration");
 	}
 }

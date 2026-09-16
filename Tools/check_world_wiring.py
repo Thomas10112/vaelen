@@ -77,6 +77,7 @@ OPTIONAL_DECLARES = {
 }
 OPTIONAL_SYSTEMS = {
     "MiningSystem": "Tools/Atlas and Run::Aelvor, behind --colony / Options::Colony",
+    "DetailSystem": "Run::Aelvor only, behind Options::Stream (15.02); the bridge keeps the crossings, this decides detail on a day",
     "PlayerDaySystem": "Run::Aelvor only, behind Options::Play",
     "PlayerOrderSystem": "Run::Aelvor only, behind Options::Play",
     "RegardSystem": "Run::Aelvor only, behind Options::Play",

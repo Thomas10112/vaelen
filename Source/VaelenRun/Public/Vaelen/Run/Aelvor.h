@@ -77,6 +77,16 @@ namespace Vaelen::Run
 		bool Colony = false; ///< ColonyTypes and MiningSystem after Polity, as the Atlas
 		bool Play = false;	 ///< the six Phase 10 type sets and three systems after those
 		bool Lively = false; ///< Phase 12's living, repute, fame and judgement; implies Play
+		/// Phase 15: what is detailed is decided every DAY rather than every
+		/// YEAR, by a DetailSystem beside the bridge (LodRules::DecideElsewhere).
+		///
+		/// It is an option and not the new behaviour because it changes what is
+		/// detailed WHEN, and everything a detailed region does follows from
+		/// that: a world with this set is a different world from the same seed,
+		/// and every frozen digest this project has belongs to a world without
+		/// it. Turning it on for the played world is 15.10's business, together
+		/// with a month replayed against it.
+		bool Stream = false;
 	};
 
 	/// The component type sets of the wiring, for a test or a subsystem that

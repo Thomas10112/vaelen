@@ -102,7 +102,17 @@ namespace Vaelen::Run
 			Houses = std::make_unique<FamilySystem>(Instance, Ages.Types(), W.Persons, W.Families, FamilyRules{});
 			Body = std::make_unique<NeedSystem>(Instance, Ages.Types(), W.Persons, W.Needs, NeedRules{});
 			Minds = std::make_unique<TraitSystem>(Instance, Ages.Types(), W.Persons, W.Traits, TraitRules{});
-			Bridge = std::make_unique<LodSystem>(Instance, Ages.Types(), W.Persons, W.Lod, LodRules{});
+			// 15.02: the bridge keeps the crossings, whose rates are shares of a
+			// crowd that leaves in a YEAR, and hands the detail decisions to a
+			// system that runs on a DAY - but only when asked, because a world
+			// that decides detail on a different cadence is a different world.
+			LodRules Bridging;
+			Bridging.DecideElsewhere = Given.Stream;
+			Bridge = std::make_unique<LodSystem>(Instance, Ages.Types(), W.Persons, W.Lod, Bridging);
+			if (Given.Stream)
+			{
+				Grain = std::make_unique<DetailSystem>(Instance, Ages.Types(), W.Persons, W.Lod, Bridging);
+			}
 			Orgs = std::make_unique<OrganizationSystem>(Instance, Ages.Types(), W.Persons, W.Families, W.Traits,
 														W.Organizations, OrganizationRules{});
 			Customs = std::make_unique<NormSystem>(Instance, Ages.Types(), W.Norms, NormRules{});
@@ -202,6 +212,10 @@ namespace Vaelen::Run
 			Instance.Systems().Add(Body.get());
 			Instance.Systems().Add(Minds.get());
 			Instance.Systems().Add(Bridge.get());
+			if (Grain)
+			{
+				Instance.Systems().Add(Grain.get());
+			}
 			Instance.Systems().Add(Orgs.get());
 			Instance.Systems().Add(Customs.get());
 			Instance.Systems().Add(Stocks.get());
@@ -318,6 +332,7 @@ namespace Vaelen::Run
 		std::unique_ptr<NeedSystem> Body;
 		std::unique_ptr<TraitSystem> Minds;
 		std::unique_ptr<LodSystem> Bridge;
+		std::unique_ptr<DetailSystem> Grain; ///< only with Options::Stream
 		std::unique_ptr<OrganizationSystem> Orgs;
 		std::unique_ptr<NormSystem> Customs;
 		std::unique_ptr<StockSystem> Stocks;

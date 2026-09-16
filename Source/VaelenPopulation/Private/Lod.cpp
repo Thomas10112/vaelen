@@ -130,17 +130,15 @@ namespace Vaelen::Population
 		return Wanted;
 	}
 
-	void LodSystem::Tick(TickContext& Context)
+	/// Phases 1 and 2 of the bridge - what is detailed, and what is not any
+	/// more - lifted out of LodSystem::Tick so that DetailSystem can run them on
+	/// a day while the crossings keep to their year (15.02). Byte for byte the
+	/// code that was inline here before, so a world that still calls it from
+	/// LodSystem behaves exactly as it did. It touches no random stream.
+	void DecideDetail(World& W, const History::PreHistoryTypes& Types, const PersonTypes& Persons, const LodTypes& Lod,
+					  const LodRules& Rules, TickContext& Context)
 	{
-		if (Context.Events == nullptr || Context.Random == nullptr)
-		{
-			return;
-		}
-		World& W = *Owner;
-		RandomStream& Random = *Context.Random;
 		LodState& State = LodStateOf(W, Lod);
-
-		// Region handles by index.
 		std::vector<EntityHandle> Regions;
 		W.Components()
 			.GetPool(Types.World.RegionTypes_.Region)
@@ -227,9 +225,53 @@ namespace Vaelen::Population
 			Context.Events->Publish(Context.Tick, RegionPromotedEvent, LodPayload{R, Made, State.Promotions, 0},
 									W.Entities().GetId(Regions[R]));
 		}
+	}
+
+	void DetailSystem::Tick(TickContext& Context)
+	{
+		if (Context.Events == nullptr)
+		{
+			return;
+		}
+		DecideDetail(*Owner, Types, Persons, Lod, Rules, Context);
+	}
+
+	void LodSystem::Tick(TickContext& Context)
+	{
+		if (Context.Events == nullptr || Context.Random == nullptr)
+		{
+			return;
+		}
+		World& W = *Owner;
+		RandomStream& Random = *Context.Random;
+		LodState& State = LodStateOf(W, Lod);
+
+		// Region handles by index.
+		std::vector<EntityHandle> Regions;
+		W.Components()
+			.GetPool(Types.World.RegionTypes_.Region)
+			.ForEach(
+				[&](EntityHandle H, const WorldGen::RegionInfo& R)
+				{
+					if (R.Index >= Regions.size())
+					{
+						Regions.resize(usize{R.Index} + 1u);
+					}
+					Regions[R.Index] = H;
+				});
+		auto Detailed = [&](uint32 R)
+		{
+			return R < Regions.size() && !Regions[R].IsNull() &&
+				   W.Components().GetPool(Persons.Detail).TryGet(Regions[R]) != nullptr;
+		};
+
+		if (!Rules.DecideElsewhere)
+		{
+			DecideDetail(W, Types, Persons, Lod, Rules, Context);
+		}
 
 		// 3. Crossings, detailed region by detailed region.
-		Current.clear();
+		std::vector<uint32> Current;
 		W.Components()
 			.GetPool(Persons.Detail)
 			.ForEach([&](EntityHandle, const RegionDetail& D) { Current.push_back(D.Region); });
