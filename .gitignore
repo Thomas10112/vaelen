@@ -22,6 +22,12 @@ Plugins/**/Intermediate/
 
 # ---- CMake / headless kernel build ----
 out/
+
+# Tools/Atlas writes its map here when --out is not given (Main.cpp defaults to
+# "aelvor.json"), so it lands wherever the tool was run from - the repository
+# root, whenever somebody replays a stream by hand. It is output and never
+# source; the CTest entries all pass --out into their own build directory.
+aelvor.json
 build/
 build-*/
 CMakeUserPresets.json
