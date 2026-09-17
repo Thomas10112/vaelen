@@ -9912,3 +9912,57 @@ restored, one. A cap nobody has watched fail is a cap nobody knows works, and
 the test says so in its own text because a reader cannot rerun that from the
 test alone.
 
+---
+
+## ADR-0146 — A region has two grains, and the five-rung ladder is somewhere else
+
+**Status:** **APPLIED 2026-09-16** (task 15.09). No type changed, no digest
+moved: what changed is that the truth is written where the misreading happened,
+and a test pins it.
+
+### The confusion
+
+`History::RegionLod` carries `uint32 Level` with `DetailedLevel = 2` and a
+default of 4. It reads like a five-rung ladder. It is not one:
+
+- `Level` is written in exactly **one** place in the project, at promotion, and
+  always as `DetailedLevel`.
+- The component is **added and removed**, never re-levelled.
+- Its three readers all ask `Level <= DetailedLevel`, which is a two-state
+  question wearing arithmetic.
+- Levels 0, 1 and 3 are unreachable and the `= 4` default is one no world has
+  ever observed.
+
+Phase 15's own row in the roadmap said "simulation LOD 0-4", and three competing
+plans read that as this field and assumed gradations that have never existed.
+
+### The decision: rewrite the row, not the type
+
+**A region has two grains.** Person by person, or counts per culture and
+believers per faith. That is the whole ladder for a region, and it is the shape
+the whole bridge is built around: promote materialises, demote folds back.
+
+**The five-rung ladder is real and it is `SimLod`** (`Sim/System.h`): Full,
+Detailed, Aggregate, Statistic, World, with periods 1, 4, 24, 720 and 8640
+ticks. It says how often a SYSTEM runs, every rung is a real schedule, and
+ADR-0141 moved the detail decisions from the last rung to the middle one and the
+world changed. That is what the roadmap's "LOD 0-4" names.
+
+Delivering genuine gradations for a region would mean inventing intermediate
+simulation grains - per family? per hundred? - and nothing measured in this
+phase asks for one. What Phase 15 measured is that a promotion costs about 65 ms
+and that the camera's own view costs 22 ms more than the map's. Neither is
+answered by a third grain.
+
+### Why the field stays
+
+`RegionLod` is a component. It is in the state digest of every world that
+declares 04.06, and removing a field would move every frozen constant of
+fourteen closed phases in order to delete a number nobody reads. ADR-0090 is the
+record of what that costs.
+
+So the field stays, the header says plainly what is reachable and what is not,
+and `Lod.ARegionHasTwoGrainsAndNotFive` walks every mark in a world to check
+that none of them is anything but `DetailedLevel` - so the next person to write
+a 3 finds out at once rather than in a plan two phases later.
+

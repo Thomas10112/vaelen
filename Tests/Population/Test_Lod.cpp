@@ -1101,3 +1101,61 @@ VAELEN_TEST(Lod, AFifthFaithIsRefusedAndTheCrossingNowReadsTheAnswer)
 		VT_CHECK_MSG(After.FaithCeiling >= 1, "the ceiling the audit counts apart is the one this test built");
 	}
 }
+
+VAELEN_TEST(Lod, ARegionHasTwoGrainsAndNotFive)
+{
+	// Phase 15 task 15.09. RegionLod reads like a five-rung ladder and is not
+	// one: Level is written in exactly one place in the project, always as
+	// DetailedLevel, and the component is added at 2 and removed rather than
+	// re-levelled. Levels 0, 1 and 3 are unreachable and the `= 4` default is
+	// one no world has ever observed.
+	//
+	// The phase's own row said "simulation LOD 0-4". That ladder is real and it
+	// is SimLod in Sim/System.h - how often a SYSTEM runs - which 15.02 moved a
+	// system down and watched the world change. It is not this field. Three
+	// plans in a row read this field as the roadmap's ladder and assumed
+	// gradations that have never existed, so this test pins what is actually
+	// reachable and the next person to write a 3 finds out at once.
+	Run W(AelvorSeed, LodRules{});
+	VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
+	const std::vector<uint32> Ranked = W.Ranked();
+	VT_REQUIRE(Ranked.size() >= 2);
+	VT_REQUIRE(RequestDetail(W.Instance, W.Lod, Ranked[0]));
+	VT_REQUIRE(RequestDetail(W.Instance, W.Lod, Ranked[1]));
+	W.Ages.Run(2);
+
+	uint32 Marks = 0;
+	uint32 Odd = 0;
+	W.Instance.Components()
+		.GetPool(W.Persons.Lod)
+		.ForEach(
+			[&](EntityHandle, const RegionLod& L)
+			{
+				++Marks;
+				Odd += L.Level == RegionLod::DetailedLevel ? 0u : 1u;
+			});
+	VAELEN_LOG_INFO(LogLod, "%u region(s) marked, %u of them at a level other than %u", Marks, Odd,
+					unsigned{RegionLod::DetailedLevel});
+	VT_CHECK_MSG(Marks >= 2, "two regions were asked for and both are marked");
+	VT_CHECK_MSG(Odd == 0, "every mark in the world reads DetailedLevel - there is no other reachable value");
+
+	// And the two grains are the presence of the mark, not a number inside it:
+	// a region without one is coarse, and that is the whole ladder.
+	VT_CHECK(IsDetailed(W.Instance, W.Ages.Types(), W.Persons, Ranked[0]));
+	uint32 Coarse = 0;
+	for (const uint32 R : Ranked)
+	{
+		Coarse += IsDetailed(W.Instance, W.Ages.Types(), W.Persons, R) ? 0u : 1u;
+	}
+	VT_CHECK_MSG(Coarse > 0, "and most of AELVOR is the other grain");
+
+	// The ladder that IS five rungs, named here so the two are never conflated
+	// again: it says how often a system runs, and every rung of it is used.
+	const LodSchedule Ladder;
+	VT_CHECK(Ladder.Period[static_cast<usize>(SimLod::Full)] == 1u);
+	VT_CHECK(Ladder.Period[static_cast<usize>(SimLod::Detailed)] == 4u);
+	VT_CHECK(Ladder.Period[static_cast<usize>(SimLod::Aggregate)] == 24u);
+	VT_CHECK(Ladder.Period[static_cast<usize>(SimLod::Statistic)] == 720u);
+	VT_CHECK(Ladder.Period[static_cast<usize>(SimLod::World)] == 8640u);
+	VT_CHECK_MSG(Ladder.IsValid(), "five rungs, each a real period a system is scheduled on");
+}

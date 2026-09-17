@@ -70,6 +70,34 @@ namespace Vaelen::History
 	/// region is detailed into persons. The coarse systems leave regions at or
 	/// below DetailedLevel alone: no growth, no split, no migration in or out,
 	/// no disaster deaths. The persons are the truth there.
+	/// The mark a region carries while it is simulated person by person.
+	///
+	/// PHASE 15 TASK 15.09, AND IT IS A CORRECTION RATHER THAN A FEATURE. This
+	/// type reads like a five-rung ladder and is not one. `Level` is written in
+	/// exactly one place in the whole project - Population/Persons.cpp, at
+	/// promotion - and it is always written DetailedLevel. The component is
+	/// added at 2 and removed; it is never re-levelled. The `= 4` above is a
+	/// default no world has ever observed, and levels 0, 1 and 3 are
+	/// unreachable. Its three readers all ask `Level <= DetailedLevel`, which
+	/// is a two-state question wearing arithmetic.
+	///
+	/// So a region has TWO grains and not five: this component present, which
+	/// means every head is a person with a name and a history, or absent, which
+	/// means the region is counts per culture and believers per faith.
+	///
+	/// THE FIVE-RUNG LADDER IS REAL AND IS SOMEWHERE ELSE. `SimLod` in
+	/// Sim/System.h - Full, Detailed, Aggregate, Statistic, World - says how
+	/// OFTEN a system runs, with periods 1, 4, 24, 720 and 8640 ticks, and it
+	/// is used: task 15.02 moved the detail decisions from the last rung to the
+	/// middle one and the world changed. The roadmap's "simulation LOD 0-4" is
+	/// that ladder. It is not this field, and reading it as this field is how
+	/// three plans in a row came to assume gradations that have never existed.
+	///
+	/// The field is KEPT rather than removed: it is a component, it is in the
+	/// state digest of every world that declares 04.06, and removing it would
+	/// move every frozen constant of fourteen phases to delete a number. What
+	/// changed here is that the truth is written down and Tests/Population
+	/// pins it, so the next person to write a 3 finds out at once.
 	struct RegionLod
 	{
 		static constexpr uint32 DetailedLevel = 2;
