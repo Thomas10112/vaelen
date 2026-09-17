@@ -8,6 +8,9 @@
 
 namespace Vaelen::Player
 {
+	/// The widest band a Looked may ask for; see the `l` arm of DecodeStream.
+	inline constexpr uint64 MaxReach = 4096;
+
 	namespace
 	{
 		/// Appends what snprintf wrote, then a newline. The formats are literals
@@ -60,8 +63,9 @@ namespace Vaelen::Player
 		{
 			char Buffer[80];
 			const int Wrote =
-				std::snprintf(Buffer, sizeof(Buffer), "l %llu %llu %llu", static_cast<unsigned long long>(L.Tick),
-							  static_cast<unsigned long long>(L.Region), static_cast<unsigned long long>(L.Reach));
+				std::snprintf(Buffer, sizeof(Buffer), "l %llu %llu %llu %llu", static_cast<unsigned long long>(L.Tick),
+							  static_cast<unsigned long long>(L.Region), static_cast<unsigned long long>(L.Reach),
+							  static_cast<unsigned long long>(L.Most));
 			Append(Out, Buffer, Wrote, sizeof(Buffer));
 		}
 
@@ -294,12 +298,19 @@ namespace Vaelen::Player
 			}
 			else if (L[0] == 'l')
 			{
-				uint64 Tick = 0, Region = 0, Reach = 0;
-				Ok = Field(Rest, Tick) && Field(Rest, Region) && Field(Rest, Reach) && Rest.empty() && Fits32(Region) &&
-					 Fits32(Reach);
+				// Reach is bounded here and not only by Fits32: Run::Aelvor walks
+				// a band of Reach + 1 steps, so a recorded 0xFFFFFFFF overflows
+				// that sum to 0 and collapses the band to the looked-at region
+				// alone - a stream that decodes clean and replays into another
+				// world. MaxReach is far past any map this project generates
+				// and far short of the overflow.
+				uint64 Tick = 0, Region = 0, Reach = 0, Most = 0;
+				Ok = Field(Rest, Tick) && Field(Rest, Region) && Field(Rest, Reach) && Field(Rest, Most) &&
+					 Rest.empty() && Fits32(Region) && Fits32(Reach) && Fits32(Most) && Reach <= MaxReach;
 				if (Ok)
 				{
-					Read.Looks.push_back(Looked{Tick, static_cast<uint32>(Region), static_cast<uint32>(Reach)});
+					Read.Looks.push_back(Looked{Tick, static_cast<uint32>(Region), static_cast<uint32>(Reach),
+												static_cast<uint32>(Most), 0});
 				}
 			}
 			if (Ok)

@@ -54,9 +54,9 @@ namespace Vaelen::Run
 		Player::Refusal Mean(Player::PlayerCommand C);
 		/// Records where the host is looking, stamped with the world's clock
 		/// exactly as Mean stamps Issued - a host that passes its own tick is
-		/// passing a number the replay would have to trust (ADR-0138). The
-		/// Attention's Most is NOT recorded: it is the host's configuration,
-		/// like the StartRules above, and a replay is told it.
+		/// passing a number the replay would have to trust (ADR-0138). All
+		/// three fields of the Attention are recorded, Most included: see
+		/// Attention.h for why calling it configuration was wrong.
 		///
 		/// 15.06 records the look and hands it to the world; what the world
 		/// does with it is 15.07's warden. A look at region 0 is a host looking

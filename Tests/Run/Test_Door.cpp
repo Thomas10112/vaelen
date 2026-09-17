@@ -277,7 +277,7 @@ VAELEN_TEST(Door, ALookIsARecordedInputAndAStreamWithoutOneStillReads)
 	VT_CHECK(D.Stream().Looks[0].Region == 7u);
 	VT_CHECK(D.Stream().Looks[0].Reach == 2u);
 	VT_CHECK_MSG(A.Attending().Region == 7u, "and the world was told at once");
-	VT_CHECK_MSG(A.Attending().Most == 4u, "including what the host will pay for, which is not recorded");
+	VT_CHECK_MSG(A.Attending().Most == 4u, "including what the host will pay for, which IS recorded");
 
 	// Through the DOOR and not the Run: a day turned outside the door is a day
 	// the stream never heard about, and then the replay never reaches the ticks
@@ -290,7 +290,7 @@ VAELEN_TEST(Door, ALookIsARecordedInputAndAStreamWithoutOneStillReads)
 	D.Look(Attention{0u, 0u, 4u}); // the camera left, which is as much an input
 	VT_REQUIRE(D.Stream().Looks.size() == 3);
 
-	// The text form round trips, and the look lines carry no Most.
+	// The text form round trips, Most and all.
 	const std::string Text = Player::EncodeStream(D.Stream());
 	Player::InputStream Back;
 	Player::StreamReport Report;
@@ -303,6 +303,7 @@ VAELEN_TEST(Door, ALookIsARecordedInputAndAStreamWithoutOneStillReads)
 		VT_CHECK(Back.Looks[i].Tick == D.Stream().Looks[i].Tick);
 		VT_CHECK(Back.Looks[i].Region == D.Stream().Looks[i].Region);
 		VT_CHECK(Back.Looks[i].Reach == D.Stream().Looks[i].Reach);
+		VT_CHECK_MSG(Back.Looks[i].Most == D.Stream().Looks[i].Most, "the budget survives the text form");
 	}
 
 	// A STREAM WRITTEN BEFORE LOOKS EXISTED STILL READS, which is why the text
@@ -336,7 +337,7 @@ VAELEN_TEST(Door, ALookIsARecordedInputAndAStreamWithoutOneStillReads)
 	{
 		Player::InputStream Bad;
 		Player::StreamReport BadReport;
-		const std::string Broken = Text + "l 12 notanumber 3\n";
+		const std::string Broken = Text + "l 12 notanumber 3 4\n";
 		VT_REQUIRE(Player::DecodeStream(Broken, Bad, BadReport));
 		VT_CHECK_MSG(BadReport.BadLines == 1, "one line neither blank nor a record");
 		VT_CHECK(Bad.Looks.size() == 3);
@@ -350,7 +351,14 @@ VAELEN_TEST(Door, ALookIsARecordedInputAndAStreamWithoutOneStillReads)
 		VT_CHECK(R.Refused == 0);
 		VT_CHECK_MSG(R.Looks == 3, "three looks recorded, three applied");
 		VT_CHECK_MSG(Fresh.Attending().Region == 0u, "and the world ends where the last look left it");
-		VT_CHECK_MSG(Fresh.Attending().Most == 0u, "with Most from the host and not from the stream");
+		// THIS LINE USED TO ASSERT THE DEFECT. It read `Most == 0u` with the
+		// message "with Most from the host and not from the stream", which is
+		// what the code did and what Attention.h claimed - and it was wrong:
+		// Most decides which regions are requested, hence promoted, hence who
+		// exists, so a replay that substitutes a default reproduces another
+		// world. The test agreed with the bug because both came from the same
+		// mistaken idea, which is how a test stops being a check.
+		VT_CHECK_MSG(Fresh.Attending().Most == 4u, "and with the budget the look was made under, from the stream");
 	}
 }
 

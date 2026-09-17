@@ -63,7 +63,16 @@ namespace Vaelen::Run
 
 	void Door::Look(const Attention& At)
 	{
-		Tape.Looks.push_back(Player::Looked{W.Now(), At.Region, At.Reach});
+		// A look before the world exists is not a record. Aelvor::LookAt does
+		// nothing without Begun_, so recording one would write an input that did
+		// nothing when it happened and something when it was replayed - the
+		// replay's world IS begun by the time LookDue reaches it. Found by the
+		// Phase 15 review.
+		if (!W.Begun())
+		{
+			return;
+		}
+		Tape.Looks.push_back(Player::Looked{W.Now(), At.Region, At.Reach, At.Most, 0});
 		W.LookAt(At);
 	}
 
@@ -79,14 +88,19 @@ namespace Vaelen::Run
 		usize Took = 0;
 		usize Saw = 0;
 		// 15.06: the looks go back through the same door they came out of, in
-		// tick order with everything else. Most is not in the record - it is
-		// the host's configuration - so a replay gives the Rules' own, which is
-		// the same argument SameWorld makes about the header.
+		// tick order with everything else - and with the budget they were made
+		// under. The first version dropped Most on the floor here and put a 0
+		// in its place, which Reside reads as "the world's own limit", so any
+		// host that paid for a different number of regions recorded a stream
+		// this function could not reproduce - silently, with Wrong = 0. The
+		// Phase 15 review measured the divergence. Most is an INPUT: it rides
+		// on every look and it decides which regions are requested, hence which
+		// are promoted, hence who exists.
 		const auto LookDue = [&]()
 		{
 			while (Saw < S.Looks.size() && S.Looks[Saw].Tick <= Fresh.Now())
 			{
-				Fresh.LookAt(Attention{S.Looks[Saw].Region, S.Looks[Saw].Reach, 0});
+				Fresh.LookAt(Attention{S.Looks[Saw].Region, S.Looks[Saw].Reach, S.Looks[Saw].Most});
 				++R.Looks;
 				++Saw;
 			}
@@ -126,10 +140,20 @@ namespace Vaelen::Run
 		TakeUpDue();
 		for (usize d = 0; d < S.Days.size(); ++d)
 		{
-			LookDue();
 			SubmitDue();
 			Fresh.Day();
 			++R.Days;
+			// LOOKS BEFORE TAKINGS at the tick a day turn lands on, because
+			// that is the order EncodeStream writes at equal ticks and the
+			// order a host lives in: somebody looks, and then acts on what they
+			// saw. This ran TakeUpDue alone here, so every taking recorded at
+			// the same tick as a look was applied BEFORE it - and a look
+			// changes what is detailed while a taking chooses among the
+			// detailed. Three takings of four picked a different person; the
+			// walk that found it was rewritten to look first, which papered
+			// over the defect instead of fixing it. The Phase 15 review found
+			// it under the paper.
+			LookDue();
 			TakeUpDue();
 		}
 		// What was recorded after the last day turn, on the tick it is now.

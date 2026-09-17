@@ -84,17 +84,26 @@ namespace Vaelen::Player
 	/// those can change what the world pays attention to (ADR-0037: the
 	/// presentation writes requests and never promotions).
 	///
-	/// What is NOT here is how many regions the host will pay for at once. That
-	/// is the host's configuration, like StartRules, and a replay is told it
-	/// rather than reading it - see Run/Door.h for why the rules stay out of
-	/// the stream.
+	/// Most IS here, and the first version of this record left it out. The
+	/// reasoning was that how many regions a host will pay for is its
+	/// configuration, like StartRules - and that was wrong for a reason worth
+	/// keeping: StartRules is fixed for a whole session and told to a replay
+	/// once, while Most rides on every look and can change between two of them.
+	/// It also decides which regions are requested, which decides which are
+	/// promoted, which decides who exists. An input that changes the world and
+	/// cannot be replayed is not configuration; it is a hole. The Phase 15
+	/// review measured it: a walk recorded with Most = 1 replayed to
+	/// adf29d0da47f1d41 instead of 7897d5d315d55a18, with Wrong = 0 and no
+	/// diagnostic at all.
 	struct Looked
 	{
 		uint64 Tick = 0;
 		uint32 Region = 0; ///< the region looked at, 0 for nowhere
 		uint32 Reach = 0;  ///< how far beyond it, in regions
+		uint32 Most = 0;   ///< regions the host will keep detailed; 0 is the world's own limit
+		uint32 Reserved = 0;
 	};
-	static_assert(sizeof(Looked) == 16, "Looked must stay padding free");
+	static_assert(sizeof(Looked) == 24, "Looked must stay padding free");
 
 	/// The world the stream belongs to. A stream replayed into another world is
 	/// refused at the header, not discovered by a digest that will not match.
@@ -134,7 +143,7 @@ namespace Vaelen::Player
 	///   c <tick> <kind> <target> <amount> <hours> <issued> <verdict>
 	///   t <tick> <person>
 	///   d <tick>
-	///   l <tick> <region> <reach>
+	///   l <tick> <region> <reach> <most>
 	///
 	/// At equal ticks a look comes before everything: somebody looks, and then
 	/// acts on what they saw.

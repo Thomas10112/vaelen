@@ -87,6 +87,20 @@ set_tests_properties(Run.Door PROPERTIES COST 3000)
 # --stream is passed through MORE: the cadence a world decides its detail on is
 # the host's configuration, like --want-bound, so a replay is told it rather
 # than reading it. Replay it without and the digests say so.
+#
+# THESE EXPECTATIONS ARE NOT THE REPLAY'S OWN OUTPUT ANY MORE. The first version
+# of this entry took them from a replay, so it pinned the replay against itself
+# and proved only that the replay is stable; a recording that diverged from it
+# would have been written and this test would have been green over the top. Two
+# real defects were under that, and the Phase 15 review found them. --walk now
+# replays its own walk into a fresh world BEFORE writing a byte and refuses to
+# write one whose state digest differs, so what is pinned here is a line the
+# recording and the replay both produce.
+#
+# The walk is recorded with Attention::Most = 2 on purpose. The first one used
+# 4, which is LodRules::MaxDetailed, which is what a replay that DROPPED the
+# budget fell back to - so it round-tripped by numeric coincidence. A budget the
+# default cannot stand in for is the whole point of pinning it.
 add_test(NAME Replay.Walked
   COMMAND ${CMAKE_COMMAND}
           -DATLAS=$<TARGET_FILE:VaelenAtlas>
@@ -95,7 +109,7 @@ add_test(NAME Replay.Walked
           -DMORE=--stream
           # QUOTED, for the reason Replay.Played gives above.
           "-DSAME=replay: 0 of 0 answered identically, 100 of 100 days"
-          "-DPLAYED=LogVaelenPlay: AELVOR 128 seed 41454c564f52: played person 4499 (person 4499, region 9) 100 days, 0 intents (0 taken, 0 refused by the world, 0 dropped at the door), state ca72115cdd3c0558, log 0120d951f9e66f8f, life 8a5a4b6ae3a56afa, panel 4e153e8558919504"
+          "-DPLAYED=LogVaelenPlay: AELVOR 128 seed 41454c564f52: played person 4171 (person 4171, region 9) 100 days, 0 intents (0 taken, 0 refused by the world, 0 dropped at the door), state 2ec1227f6b398263, log 2f3591a916e91636, life 414d2eaa749ed6dd, panel 4d9cced12e3e48fe"
           "-DVERBS=LogVaelenPlay: verbs work 0 rest 0 eat 0 wait 0 speak 0 give 0 take 0 move 0"
           -P ${CMAKE_CURRENT_LIST_DIR}/ReplayPlayed.cmake)
 set_tests_properties(Replay.Walked PROPERTIES TIMEOUT 1800)

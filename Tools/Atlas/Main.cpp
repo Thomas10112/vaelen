@@ -743,7 +743,7 @@ namespace
 			// Recording them the other way round made three takings of four
 			// pick a different person on replay - a look changes what is
 			// detailed, and a taking chooses among the detailed.
-			D.Look(Vaelen::Run::Attention{1u + (Life_ * PerLife * 7u) % Regions, 1u, 4u});
+			D.Look(Vaelen::Run::Attention{1u + (Life_ * PerLife * 7u) % Regions, 1u, 2u});
 			++Looks;
 			if (A.Played() != 0)
 			{
@@ -778,9 +778,21 @@ namespace
 				// A camera that keeps moving, deterministically: one step along
 				// the region indices every day, so the warden keeps being asked
 				// for places the world does not have yet.
-				D.Look(Vaelen::Run::Attention{1u + ((Life_ * PerLife + Day) * 7u) % Regions, 1u, 4u});
-				++Looks;
 				D.Day();
+				// AT MOST ONE LOOK PER TICK, and the last day of a life has
+				// none, so the next life's look is alone at the tick it shares
+				// with that taking. The stream cannot represent look-take-look
+				// at one tick: EncodeStream groups by kind at equal ticks and
+				// writes every look first, so a recording that interleaves them
+				// replays in a different order - which is a different world,
+				// because a look changes what is detailed and a taking chooses
+				// among the detailed. The round trip below is what found this;
+				// it refused to write three walks before this shape.
+				if (Day + 1u < PerLife)
+				{
+					D.Look(Vaelen::Run::Attention{1u + ((Life_ * PerLife + Day) * 7u) % Regions, 1u, 2u});
+					++Looks;
+				}
 				const uint32 Now =
 					Population::MeasureLod(A.Instance(), A.Ages(), A.Handles().Persons, A.Handles().Lod).Promotions;
 				WorstPromotions = (Now - Before) > WorstPromotions ? (Now - Before) : WorstPromotions;
@@ -811,6 +823,46 @@ namespace
 		if (!Shaped)
 		{
 			return 1;
+		}
+
+		// THE ROUND TRIP, before a byte is written. A stand-in that is pinned
+		// against its own replay proves the replay is stable and nothing else;
+		// this replays the walk into a fresh world and refuses to write it
+		// unless the two agree. The Phase 15 review found the first version of
+		// Replay.Walked pinning exactly that way - the expectations came from
+		// the replay, so a recording that diverged would have been written and
+		// the test would have been green over it. Two real defects were hiding
+		// under that: Attention::Most was dropped by the replay, and the replay
+		// applied a same-tick taking before the look it followed.
+		{
+			Vaelen::Run::Aelvor Fresh(RO);
+			if (!Fresh.Begin())
+			{
+				std::fprintf(stderr, "AELVOR: the round trip could not generate its world\n");
+				return 1;
+			}
+			const Vaelen::Run::ReplayReport Back = Vaelen::Run::Replay(Fresh, Tape, Rules);
+			const Hash64 Was = A.StateDigest();
+			const Hash64 Now = Fresh.StateDigest();
+			Want(Back.Refused == 0, "the walk replays into its own world at all");
+			Want(Back.Wrong == 0, "no taking or answer differed on replay");
+			Want(Back.Looks == Tape.Looks.size(), "every look applied on replay");
+			Want(Back.Days == Tape.Days.size(), "every day turned on replay");
+			if (Was != Now)
+			{
+				std::fprintf(stderr,
+							 "AELVOR: the stand-in walk does not replay to itself: recorded %016llx, replayed "
+							 "%016llx\n",
+							 static_cast<unsigned long long>(Was), static_cast<unsigned long long>(Now));
+				Shaped = false;
+			}
+			if (!Shaped)
+			{
+				return 1;
+			}
+			std::printf("walk round trip: state %016llx == %016llx, %u looks, %u days, 0 wrong\n",
+						static_cast<unsigned long long>(Was), static_cast<unsigned long long>(Now), Back.Looks,
+						Back.Days);
 		}
 
 		const std::string Text = Player::EncodeStream(Tape);

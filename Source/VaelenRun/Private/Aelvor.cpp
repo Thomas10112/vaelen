@@ -535,6 +535,28 @@ namespace Vaelen::Run
 		}
 		std::sort(Now.begin(), Now.end());
 		Now.erase(std::unique(Now.begin(), Now.end()), Now.end());
+
+		// AND THE BUDGET BINDS THE UNION, not just the Want. Keeping the band's
+		// survivors is what stops a border crossing from thrashing, but a
+		// survivor is still a region the host is paying to hold: the first
+		// version added them on top of a Want already capped at Most and so
+		// asked for more than the host said it would pay for, which is the one
+		// promise Attention::Most makes. The oldest go first, because the newer
+		// ones are nearer where the camera is now.
+		if (Now.size() > Most)
+		{
+			for (usize i = Most; i < Now.size(); ++i)
+			{
+				const uint16 Over = Now[i];
+				const bool Keeps =
+					uint32{Over} == Detail_ || std::find(Near_.begin(), Near_.end(), Over) != Near_.end();
+				if (!Keeps)
+				{
+					ReleaseDetail(K->Instance, K->W.Lod, Over);
+				}
+			}
+			Now.resize(Most);
+		}
 		Watched_.swap(Now);
 	}
 
