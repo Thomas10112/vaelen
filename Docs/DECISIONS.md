@@ -9784,15 +9784,38 @@ so where somebody about to merge them will read it.
 
 ### What is recorded, and what is not
 
-`Looked{Tick, Region, Reach}`. The tick is stamped by the door from the world's
-clock, exactly as `Door::Mean` stamps `Issued`: a host that passed its own tick
-would be passing a number the replay has to trust (ADR-0138).
+`Looked{Tick, Region, Reach, Most}`. The tick is stamped by the door from the
+world's clock, exactly as `Door::Mean` stamps `Issued`: a host that passed its
+own tick would be passing a number the replay has to trust (ADR-0138).
 
-`Attention::Most` — how many regions the host will pay to keep in detail — is
-**not** in the stream. It is the host's configuration, like `StartRules`, and a
-replay is told it rather than reading it. This is the same argument `Door.h`
-already makes about rules, and the reason `Replay.Played` passes
-`--want-bound 0`.
+**AMENDED 2026-09-17, and the original text of this section was wrong.** It read:
+
+> `Attention::Most` — how many regions the host will pay to keep in detail — is
+> **not** in the stream. It is the host's configuration, like `StartRules`, and
+> a replay is told it rather than reading it.
+
+A replay was told no such thing. `StartRules` is passed to `Run::Replay` as a
+parameter; `Most` had no parameter, no field and no record — `Replay` put a 0 in
+its place, which `Reside` reads as the world's own limit. And `Most` is not
+configuration by the test this project actually uses: `StartRules` is fixed for
+a whole session, while `Most` rides on every look and may differ between two of
+them, and it decides which regions are requested, hence promoted, hence who
+exists.
+
+The Phase 15 review measured it, with two independent reproductions:
+
+| recorded with | recorded state | replayed state |
+|---|---|---|
+| `Most = 4` | `adf29d0da47f1d41` | `adf29d0da47f1d41` |
+| `Most = 1` | `7897d5d315d55a18` | `adf29d0da47f1d41` |
+| `Most = 2` | `244f02df0f11dcce` | `adf29d0da47f1d41` |
+
+with `Refused = 0` and `Wrong = 0` throughout. The checked-in walk round-tripped
+only because `Tools/Atlas` passed 4, which is `LodRules::MaxDetailed`, which is
+what the replay fell back to. **An input that changes the world and has no
+channel to a replay is not configuration; it is a hole.** `Most` is in the
+record, the text form's `l` line carries four fields, and the walk is
+regenerated with `Most = 2` so that no default can stand in for it again.
 
 A look at region 0 is recorded like any other. "The camera left" is as much an
 input as where it went, and a replay that skipped it would end up attending to
@@ -9820,7 +9843,9 @@ be a host whose stream replays into a different world.
 
 ## ADR-0144 — The warden writes requests, and keeps a band wider than it wants
 
-**Status:** **APPLIED 2026-09-16** (task 15.07): `Aelvor::Reside`, called by
+**Status:** **APPLIED 2026-09-16** (task 15.07), **AMENDED 2026-09-17 after the
+Phase 15 review found it did not do the one thing it exists for.**
+`Aelvor::Reside`, called by
 `LookAt` when `Options::Stream` is set. Moves no frozen digest: a world that did
 not ask for streaming has no warden, and `Watching()` is empty there.
 
@@ -9848,6 +9873,35 @@ stutter — it is a world that keeps forgetting a place and inventing it again,
 with different people each time. Measured: ten crossings of one border change
 the watched set **zero** times.
 
+### The defect the SHIPPED version had, and it was the whole point of the task
+
+**A camera could hold one region for an entire played life and the world would
+never detail it.** Three owners write into `LodState`'s eight slots: `Begin`
+takes one, `NearDetail` takes some for the walk and holds them until the next
+taking, and the warden takes up to `Attention::Most`. `DecideDetail` promotes in
+request order and stopped at `MaxDetailed = 4`, so the first two owners ate the
+budget and the camera's regions queued behind them forever - while
+`Aelvor::Watching()`, which a host reads, reported exactly those never-promoted
+regions.
+
+`Tools/Atlas` hid it, because `RunWalk` looks BEFORE every taking and so got the
+warden's requests into `Wanted` first. Nothing else exercised it: **the phase
+shipped its central feature with no test that the feature worked.**
+
+**And the first fix made it worse.** Raising a streaming world's `MaxDetailed`
+to `LodState::MaxWanted` = 8 raised `NearDetail`'s share with it, because
+`NearDetail` asked for `MaxDetailed - 1`: one plus seven is eight, the list was
+full, and every request the camera made was refused. Two numbers that answer
+different questions - what the world can afford in detail, and how many
+neighbours a walk needs - had been written as one, and that is what made the
+original bug possible at all.
+
+**The arithmetic a streaming world runs on**, now stated once where it is
+enforced: 1 for where the played person stands, `MaxNear` = 3 for somewhere to
+walk, and `Attention::Most` for what the camera is looking at. 1 + 3 + 4 = 8 =
+`LodState::MaxWanted`. `Door.WhatTheCameraLooksAtIsDetailedWhileSomebodyIsPlayed`
+pins it: four days from the look to the detail.
+
 ### The defect the first draft had
 
 The survivors of the band were released-checked and then dropped from the
@@ -9861,9 +9915,21 @@ The hysteresis assertion first picked two region indices out of the air and
 measured ten changes out of ten. They were not neighbours: a band one step wide
 does nothing between two places that do not touch, and the camera was
 teleporting rather than walking. The test now reads a region and one of its
-actual neighbours out of the graph. This is the third time in Phase 15 that an
-assertion failed because its premise was assumed instead of constructed, and
-each of the three was a real thing to learn about the world rather than a slip.
+actual neighbours out of the graph.
+
+The budget assertion beside it had the same disease, and the review found it: it
+held only because those two unrelated neighbourhoods never overlapped enough to
+exceed anything. And the camera test added afterwards first looked at region 1,
+which is water - `PromoteRegion` makes one entity per counted head, so a region
+with nobody in it is counted Refused and never becomes detailed however long
+anybody looks at it.
+
+**Four times in one phase** an assertion failed, or passed vacuously, because
+its premise was assumed instead of constructed: the movers who believed nothing,
+the faith table that dissolved, two regions that never touched, and a region
+with nobody in it. Each was a real thing to learn about the world rather than a
+slip, and together they are this phase's clearest lesson: **in a simulated
+world, the setup IS the experiment.**
 
 ---
 

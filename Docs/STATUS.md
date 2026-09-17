@@ -14,12 +14,29 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 15 — STREAMING & LOD (14 CLOSED 2026-09-16, all five clauses)
-TASK        : 15.10 — the engine half. Headless half DONE 2026-09-17.
-              VaelenAtlas --walk writes a stand-in walk and refuses one that misses the
-              gate's clauses; CTest Replay.Walked replays it to four pinned digests,
-              0 wrong, 100 of 100 days. 176 CTest entries now. What is left needs the
-              machine with UE: the camera's region and reach handed to Door::Look each
-              day, and a stream written with Vaelen.Stream.Write carrying Looked records.
+TASK        : 15.10 — the engine half. Headless half DONE; the Phase 15 review
+              rebuilt it on 2026-09-17.
+
+              THE REVIEW: 29 findings, 15 survived two refuters each, 15 fixed. What it
+              found is worth more than the fixes. 15.10's stand-in was GREEN BY
+              COINCIDENCE: Replay.Walked pinned the replay against itself, so it proved
+              the replay stable and nothing about whether it was faithful. Under that
+              were two real defects — Attention::Most changed the world and could not be
+              replayed at all, and Replay applied a same-tick taking before the look it
+              followed. And 15.07 did not do the one thing it exists for: a camera could
+              hold a region for a whole played life and the world would never detail it,
+              because NearDetail's holdings ate the detail budget. No test asserted it.
+
+              --walk now replays its own walk into a fresh world BEFORE writing a byte
+              and refuses to write one whose state digest differs. Turned on, it refused
+              three walks in a row. The checked-in walk is regenerated with
+              Attention::Most = 2 on purpose, so it can never again round-trip by
+              agreeing with a default.
+
+              Four assertions this phase failed or passed vacuously because their
+              premise was assumed instead of constructed. In a simulated world the setup
+              IS the experiment.
+
 
               AND A CORRECTION TO WHAT WAS ASKED OF THAT MACHINE. The September month is
               NOT invalidated by ADR-0141: Replay.Played replays it under the cadence it
