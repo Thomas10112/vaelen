@@ -4906,16 +4906,20 @@ a hope: **of the frozen constants of fourteen closed phases, zero move.**
 | 15.07 | The warden: the residency policy itself, a deterministic function from attention to detail requests, host-side, writing requests and never promotions, so ADR-0037 holds by construction. | `Run.Warden`: the same attention sequence yields the same requests on all eight legs; hysteresis proved by a walk back and forth over one border producing a bounded number of changes. | **VALIDATED headless 2026-09-16** — CTest `Door.TheWardenTurnsALookIntoRequestsAndDoesNotThrashOnABorder`, 18 checks, ADR-0144; ten crossings of one border change the watched set zero times |
 | 15.08 | The promotion hitch, bounded as a COUNT and not a wall clock, which is what ADR-0109 actually forbids. At most one region may be promoted on any single day turn, and the heads materialised per day turn are capped. | `Run.Hitch`: a 100-day walk crossing borders never promotes twice in one day turn; the cap is asserted, and removing it makes the test fail. | **VALIDATED headless 2026-09-16** — CTest `Door.NoDayTurnPromotesTwiceWhileTheCameraWalks`, ADR-0145. Control run: cap off, worst day turn promotes 3 regions and the test fails; cap on, 1 |
 | 15.09 | `RegionLod::Level`: either the gradations the number promises, or the row rewritten to say two grains and an ADR saying why. Decided in the open, not inherited. | **VALIDATED headless 2026-09-16** — the row was rewritten, not the type. CTest `Lod.ARegionHasTwoGrainsAndNotFive` pins that every mark in a world reads `DetailedLevel` and that the five-rung ladder is `SimLod`, rung by rung. ADR-0146 |
-| 15.10 | The engine half, one build and one sitting: the camera's region and reach handed to `Door::Look` each day, and a stream written with `Vaelen.Stream.Write` that carries `Looked` records. | The phase gate below. | engine |
+| 15.10 | The engine half, one build and one sitting: the camera's region and reach handed to `Door::Look` each day, and a stream written with `Vaelen.Stream.Write` that carries `Looked` records. | **HEADLESS HALF DONE 2026-09-17** — `VaelenAtlas --walk` writes a stand-in walk and refuses one that misses the gate's clauses; CTest `Replay.Walked` replays it to four pinned digests, 0 wrong, 100 of 100 days. The engine half waits on the machine that has UE. | engine |
 
 **The gate.** A walk, recorded on the engine machine and replayed here, that
 proves all of: (a) the stream carries `Looked` records and at least one region
 was pinned while held - the fence fired rather than merely existed; (b) the
 replay reproduces the walk's four digests byte for byte, as 14.10's did;
 (c) over the walk, the audit's head, culture and faith gaps are all 0;
-(d) no day turn promoted more than one region; (e) `near:` was never empty on a
-day the played person was alive, across at least four takings - the property
-ADR-0139 claimed and could not keep; (f) every frozen constant of Phases 00-14
+(d) no day turn promoted more than one region; (e) across at least four takings, somewhere to walk
+arrived within four days of each - "never empty" was NOT a clause any
+implementation could meet, because the neighbours a taking asks for are requests
+the bridge answers on its next daily pass and 15.08 caps that pass at one
+promotion a day, so the third neighbour cannot be detailed before the third day.
+The stand-in walk measures the real figure: two days. That is the property
+ADR-0139 claimed, stated at a rate the world can keep; (f) every frozen constant of Phases 00-14
 unmoved, checked rather than asserted. Any one missing and the phase stays open.
 
 Next: 15.01, the fence that has to exist before anything else is allowed to

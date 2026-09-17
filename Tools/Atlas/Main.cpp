@@ -464,6 +464,15 @@ namespace
 		uint32 WantBound = 1;
 		/// 14.10: write a stream of a month played by nobody, to this path.
 		std::string Stand;
+		/// 15.10's headless half: a WALK, written with the streaming cadence on
+		/// and a Looked record for every day of it.
+		std::string Walk;
+		/// Run::Options::Stream for a replay. NOT in the stream, for the same
+		/// reason --want-bound is not: the cadence a world decides its detail on
+		/// is the host's configuration, and a replay is told it rather than
+		/// reading it. Replaying a walk without it is replaying it into a world
+		/// that pays attention on a different schedule, and the digests say so.
+		bool Stream = false;
 	};
 
 	/// Runs Years years, keeping a frame every Opt.Every of them. Taking a view
@@ -577,6 +586,14 @@ namespace
 			{
 				Out.Panel = true;
 			}
+			else if (std::strcmp(Arg, "--walk") == 0 && HasValue)
+			{
+				Out.Walk = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--stream") == 0)
+			{
+				Out.Stream = true;
+			}
 			else if (std::strcmp(Arg, "--stand") == 0 && HasValue)
 			{
 				Out.Stand = Argv[++I];
@@ -679,6 +696,143 @@ namespace
 	/// Every command goes through View::Press first, exactly as a key does in
 	/// 14.09, so this walks the same path the engine walks: the page answers
 	/// what it foresees, and only what the page offers is handed to the door.
+	/// Phase 15 task 15.10, headless half. Writes a stand-in WALK: a world with
+	/// Options::Stream, somebody taken up four times over, and a camera that
+	/// moves one region along the graph every day - the shape the engine half
+	/// will record for real.
+	///
+	/// It REFUSES to write a walk that does not satisfy the gate's clauses, for
+	/// the reason 14.10's --stand gives and then proved twice: a stand-in that
+	/// silently misses a clause is worse than none, and the last one's refusal
+	/// to write a month without a Move is how ADR-0139's defect was found.
+	int RunWalk(const Options& Opt)
+	{
+		Vaelen::Run::Options RO;
+		RO.Size = Opt.Size;
+		RO.PreHistory = Opt.PreHistory;
+		RO.Years = Opt.Years;
+		RO.Seed = Opt.Seed;
+		RO.Play = true;
+		RO.Stream = true; // the whole point: the daily cadence and the warden
+		Vaelen::Run::Aelvor A(RO);
+		if (!A.Begin())
+		{
+			std::fprintf(stderr, "AELVOR: generation failed at %u x %u\n", RO.Size, RO.Size);
+			return 1;
+		}
+		Player::StartRules Rules;
+		Rules.WantBound = Opt.WantBound;
+		Vaelen::Run::Door D(A, Rules);
+
+		const WorldGen::RegionGraph Graph = WorldGen::BuildRegionGraph(A.Instance().Map(), A.Ages().World.Regions);
+		const uint32 Regions = Graph.RegionCount() > 1u ? Graph.RegionCount() : 1u;
+
+		const uint32 Takings = 4;  // the clause ADR-0139 could not keep at one
+		const uint32 PerLife = 25; // days lived before the next one is taken up
+		uint32 WorstWait = 0;
+		uint32 WorstPromotions = 0;
+		uint32 Looks = 0;
+		WorldGen::RegionGraphCache Ways;
+		LifeView Life;
+		uint32 Before = Population::MeasureLod(A.Instance(), A.Ages(), A.Handles().Persons, A.Handles().Lod).Promotions;
+		for (uint32 Life_ = 0; Life_ < Takings; ++Life_)
+		{
+			// LOOK BEFORE TAKING UP, because that is the order the stream's
+			// encoder writes at equal ticks and therefore the order a replay
+			// applies them in: somebody looks, and then acts on what they saw.
+			// Recording them the other way round made three takings of four
+			// pick a different person on replay - a look changes what is
+			// detailed, and a taking chooses among the detailed.
+			D.Look(Vaelen::Run::Attention{1u + (Life_ * PerLife * 7u) % Regions, 1u, 4u});
+			++Looks;
+			if (A.Played() != 0)
+			{
+				A.Release();
+			}
+			if (D.TakeUp() == 0)
+			{
+				std::fprintf(stderr, "AELVOR: the world offered nobody to take up\n");
+				return 1;
+			}
+			uint32 Waited = 0xFFFFFFFFu;
+			for (uint32 Day = 0; Day < PerLife; ++Day)
+			{
+				// HOW LONG somebody waits for somewhere to walk, rather than
+				// whether they ever wait. Two measured facts put those in
+				// tension and the guard found it: NearDetail asks for the
+				// neighbours as REQUESTS, the bridge answers on its next daily
+				// pass (ADR-0141), and 15.08 caps that pass at ONE promotion a
+				// day. A taking asks for three neighbours, so the third of them
+				// cannot be detailed before the third day whatever anybody
+				// wants. "Never empty" was not a clause any implementation
+				// could meet; "empty for at most N days after a taking" is the
+				// same guarantee stated at a rate the world can keep.
+				if (Waited == 0xFFFFFFFFu)
+				{
+					TakeLifeView(A.Instance(), A.Sources(), Ways, Life);
+					if (Life.NearCount > 0)
+					{
+						Waited = Day;
+					}
+				}
+				// A camera that keeps moving, deterministically: one step along
+				// the region indices every day, so the warden keeps being asked
+				// for places the world does not have yet.
+				D.Look(Vaelen::Run::Attention{1u + ((Life_ * PerLife + Day) * 7u) % Regions, 1u, 4u});
+				++Looks;
+				D.Day();
+				const uint32 Now =
+					Population::MeasureLod(A.Instance(), A.Ages(), A.Handles().Persons, A.Handles().Lod).Promotions;
+				WorstPromotions = (Now - Before) > WorstPromotions ? (Now - Before) : WorstPromotions;
+				Before = Now;
+			}
+			WorstWait = Waited > WorstWait ? (Waited == 0xFFFFFFFFu ? PerLife : Waited) : WorstWait;
+		}
+
+		const Population::AuditReport Books = Population::Audit(A.Instance(), A.Ages(), A.Handles().Persons);
+		const Player::InputStream& Tape = D.Stream();
+		bool Shaped = true;
+		const auto Want = [&Shaped](bool Held, const char* What)
+		{
+			if (!Held)
+			{
+				std::fprintf(stderr, "AELVOR: the stand-in walk is not shaped like the gate asks: %s\n", What);
+				Shaped = false;
+			}
+		};
+		Want(Tape.Looks.size() == Looks, "a Looked record for every day walked");
+		Want(Tape.Takings.size() == Takings, "four takings, which is what ADR-0139 could not keep");
+		Want(Tape.Days.size() == Takings * PerLife, "a day turn for every day");
+		Want(WorstWait <= 4, "somewhere to walk within four days of every taking");
+		Want(WorstPromotions <= 1, "no day turn promoted twice");
+		Want(Books.Disagreeing == 0, "both grains agree everywhere");
+		Want(Books.FaithsOverHeads == 0, "no region where the believers outnumber the people");
+		Want(Books.SlotSumWrong == 0, "every region's slots sum to its total");
+		if (!Shaped)
+		{
+			return 1;
+		}
+
+		const std::string Text = Player::EncodeStream(Tape);
+		std::FILE* File = std::fopen(Opt.Walk.c_str(), "wb");
+		if (File == nullptr)
+		{
+			std::fprintf(stderr, "AELVOR: cannot write %s\n", Opt.Walk.c_str());
+			return 1;
+		}
+		const usize Wrote = std::fwrite(Text.data(), 1, Text.size(), File);
+		const bool Closed = std::fclose(File) == 0;
+		if (Wrote != Text.size() || !Closed)
+		{
+			std::fprintf(stderr, "AELVOR: could not write all of %s\n", Opt.Walk.c_str());
+			return 1;
+		}
+		std::printf("walk: %u looks, %u takings, %u days, worst day turn %u promotion(s), longest wait for somewhere "
+					"to walk %u day(s), audit clean\n",
+					Looks, Takings, static_cast<unsigned>(Tape.Days.size()), WorstPromotions, WorstWait);
+		return 0;
+	}
+
 	int RunStand(const Options& Opt)
 	{
 		Vaelen::Run::Options RO;
@@ -869,7 +1023,13 @@ namespace
 	{
 		// The replay's own verdict first: how many of the recorded answers the
 		// fresh world gave again, and how many days it turned.
-		std::printf("replay: %u of %u answered identically, %u of %u days\n", R.Answered - R.Wrong, R.Answered, R.Days,
+		// Answered - Wrong, with the mismatched TAKINGS taken out of Wrong
+		// first: they are not answers, and a walk with no intents and three of
+		// them made this underflow to 4294967293 - a number that read like
+		// corruption and was arithmetic.
+		const uint32 Off = R.Wrong - R.WrongTakings;
+		std::printf("replay: %u of %u answered identically, %u of %u days\n",
+					R.Answered - (Off > R.Answered ? R.Answered : Off), R.Answered, R.Days,
 					static_cast<uint32>(S.Days.size()));
 
 		std::printf("LogVaelenPlay: AELVOR %u seed %012llx: played %s (person %u, region %u) %u days, %u intents "
@@ -924,6 +1084,7 @@ namespace
 		RO.Seed = Opt.Seed;
 		RO.Colony = Opt.Colony;
 		RO.Play = true;
+		RO.Stream = Opt.Stream; // told, not read: see Options::Stream
 		if (!Opt.Replay.empty())
 		{
 			std::string Text;
@@ -1110,6 +1271,10 @@ namespace
 		if (!Opt.Stand.empty())
 		{
 			return RunStand(Opt);
+		}
+		if (!Opt.Walk.empty())
+		{
+			return RunWalk(Opt);
 		}
 		if (!Opt.Replay.empty() || Opt.Empty)
 		{

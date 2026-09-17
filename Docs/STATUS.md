@@ -14,7 +14,18 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 15 — STREAMING & LOD (14 CLOSED 2026-09-16, all five clauses)
-TASK        : 15.10 — the engine half: a walk recorded and replayed (15.01-15.09 VALIDATED)
+TASK        : 15.10 — the engine half. Headless half DONE 2026-09-17.
+              VaelenAtlas --walk writes a stand-in walk and refuses one that misses the
+              gate's clauses; CTest Replay.Walked replays it to four pinned digests,
+              0 wrong, 100 of 100 days. 176 CTest entries now. What is left needs the
+              machine with UE: the camera's region and reach handed to Door::Look each
+              day, and a stream written with Vaelen.Stream.Write carrying Looked records.
+
+              AND A CORRECTION TO WHAT WAS ASKED OF THAT MACHINE. The September month is
+              NOT invalidated by ADR-0141: Replay.Played replays it under the cadence it
+              was made with, and does. What 15.10 needs is a SEPARATE recording - a
+              walk, with streaming on - not a month replayed again. Two streams, two
+              purposes.
               15.05 is covered now. The harness it wanted exists: the two systems that
               write RegionFaith are removed from the scheduler once the region is
               detailed, so the faiths hold still long enough for the crossing to be

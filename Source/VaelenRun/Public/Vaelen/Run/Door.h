@@ -85,11 +85,17 @@ namespace Vaelen::Run
 	{
 		uint32 Answered = 0; ///< commands submitted
 		uint32 Wrong = 0;	 ///< answers that differed from the record, persons that were not the recorded one
-		uint32 Days = 0;	 ///< day turns made - exactly the DayTurned records
-		uint32 Takings = 0;	 ///< takings applied
-		uint32 Looks = 0;	 ///< looks put back through the door (15.06)
-		uint32 Left = 0;	 ///< records on ticks the days never reached
-		uint32 Refused = 0;	 ///< 1 when nothing was replayed: another world, no Play, or not Begun
+		/// Of Wrong, the ones that were a TAKING and not an answer. Kept apart
+		/// because Answered - Wrong is what a replay prints as "answered
+		/// identically", and a walk with no intents and three mismatched
+		/// takings made that underflow to 4294967293 - a number that read like
+		/// corruption and was arithmetic. 15.10 found it.
+		uint32 WrongTakings = 0;
+		uint32 Days = 0;						 ///< day turns made - exactly the DayTurned records
+		uint32 Takings = 0;						 ///< takings applied
+		uint32 Looks = 0;						 ///< looks put back through the door (15.06)
+		uint32 Left = 0;						 ///< records on ticks the days never reached
+		uint32 Refused = 0;						 ///< 1 when nothing was replayed: another world, no Play, or not Begun
 		uint32 ByKind[Player::IntentCount] = {}; ///< commands by Intent; an unknown kind counts under None
 		Hash64 State = 0;
 		Hash64 Log = 0;

@@ -102,7 +102,9 @@ namespace Vaelen::Run
 					Fresh.Release();
 				}
 				const uint32 Who = Fresh.TakeUp(Rules);
-				R.Wrong += Who == S.Takings[Took].Person ? 0u : 1u;
+				const bool Same = Who == S.Takings[Took].Person;
+				R.Wrong += Same ? 0u : 1u;
+				R.WrongTakings += Same ? 0u : 1u;
 				++R.Takings;
 				++Took;
 			}

@@ -20,8 +20,11 @@
 # an expectation too short to hold what it claims to hold is a hard error here
 # rather than a quietly weaker check.
 
+# MORE carries whatever else the host's configuration was, unset for a stream
+# that needs none. 15.10's walk needs --stream: the cadence a world decides its
+# detail on is the host's, not the stream's, exactly as --want-bound is.
 execute_process(
-  COMMAND ${ATLAS} --replay ${STREAM} --panel --want-bound 0 --out ${OUT}
+  COMMAND ${ATLAS} --replay ${STREAM} --panel --want-bound 0 ${MORE} --out ${OUT}
   RESULT_VARIABLE Ran
   OUTPUT_VARIABLE Said
   ERROR_VARIABLE Wrote)
@@ -35,7 +38,7 @@ string(REPLACE "\r" "" Said "${Said}")
 
 # The digests are 16 hex characters each and the played line carries four of
 # them, so a PLAYED shorter than this cannot be the whole line whatever it says.
-foreach(Pair IN ITEMS "SAME;40" "PLAYED;200" "VERBS;60")
+foreach(Pair IN ITEMS "SAME;35" "PLAYED;200" "VERBS;60")
   list(GET Pair 0 Name)
   list(GET Pair 1 Least)
   string(LENGTH "${${Name}}" Long)

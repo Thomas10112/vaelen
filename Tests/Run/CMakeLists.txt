@@ -73,3 +73,29 @@ set_tests_properties(Run.Shuffled PROPERTIES COST 10000)
 set_tests_properties(Run.Aelvor PROPERTIES COST 6000)
 set_tests_properties(Replay.Played PROPERTIES COST 4000)
 set_tests_properties(Run.Door PROPERTIES COST 3000)
+
+# VAELEN - Phase 15 task 15.10, HEADLESS HALF.
+#
+# A stand-in WALK, written by VaelenAtlas --walk and replayed here. Not a month
+# somebody played: a hundred days with the streaming cadence on, four takings,
+# and a Looked record for every day - the shape the engine half will record for
+# real, exercised and green before a human is available. 14.10's stand-in did
+# that job twice over, and its refusal to write a month without a Move is how
+# ADR-0139's defect was found; this one refused on its first run too, and what
+# it refused turned out to be a clause no implementation could meet.
+#
+# --stream is passed through MORE: the cadence a world decides its detail on is
+# the host's configuration, like --want-bound, so a replay is told it rather
+# than reading it. Replay it without and the digests say so.
+add_test(NAME Replay.Walked
+  COMMAND ${CMAKE_COMMAND}
+          -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DSTREAM=${PROJECT_SOURCE_DIR}/Tests/Run/Streams/aelvor128-walk-2026-09-17.stream
+          -DOUT=${CMAKE_CURRENT_BINARY_DIR}/replay-walked.json
+          -DMORE=--stream
+          # QUOTED, for the reason Replay.Played gives above.
+          "-DSAME=replay: 0 of 0 answered identically, 100 of 100 days"
+          "-DPLAYED=LogVaelenPlay: AELVOR 128 seed 41454c564f52: played person 4499 (person 4499, region 9) 100 days, 0 intents (0 taken, 0 refused by the world, 0 dropped at the door), state ca72115cdd3c0558, log 0120d951f9e66f8f, life 8a5a4b6ae3a56afa, panel 4e153e8558919504"
+          "-DVERBS=LogVaelenPlay: verbs work 0 rest 0 eat 0 wait 0 speak 0 give 0 take 0 move 0"
+          -P ${CMAKE_CURRENT_LIST_DIR}/ReplayPlayed.cmake)
+set_tests_properties(Replay.Walked PROPERTIES TIMEOUT 1800)

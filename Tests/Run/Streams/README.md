@@ -65,3 +65,44 @@ with an ADR, never by quietly editing a number until the test goes green.
 A change to the stream FORMAT is different and fails loudly: `DecodeStream`
 refuses a version it does not know, so the file stops loading rather than
 loading wrong.
+
+## `aelvor128-walk-2026-09-17.stream` — a walk nobody walked
+
+Written by `VaelenAtlas --walk`, not by anybody. Phase 15 task 15.10's headless
+half: a hundred days at AELVOR 128 with `Options::Stream` on — the daily detail
+cadence of ADR-0141 and the warden of ADR-0144 — four takings, and a `Looked`
+record for every day. It is the shape the engine half will record for real,
+exercised and green before a human is available, exactly as
+`aelvor256-stand-in-2026-09-15.stream` was for 14.10.
+
+```
+walk: 104 looks, 4 takings, 100 days, worst day turn 1 promotion(s),
+longest wait for somewhere to walk 2 day(s), audit clean
+```
+
+`Tools/Atlas --replay … --stream --panel --want-bound 0` replays it to
+`state ca72115cdd3c0558, log 0120d951f9e66f8f, life 8a5a4b6ae3a56afa,
+panel 4e153e8558919504`, with 0 wrong and 100 of 100 days. CTest
+`Replay.Walked` pins that.
+
+**`--stream` is not optional and is not in the file.** The cadence a world
+decides its detail on is the host's configuration, like `StartRules::WantBound`:
+replay this walk without it and you are replaying it into a world that pays
+attention on a different schedule, and the four digests say so.
+
+**What the guard refused, twice, before it would write this.** `--walk` will not
+write a walk that misses the gate's clauses, and on its first two runs it did
+not:
+
+1. It read `near:` at the instant of each taking and found it empty. Correctly:
+   `NearDetail` asks for neighbours as REQUESTS and the bridge answers on its
+   next daily pass, so at the instant somebody is taken up there is nowhere to
+   walk yet.
+2. Then it read `near:` a day later and still refused — because 15.08 caps the
+   daily pass at ONE promotion, and a taking asks for three neighbours, so the
+   third cannot be detailed before the third day whatever anybody wants.
+
+**"`near:` is never empty" was not a clause any implementation could meet.** The
+walk measures the wait instead: **two days**, at most, from a taking to
+somewhere to walk. That is the same guarantee stated at a rate the world can
+keep, and it is what the gate now asks for.
