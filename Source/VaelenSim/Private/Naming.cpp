@@ -475,8 +475,21 @@ namespace Vaelen::History
 			uint32 VowelPool = (S + 1 == Syllables) ? SingleVowels : P.Vowels;
 			// No syllable repeats its predecessor (Lolol, Shosh): after the same
 			// onset the vowel changes when the inventory allows it.
-			if (S > 0 && Onset[0] == PreviousOnset[0] && Onset[1] == PreviousOnset[1] && PreviousVowel < 32 &&
-				std::popcount(VowelPool & ~(1u << PreviousVowel)) > 0)
+			//
+			// The second byte is read only when the first is not the terminator.
+			// Written without that guard, this line read Onset[1] and
+			// PreviousOnset[1] while both were the literal "" - a one-byte
+			// object - on every syllable with no onset, which is every V and VC
+			// shape and so every world this project has ever generated.
+			// AddressSanitizer calls it a global-buffer-overflow and it is
+			// undefined behaviour; it has produced the same names everywhere
+			// only because compilers pool identical literals, so the two reads
+			// hit the same byte. The guard keeps exactly that answer - two empty
+			// onsets are the same onset - and stops reading past the end to get
+			// it. Not a Phase 15 defect: it dates from 03.03 and the Phase 15
+			// review's sanitiser run is what finally caught it.
+			const bool SameOnset = Onset[0] == PreviousOnset[0] && (Onset[0] == '\0' || Onset[1] == PreviousOnset[1]);
+			if (S > 0 && SameOnset && PreviousVowel < 32 && std::popcount(VowelPool & ~(1u << PreviousVowel)) > 0)
 			{
 				VowelPool &= ~(1u << PreviousVowel);
 			}

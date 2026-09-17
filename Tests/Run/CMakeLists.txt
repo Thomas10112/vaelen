@@ -109,7 +109,7 @@ add_test(NAME Replay.Walked
           -DMORE=--stream
           # QUOTED, for the reason Replay.Played gives above.
           "-DSAME=replay: 0 of 0 answered identically, 100 of 100 days"
-          "-DPLAYED=LogVaelenPlay: AELVOR 128 seed 41454c564f52: played person 4171 (person 4171, region 9) 100 days, 0 intents (0 taken, 0 refused by the world, 0 dropped at the door), state 2ec1227f6b398263, log 2f3591a916e91636, life 414d2eaa749ed6dd, panel 4d9cced12e3e48fe"
+          "-DPLAYED=LogVaelenPlay: AELVOR 128 seed 41454c564f52: played person 4171 (person 4171, region 9) 100 days, 0 intents (0 taken, 0 refused by the world, 0 dropped at the door), state 18e6984252055df0, log e32e170ba6dc052b, life 414d2eaa749ed6dd, panel fe2920e707995254"
           "-DVERBS=LogVaelenPlay: verbs work 0 rest 0 eat 0 wait 0 speak 0 give 0 take 0 move 0"
           -P ${CMAKE_CURRENT_LIST_DIR}/ReplayPlayed.cmake)
 set_tests_properties(Replay.Walked PROPERTIES TIMEOUT 1800)

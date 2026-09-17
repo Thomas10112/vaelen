@@ -534,3 +534,91 @@ VAELEN_TEST(Door, NoDayTurnPromotesTwiceWhileTheCameraWalks)
 	// because a reader cannot rerun it from the test alone, and a cap nobody
 	// has watched fail is a cap nobody knows works.
 }
+
+VAELEN_TEST(Door, WhatTheCameraLooksAtIsDetailedWhileSomebodyIsPlayed)
+{
+	// The property 15.07 exists for, and nothing pinned it until the Phase 15
+	// review measured its absence: with a played person in the world, look at a
+	// region for twenty days and the world details it.
+	//
+	// It did not. Three owners write into LodState's eight slots - Begin takes
+	// one, NearDetail takes MaxDetailed - 1 for the walk and HOLDS them for the
+	// whole life, and the warden takes up to Attention::Most - while
+	// DecideDetail promotes in request order and stopped at MaxDetailed = 4. So
+	// the first two owners ate the budget and the camera's regions sat at the
+	// back of the queue forever. A camera could stare at a region for a whole
+	// life and the world would never detail it.
+	//
+	// Tools/Atlas RunWalk hid it by looking BEFORE every taking, which put the
+	// warden's requests into Wanted ahead of NearDetail's - so the stand-in
+	// walk was green over it too.
+	Options O;
+	O.Size = 128;
+	O.Years = 100;
+	O.Play = true;
+	O.Stream = true;
+	Aelvor A(O);
+	VT_REQUIRE(A.Begin());
+	Player::StartRules Rules;
+	Rules.WantBound = 0;
+	Door D(A, Rules);
+	VT_REQUIRE(D.TakeUp() != 0);
+
+	// A region that is NOT the played person's and not one of its neighbours,
+	// so nothing but the warden can be asking for it.
+	const WorldGen::RegionGraph Graph = WorldGen::BuildRegionGraph(A.Instance().Map(), A.Ages().World.Regions);
+	uint32 Far = 0;
+	for (uint32 R = 1; R < Graph.Neighbours.size() && Far == 0; ++R)
+	{
+		const bool Mine = R == A.Detail();
+		bool Beside = false;
+		if (A.Detail() < Graph.Neighbours.size())
+		{
+			for (const uint16 N : Graph.Neighbours[A.Detail()])
+			{
+				Beside = Beside || uint32{N} == R;
+			}
+		}
+		// AND PEOPLED. A region with nobody in it promotes to nobody:
+		// PromoteRegion makes one entity per counted head, so an empty region
+		// is counted Refused and never becomes detailed however long anybody
+		// looks at it. The first draft of this test picked region 1, which is
+		// water, and measured twenty days of nothing - the fourth premise this
+		// phase assumed instead of building.
+		bool Peopled = false;
+		A.Instance()
+			.Components()
+			.GetPool(A.Ages().World.RegionTypes_.Region)
+			.ForEach(
+				[&](EntityHandle H, const WorldGen::RegionInfo& Info)
+				{
+					if (Info.Index != R)
+					{
+						return;
+					}
+					const History::RegionPopulation* const P =
+						A.Instance().Components().GetPool(A.Ages().Population.Population).TryGet(H);
+					Peopled = P != nullptr && P->Total > 0;
+				});
+		Far = (!Mine && !Beside && Peopled && !Graph.Neighbours[R].empty()) ? R : 0u;
+	}
+	VT_REQUIRE(Far != 0);
+
+	D.Look(Attention{Far, 0u, 2u});
+	bool Arrived = false;
+	uint32 Waited = 0;
+	for (uint32 Day = 0; Day < 20 && !Arrived; ++Day)
+	{
+		D.Day();
+		D.Look(Attention{Far, 0u, 2u});
+		Arrived = Population::IsDetailed(A.Instance(), A.Ages(), A.Handles().Persons, Far);
+		Waited = Day + 1u;
+	}
+	VAELEN_LOG_INFO(LogDoor, "the camera held region %u for %u day(s) before the world detailed it (home %u)", Far,
+					Waited, A.Detail());
+	VT_CHECK_MSG(Arrived, "twenty days of looking at one region gets it detailed - THE POINT OF 15.07");
+	VT_CHECK_MSG(std::find(A.Watching().begin(), A.Watching().end(), static_cast<uint16>(Far)) != A.Watching().end(),
+				 "and the warden says it is watching it, which is what a host reads");
+	VT_CHECK_MSG(Population::IsDetailed(A.Instance(), A.Ages(), A.Handles().Persons, A.Detail()),
+				 "without giving up the region the played person stands in");
+}

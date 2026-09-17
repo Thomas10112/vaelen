@@ -107,6 +107,20 @@ namespace Vaelen::Run
 			// system that runs on a DAY - but only when asked, because a world
 			// that decides detail on a different cadence is a different world.
 			Bridging.DecideElsewhere = Given.Stream;
+			// AND THE DETAIL BUDGET HAS TO FIT EVERYBODY WHO ASKS. Three owners
+			// write into LodState's eight slots: Begin takes one, NearDetail
+			// takes MaxDetailed - 1 for the walk and holds them for the whole
+			// life of the played person, and the warden takes up to
+			// Attention::Most. DecideDetail promotes in request order and stops
+			// at MaxDetailed, so with the default four the first two owners ate
+			// the entire budget and THE WARDEN'S REGIONS WERE NEVER PROMOTED -
+			// a camera could stare at a region for a whole life and the world
+			// would never detail it, which is the one thing 15.07 exists to do.
+			// One plus three plus four is eight, which is exactly
+			// LodState::MaxWanted, so a streaming world raises its budget to
+			// that and every owner is served. Only a streaming world: this
+			// changes what is detailed, and nothing else may move.
+			Bridging.MaxDetailed = Given.Stream ? Population::LodState::MaxWanted : Bridging.MaxDetailed;
 			// 15.08: one region a day at most, and only for a world that
 			// streams. A promotion costs about 65 ms (14.10) and two on one day
 			// turn is a fifth of a second of the game stopping.
@@ -687,14 +701,26 @@ namespace Vaelen::Run
 		}
 		Near_.clear();
 
-		// One slot is the played person's own region; the rest are the walk.
+		// HOW MANY NEIGHBOURS A WALK NEEDS, and it is not "all the budget but
+		// one". This read MaxDetailed - 1, which tied the walk's appetite to
+		// the world's whole detail budget: raising that budget so the warden
+		// could be served raised NearDetail's share with it and starved the
+		// warden completely - 1 + 7 = 8 = MaxWanted, and every RequestDetail
+		// the camera made was refused. The two numbers answer different
+		// questions and must not be the same number.
+		//
+		// The arithmetic a streaming world runs on: 1 for where the played
+		// person stands, MaxNear for somewhere to walk, and Attention::Most for
+		// what the camera is looking at. 1 + 3 + 4 = 8 = LodState::MaxWanted,
+		// which is the ceiling all three share.
+		static constexpr uint32 MaxNear = 3;
 		const LodRules& Rules = K->Bridging;
 		uint32 Asked = 0;
 		std::vector<uint16> Near(Graph.Neighbours[P->Region]);
 		std::sort(Near.begin(), Near.end());
 		for (const uint16 N : Near)
 		{
-			if (Rules.MaxDetailed == 0 || Asked + 1 >= Rules.MaxDetailed)
+			if (Rules.MaxDetailed == 0 || Asked >= MaxNear || Asked + 1 >= Rules.MaxDetailed)
 			{
 				break;
 			}
