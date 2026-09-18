@@ -10032,3 +10032,95 @@ and `Lod.ARegionHasTwoGrainsAndNotFive` walks every mark in a world to check
 that none of them is anything but `DetailedLevel` - so the next person to write
 a 3 finds out at once rather than in a plan two phases later.
 
+
+## ADR-0147 — A gate is a command, and a replay is watched rather than repeated
+
+**Status:** **APPLIED 2026-09-18** (task 15.10, headless half). Adds
+`Run::DayWatch` and `VaelenAtlas --gate`; no digest moved, and
+`Door.AWatchedReplayIsTheSameReplay` is what says so.
+
+### The problem
+
+The 15.10 gate asks six things of a walk, and three of them are about **every
+day** of it rather than about its end:
+
+- (c) both grains agree — an audit at the last frame cannot see a gap that
+  opened on day three and closed on day four;
+- (d) no day turn promoted more than one region — the *worst* day, which only
+  exists if every day was looked at;
+- (e) somewhere to walk arrived within four days of each taking — a duration,
+  which needs the day the taking landed on and the day the wait ended.
+
+`VaelenAtlas --walk` already measured all three, but only on a walk **it wrote
+itself**, in the loop that wrote it. The gate is about a walk recorded on the
+engine machine, which arrives as a file.
+
+### The two ways to ask a file those questions
+
+**Replay it twice.** Call `Run::Replay` for the digests, then walk the records
+again in the caller, turning days by hand, measuring between them.
+
+That is a second replay, and a second replay is the one thing a replay must not
+have. It would have its own order for same-tick records, its own idea of when a
+taking lands, its own handling of a life that ends — all of which `Run::Replay`
+decides, and two of which the Phase 15 review already found it deciding wrongly.
+Every divergence between the two would read as a property of the walk.
+
+**Watch the one replay.** `Run::DayWatch` is a function pointer and a `void*`,
+called at the end of each replayed day with the world as it then stands. The
+gate measures through it. There is one replay, and what the gate reports is what
+that replay did.
+
+The risk it carries is that a watcher changes the replay. So it is handed a
+`const Aelvor&`, its return is `void`, and `Door.AWatchedReplayIsTheSameReplay`
+replays one stream into two fresh worlds — one watched, one not — and checks
+that state, log, life, day count and look count are identical. A watcher that
+started mattering would fail that test rather than quietly move a gate.
+
+### Where the clauses are asked: a command, not a test
+
+`--gate FILE` is a command a person runs on a file that has just come off
+another machine, and `Run.Gate` is a CTest that runs it on the checked-in walk.
+The command is the artefact; the test is one caller of it.
+
+The alternative was to write the clauses only as a CTest over the checked-in
+walk. That would have pinned the stand-in and given the owner nothing to run on
+the walk they actually recorded — which is the walk the gate is about.
+
+### What it cost to get right, and the general lesson
+
+The first version of `--gate` reported two clauses failing on the checked-in
+walk, which `--walk` had written and declared sound. Both were the gate's own
+bugs, and both were the same mistake in two costumes — **measuring a difference
+from a baseline that was never read**:
+
+- promotions were counted from 0 rather than from what the world had already
+  promoted in four hundred years of history, so the first day of the walk was
+  charged with all of it and reported a day turn that promoted twice;
+- takings were counted by watching the played person change, and two of the
+  stand-in walk's four takings offer the same person back, so two takings went
+  unseen and the wait after them was never measured. They are now counted from
+  the records, which is what a taking *is*.
+
+Neither was found by reading the code. Both were found because a second
+instrument — `--walk`'s own figures on the same file — disagreed, and the
+disagreement was treated as a defect somewhere rather than a curiosity. The
+gate is the instrument the phase closes on; an instrument nobody cross-checked
+is a number, not a measurement.
+
+### The engine half's own decision: the look rides the day turn
+
+`UVaelenWorldSubsystem::Watch` does not touch the world. It remembers, and
+`AdvanceDay` hands what it remembers through `Door::Look` once per day turn,
+before turning it.
+
+A camera that pushed a look through whenever it moved would put a dozen records
+on one tick and none on the next, which replays correctly and measures nothing:
+"the camera's region each day" is the cadence the walk is written and read at.
+It also keeps the whole of `VaelenUI` free of the frame clock, which
+`check_ui_fence.py` refuses by name — the camera is read on the day key
+(`AVaelenPlayerController::TurnTheDay`) and at no other moment.
+
+Region 0 stays an input, not an absence: a host looking nowhere is something the
+world is entitled to be told. A host that has **never** looked hands nothing
+over at all, and writes exactly the stream Phase 14 wrote.

@@ -41,6 +41,51 @@ private:
 	void TurnTheDay();
 	void WriteStream();
 
+public:
+	/// What the camera is over, as a region, and how far it is worth detailing
+	/// around it. Read on every day turn and handed to the subsystem, which
+	/// hands it through the door - so where somebody is looking is an INPUT
+	/// with a tick on it, and a walk can be replayed from the record alone
+	/// (ADR-0143). There is NO Tick in this module and there must not be: a
+	/// world that also moved on the frame clock could not be replayed from a
+	/// key sequence, so the camera is read when the day turns and at no other
+	/// moment.
+	///
+	/// The three below are the host's drawing scale, and the world knows
+	/// nothing of them.
+
+	/// Centimetres to a tile, which must be the TileSize the ground under the
+	/// camera was drawn at (AVaelenViewActor::TileSize, 100 by default). Wrong
+	/// here and the camera reports the wrong region - the world is none the
+	/// wiser, and the walk is a walk over somewhere else.
+	UPROPERTY(EditAnywhere, Category = "AELVOR|Look", meta = (ClampMin = "1"))
+	float TileSize = 100.0f;
+
+	/// How many tiles of height buy one border of reach. A host's choice with
+	/// no meaning to the simulation: it decides how much ground a high camera
+	/// asks to have detailed, and nothing else.
+	UPROPERTY(EditAnywhere, Category = "AELVOR|Look", meta = (ClampMin = "1"))
+	int32 TilesPerBorder = 12;
+
+	/// The most regions the host will pay to have simulated person by person
+	/// around what it is looking at. Recorded with every look, because a replay
+	/// given a different budget details different regions and therefore has
+	/// different people in it (Attention.h).
+	UPROPERTY(EditAnywhere, Category = "AELVOR|Look", meta = (ClampMin = "0"))
+	int32 MostRegions = 4;
+
+	/// Off, and the day turns without a look: the stream is then the one Phase
+	/// 14 wrote. On for a walk.
+	UPROPERTY(EditAnywhere, Category = "AELVOR|Look")
+	bool bLookFromCamera = true;
+
+private:
+	/// Where the camera's view ray meets the ground, as a region. 0 when the
+	/// camera looks at or above the horizon, when the ray lands off the map and
+	/// when it lands on water - all four of which are a host looking nowhere,
+	/// which is itself an input worth recording.
+	int32 RegionTheCameraIsOver(int32& OutReach) const;
+
 	/// Through the page and then through the door, and nowhere else. The page
 	/// answers first - an unoffered verb costs the world nothing - and what it
 	/// offers becomes a PlayerCommand the module hands to Mean.

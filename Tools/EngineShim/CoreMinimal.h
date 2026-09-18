@@ -116,6 +116,9 @@ namespace VaelenShim
 
 #define KINDA_SMALL_NUMBER 1.e-4f
 #define SMALL_NUMBER 1.e-8f
+// The UE_ prefixed spellings, which 5.6 is moving to and 15.10 uses.
+#define UE_KINDA_SMALL_NUMBER 1.e-4f
+#define UE_SMALL_NUMBER 1.e-8f
 
 // ---------------------------------------------------------------- containers
 
@@ -367,6 +370,7 @@ constexpr typename std::remove_reference<T>::type&& MoveTemp(T&& Value) noexcept
 struct FCString
 {
 	static int32 Atoi(const TCHAR* Text) { return Text == nullptr ? 0 : 0; }
+	static double Atod(const TCHAR* Text) { return Text == nullptr ? 0.0 : 0.0; }
 };
 
 // -------------------------------------------------------------------- maths
@@ -389,7 +393,11 @@ struct FMath
 		return A < B ? A : B;
 	}
 	static double Pow(double Base, double Exponent);
+	static double FloorToDouble(double Value);
+	static int32 FloorToInt(double Value);
 };
+
+struct FVector;
 
 struct FRotator
 {
@@ -398,6 +406,10 @@ struct FRotator
 	double Roll = 0.0;
 	FRotator() = default;
 	FRotator(double InPitch, double InYaw, double InRoll) : Pitch(InPitch), Yaw(InYaw), Roll(InRoll) {}
+	/// The unit vector this rotation faces. Declared, not defined here: what it
+	/// computes is the engine's business and this shim only proves the call
+	/// parses (ADR-0134).
+	FVector Vector() const;
 	static const FRotator ZeroRotator;
 };
 

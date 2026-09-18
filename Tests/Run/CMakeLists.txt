@@ -113,3 +113,32 @@ add_test(NAME Replay.Walked
           "-DVERBS=LogVaelenPlay: verbs work 0 rest 0 eat 0 wait 0 speak 0 give 0 take 0 move 0"
           -P ${CMAKE_CURRENT_LIST_DIR}/ReplayPlayed.cmake)
 set_tests_properties(Replay.Walked PROPERTIES TIMEOUT 1800)
+
+# 15.10's GATE, asked of the checked-in walk.
+#
+# Replay.Walked above pins what the walk replays TO; this pins that the walk
+# still MEETS THE PHASE GATE - that the fence still fires, that both grains
+# still agree on every day of it, that no day turn still promotes twice and
+# that somewhere to walk still arrives. A change that leaves the digests alone
+# and quietly stops pinning any region would pass Replay.Walked and fail here,
+# which is the whole reason the two are separate tests.
+#
+# --want-bound 0 for the reason ReplayPlayed.cmake gives: the walk was recorded
+# under the engine host's rules and a replay is told them, not sent to find
+# them. The streaming cadence is NOT passed, because --gate forces it: a walk
+# carrying Looked records is a walk recorded with it.
+#
+# The six lines are matched whole. The first version of this checked only the
+# verdict, and a verdict is one boolean over six clauses: a clause that stopped
+# being asked at all would still print "kept".
+add_test(NAME Run.Gate
+  COMMAND ${CMAKE_COMMAND}
+          -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DSTREAM=${PROJECT_SOURCE_DIR}/Tests/Run/Streams/aelvor128-walk-2026-09-17.stream
+          "-DA=  (a) PASS  the stream carries looks and the fence fired: 100 Looked records, 53 regions pinned while held"
+          "-DB=  (b) PASS  the walk replays as it was recorded: 0 wrong (0 of them takings), 0 records left unreached"
+          "-DC=  (c) PASS  both grains agree on every day of the walk: worst over 100 days: heads 0, slots 0, faiths 0"
+          "-DD=  (d) PASS  no day turn promoted twice: worst day turn promoted 1"
+          "-DE=  (e) PASS  somewhere to walk within four days of each taking: 4 takings, longest wait 0 day(s)"
+          -P ${CMAKE_CURRENT_LIST_DIR}/Gate.cmake)
+set_tests_properties(Run.Gate PROPERTIES TIMEOUT 1800)

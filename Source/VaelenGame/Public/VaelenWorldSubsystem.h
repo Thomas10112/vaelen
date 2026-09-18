@@ -53,8 +53,51 @@ public:
 	/// and Years of the world, takes somebody up and takes the first views.
 	/// False when a world is already begun or the map cannot be generated.
 	/// Seconds of work, not a frame's worth: a host calls it from a command.
-	bool Begin(int32 Size, int32 Years);
+	///
+	/// bStreaming asks for Phase 15's cadence: what is detailed is decided
+	/// every DAY rather than every year, and where the host is looking is one
+	/// of the things that decides it. It is OFF by default and that is not
+	/// timidity - a world with it on is a different world from the same seed,
+	/// and every digest this project froze belongs to a world without it. A
+	/// walk for the 15.10 gate is recorded with it ON; anything compared
+	/// against Phase 14's numbers is recorded with it off.
+	bool Begin(int32 Size, int32 Years, bool bStreaming = false);
 	bool Begun() const;
+	/// Whether the world that is begun was begun with the streaming cadence.
+	/// A replay must be told this (VaelenAtlas --stream), so a host that does
+	/// not say which it used has written a stream nobody can replay.
+	bool Streaming() const;
+
+	/// Where the host is looking: a region of the world, how many borders out
+	/// the eye reaches, and the most regions it will pay to have detailed.
+	///
+	/// NOTHING OF THE WORLD MOVES HERE. This is remembered, and AdvanceDay
+	/// hands it through the door once per day turn - which is where it becomes
+	/// an input the world's own clock stamps, as a key press is (ADR-0138,
+	/// ADR-0143). A camera that handed a look over whenever it moved would put
+	/// many records on one tick and none on the next; one per day turn is the
+	/// cadence the walk of 15.10 is recorded and replayed at.
+	///
+	/// Region 0 is a host looking NOWHERE, and is as much an input as a place:
+	/// the camera leaving is something the world is entitled to know. Until
+	/// this is called the host is not looking at all and no look is recorded,
+	/// which is exactly the stream Phase 14 wrote.
+	void Watch(int32 Region, int32 Reach, int32 Most);
+	/// What Watch was last given. False, and the three untouched, when it never
+	/// was - which is a different thing from looking at region 0.
+	bool Watching(int32& Region, int32& Reach, int32& Most) const;
+
+	/// The region under a point on the ground, where the ground is drawn the
+	/// way VaelenViewDrawer::PlaceOfTile draws it: the map centred on the
+	/// origin, TileSize centimetres to a tile, north-west at the lowest
+	/// coordinates. 0 when no world is begun, when the point is off the map,
+	/// and when the tile there is sea - three different things that all mean
+	/// "no region here", and all three are a host looking nowhere.
+	///
+	/// The host converts, not the world: this takes the units the host draws
+	/// in because the host is the only thing that knows them, and hands back a
+	/// region index, which is the only thing the simulation knows.
+	int32 RegionUnderGround(double GroundX, double GroundY, double TileSize) const;
 
 	/// Days day-turns, each recorded as a DayTurned, then every view retaken.
 	/// Nothing when no world is begun.

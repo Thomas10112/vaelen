@@ -76,7 +76,8 @@ namespace Vaelen::Run
 		W.LookAt(At);
 	}
 
-	ReplayReport Replay(Aelvor& Fresh, const Player::InputStream& S, const Player::StartRules& Rules)
+	ReplayReport Replay(Aelvor& Fresh, const Player::InputStream& S, const Player::StartRules& Rules,
+						const DayWatch& Watching)
 	{
 		ReplayReport R;
 		if (!Fresh.Begun() || !Fresh.Given().Play || !Player::SameWorld(Fresh.Header(), S.Header))
@@ -155,6 +156,16 @@ namespace Vaelen::Run
 			// it under the paper.
 			LookDue();
 			TakeUpDue();
+			// The end of the day, and the same point on every one of them: the
+			// day has turned, the looks and takings recorded at the tick it
+			// landed on have been applied, and nothing else will touch the
+			// world until the next iteration. A watcher that read the world
+			// between Day() and LookDue() would be reading a day that is not
+			// over, and would report a promotion this walk never had.
+			if (Watching.After != nullptr)
+			{
+				Watching.After(Fresh, static_cast<uint32>(d), Watching.User);
+			}
 		}
 		// What was recorded after the last day turn, on the tick it is now.
 		LookDue();

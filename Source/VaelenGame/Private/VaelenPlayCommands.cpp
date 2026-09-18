@@ -70,15 +70,22 @@ namespace
 		}
 		const int32 Size = NumberAt(Args, 0, 128);
 		const int32 Years = NumberAt(Args, 1, 120);
-		if (!World->Begin(Size, Years))
+		// The third argument is Phase 15's cadence, and it is OFF unless asked
+		// for: a world with it on is a different world from the same seed, and
+		// every number Phase 14 froze belongs to a world without it. A walk for
+		// the 15.10 gate wants `Vaelen.Play 128 100 1`.
+		const bool bStreaming = NumberAt(Args, 2, 0) != 0;
+		if (!World->Begin(Size, Years, bStreaming))
 		{
 			UE_LOG(LogVaelenPlay, Warning,
 				   TEXT("LogVaelenPlay: no world begun (one per host, and the map must generate)"));
 			return;
 		}
 		const Vaelen::View::LifeView& Life = World->Life();
-		UE_LOG(LogVaelenPlay, Log, TEXT("LogVaelenPlay: AELVOR %d at %d years: person %u in region %u, %u alive"), Size,
-			   Years, static_cast<unsigned>(Life.Person), static_cast<unsigned>(Life.Region),
+		UE_LOG(LogVaelenPlay, Log,
+			   TEXT("LogVaelenPlay: AELVOR %d at %d years, cadence %s: person %u in region %u, %u alive"), Size, Years,
+			   bStreaming ? TEXT("daily (Options::Stream on, replay with --stream)") : TEXT("yearly"),
+			   static_cast<unsigned>(Life.Person), static_cast<unsigned>(Life.Region),
 			   static_cast<unsigned>(World->World().People));
 	}
 
@@ -138,6 +145,63 @@ namespace
 			   ANSI_TO_TCHAR(Vaelen::Player::RefusalName(Answer)), static_cast<unsigned>(World->Life().Held));
 	}
 
+	/// Where the host is looking, named outright. The camera does this for
+	/// itself on every day turn (AVaelenPlayerController); this is the same
+	/// input typed, for a host with no camera over the played world and for
+	/// asking the warden a question whose answer you can predict.
+	///
+	/// It does not turn a day and does not reach the world: the subsystem
+	/// remembers it and the next day turn hands it through the door. So a look
+	/// typed between two day turns is one record on the second one's tick, and
+	/// typing four of them in a row records the last.
+	void Look(const TArray<FString>& Args, UWorld* World_)
+	{
+		UVaelenWorldSubsystem* World = Held(World_);
+		if (World == nullptr || !World->Begun())
+		{
+			return;
+		}
+		if (Args.Num() < 1)
+		{
+			UE_LOG(LogVaelenPlay, Warning,
+				   TEXT("LogVaelenPlay: Vaelen.Look <region> [reach] [most] (region 0 is "
+						"looking nowhere, which is also an input)"));
+			return;
+		}
+		const int32 Region = NumberAt(Args, 0, 0);
+		const int32 Reach = NumberAt(Args, 1, 1);
+		const int32 Most = NumberAt(Args, 2, 4);
+		World->Watch(Region, Reach, Most);
+		UE_LOG(LogVaelenPlay, Log,
+			   TEXT("LogVaelenPlay: looking at region %d, reach %d, most %d - recorded on the next day turn%s"), Region,
+			   Reach, Most,
+			   World->Streaming() ? TEXT("")
+								  : TEXT(" (and the world will not act on it: this one was begun with the yearly "
+										 "cadence, Vaelen.Play <size> <years> 1)"));
+	}
+
+	/// The region under the ground point a world coordinate names, for a host
+	/// checking what its camera is over before it trusts it. Reads and records
+	/// nothing.
+	void Where(const TArray<FString>& Args, UWorld* World_)
+	{
+		UVaelenWorldSubsystem* World = Held(World_);
+		if (World == nullptr || !World->Begun())
+		{
+			return;
+		}
+		if (Args.Num() < 2)
+		{
+			UE_LOG(LogVaelenPlay, Warning, TEXT("LogVaelenPlay: Vaelen.Where <x> <y> [tilesize]"));
+			return;
+		}
+		const double X = FCString::Atod(*Args[0]);
+		const double Y = FCString::Atod(*Args[1]);
+		const double Tile = Args.Num() > 2 ? FCString::Atod(*Args[2]) : 100.0;
+		UE_LOG(LogVaelenPlay, Log, TEXT("LogVaelenPlay: (%.0f, %.0f) at %.0f cm a tile is region %d"), X, Y, Tile,
+			   World->RegionUnderGround(X, Y, Tile));
+	}
+
 	void WriteStream(const TArray<FString>& Args, UWorld* World_)
 	{
 		UVaelenWorldSubsystem* World = Held(World_);
@@ -187,11 +251,24 @@ namespace
 			   Of(Vaelen::Player::Intent::Work), Of(Vaelen::Player::Intent::Rest), Of(Vaelen::Player::Intent::Eat),
 			   Of(Vaelen::Player::Intent::Wait), Of(Vaelen::Player::Intent::Speak), Of(Vaelen::Player::Intent::Give),
 			   Of(Vaelen::Player::Intent::Take), Of(Vaelen::Player::Intent::Move));
+		// THE THIRD LINE, and deliberately a third one: the two above are quoted
+		// verbatim in 14.10's checker and in ADR-0138, and a replay of this
+		// stream must print them back byte for byte. Nothing may be added to
+		// them. What 15.10 needs said - that the stream carries looks, and
+		// which cadence the world was begun under, which a replay must be TOLD
+		// because the stream does not carry it - goes here.
+		UE_LOG(LogVaelenPlay, Log,
+			   TEXT("LogVaelenPlay: %u looks, %u takings, cadence %s: replay with VaelenAtlas "
+					"--gate <file> --want-bound 0%s"),
+			   static_cast<unsigned>(Tape.Looks.size()), static_cast<unsigned>(Tape.Takings.size()),
+			   World->Streaming() ? TEXT("daily") : TEXT("yearly"),
+			   World->Streaming() ? TEXT("") : TEXT(" - but a walk for the 15.10 gate wants the daily one"));
 		UE_LOG(LogVaelenPlay, Log, TEXT("LogVaelenPlay: %s"), *Path);
 	}
 
 	FAutoConsoleCommandWithWorldAndArgs GPlay(TEXT("Vaelen.Play"),
-											  TEXT("Begin AELVOR and take somebody up. Vaelen.Play [size] [years]"),
+											  TEXT("Begin AELVOR and take somebody up. Vaelen.Play [size] [years] "
+												   "[daily cadence: 0 or 1]"),
 											  FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Play));
 
 	FAutoConsoleCommandWithWorldAndArgs GDay(TEXT("Vaelen.Day"), TEXT("Turn the day, recorded. Vaelen.Day [n]"),
@@ -200,6 +277,14 @@ namespace
 	FAutoConsoleCommandWithWorldAndArgs
 		GDo(TEXT("Vaelen.Do"), TEXT("Mean one intent, through the page. Vaelen.Do <verb> [target] [amount]"),
 			FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Do));
+
+	FAutoConsoleCommandWithWorldAndArgs GLook(TEXT("Vaelen.Look"),
+											  TEXT("Where the host is looking. Vaelen.Look <region> [reach] [most]"),
+											  FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Look));
+
+	FAutoConsoleCommandWithWorldAndArgs
+		GWhere(TEXT("Vaelen.Where"), TEXT("What region a ground point is in. Vaelen.Where <x> <y> [tilesize]"),
+			   FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Where));
 
 	FAutoConsoleCommandWithWorldAndArgs GWrite(TEXT("Vaelen.Stream.Write"),
 											   TEXT("Write the stream and print what a replay must come to"),

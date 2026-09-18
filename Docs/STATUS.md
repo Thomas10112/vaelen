@@ -1,7 +1,7 @@
 # VAELEN — Build status
 
-STATUS: VALIDATED for the state it reports, checked on 2026-09-15 against the sources on
-branch `claude/vaelen-master-prompt-aw7zqj` at `28d0864`. This is the living status
+STATUS: VALIDATED for the state it reports, checked on 2026-09-18 against the sources on
+branch `claude/vaelen-master-prompt-aw7zqj`. This is the living status
 document: it is refreshed at the end of every task (section "How to refresh"). The
 per-phase breakdowns below are the record of each phase as it closed and are not
 rewritten afterwards; this block is the only part that tracks today.
@@ -14,8 +14,49 @@ VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHASE       : 15 — STREAMING & LOD (14 CLOSED 2026-09-16, all five clauses)
-TASK        : 15.10 — the engine half. Headless half DONE; the Phase 15 review
-              rebuilt it on 2026-09-17.
+TASK        : 15.10 — the engine half. WIRED 2026-09-18; what is left is one sitting
+              at the keyboard.
+
+              THE PHASE 15 KERNEL IS BUILT AND RUN UNDER UBT. On 2026-09-18 the owner
+              built the four modules Phase 15 touched with MSVC 19.51 on Win64 and ran
+              `Vaelen.Play 128 120` + `Vaelen.Stream.Write`. The four digests are
+              IDENTICAL to a headless gcc/Linux run of the same wiring — state
+              4c03becd9cd9c994, log dc418af0cd4b8d76, life 92f78aa85c0e1654, panel
+              3106f24e235deeca — down to the person taken up (3535, region 26,
+              Odordissuss) and the 36374 alive. Two compilers, two operating systems,
+              one world, after four modules changed.
+
+              THE GATE IS NOW A COMMAND. `VaelenAtlas --gate FILE` replays a walk
+              recorded anywhere and reports clauses (a) and (c) to (e) as PASS/FAIL,
+              printing clause (b)'s line in the shape Vaelen.Stream.Write prints it.
+              `Run::DayWatch` is how it asks questions about every day of a walk without
+              replaying the stream a second time; `Door.AWatchedReplayIsTheSameReplay`
+              proves a watched replay is the same replay. CTest `Run.Gate` pins the five
+              clause lines whole. ADR-0147.
+
+              AND THE GATE CAUGHT ITSELF FIRST. Its first version reported two clauses
+              failing on the checked-in walk, which `--walk` had written and declared
+              sound. Both were the gate's own bugs and both were the same mistake:
+              measuring a difference from a baseline never read. Promotions counted from
+              0 rather than from the four hundred years the world had already run;
+              takings counted by watching the played person change, when two of the four
+              offer the same person back. Neither was found by reading the code — they
+              were found because a second instrument disagreed.
+
+              THE ENGINE HALF IS WRITTEN. `UVaelenWorldSubsystem::Watch` remembers where
+              the host is looking and `AdvanceDay` hands it through `Door::Look` once
+              per day turn, before turning it; `RegionUnderGround` inverts the drawer's
+              own tile placement; `AVaelenPlayerController` reads the camera on the day
+              key and nowhere else, because there is no Tick in that module and
+              check_ui_fence.py refuses one by name. `Vaelen.Play <size> <years> 1` asks
+              for the daily cadence, which is OFF by default so every Phase 14 number
+              stands. `Vaelen.Look` and `Vaelen.Where` are the same inputs typed.
+              UNVERIFIED under UBT: written and parsed against the shim, not yet built.
+
+              What remains: `Vaelen.Play 128 100 1`, fly, Space a hundred times through
+              at least four takings, F9, then `--gate` on the file.
+
+              THE REVIEW of 2026-09-17, which rebuilt the headless half.
 
               THE REVIEW: 29 findings, 15 survived two refuters each, 15 fixed. What it
               found is worth more than the fixes. 15.10's stand-in was GREEN BY

@@ -622,3 +622,84 @@ VAELEN_TEST(Door, WhatTheCameraLooksAtIsDetailedWhileSomebodyIsPlayed)
 	VT_CHECK_MSG(Population::IsDetailed(A.Instance(), A.Ages(), A.Handles().Persons, A.Detail()),
 				 "without giving up the region the played person stands in");
 }
+
+namespace
+{
+	/// What a DayWatch may do and nothing more: read, and keep what it read.
+	struct Counted
+	{
+		uint32 Days = 0;
+		uint64 LastTick = 0;
+		uint32 OutOfOrder = 0;
+		uint32 Played = 0;
+	};
+
+	void CountDay(const Aelvor& W, uint32 Day, void* User)
+	{
+		Counted& C = *static_cast<Counted*>(User);
+		C.OutOfOrder += (Day == C.Days) ? 0u : 1u;
+		C.OutOfOrder += (W.Now() > C.LastTick || C.Days == 0) ? 0u : 1u;
+		C.LastTick = W.Now();
+		++C.Days;
+		C.Played = W.Played();
+	}
+} // namespace
+
+VAELEN_TEST(Door, AWatchedReplayIsTheSameReplay)
+{
+	// Phase 15 task 15.10. Run::DayWatch exists so that the phase gate can ask
+	// questions about every day of a walk without replaying it a second time by
+	// hand. That is only worth having if a watched replay and an unwatched one
+	// are the same replay - otherwise the gate would be measuring a world the
+	// walk never had, and every clause it reports would be about that world.
+	//
+	// So: one stream, two fresh worlds of the same seed, one watcher. The four
+	// numbers a replay is compared by must be identical, and the watcher must
+	// have been called once per day turn, in order.
+	Options O;
+	O.Size = 128;
+	O.Years = 100;
+	O.Play = true;
+	O.Stream = true; // the cadence a walk is recorded under
+	Aelvor A(O);
+	VT_REQUIRE(A.Begin());
+	Player::StartRules Rules;
+	Rules.WantBound = 0;
+	Door D(A, Rules);
+	VT_REQUIRE(D.TakeUp() != 0);
+	const uint32 Days = 6;
+	for (uint32 i = 0; i < Days; ++i)
+	{
+		D.Look(Attention{1u + i, 1u, 2u});
+		D.Day();
+	}
+	const Player::InputStream& Tape = D.Stream();
+	VT_REQUIRE(Tape.Days.size() == Days);
+
+	Aelvor Bare(O);
+	VT_REQUIRE(Bare.Begin());
+	const ReplayReport Without = Replay(Bare, Tape, Rules);
+
+	Aelvor Seen(O);
+	VT_REQUIRE(Seen.Begin());
+	Counted C;
+	const ReplayReport With = Replay(Seen, Tape, Rules, DayWatch{&CountDay, &C});
+
+	VT_CHECK_MSG(Without.Refused == 0 && With.Refused == 0, "both replays ran at all");
+	VT_CHECK_MSG(With.State == Without.State, "a watched replay reaches the same state");
+	VT_CHECK_MSG(With.Log == Without.Log, "and the same log");
+	VT_CHECK_MSG(With.Life == Without.Life, "and the same life in words");
+	VT_CHECK_MSG(With.Days == Without.Days && With.Looks == Without.Looks, "and did the same work");
+	VT_CHECK_MSG(With.Wrong == 0 && Without.Wrong == 0, "and neither differed from the record");
+
+	VT_CHECK_MSG(C.Days == Days, "the watcher saw every day turn and no more");
+	VT_CHECK_MSG(C.OutOfOrder == 0, "in order, each with its own number and a clock that only moves forward");
+	VT_CHECK_MSG(C.Played == Seen.Played(), "and the world it was handed is the one the replay was turning");
+
+	// And the default: every caller that predates 15.10 passes three arguments
+	// and gets no watcher, which is the arm the two replays above share.
+	Aelvor Third(O);
+	VT_REQUIRE(Third.Begin());
+	const ReplayReport Plain = Replay(Third, Tape);
+	VT_CHECK_MSG(Plain.Refused == 0, "the three-argument form still replays");
+}

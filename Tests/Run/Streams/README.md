@@ -76,14 +76,24 @@ exercised and green before a human is available, exactly as
 `aelvor256-stand-in-2026-09-15.stream` was for 14.10.
 
 ```
-walk: 104 looks, 4 takings, 100 days, worst day turn 1 promotion(s),
-longest wait for somewhere to walk 2 day(s), audit clean
+walk: 100 looks, 4 takings, 100 days, worst day turn 1 promotion(s),
+longest wait for somewhere to walk 1 day(s), audit clean
 ```
 
 `Tools/Atlas --replay … --stream --panel --want-bound 0` replays it to
-`state ca72115cdd3c0558, log 0120d951f9e66f8f, life 8a5a4b6ae3a56afa,
-panel 4e153e8558919504`, with 0 wrong and 100 of 100 days. CTest
+`state 18e6984252055df0, log e32e170ba6dc052b, life 414d2eaa749ed6dd,
+panel fe2920e707995254`, with 0 wrong and 100 of 100 days. CTest
 `Replay.Walked` pins that.
+
+**Those six numbers were wrong here until 2026-09-18**, and the file was not.
+They were the figures of the FIRST walk `--walk` wrote; the Phase 15 review then
+found that the replay dropped `Attention::Most` and applied a same-tick taking
+before the look it followed, both were fixed, `--walk` was made to replay its own
+walk before writing a byte, and the walk it then wrote is this one. The CTest
+was updated with it and this page was not. Nothing was broken by the drift -
+`Replay.Walked` reads the CTest and not this page - but a page that documents a
+file by numbers the file does not have is worse than a page that documents
+nothing, so it is said here rather than quietly corrected.
 
 **`--stream` is not optional and is not in the file.** The cadence a world
 decides its detail on is the host's configuration, like `StartRules::WantBound`:
@@ -106,3 +116,50 @@ not:
 walk measures the wait instead: **two days**, at most, from a taking to
 somewhere to walk. That is the same guarantee stated at a rate the world can
 keep, and it is what the gate now asks for.
+
+## Asking a walk the gate's questions: `--gate`
+
+`--walk` checks the clauses on a walk it writes itself. `--gate` checks them on
+a walk that arrives as a file — which is what the 15.10 gate is actually about,
+because the walk it closes on is recorded in the editor on another machine.
+
+```
+VaelenAtlas --gate Tests/Run/Streams/aelvor128-walk-2026-09-17.stream --want-bound 0
+```
+
+```
+AELVOR 128 seed 41454c564f52: played person 4171 (person 4171, region 9) 100 days, 0 intents, state 18e6984252055df0, log e32e170ba6dc052b, life 414d2eaa749ed6dd, panel fe2920e707995254
+  (a) PASS  the stream carries looks and the fence fired: 100 Looked records, 53 regions pinned while held
+  (b) PASS  the walk replays as it was recorded: 0 wrong (0 of them takings), 0 records left unreached
+  (c) PASS  both grains agree on every day of the walk: worst over 100 days: heads 0, slots 0, faiths 0
+  (d) PASS  no day turn promoted twice: worst day turn promoted 1
+  (e) PASS  somewhere to walk within four days of each taking: 4 takings, longest wait 0 day(s)
+  (f) the frozen constants of Phases 00-14 are the CI suite's business, not this command's
+gate: every clause this command can ask is kept
+```
+
+CTest `Run.Gate` matches those five clause lines whole. Whole, and not "does it
+say PASS": a clause that stopped being asked at all would still print a verdict.
+
+Three notes on reading it.
+
+**The first line is clause (b)'s half of the work.** It is printed in the shape
+`Vaelen.Stream.Write` prints it so the two can be put side by side; the command
+has no way to know what the engine printed, and inventing one would be inventing
+the answer. The rest of clause (b) — that nothing differed on replay and no
+record went unreached — it does check.
+
+**`--want-bound 0` is not optional.** The engine host takes whoever the world
+offers (`VaelenWorldSubsystem.cpp` sets 0) and the rules are not in the stream,
+for the same reason the cadence is not: they are the host's configuration, and a
+replay is told them. At `--want-bound 1` this same walk replays to a different
+person and reports four wrong takings, which is not a defect in the walk.
+
+**The streaming cadence is forced on and not asked for.** A walk carrying
+`Looked` records is a walk recorded with it, so `--gate` does not offer the
+choice — unlike `--replay`, where `--stream` must be passed by hand.
+
+**`longest wait 0` here and `1 day(s)` from `--walk` are the same measurement at
+two sample points.** `--walk` reads `near:` at the start of a day, before
+turning it; `--gate` reads it at the end, after the turn and after the records
+that landed on the tick it reached. Both are under the clause's four.

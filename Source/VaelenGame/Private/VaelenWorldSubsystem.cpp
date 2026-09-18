@@ -27,6 +27,20 @@ struct FVaelenHeld
 	TUniquePtr<Vaelen::Run::Aelvor> World;
 	TUniquePtr<Vaelen::Run::Door> Door;
 	Vaelen::WorldGen::RegionGraphCache Ways;
+	bool Streaming = false;
+
+	/// The ground, taken ONCE when the world is begun. Land.h says it is not a
+	/// per-frame structure and means it: 65536 tiles at eight bytes is half a
+	/// megabyte. It is here because it is what turns a point the camera is
+	/// over into a region, and the map does not move.
+	Vaelen::View::MapView Ground;
+
+	/// Where the host says it is looking, and whether it has ever said. Two
+	/// fields and not one, because a host looking at region 0 (nowhere) and a
+	/// host that has never looked are different: the first is recorded, the
+	/// second is the Phase 14 stream.
+	Vaelen::Run::Attention Eyes;
+	bool Watched = false;
 
 	Vaelen::View::WorldView Frame;
 	Vaelen::View::PeopleView Folk;
@@ -87,7 +101,7 @@ bool UVaelenWorldSubsystem::Begun() const
 	return Held && Held->World && Held->World->Begun();
 }
 
-bool UVaelenWorldSubsystem::Begin(int32 Size, int32 Years)
+bool UVaelenWorldSubsystem::Begin(int32 Size, int32 Years, bool bStreaming)
 {
 	if (!Held || Held->World)
 	{
@@ -97,18 +111,79 @@ bool UVaelenWorldSubsystem::Begin(int32 Size, int32 Years)
 	Asked.Size = static_cast<Vaelen::uint32>(Size > 0 ? Size : 128);
 	Asked.Years = static_cast<Vaelen::uint32>(Years > 0 ? Years : 120);
 	Asked.Play = true;
+	Asked.Stream = bStreaming;
 	Held->World = MakeUnique<Vaelen::Run::Aelvor>(Asked);
 	if (!Held->World->Begin())
 	{
 		Held->World.Reset();
 		return false;
 	}
+	Held->Streaming = bStreaming;
 	Vaelen::Player::StartRules Rules;
 	Rules.WantBound = 0; // whoever the world offers: a map may hold nobody bound
 	Held->Door = MakeUnique<Vaelen::Run::Door>(*Held->World, Rules);
 	Held->Door->TakeUp();
+	// Once, here: the ground of a begun world does not change, and taking it
+	// on a frame would be taking half a megabyte on a frame.
+	Vaelen::View::TakeMapView(Held->World->Instance(), Held->World->Sources(), Held->Ground);
 	Held->TakeAll();
 	return true;
+}
+
+bool UVaelenWorldSubsystem::Streaming() const
+{
+	return Held && Held->Streaming;
+}
+
+void UVaelenWorldSubsystem::Watch(int32 Region, int32 Reach, int32 Most)
+{
+	if (!Held)
+	{
+		return;
+	}
+	// Clamped where they are read from, not where they are used: a negative
+	// reach from a host that divided by something is a host bug, and turning it
+	// into four billion borders is this function's bug.
+	Held->Eyes.Region = Region > 0 ? static_cast<Vaelen::uint32>(Region) : 0u;
+	Held->Eyes.Reach = Reach > 0 ? static_cast<Vaelen::uint32>(Reach) : 0u;
+	Held->Eyes.Most = Most > 0 ? static_cast<Vaelen::uint32>(Most) : 0u;
+	Held->Watched = true;
+}
+
+bool UVaelenWorldSubsystem::Watching(int32& Region, int32& Reach, int32& Most) const
+{
+	if (!Held || !Held->Watched)
+	{
+		return false;
+	}
+	Region = static_cast<int32>(Held->Eyes.Region);
+	Reach = static_cast<int32>(Held->Eyes.Reach);
+	Most = static_cast<int32>(Held->Eyes.Most);
+	return true;
+}
+
+int32 UVaelenWorldSubsystem::RegionUnderGround(double GroundX, double GroundY, double TileSize) const
+{
+	if (!Held || Held->Ground.Width == 0 || Held->Ground.Height == 0 || !(TileSize > 0.0))
+	{
+		return 0;
+	}
+	// The inverse of VaelenViewDrawer::PlaceOfTile, which puts tile (X, Y) at
+	// ((X - Width/2) * TileSize, (Y - Height/2) * TileSize). FLOOR and not a
+	// cast: a cast towards zero folds the two tiles either side of the origin
+	// into one, which puts the whole western edge of the map one tile east.
+	const double AtX = FMath::FloorToDouble(GroundX / TileSize + static_cast<double>(Held->Ground.Width) * 0.5);
+	const double AtY = FMath::FloorToDouble(GroundY / TileSize + static_cast<double>(Held->Ground.Height) * 0.5);
+	if (AtX < 0.0 || AtY < 0.0 || AtX >= static_cast<double>(Held->Ground.Width) ||
+		AtY >= static_cast<double>(Held->Ground.Height))
+	{
+		return 0; // off the map, which is a host looking nowhere
+	}
+	const Vaelen::View::TileView* Tile =
+		Vaelen::View::TileIn(Held->Ground, static_cast<Vaelen::uint32>(AtX), static_cast<Vaelen::uint32>(AtY));
+	// TileView::Region is 0 on sea and on unassigned land (Land.h), which is
+	// the same answer as off the map and means the same thing.
+	return Tile != nullptr ? static_cast<int32>(Tile->Region) : 0;
 }
 
 void UVaelenWorldSubsystem::AdvanceDay(int32 Days)
@@ -119,6 +194,19 @@ void UVaelenWorldSubsystem::AdvanceDay(int32 Days)
 	}
 	for (int32 i = 0; i < Days; ++i)
 	{
+		// THE LOOK FIRST, and once per day turn. It goes through the door, so
+		// the world's own clock stamps it and the stream carries it; the door
+		// is the only way an input reaches the simulation (ADR-0138). A host
+		// that has never looked hands nothing over and writes the stream Phase
+		// 14 wrote.
+		//
+		// Before the turn rather than after, because that is the order a person
+		// lives in and the order the stream's encoder writes at equal ticks:
+		// somebody looks, and then time passes over what they saw.
+		if (Held->Watched)
+		{
+			Held->Door->Look(Held->Eyes);
+		}
 		Held->Door->Day(); // records DayTurned and turns it
 	}
 	Held->TakeAll();

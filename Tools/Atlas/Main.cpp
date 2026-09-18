@@ -473,6 +473,10 @@ namespace
 		/// reading it. Replaying a walk without it is replaying it into a world
 		/// that pays attention on a different schedule, and the digests say so.
 		bool Stream = false;
+		/// 15.10's gate: a walk recorded elsewhere, replayed here and asked the
+		/// six clauses of the phase gate. The streaming cadence is forced on
+		/// for it - RunGate says why.
+		std::string Gate;
 	};
 
 	/// Runs Years years, keeping a frame every Opt.Every of them. Taking a view
@@ -537,7 +541,9 @@ namespace
 					 "  --panel         with --replay or --empty: print the first screen it came to (14.06)\n"
 					 "  --want-bound N  StartRules::WantBound for a replay (0 or 1, default 1; the engine host "
 					 "uses 0)\n"
-					 "  --stand FILE    write a stand-in stream: thirty days played by nobody (14.10)\n");
+					 "  --stand FILE    write a stand-in stream: thirty days played by nobody (14.10)\n"
+					 "  --walk FILE     write a stand-in WALK: looks, takings and the streaming cadence (15.10)\n"
+					 "  --gate FILE     replay a walk and report the six clauses of the 15.10 gate\n");
 	}
 
 	bool ParseOptions(int Argc, char** Argv, Options& Out)
@@ -597,6 +603,10 @@ namespace
 			else if (std::strcmp(Arg, "--stand") == 0 && HasValue)
 			{
 				Out.Stand = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--gate") == 0 && HasValue)
+			{
+				Out.Gate = Argv[++I];
 			}
 			else if (std::strcmp(Arg, "--want-bound") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
 			{
@@ -883,6 +893,210 @@ namespace
 					"to walk %u day(s), audit clean\n",
 					Looks, Takings, static_cast<unsigned>(Tape.Days.size()), WorstPromotions, WorstWait);
 		return 0;
+	}
+
+	/// 15.10's gate, asked of a walk somebody else recorded.
+	///
+	/// RunWalk checks the same clauses on a walk it writes ITSELF, which proves
+	/// the clauses are meetable by this world and says nothing about the
+	/// engine's. This reads a stream from disk, replays it into a fresh world
+	/// and asks the clauses of THAT - which is the gate as the roadmap words
+	/// it: "a walk, recorded on the engine machine and replayed here".
+	///
+	/// Clauses (c), (d) and (e) are about EVERY day of the walk and not about
+	/// its end, so they are measured through Run::DayWatch. The alternative was
+	/// to replay the stream a second time here, by hand, which is the one thing
+	/// a replay must not have: the second one drifts, and the drift reads as a
+	/// property of the walk.
+	///
+	/// The streaming cadence is forced on rather than taken from --stream. A
+	/// walk carrying Looked records is a walk recorded with it (the engine host
+	/// turns it on with `Vaelen.Play <size> <years> 1`), and a replay told
+	/// otherwise would be replaying into a world that decides its detail on a
+	/// different schedule - every clause below would fail for one reason that
+	/// has nothing to do with the walk.
+	struct Walked
+	{
+		const Player::InputStream* Tape = nullptr;
+		WorldGen::RegionGraphCache Ways;
+		LifeView Life;
+		/// The world's promotion count when the walk began, NOT zero. MeasureLod
+		/// counts promotions since the world was made, and Begin runs four
+		/// hundred years before a single record is replayed: starting this at 0
+		/// charges the first day of the walk with every promotion of the
+		/// pre-history and reports a day turn that promoted twice when it
+		/// promoted once. That is what the first version of this did, and
+		/// --walk's own figure on the same walk is what caught it.
+		uint32 Promotions = 0;
+		uint32 WorstDay = 0; ///< the most any one day turn promoted (clause d)
+		/// Takings are counted from the RECORDS and not by watching who is
+		/// played, because a release followed by a taking under the same rules
+		/// can offer the same person back: two of the stand-in walk's four
+		/// takings do exactly that, and counting person changes saw two.
+		usize NextTaking = 0;
+		uint32 Takings = 0;
+		uint32 Since = 0xFFFFFFFFu; ///< day turns since the last taking, while it still waits
+		uint32 WorstWait = 0;		///< the longest any taking waited (clause e)
+		uint32 Disagreeing = 0;		///< the worst audit gap over the walk (clause c)
+		uint32 FaithsOverHeads = 0;
+		uint32 SlotSumWrong = 0;
+		uint32 Days = 0;
+	};
+
+	void EachDay(const Vaelen::Run::Aelvor& W, uint32, void* User)
+	{
+		Walked& S = *static_cast<Walked*>(User);
+		++S.Days;
+
+		// (d) What this one day turn promoted. MeasureLod counts promotions
+		// since the world began, so the day's own figure is the difference.
+		const uint32 Now =
+			Population::MeasureLod(W.Instance(), W.Ages(), W.Handles().Persons, W.Handles().Lod).Promotions;
+		const uint32 Today = Now >= S.Promotions ? Now - S.Promotions : 0u;
+		S.WorstDay = Today > S.WorstDay ? Today : S.WorstDay;
+		S.Promotions = Now;
+
+		// (e) How long after a taking somewhere to walk arrives. Replay applies
+		// every taking due at a tick before this runs, so a taking recorded at
+		// or before now has landed - and the walk is measured against what the
+		// records asked for rather than against what the world happens to show.
+		TakeLifeView(W.Instance(), W.Sources(), S.Ways, S.Life);
+		while (S.Tape != nullptr && S.NextTaking < S.Tape->Takings.size() &&
+			   S.Tape->Takings[S.NextTaking].Tick <= W.Now())
+		{
+			++S.Takings;
+			++S.NextTaking;
+			S.Since = 0; // several on one tick are one wait, and it starts here
+		}
+		if (S.Since != 0xFFFFFFFFu)
+		{
+			if (S.Life.NearCount > 0)
+			{
+				S.WorstWait = S.Since > S.WorstWait ? S.Since : S.WorstWait;
+				S.Since = 0xFFFFFFFFu;
+			}
+			else
+			{
+				++S.Since;
+				// A taking still waiting when the walk ends is counted at what
+				// it has waited so far, not forgiven for never finishing.
+				S.WorstWait = S.Since > S.WorstWait ? S.Since : S.WorstWait;
+			}
+		}
+
+		// (c) Both grains, every day. The audit at the END of a walk cannot see
+		// a gap that opened on day three and closed on day four, and the clause
+		// is about the walk and not about its last frame.
+		const Population::AuditReport Books = Population::Audit(W.Instance(), W.Ages(), W.Handles().Persons);
+		S.Disagreeing = Books.Disagreeing > S.Disagreeing ? Books.Disagreeing : S.Disagreeing;
+		S.FaithsOverHeads = Books.FaithsOverHeads > S.FaithsOverHeads ? Books.FaithsOverHeads : S.FaithsOverHeads;
+		S.SlotSumWrong = Books.SlotSumWrong > S.SlotSumWrong ? Books.SlotSumWrong : S.SlotSumWrong;
+	}
+
+	int RunGate(const Options& Opt)
+	{
+		std::string Text;
+		if (!ReadFile(Opt.Gate, Text))
+		{
+			std::fprintf(stderr, "AELVOR: cannot read %s\n", Opt.Gate.c_str());
+			return 1;
+		}
+		Player::InputStream S;
+		Player::StreamReport Report;
+		if (!Player::DecodeStream(Text, S, Report))
+		{
+			std::fprintf(stderr,
+						 "AELVOR: %s is not a stream this build reads (header bad %u, version bad %u, %u lines)\n",
+						 Opt.Gate.c_str(), Report.HeaderBad, Report.VersionBad, Report.Lines);
+			return 1;
+		}
+		Vaelen::Run::Options RO;
+		RO.Size = S.Header.Size;
+		RO.PreHistory = S.Header.PreHistory;
+		RO.Years = S.Header.Years;
+		RO.Seed = S.Header.Seed;
+		RO.Play = true;
+		RO.Stream = true; // see the note above: forced, not asked
+		Vaelen::Run::Aelvor A(RO);
+		if (!A.Begin())
+		{
+			std::fprintf(stderr, "AELVOR: generation failed at %u x %u\n", RO.Size, RO.Size);
+			return 1;
+		}
+		Player::StartRules Rules;
+		Rules.WantBound = Opt.WantBound;
+		Walked Seen;
+		Seen.Tape = &S;
+		// The baseline, read here and not assumed: see Walked::Promotions.
+		Seen.Promotions =
+			Population::MeasureLod(A.Instance(), A.Ages(), A.Handles().Persons, A.Handles().Lod).Promotions;
+		const Vaelen::Run::DayWatch Watching{&EachDay, &Seen};
+		const Vaelen::Run::ReplayReport R = Vaelen::Run::Replay(A, S, Rules, Watching);
+
+		// (a) The fence fired rather than merely existed: a pin is published
+		// when a demotion the bridge wanted is refused because somebody is held
+		// there, and a walk that never triggered one did not exercise 15.01.
+		uint32 Pins = 0;
+		const std::vector<Event>& Log = A.Instance().Log().All();
+		for (usize i = 0; i < Log.size(); ++i)
+		{
+			Pins += Log[i].Is(Population::RegionPinnedEvent) ? 1u : 0u;
+		}
+
+		WorldGen::RegionGraphCache Ways;
+		WorldView Frame;
+		LifeView Life;
+		ChronicleView Told;
+		PanelView Page;
+		TakeView(A.Instance(), A.Sources(), Frame);
+		TakeLifeView(A.Instance(), A.Sources(), Ways, Life);
+		TakeChronicleView(A.Instance(), A.Sources(), Told);
+		TakePanel(Frame, Life, Told, Page);
+		const std::string Story = A.Life();
+
+		// THE LINE THE OWNER COMPARES, in the shape Vaelen.Stream.Write prints
+		// it, so that clause (b) is read by putting the two side by side. Not
+		// checked here, because this build has no way to know what the engine
+		// printed and inventing one would be inventing the answer.
+		std::printf("AELVOR %u seed %012llx: played %s (person %u, region %u) %u days, %u intents, "
+					"state %016llx, log %016llx, life %016llx, panel %016llx\n",
+					static_cast<unsigned>(S.Header.Size), static_cast<unsigned long long>(S.Header.Seed), Life.Name,
+					static_cast<unsigned>(Life.Person), static_cast<unsigned>(Life.Region), R.Days, R.Answered,
+					static_cast<unsigned long long>(R.State), static_cast<unsigned long long>(R.Log),
+					static_cast<unsigned long long>(HashBytes(Story.data(), Story.size())),
+					static_cast<unsigned long long>(MeasurePanel(Page).Digest));
+
+		bool Held = true;
+		const auto Clause = [&Held](char Which, bool Kept, const char* What, const char* Saw)
+		{
+			std::printf("  (%c) %s  %s%s%s\n", Which, Kept ? "PASS" : "FAIL", What, Saw[0] == '\0' ? "" : ": ", Saw);
+			Held = Held && Kept;
+		};
+		char Says[128];
+
+		std::snprintf(Says, sizeof(Says), "%u Looked records, %u regions pinned while held", R.Looks, Pins);
+		Clause('a', R.Looks > 0 && Pins > 0, "the stream carries looks and the fence fired", Says);
+
+		std::snprintf(Says, sizeof(Says), "%u wrong (%u of them takings), %u records left unreached", R.Wrong,
+					  R.WrongTakings, R.Left);
+		Clause('b', R.Refused == 0 && R.Wrong == 0 && R.Left == 0 && R.Looks == S.Looks.size(),
+			   "the walk replays as it was recorded", Says);
+
+		std::snprintf(Says, sizeof(Says), "worst over %u days: heads %u, slots %u, faiths %u", Seen.Days,
+					  Seen.Disagreeing, Seen.SlotSumWrong, Seen.FaithsOverHeads);
+		Clause('c', Seen.Disagreeing == 0 && Seen.SlotSumWrong == 0 && Seen.FaithsOverHeads == 0,
+			   "both grains agree on every day of the walk", Says);
+
+		std::snprintf(Says, sizeof(Says), "worst day turn promoted %u", Seen.WorstDay);
+		Clause('d', Seen.WorstDay <= 1, "no day turn promoted twice", Says);
+
+		std::snprintf(Says, sizeof(Says), "%u takings, longest wait %u day(s)", Seen.Takings, Seen.WorstWait);
+		Clause('e', Seen.Takings >= 4 && Seen.WorstWait <= 4, "somewhere to walk within four days of each taking",
+			   Says);
+
+		std::printf("  (f) the frozen constants of Phases 00-14 are the CI suite's business, not this command's\n");
+		std::printf("gate: %s\n", Held ? "every clause this command can ask is kept" : "REFUSED");
+		return Held ? 0 : 1;
 	}
 
 	int RunStand(const Options& Opt)
@@ -1319,6 +1533,10 @@ namespace
 		{
 			Usage();
 			return 2;
+		}
+		if (!Opt.Gate.empty())
+		{
+			return RunGate(Opt);
 		}
 		if (!Opt.Stand.empty())
 		{

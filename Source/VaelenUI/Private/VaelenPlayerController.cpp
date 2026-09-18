@@ -105,13 +105,57 @@ void AVaelenPlayerController::NextTarget()
 		   static_cast<unsigned>(Most));
 }
 
+int32 AVaelenPlayerController::RegionTheCameraIsOver(int32& OutReach) const
+{
+	OutReach = 0;
+	const UVaelenWorldSubsystem* World = Held(GetWorld());
+	if (World == nullptr || !(TileSize > 0.0f))
+	{
+		return 0;
+	}
+	FVector From = FVector::ZeroVector;
+	FRotator Facing = FRotator::ZeroRotator;
+	// The VIEW point and not the pawn's: what the person at the keyboard is
+	// looking at is what the camera is pointed at, which is the whole question.
+	GetPlayerViewPoint(From, Facing);
+	const FVector Ahead = Facing.Vector();
+
+	// Where the view ray meets the ground plane the map is drawn on (Z = 0).
+	// A ray that goes up, or along the horizon, never meets it: that is a host
+	// looking at the sky, and the honest answer is nowhere.
+	if (Ahead.Z > -UE_KINDA_SMALL_NUMBER || From.Z <= 0.0)
+	{
+		return 0;
+	}
+	const double Along = From.Z / -Ahead.Z;
+	const FVector On = From + Ahead * Along;
+
+	// How far out to ask for detail, from how high the camera stands. A host's
+	// rule of thumb and nothing more - the world neither knows nor cares how it
+	// was arrived at, only what number arrived.
+	const double Tiles = From.Z / static_cast<double>(TileSize);
+	const int32 Borders = TilesPerBorder > 0 ? static_cast<int32>(Tiles / static_cast<double>(TilesPerBorder)) : 0;
+	OutReach = Borders < 0 ? 0 : (Borders > 3 ? 3 : Borders);
+	return World->RegionUnderGround(On.X, On.Y, static_cast<double>(TileSize));
+}
+
 void AVaelenPlayerController::TurnTheDay()
 {
 	UVaelenWorldSubsystem* World = Held(GetWorld());
-	if (World != nullptr)
+	if (World == nullptr)
 	{
-		World->AdvanceDay(1); // one DayTurned, recorded (ADR-0138)
+		return;
 	}
+	// THE LOOK BEFORE THE TURN, and only here. The subsystem remembers it and
+	// hands it through the door as the day turns, so the stream carries one
+	// Looked per DayTurned and a replay puts them back in that order.
+	if (bLookFromCamera)
+	{
+		int32 Reach = 0;
+		const int32 Region = RegionTheCameraIsOver(Reach);
+		World->Watch(Region, Reach, MostRegions);
+	}
+	World->AdvanceDay(1); // one DayTurned, recorded (ADR-0138)
 }
 
 void AVaelenPlayerController::WriteStream()

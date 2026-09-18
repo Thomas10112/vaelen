@@ -102,6 +102,26 @@ namespace Vaelen::Run
 		Hash64 Life = 0;
 	};
 
+	/// A reader called at the end of each replayed day, with the world as it
+	/// then stands and the day's own number from 0.
+	///
+	/// Here because the gate of 15.10 asks questions about EVERY day of a
+	/// walk - how many regions one day turn promoted, how many days after a
+	/// taking somewhere to walk appeared - and the only other way to ask them
+	/// is to replay the stream a second time in the caller, by hand. A second
+	/// replay is the one thing a replay must not have: it would drift from
+	/// this one, and the drift would look like a property of the walk.
+	///
+	/// It is handed a const world and its answer is never read. Nothing it
+	/// does can change what the replay comes to, which is what lets the same
+	/// walk be replayed with a watcher and without one and reach the same
+	/// digests - Tests/Run/Test_Door.cpp checks exactly that.
+	struct DayWatch
+	{
+		void (*After)(const Aelvor& W, uint32 Day, void* User) = nullptr;
+		void* User = nullptr;
+	};
+
 	/// The stream into a fresh world. Bounded by the records, not by a
 	/// lifetime: for each DayTurned in order, every Recorded due is submitted
 	/// (Tick <= Now, as Test_PlayerGate does), the day is turned, and every
@@ -109,5 +129,6 @@ namespace Vaelen::Run
 	/// never has to know why a life ended. What was recorded after the last
 	/// day turn is submitted last. Fresh must be Begun, with Play.
 	VAELEN_RUN_API ReplayReport Replay(Aelvor& Fresh, const Player::InputStream& S,
-									   const Player::StartRules& Rules = Player::StartRules{});
+									   const Player::StartRules& Rules = Player::StartRules{},
+									   const DayWatch& Watching = DayWatch{});
 } // namespace Vaelen::Run
