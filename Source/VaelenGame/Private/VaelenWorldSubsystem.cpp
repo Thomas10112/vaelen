@@ -7,10 +7,17 @@
 // simulation. Tools/check_ui_fence.py reads Public and deliberately not
 // Private, which is that seam written down.
 //
-// STATUS: VALIDATED (Phase 14) - built by UnrealBuildTool and RUN on
-// 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development Editor): eighty-three days
-// played at the keyboard, and Tools/Atlas replayed the stream headlessly to the
-// same four digests, byte for byte. Tests/Run/Streams/README.md has the lines.
+// STATUS: VALIDATED (Phase 14) for what Phase 14 left here - built by
+// UnrealBuildTool and RUN on 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development
+// Editor): eighty-three days played at the keyboard, and Tools/Atlas replayed
+// the stream headlessly to the same four digests, byte for byte.
+// Tests/Run/Streams/README.md has the lines.
+//
+// UNVERIFIED (Phase 15 task 15.10) for everything added on 2026-09-18 - the
+// look, the cadence argument, the camera. It parses against Tools/EngineShim
+// and UnrealBuildTool has never seen it. A file that said VALIDATED over code
+// no compiler has read would be exactly the fake "done" this project refuses,
+// so the line is split rather than dated forward.
 #include "VaelenWorldSubsystem.h"
 
 #include "Misc/FileHelper.h"
@@ -169,11 +176,21 @@ int32 UVaelenWorldSubsystem::RegionUnderGround(double GroundX, double GroundY, d
 		return 0;
 	}
 	// The inverse of VaelenViewDrawer::PlaceOfTile, which puts tile (X, Y) at
-	// ((X - Width/2) * TileSize, (Y - Height/2) * TileSize). FLOOR and not a
-	// cast: a cast towards zero folds the two tiles either side of the origin
-	// into one, which puts the whole western edge of the map one tile east.
-	const double AtX = FMath::FloorToDouble(GroundX / TileSize + static_cast<double>(Held->Ground.Width) * 0.5);
-	const double AtY = FMath::FloorToDouble(GroundY / TileSize + static_cast<double>(Held->Ground.Height) * 0.5);
+	// ((X - Width/2) * TileSize, (Y - Height/2) * TileSize).
+	//
+	// FLOOR and not a cast: a cast towards zero folds the two tiles either side
+	// of the origin into one, which puts the whole western edge of the map one
+	// tile east.
+	//
+	// AND + 0.5, which the first version of this did not have. PlaceOfTile
+	// returns a tile's CENTRE - the slab it places there is a unit mesh scaled
+	// to TileSize, so the tile covers the half tile either side of that point.
+	// Inverting without the half put every look one column and one row towards
+	// the north-west of where the camera was actually over, for every tile of
+	// every map. It reads correctly in a log either way, because the answer is
+	// always a plausible region.
+	const double AtX = FMath::FloorToDouble(GroundX / TileSize + static_cast<double>(Held->Ground.Width) * 0.5 + 0.5);
+	const double AtY = FMath::FloorToDouble(GroundY / TileSize + static_cast<double>(Held->Ground.Height) * 0.5 + 0.5);
 	if (AtX < 0.0 || AtY < 0.0 || AtX >= static_cast<double>(Held->Ground.Width) ||
 		AtY >= static_cast<double>(Held->Ground.Height))
 	{
@@ -203,7 +220,29 @@ void UVaelenWorldSubsystem::AdvanceDay(int32 Days)
 		// Before the turn rather than after, because that is the order a person
 		// lives in and the order the stream's encoder writes at equal ticks:
 		// somebody looks, and then time passes over what they saw.
-		if (Held->Watched)
+		//
+		// AND NOT AT ALL ON A TICK THAT ALREADY CARRIES A TAKING, which is not
+		// tidiness. Door::Day records DayTurned at the tick before the turn and
+		// then, if the played person did not survive it, records the TakenUp at
+		// the tick AFTER - so the taking lands on the tick this loop's next
+		// look would land on, and lands there FIRST, because the host learns
+		// the new tick only after the turn.
+		//
+		// Replay applies looks before takings at equal ticks, deliberately and
+		// for a measured reason (Door.cpp). So a host that recorded take-then-
+		// look at one tick recorded a world its own replay does not reach.
+		// MEASURED, not feared: four hundred days with one automatic taking in
+		// them recorded b6ad941689ba6b1a and replayed 37c1a3fe1e4961b2 - a
+		// different world - with Wrong = 0 and every taking matching, because
+		// nothing in a stream says which of two orders a tick was lived in.
+		// One tick of four hundred. Skipping that one look costs a host
+		// nothing: it looks again the next day.
+		//
+		// Door.TheEngineHostsOwnOrderReplaysToItself drives this exact loop
+		// headlessly and keeps the divergent arm beside it as the control.
+		const Vaelen::Player::InputStream& Tape = Held->Door->Stream();
+		const bool TookHere = !Tape.Takings.empty() && Tape.Takings.back().Tick == Held->World->Now();
+		if (Held->Watched && !TookHere)
 		{
 			Held->Door->Look(Held->Eyes);
 		}

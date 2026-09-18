@@ -4906,7 +4906,7 @@ a hope: **of the frozen constants of fourteen closed phases, zero move.**
 | 15.07 | The warden: the residency policy itself, a deterministic function from attention to detail requests, host-side, writing requests and never promotions, so ADR-0037 holds by construction. | `Run.Warden`: the same attention sequence yields the same requests on all eight legs; hysteresis proved by a walk back and forth over one border producing a bounded number of changes. | **VALIDATED headless 2026-09-16** — CTest `Door.TheWardenTurnsALookIntoRequestsAndDoesNotThrashOnABorder`, 18 checks, ADR-0144; ten crossings of one border change the watched set zero times |
 | 15.08 | The promotion hitch, bounded as a COUNT and not a wall clock, which is what ADR-0109 actually forbids. At most one region may be promoted on any single day turn, and the heads materialised per day turn are capped. | `Run.Hitch`: a 100-day walk crossing borders never promotes twice in one day turn; the cap is asserted, and removing it makes the test fail. | **VALIDATED headless 2026-09-16** — CTest `Door.NoDayTurnPromotesTwiceWhileTheCameraWalks`, ADR-0145. Control run: cap off, worst day turn promotes 3 regions and the test fails; cap on, 1 |
 | 15.09 | `RegionLod::Level`: either the gradations the number promises, or the row rewritten to say two grains and an ADR saying why. Decided in the open, not inherited. | **VALIDATED headless 2026-09-16** — the row was rewritten, not the type. CTest `Lod.ARegionHasTwoGrainsAndNotFive` pins that every mark in a world reads `DetailedLevel` and that the five-rung ladder is `SimLod`, rung by rung. ADR-0146 |
-| 15.10 | The engine half, one build and one sitting: the camera's region and reach handed to `Door::Look` each day, and a stream written with `Vaelen.Stream.Write` that carries `Looked` records. | **WIRED, WAITING ON ONE SITTING 2026-09-18** — headless: `VaelenAtlas --walk` writes a stand-in walk and refuses one that misses the clauses; `--gate FILE` asks the clauses of a walk recorded ANYWHERE and is pinned by CTest `Run.Gate`; `Run::DayWatch` lets it ask them without replaying the stream twice (`Door.AWatchedReplayIsTheSameReplay`). Engine: `UVaelenWorldSubsystem::Watch` + `RegionUnderGround`, `AdvanceDay` hands the look through the door once per day turn, `AVaelenPlayerController` reads the camera on the day key, and `Vaelen.Play <size> <years> 1` asks for the daily cadence. What is left is a person at the keyboard. | engine |
+| 15.10 | The engine half, one build and one sitting: the camera's region and reach handed to `Door::Look` each day, and a stream written with `Vaelen.Stream.Write` that carries `Looked` records. | **WIRED, WAITING ON ONE SITTING 2026-09-18** — headless: `VaelenAtlas --walk` writes a stand-in walk and refuses one that misses the clauses; `--gate FILE` asks the clauses of a walk recorded ANYWHERE and is pinned by CTest `Run.Gate`; `Run::DayWatch` lets it ask them without replaying the stream twice (`Door.AWatchedReplayIsTheSameReplay`). Engine: `UVaelenWorldSubsystem::Watch` + `RegionUnderGround`, `AdvanceDay` hands the look through the door once per day turn, `AVaelenPlayerController` reads the camera on the day key, and `Vaelen.Play <size> <years> 1` asks for the daily cadence. **The review of that commit found 27 surviving defects, among them that the host recorded a world its own replay does not reach** — 400 days with one automatic taking recorded `b6ad941689ba6b1a` and replayed `37c1a3fe1e4961b2`, with `Wrong = 0`; `Door.TheEngineHostsOwnOrderReplaysToItself` now drives the host's loop verbatim with the divergent arm beside it as the control. All 27 fixed; ADR-0147 and its amendment. The engine half is UNVERIFIED under UBT. What is left is a person at the keyboard. | engine |
 
 **The gate.** A walk, recorded on the engine machine and replayed here, that
 proves all of: (a) the stream carries `Looked` records and at least one region
@@ -4918,30 +4918,47 @@ arrived within four days of each - "never empty" was NOT a clause any
 implementation could meet, because the neighbours a taking asks for are requests
 the bridge answers on its next daily pass and 15.08 caps that pass at one
 promotion a day, so the third neighbour cannot be detailed before the third day.
-The stand-in walk measures the real figure: two days. That is the property
-ADR-0139 claimed, stated at a rate the world can keep; (f) every frozen constant of Phases 00-14
+The stand-in walk measures the real figure: ONE day turn - `--walk` reads it at
+the start of a day and `--gate` at the end of one, and since 2026-09-18 both say
+1. An earlier version of this paragraph said two, which was the figure of the
+walk written BEFORE the Phase 15 review regenerated it, and neither instrument
+has said two since. That is the property ADR-0139 claimed, stated at a rate the
+world can keep; (f) every frozen constant of Phases 00-14
 unmoved, checked rather than asserted. Any one missing and the phase stays open.
 
 **How the sitting goes.** In the editor, with `-game`:
 
 ```
-Vaelen.Play 128 100 1     the daily cadence; without the 1 the world ignores the camera
-Vaelen.Look 1 1 2         optional - the camera does this itself on every day turn
+Vaelen.Play 128 100 1     the daily cadence; without the 1 the world ignores the
+                          camera, and the controller then records no look at all
 (fly, and press Space a hundred times)
 F9  or  Vaelen.Stream.Write
 ```
 
-Then, on the file it names:
+`Vaelen.Look <region>` is there for a host with no camera over the played world.
+It is NOT a step of the sitting: `AVaelenPlayerController::TurnTheDay` overwrites
+it from the camera on the very next press of Space, so a look typed with
+`bLookFromCamera` on lives until the next keypress and no longer.
+
+`Vaelen.Stream.Write` prints three lines. The first two are Phase 14's, quoted
+verbatim in 14.10's checker; the third says how many looks the stream carries,
+which cadence the world was begun under, and the command to run. Then, on the
+file it names:
 
 ```
-VaelenAtlas --gate <file> --want-bound 0
+VaelenAtlas --gate <file> --want-bound 0 --expect "state ..., log ..., life ..., panel ..."
 ```
 
-which prints the four digests to compare against the ones `Vaelen.Stream.Write`
-printed (clause b) and one PASS/FAIL line per clause for (a) and (c) to (e).
-Clause (f) is the rest of the suite. The walk wants at least four takings, so
-the sitting is long enough for the played person to die four times over, or for
-`Vaelen.Play` to be given a world where they do.
+taking the four digests from the first line `Vaelen.Stream.Write` printed. It
+reports one PASS/FAIL line per clause for (a), (b), (c), (d) and (e), plus one
+for the digests - `--expect` is what makes that one a judgement rather than a
+line to read, and without it the command says so instead of claiming a pass.
+Clause (f) is the rest of the suite.
+
+The walk wants **at least four takings**, so the sitting is long enough for the
+played person to die four times over. The gate refuses a walk with no day turns
+and refuses one whose last taking was still waiting for somewhere to walk when
+the records ran out.
 
 Next: 15.01, the fence that has to exist before anything else is allowed to
 demote.

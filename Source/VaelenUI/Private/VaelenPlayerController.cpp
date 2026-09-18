@@ -5,10 +5,17 @@
 // page: the target a key aims at, whether the page offers the verb at all,
 // and what it foresaw when it does not.
 //
-// STATUS: VALIDATED (Phase 14) - built by UnrealBuildTool and RUN on
-// 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development Editor): eighty-three days
-// played at the keyboard, and Tools/Atlas replayed the stream headlessly to the
-// same four digests, byte for byte. Tests/Run/Streams/README.md has the lines.
+// STATUS: VALIDATED (Phase 14) for what Phase 14 left here - built by
+// UnrealBuildTool and RUN on 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development
+// Editor): eighty-three days played at the keyboard, and Tools/Atlas replayed
+// the stream headlessly to the same four digests, byte for byte.
+// Tests/Run/Streams/README.md has the lines.
+//
+// UNVERIFIED (Phase 15 task 15.10) for everything added on 2026-09-18 - the
+// look, the cadence argument, the camera. It parses against Tools/EngineShim
+// and UnrealBuildTool has never seen it. A file that said VALIDATED over code
+// no compiler has read would be exactly the fake "done" this project refuses,
+// so the line is split rather than dated forward.
 #include "VaelenPlayerController.h"
 
 #include "Components/InputComponent.h"
@@ -128,7 +135,7 @@ int32 AVaelenPlayerController::RegionTheCameraIsOver(int32& OutReach) const
 		return 0;
 	}
 	const double Along = From.Z / -Ahead.Z;
-	const FVector On = From + Ahead * Along;
+	const FVector On = From + Ahead * Along - MapOrigin;
 
 	// How far out to ask for detail, from how high the camera stands. A host's
 	// rule of thumb and nothing more - the world neither knows nor cares how it
@@ -149,7 +156,11 @@ void AVaelenPlayerController::TurnTheDay()
 	// THE LOOK BEFORE THE TURN, and only here. The subsystem remembers it and
 	// hands it through the door as the day turns, so the stream carries one
 	// Looked per DayTurned and a replay puts them back in that order.
-	if (bLookFromCamera)
+	// AND ONLY WHERE THE WORLD CAN ACT ON IT. A world begun without the daily
+	// cadence ignores every look, so recording them would put a hundred records
+	// in a stream that change nothing - and would stop this host writing the
+	// stream Phase 14 wrote, which its own comments promise it still writes.
+	if (bLookFromCamera && World->Streaming())
 	{
 		int32 Reach = 0;
 		const int32 Region = RegionTheCameraIsOver(Reach);

@@ -124,30 +124,35 @@ a walk that arrives as a file — which is what the 15.10 gate is actually about
 because the walk it closes on is recorded in the editor on another machine.
 
 ```
-VaelenAtlas --gate Tests/Run/Streams/aelvor128-walk-2026-09-17.stream --want-bound 0
+VaelenAtlas --gate Tests/Run/Streams/aelvor128-walk-2026-09-17.stream --want-bound 0 \
+  --expect "state 18e6984252055df0, log e32e170ba6dc052b, life 414d2eaa749ed6dd, panel fe2920e707995254"
 ```
 
 ```
+gate: Tests/Run/Streams/aelvor128-walk-2026-09-17.stream, want-bound 0, daily cadence forced on (a walk carrying looks was recorded with it)
 AELVOR 128 seed 41454c564f52: played person 4171 (person 4171, region 9) 100 days, 0 intents, state 18e6984252055df0, log e32e170ba6dc052b, life 414d2eaa749ed6dd, panel fe2920e707995254
-  (a) PASS  the stream carries looks and the fence fired: 100 Looked records, 53 regions pinned while held
-  (b) PASS  the walk replays as it was recorded: 0 wrong (0 of them takings), 0 records left unreached
+  (a) PASS  the stream carries looks and the fence fired: 100 Looked records, 53 pins published while held
+  (b) PASS  every record replayed as it was recorded: 0 wrong (0 of them takings), 0 records left unreached
+  (B) PASS  the four digests are the ones the host printed: state 18e6984252055df0, log e32e170ba6dc052b, life 414d2eaa749ed6dd, panel fe2920e707995254
   (c) PASS  both grains agree on every day of the walk: worst over 100 days: heads 0, slots 0, faiths 0
   (d) PASS  no day turn promoted twice: worst day turn promoted 1
-  (e) PASS  somewhere to walk within four days of each taking: 4 takings, longest wait 0 day(s)
+  (e) PASS  somewhere to walk within four days of each taking: 4 takings, longest wait 1 day turn(s)
   (f) the frozen constants of Phases 00-14 are the CI suite's business, not this command's
 gate: every clause this command can ask is kept
 ```
 
-CTest `Run.Gate` matches those five clause lines whole. Whole, and not "does it
-say PASS": a clause that stopped being asked at all would still print a verdict.
+CTest `Run.Gate` matches those six clause lines WHOLE. Whole, and not "does it
+say PASS", and not a substring either: a clause that stopped being asked would
+still print a verdict, and a clause whose figures drifted would still match a
+prefix. The numbers ARE the measurement.
 
-Three notes on reading it.
+Five notes on reading it.
 
-**The first line is clause (b)'s half of the work.** It is printed in the shape
-`Vaelen.Stream.Write` prints it so the two can be put side by side; the command
-has no way to know what the engine printed, and inventing one would be inventing
-the answer. The rest of clause (b) — that nothing differed on replay and no
-record went unreached — it does check.
+**Clause (b) is two halves and only one of them is free.** Every record replaying
+as recorded, this command measures. The four digests it cannot: it has no way to
+know what the engine printed. So `--expect` is how you hand them over, and
+without it the command prints `(B) NOT JUDGED` rather than a pass over a
+property nothing measured. That failure mode is the reason this command exists.
 
 **`--want-bound 0` is not optional.** The engine host takes whoever the world
 offers (`VaelenWorldSubsystem.cpp` sets 0) and the rules are not in the stream,
@@ -157,9 +162,23 @@ person and reports four wrong takings, which is not a defect in the walk.
 
 **The streaming cadence is forced on and not asked for.** A walk carrying
 `Looked` records is a walk recorded with it, so `--gate` does not offer the
-choice — unlike `--replay`, where `--stream` must be passed by hand.
+choice — unlike `--replay`, where `--stream` must be passed by hand. The first
+line says so out loud, because neither the cadence nor the want-bound is in the
+file and both change what the walk replays to. **This remains a real gap in the
+format**: a version-1 stream cannot say which cadence wrote it, so a walk handed
+to the wrong one fails every clause for a reason that has nothing to do with the
+walk. `Vaelen.Stream.Write`'s third line is where a host records it for a human.
 
-**`longest wait 0` here and `1 day(s)` from `--walk` are the same measurement at
-two sample points.** `--walk` reads `near:` at the start of a day, before
-turning it; `--gate` reads it at the end, after the turn and after the records
-that landed on the tick it reached. Both are under the clause's four.
+**A walk that measures nothing is refused.** No day turns at all — every clause
+below would otherwise be kept by an empty file, because nothing disagreed,
+nothing promoted twice and nobody waited. And a walk whose last taking was still
+waiting for somewhere to walk when the records ran out: it sits on a wait of 0
+that it was never observed long enough to earn.
+
+**`longest wait` is in DAY TURNS since the taking, and both instruments now say
+1.** They did not always. `--gate` reported 0 until 2026-09-18, because a walk's
+first taking is applied before the first day turn and the watcher only saw the
+ends of days — so it read that taking's wait a whole turn late and called it
+zero. `Run::DayWatch::Begun` is the hook that closes it. The disagreement between
+the two instruments is what found it, which is the second time on this task that
+a second instrument was worth more than a careful reading.

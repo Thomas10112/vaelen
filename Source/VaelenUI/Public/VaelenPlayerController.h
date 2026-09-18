@@ -8,10 +8,17 @@
 // one host input that is not a gameplay command (ADR-0138); F9 writes the
 // stream.
 //
-// STATUS: VALIDATED (Phase 14) - built by UnrealBuildTool and RUN on
-// 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development Editor): eighty-three days
-// played at the keyboard, and Tools/Atlas replayed the stream headlessly to the
-// same four digests, byte for byte. Tests/Run/Streams/README.md has the lines.
+// STATUS: VALIDATED (Phase 14) for what Phase 14 left here - built by
+// UnrealBuildTool and RUN on 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development
+// Editor): eighty-three days played at the keyboard, and Tools/Atlas replayed
+// the stream headlessly to the same four digests, byte for byte.
+// Tests/Run/Streams/README.md has the lines.
+//
+// UNVERIFIED (Phase 15 task 15.10) for everything added on 2026-09-18 - the
+// look, the cadence argument, the camera. It parses against Tools/EngineShim
+// and UnrealBuildTool has never seen it. A file that said VALIDATED over code
+// no compiler has read would be exactly the fake "done" this project refuses,
+// so the line is split rather than dated forward.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -74,16 +81,37 @@ public:
 	UPROPERTY(EditAnywhere, Category = "AELVOR|Look", meta = (ClampMin = "0"))
 	int32 MostRegions = 4;
 
+	/// Where the map's own origin sits in the level. PlaceOfTile returns an
+	/// offset the VAELEN View actor's transform is then applied to, so a host
+	/// that moved that actor must say where: leaving this at zero while the
+	/// actor sits elsewhere reads a region from the wrong part of the map, and
+	/// reads it quietly, because every answer is a plausible region.
+	UPROPERTY(EditAnywhere, Category = "AELVOR|Look")
+	FVector MapOrigin = FVector::ZeroVector;
+
 	/// Off, and the day turns without a look: the stream is then the one Phase
-	/// 14 wrote. On for a walk.
+	/// 14 wrote. On for a walk - but ONLY where the world can act on it: a
+	/// world begun without the daily cadence ignores looks, so recording them
+	/// into its stream would change the stream's shape and change nothing else.
+	/// TurnTheDay asks the subsystem which cadence it was begun with.
 	UPROPERTY(EditAnywhere, Category = "AELVOR|Look")
 	bool bLookFromCamera = true;
 
 private:
 	/// Where the camera's view ray meets the ground, as a region. 0 when the
 	/// camera looks at or above the horizon, when the ray lands off the map and
-	/// when it lands on water - all four of which are a host looking nowhere,
-	/// which is itself an input worth recording.
+	/// when it lands on water - three things that all mean the host is looking
+	/// nowhere, which is itself an input worth recording.
+	///
+	/// THE GROUND IS THE PLANE Z = 0, which is sea level and not the land. The
+	/// drawer stands relief on top of it, so a camera at a shallow angle over
+	/// hill country reports the region its ray reaches at sea level, which can
+	/// be a tile or two beyond the peak it appears to be pointed at. Directly
+	/// overhead - which is how AELVOR is looked at - the error is nothing. It
+	/// is recorded here rather than fixed because a look is a host's opinion
+	/// about where it is looking: whichever region it names, the world records
+	/// that one and the replay reproduces it, so this costs accuracy and never
+	/// determinism.
 	int32 RegionTheCameraIsOver(int32& OutReach) const;
 
 	/// Through the page and then through the door, and nowhere else. The page

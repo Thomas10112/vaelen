@@ -10075,7 +10075,9 @@ The risk it carries is that a watcher changes the replay. So it is handed a
 `const Aelvor&`, its return is `void`, and `Door.AWatchedReplayIsTheSameReplay`
 replays one stream into two fresh worlds — one watched, one not — and checks
 that state, log, life, day count and look count are identical. A watcher that
-started mattering would fail that test rather than quietly move a gate.
+started mattering would fail that test rather than quietly move a gate. (See the
+amendment below: the `const` is a convention a `const_cast` defeats, so what the
+test proves is that THIS project's watchers do not, not that none could.)
 
 ### Where the clauses are asked: a command, not a test
 
@@ -10124,3 +10126,68 @@ It also keeps the whole of `VaelenUI` free of the frame clock, which
 Region 0 stays an input, not an absence: a host looking nowhere is something the
 world is entitled to be told. A host that has **never** looked hands nothing
 over at all, and writes exactly the stream Phase 14 wrote.
+
+### Amendment, 2026-09-18, the same day: what the review of this change found
+
+An adversarial review of the commit that applied this ADR returned 30
+candidates and 27 survived two refuters each. Three of them are corrections to
+what is written above, and one of them is the worst kind of defect this project
+has a name for.
+
+**THE ENGINE HOST RECORDED A WORLD ITS OWN REPLAY DOES NOT REACH.** The section
+above ends by saying the look rides the day turn. It does, and that was not
+enough. `Door::Day` records `DayTurned` at the tick before the turn and, when
+the played person did not survive it, records the `TakenUp` at the tick **after**
+— which is the tick the host's next look lands on, and the taking is already
+there, because a host learns the new tick only after the turn. `Replay` applies
+looks before takings at equal ticks, deliberately, for a reason the Phase 15
+review measured. So the host recorded take-then-look and the replay performs
+look-then-take.
+
+Measured, not argued: four hundred day turns with **one** automatic taking among
+them recorded `b6ad941689ba6b1a` and replayed `37c1a3fe1e4961b2`. A different
+world, from `Wrong = 0`, every taking matching, every look applied, every day
+turned. One tick in four hundred. Nothing in a stream says which of two orders a
+tick was lived in, so nothing could have caught it except comparing the recorded
+world to the replayed one — which no test did.
+
+`AdvanceDay` now skips the look on a tick that already carries a taking. That
+costs a host one look out of a hundred; it looks again the next day.
+`Door.TheEngineHostsOwnOrderReplaysToItself` drives the host's loop verbatim and
+keeps **both** arms: the loose one, which must diverge, and the host's, which
+must not. A test that only showed the fixed arm passing would prove nothing
+about whether the fix is what made it pass.
+
+**The gate had a third bug of exactly the kind this ADR already described.** A
+walk's first taking is applied before the first day turn, and a watcher called
+only at the ends of days first sees it a whole turn after it happened — so it
+credited that taking with a wait of 0 whatever it waited. `--gate` said 0 where
+`--walk` said 1 on the byte-identical walk. `DayWatch::Begun` is the hook that
+closes it, and the two instruments now agree. Three bugs in this gate, all three
+found by a second instrument disagreeing, none by reading.
+
+**`--gate` was printing PASS over a property it did not measure.** Clause (b)
+has two halves: every record replaying as recorded, which the command measures,
+and the four digests, which it cannot — it has no way to know what the engine
+printed. It now takes `--expect` and judges them, and prints `NOT JUDGED` when
+it is not given them. A gate that passes what it did not look at is the failure
+this whole command was written to avoid, and it shipped with one.
+
+**Two corrections to the text above.** `DayWatch`'s `const Aelvor&` is a
+convention and not a guarantee: a watcher can `const_cast`, and no test can stop
+it. What `Door.AWatchedReplayIsTheSameReplay` proves is narrower and still worth
+having — that *this* project's watchers do not, so the gate measures the replay
+it reports on. And the gate now refuses two walks it would have passed: one with
+no day turns at all, where every clause is kept by an empty file because nothing
+disagreed and nobody waited, and one whose last taking was still waiting when
+the records ran out, sitting on a 0 it was never observed long enough to earn.
+
+**And the camera's arithmetic was wrong twice.** `PlaceOfTile` returns a tile's
+CENTRE — the slab it places is a unit mesh scaled to `TileSize` — so inverting
+it without adding half a tile put every look one column and one row north-west
+of where the camera was. It reads correctly in a log either way, because the
+answer is always a plausible region. And `PlaceOfTile` works in the view actor's
+local space, so a host that moved that actor must say where: `MapOrigin`.
+Neither is a determinism defect — whichever region a host names, the world
+records that one and the replay reproduces it — and both are the difference
+between a walk over what somebody looked at and a walk over somewhere else.

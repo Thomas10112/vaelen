@@ -18,7 +18,7 @@ TASK        : 15.10 — the engine half. WIRED 2026-09-18; what is left is one s
               at the keyboard.
 
               THE PHASE 15 KERNEL IS BUILT AND RUN UNDER UBT. On 2026-09-18 the owner
-              built the four modules Phase 15 touched with MSVC 19.51 on Win64 and ran
+              built the six modules Phase 15 has touched with MSVC 19.51 on Win64 and ran
               `Vaelen.Play 128 120` + `Vaelen.Stream.Write`. The four digests are
               IDENTICAL to a headless gcc/Linux run of the same wiring — state
               4c03becd9cd9c994, log dc418af0cd4b8d76, life 92f78aa85c0e1654, panel

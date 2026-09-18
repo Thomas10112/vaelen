@@ -139,6 +139,13 @@ namespace Vaelen::Run
 		};
 		LookDue();
 		TakeUpDue();
+		// Before the first turn, and after what was due before it: this is the
+		// world a host had when it took somebody up, and the only moment a
+		// watcher can see it. See DayWatch::Begun.
+		if (Watching.Begun != nullptr)
+		{
+			Watching.Begun(Fresh, Watching.User);
+		}
 		for (usize d = 0; d < S.Days.size(); ++d)
 		{
 			SubmitDue();

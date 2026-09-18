@@ -17,10 +17,17 @@
 // below is a view leaf, the command surface or Core, and nothing here names a
 // World, a Run or a Take.
 //
-// STATUS: VALIDATED (Phase 14) - built by UnrealBuildTool and RUN on
-// 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development Editor): eighty-three days
-// played at the keyboard, and Tools/Atlas replayed the stream headlessly to the
-// same four digests, byte for byte. Tests/Run/Streams/README.md has the lines.
+// STATUS: VALIDATED (Phase 14) for what Phase 14 left here - built by
+// UnrealBuildTool and RUN on 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development
+// Editor): eighty-three days played at the keyboard, and Tools/Atlas replayed
+// the stream headlessly to the same four digests, byte for byte.
+// Tests/Run/Streams/README.md has the lines.
+//
+// UNVERIFIED (Phase 15 task 15.10) for everything added on 2026-09-18 - the
+// look, the cadence argument, the camera. It parses against Tools/EngineShim
+// and UnrealBuildTool has never seen it. A file that said VALIDATED over code
+// no compiler has read would be exactly the fake "done" this project refuses,
+// so the line is split rather than dated forward.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -88,15 +95,26 @@ public:
 	bool Watching(int32& Region, int32& Reach, int32& Most) const;
 
 	/// The region under a point on the ground, where the ground is drawn the
-	/// way VaelenViewDrawer::PlaceOfTile draws it: the map centred on the
-	/// origin, TileSize centimetres to a tile, north-west at the lowest
-	/// coordinates. 0 when no world is begun, when the point is off the map,
-	/// and when the tile there is sea - three different things that all mean
-	/// "no region here", and all three are a host looking nowhere.
+	/// way VaelenViewDrawer::PlaceOfTile draws it. 0 when no world is begun,
+	/// when the point is off the map, and when the tile there is sea - three
+	/// different things that all mean "no region here", and all three are a
+	/// host looking nowhere.
 	///
 	/// The host converts, not the world: this takes the units the host draws
 	/// in because the host is the only thing that knows them, and hands back a
 	/// region index, which is the only thing the simulation knows.
+	///
+	/// TWO THINGS IT ASSUMES, both of them the drawer's own conventions, and
+	/// both of them the caller's to honour:
+	///
+	/// - The point is in the MAP'S space, not the level's. PlaceOfTile returns
+	///   an offset that the view actor's transform is then applied to, so a
+	///   host whose actor is not at the origin subtracts its location first.
+	///   A caller that forgets reads a region from somewhere else on the map -
+	///   quietly, because every answer is a plausible region.
+	/// - PlaceOfTile returns a tile's CENTRE, not its corner: the slab it
+	///   places is a unit mesh scaled to TileSize, so tile X covers the half
+	///   tile either side of it. The inverse below adds that half back.
 	int32 RegionUnderGround(double GroundX, double GroundY, double TileSize) const;
 
 	/// Days day-turns, each recorded as a DayTurned, then every view retaken.

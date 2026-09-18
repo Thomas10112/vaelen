@@ -683,7 +683,9 @@ VAELEN_TEST(Door, AWatchedReplayIsTheSameReplay)
 	Aelvor Seen(O);
 	VT_REQUIRE(Seen.Begin());
 	Counted C;
-	const ReplayReport With = Replay(Seen, Tape, Rules, DayWatch{&CountDay, &C});
+	// Designated, so that a member added to DayWatch cannot silently rebind
+	// these two: it did exactly that once, and only the compiler caught it.
+	const ReplayReport With = Replay(Seen, Tape, Rules, DayWatch{.After = &CountDay, .User = &C});
 
 	VT_CHECK_MSG(Without.Refused == 0 && With.Refused == 0, "both replays ran at all");
 	VT_CHECK_MSG(With.State == Without.State, "a watched replay reaches the same state");
@@ -702,4 +704,96 @@ VAELEN_TEST(Door, AWatchedReplayIsTheSameReplay)
 	VT_REQUIRE(Third.Begin());
 	const ReplayReport Plain = Replay(Third, Tape);
 	VT_CHECK_MSG(Plain.Refused == 0, "the three-argument form still replays");
+}
+
+VAELEN_TEST(Door, TheEngineHostsOwnOrderReplaysToItself)
+{
+	// Phase 15 task 15.10, and the defect this test exists for was REAL and was
+	// mine: UVaelenWorldSubsystem::AdvanceDay recorded a look on a tick that
+	// already carried a taking, and a replay of that stream reached a different
+	// world - silently, with Wrong = 0 and every taking matching.
+	//
+	// Door::Day records DayTurned at the tick BEFORE the turn and, when the
+	// played person did not survive it, records the TakenUp at the tick AFTER.
+	// That is the tick the host's next look lands on, and the taking is already
+	// there, because the host learns the new tick only after the turn. Replay
+	// applies looks before takings at equal ticks. Two orders, one stream,
+	// nothing in it saying which was lived.
+	//
+	// So this test is the host's loop, verbatim, and both arms of it.
+	Options O;
+	O.Size = 128;
+	O.Years = 100;
+	O.Play = true;
+	O.Stream = true;
+	Player::StartRules Rules;
+	Rules.WantBound = 0;
+
+	// Long enough that the played person dies and Door::Day takes somebody up
+	// on its own - which is the only way the collision happens at all, and is
+	// why no shorter walk would have found it.
+	const uint32 Days = 400;
+
+	const auto Walk = [&](bool SkipOnATakingsTick, Hash64& Recorded, ReplayReport& Back, uint32& Looks, uint32& Shared)
+	{
+		Aelvor A(O);
+		VT_REQUIRE(A.Begin());
+		Door D(A, Rules);
+		VT_REQUIRE(D.TakeUp() != 0);
+		for (uint32 i = 0; i < Days; ++i)
+		{
+			// AdvanceDay, line for line.
+			const Player::InputStream& Tape = D.Stream();
+			const bool TookHere = !Tape.Takings.empty() && Tape.Takings.back().Tick == A.Now();
+			if (!SkipOnATakingsTick || !TookHere)
+			{
+				D.Look(Attention{1u + (i * 7u) % 60u, 1u, 4u});
+			}
+			D.Day();
+		}
+		const Player::InputStream& Tape = D.Stream();
+		Looks = static_cast<uint32>(Tape.Looks.size());
+		Shared = 0;
+		for (const Player::TakenUp& K : Tape.Takings)
+		{
+			for (const Player::Looked& L : Tape.Looks)
+			{
+				if (L.Tick == K.Tick)
+				{
+					++Shared;
+					break;
+				}
+			}
+		}
+		Recorded = A.StateDigest();
+		Aelvor Fresh(O);
+		VT_REQUIRE(Fresh.Begin());
+		Back = Replay(Fresh, Tape, Rules);
+	};
+
+	// THE CONTROL FIRST, because a test that only shows the fixed arm passing
+	// proves nothing about whether it is the fix that made it pass.
+	Hash64 WasLoose = 0;
+	ReplayReport Loose;
+	uint32 LooseLooks = 0;
+	uint32 LooseShared = 0;
+	Walk(false, WasLoose, Loose, LooseLooks, LooseShared);
+	VT_CHECK_MSG(LooseShared > 0, "the loose arm really does put a look on a taking's tick, or it tests nothing");
+	VT_CHECK_MSG(Loose.Wrong == 0, "and the replay reports nothing wrong, which is the whole danger");
+	VT_CHECK_MSG(Loose.State != WasLoose, "yet it reaches a different world: a look before a taking is a "
+										  "different world from a taking before a look");
+
+	// AND THE HOST'S ACTUAL ORDER.
+	Hash64 Was = 0;
+	ReplayReport Back;
+	uint32 Looks = 0;
+	uint32 Shared = 0;
+	Walk(true, Was, Back, Looks, Shared);
+	VT_CHECK_MSG(Shared == 0, "no tick carries both a taking and a look");
+	VT_CHECK_MSG(Back.Refused == 0, "the walk replays at all");
+	VT_CHECK_MSG(Back.Wrong == 0, "nothing differed from the record");
+	VT_CHECK_MSG(Back.Days == Days, "every day turned");
+	VT_CHECK_MSG(Back.Looks == Looks, "every look applied");
+	VT_CHECK_MSG(Back.State == Was, "and the world the host recorded is the world the replay reaches");
+	VT_CHECK_MSG(Looks + Shared >= Days - 4, "and skipping costs at most one look per taking");
 }

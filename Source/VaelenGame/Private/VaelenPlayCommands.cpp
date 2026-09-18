@@ -11,10 +11,17 @@
 // module: ADR-0138's day turn is a recorded input, and a world that also moved
 // on the frame clock could not be replayed from a key sequence.
 //
-// STATUS: VALIDATED (Phase 14) - built by UnrealBuildTool and RUN on
-// 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development Editor): eighty-three days
-// played at the keyboard, and Tools/Atlas replayed the stream headlessly to the
-// same four digests, byte for byte. Tests/Run/Streams/README.md has the lines.
+// STATUS: VALIDATED (Phase 14) for what Phase 14 left here - built by
+// UnrealBuildTool and RUN on 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development
+// Editor): eighty-three days played at the keyboard, and Tools/Atlas replayed
+// the stream headlessly to the same four digests, byte for byte.
+// Tests/Run/Streams/README.md has the lines.
+//
+// UNVERIFIED (Phase 15 task 15.10) for everything added on 2026-09-18 - the
+// look, the cadence argument, the camera. It parses against Tools/EngineShim
+// and UnrealBuildTool has never seen it. A file that said VALIDATED over code
+// no compiler has read would be exactly the fake "done" this project refuses,
+// so the line is split rather than dated forward.
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
@@ -163,9 +170,23 @@ namespace
 		}
 		if (Args.Num() < 1)
 		{
-			UE_LOG(LogVaelenPlay, Warning,
-				   TEXT("LogVaelenPlay: Vaelen.Look <region> [reach] [most] (region 0 is "
-						"looking nowhere, which is also an input)"));
+			// No arguments is a QUESTION, not a mistake: what is the host
+			// looking at now. The camera sets this on every day turn, so
+			// "nothing yet" and "at nowhere" are both real answers.
+			int32 Region = 0;
+			int32 Reach = 0;
+			int32 Most = 0;
+			if (World->Watching(Region, Reach, Most))
+			{
+				UE_LOG(LogVaelenPlay, Log, TEXT("LogVaelenPlay: looking at region %d, reach %d, most %d"), Region,
+					   Reach, Most);
+			}
+			else
+			{
+				UE_LOG(LogVaelenPlay, Log,
+					   TEXT("LogVaelenPlay: not looking anywhere yet, and no look is recorded "
+							"until something looks. Vaelen.Look <region> [reach] [most]"));
+			}
 			return;
 		}
 		const int32 Region = NumberAt(Args, 0, 0);

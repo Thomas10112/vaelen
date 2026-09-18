@@ -394,7 +394,6 @@ struct FMath
 	}
 	static double Pow(double Base, double Exponent);
 	static double FloorToDouble(double Value);
-	static int32 FloorToInt(double Value);
 };
 
 struct FVector;

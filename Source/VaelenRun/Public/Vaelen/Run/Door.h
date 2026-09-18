@@ -118,6 +118,17 @@ namespace Vaelen::Run
 	/// digests - Tests/Run/Test_Door.cpp checks exactly that.
 	struct DayWatch
 	{
+		/// Called ONCE, after the records due before the first day turn have
+		/// been applied and before that turn happens.
+		///
+		/// It is not symmetry. A host takes somebody up before it turns its
+		/// first day, so a walk's FIRST taking is applied here, and a watcher
+		/// that only sees the ends of days first sees that taking a whole day
+		/// turn after it happened - and cannot tell the difference between "it
+		/// had somewhere to walk immediately" and "it waited a day". The
+		/// 15.10 gate reported 0 where --walk reported 1 on the same walk for
+		/// exactly that reason, and this is the hook that closes it.
+		void (*Begun)(const Aelvor& W, void* User) = nullptr;
 		void (*After)(const Aelvor& W, uint32 Day, void* User) = nullptr;
 		void* User = nullptr;
 	};

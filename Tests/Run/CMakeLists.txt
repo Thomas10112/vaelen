@@ -128,17 +128,21 @@ set_tests_properties(Replay.Walked PROPERTIES TIMEOUT 1800)
 # them. The streaming cadence is NOT passed, because --gate forces it: a walk
 # carrying Looked records is a walk recorded with it.
 #
-# The six lines are matched whole. The first version of this checked only the
-# verdict, and a verdict is one boolean over six clauses: a clause that stopped
-# being asked at all would still print "kept".
+# The six clause lines are matched WHOLE, and --expect is passed so that clause
+# (b)'s other half - the four digests - is judged rather than printed. The first
+# version of this checked only the verdict, and a verdict is one boolean over
+# six clauses: a clause that stopped being asked would still print "kept". The
+# second matched substrings, which a drifting figure would still have satisfied.
 add_test(NAME Run.Gate
   COMMAND ${CMAKE_COMMAND}
           -DATLAS=$<TARGET_FILE:VaelenAtlas>
           -DSTREAM=${PROJECT_SOURCE_DIR}/Tests/Run/Streams/aelvor128-walk-2026-09-17.stream
-          "-DA=  (a) PASS  the stream carries looks and the fence fired: 100 Looked records, 53 regions pinned while held"
-          "-DB=  (b) PASS  the walk replays as it was recorded: 0 wrong (0 of them takings), 0 records left unreached"
+          "-DEXPECT=state 18e6984252055df0, log e32e170ba6dc052b, life 414d2eaa749ed6dd, panel fe2920e707995254"
+          "-DA=  (a) PASS  the stream carries looks and the fence fired: 100 Looked records, 53 pins published while held"
+          "-DB=  (b) PASS  every record replayed as it was recorded: 0 wrong (0 of them takings), 0 records left unreached"
+          "-DBB=  (B) PASS  the four digests are the ones the host printed: state 18e6984252055df0, log e32e170ba6dc052b, life 414d2eaa749ed6dd, panel fe2920e707995254"
           "-DC=  (c) PASS  both grains agree on every day of the walk: worst over 100 days: heads 0, slots 0, faiths 0"
           "-DD=  (d) PASS  no day turn promoted twice: worst day turn promoted 1"
-          "-DE=  (e) PASS  somewhere to walk within four days of each taking: 4 takings, longest wait 0 day(s)"
+          "-DE=  (e) PASS  somewhere to walk within four days of each taking: 4 takings, longest wait 1 day turn(s)"
           -P ${CMAKE_CURRENT_LIST_DIR}/Gate.cmake)
 set_tests_properties(Run.Gate PROPERTIES TIMEOUT 1800)
