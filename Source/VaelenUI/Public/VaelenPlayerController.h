@@ -112,7 +112,12 @@ private:
 	/// about where it is looking: whichever region it names, the world records
 	/// that one and the replay reproduces it, so this costs accuracy and never
 	/// determinism.
-	int32 RegionTheCameraIsOver(int32& OutReach) const;
+	///
+	/// NOT const, and deliberately: APlayerController::GetPlayerViewPoint is
+	/// what this reads the camera with, and whether THAT is const in UE 5.6 is
+	/// a thing this session believes rather than knows. A non-const helper
+	/// compiles either way, and its one caller (TurnTheDay) is non-const.
+	int32 RegionTheCameraIsOver(int32& OutReach);
 
 	/// Through the page and then through the door, and nowhere else. The page
 	/// answers first - an unoffered verb costs the world nothing - and what it

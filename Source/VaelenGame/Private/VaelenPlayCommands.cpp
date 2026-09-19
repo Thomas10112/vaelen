@@ -213,14 +213,20 @@ namespace
 		}
 		if (Args.Num() < 2)
 		{
-			UE_LOG(LogVaelenPlay, Warning, TEXT("LogVaelenPlay: Vaelen.Where <x> <y> [tilesize]"));
+			UE_LOG(LogVaelenPlay, Warning,
+				   TEXT("LogVaelenPlay: Vaelen.Where <x> <y> [tilesize], in whole centimetres"));
 			return;
 		}
-		const double X = FCString::Atod(*Args[0]);
-		const double Y = FCString::Atod(*Args[1]);
-		const double Tile = Args.Num() > 2 ? FCString::Atod(*Args[2]) : 100.0;
+		// WHOLE CENTIMETRES, through NumberAt, which is FCString::Atoi and is
+		// the only string-to-number this module has ever compiled. The first
+		// version used FCString::Atod for the fractions, which this project has
+		// never built - and a tenth of a centimetre decides nothing when a tile
+		// is a hundred of them.
+		const double X = static_cast<double>(NumberAt(Args, 0, 0));
+		const double Y = static_cast<double>(NumberAt(Args, 1, 0));
+		const double Tile = static_cast<double>(NumberAt(Args, 2, 100));
 		UE_LOG(LogVaelenPlay, Log, TEXT("LogVaelenPlay: (%.0f, %.0f) at %.0f cm a tile is region %d"), X, Y, Tile,
-			   World->RegionUnderGround(X, Y, Tile));
+			   World->RegionUnderGround(X, Y, Tile > 0.0 ? Tile : 100.0));
 	}
 
 	void WriteStream(const TArray<FString>& Args, UWorld* World_)

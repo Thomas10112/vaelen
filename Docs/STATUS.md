@@ -53,6 +53,19 @@ TASK        : 15.10 — the engine half. WIRED 2026-09-18; what is left is one s
               stands. `Vaelen.Look` and `Vaelen.Where` are the same inputs typed.
               UNVERIFIED under UBT: written and parsed against the shim, not yet built.
 
+              AND FOUR UNREAL APIS THE PROJECT HAD NEVER COMPILED WERE REMOVED rather
+              than verified (2026-09-19). A shim entry is a claim nothing in this
+              repository can check: a wrong one makes the CI greener and surfaces two days
+              later on the owner's machine. FMath::FloorToDouble became plain arithmetic
+              after the bounds check that makes a cast equal a floor; Vaelen.Where takes
+              whole centimetres through FCString::Atoi instead of fractions through Atod;
+              UE_KINDA_SMALL_NUMBER became KINDA_SMALL_NUMBER, which VaelenViewDrawer.cpp
+              has actually built; the helper calling GetPlayerViewPoint was made non-const
+              so its constness stops mattering. Only FRotator::Vector() remains, with its
+              evidence beside it - the built drawer compiles its exact inverse. ADR-0134's
+              amendment: prefer the spelling the project has compiled over the one you are
+              confident about, and keep the shim to what the project uses.
+
               What remains: `Vaelen.Play 128 100 1`, fly, Space a hundred times through
               at least four takings, F9, then `--gate` on the file.
 

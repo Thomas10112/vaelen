@@ -189,8 +189,17 @@ int32 UVaelenWorldSubsystem::RegionUnderGround(double GroundX, double GroundY, d
 	// the north-west of where the camera was actually over, for every tile of
 	// every map. It reads correctly in a log either way, because the answer is
 	// always a plausible region.
-	const double AtX = FMath::FloorToDouble(GroundX / TileSize + static_cast<double>(Held->Ground.Width) * 0.5 + 0.5);
-	const double AtY = FMath::FloorToDouble(GroundY / TileSize + static_cast<double>(Held->Ground.Height) * 0.5 + 0.5);
+	const double AtX = GroundX / TileSize + static_cast<double>(Held->Ground.Width) * 0.5 + 0.5;
+	const double AtY = GroundY / TileSize + static_cast<double>(Held->Ground.Height) * 0.5 + 0.5;
+	// THE BOUNDS FIRST, and then a plain cast. Casting a double to an integer
+	// truncates towards zero, which is floor only for a non-negative value -
+	// so the negative half is refused here rather than folded onto tile 0, and
+	// what survives needs no rounding function at all.
+	//
+	// It called FMath::FloorToDouble until this line was written down. That is
+	// an Unreal API this project had never compiled, on a machine this session
+	// cannot reach, in a module whose last two build failures were exactly that
+	// kind of assumption. Ordinary arithmetic cannot be wrong about a spelling.
 	if (AtX < 0.0 || AtY < 0.0 || AtX >= static_cast<double>(Held->Ground.Width) ||
 		AtY >= static_cast<double>(Held->Ground.Height))
 	{

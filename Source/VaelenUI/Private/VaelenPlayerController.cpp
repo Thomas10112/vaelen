@@ -112,7 +112,7 @@ void AVaelenPlayerController::NextTarget()
 		   static_cast<unsigned>(Most));
 }
 
-int32 AVaelenPlayerController::RegionTheCameraIsOver(int32& OutReach) const
+int32 AVaelenPlayerController::RegionTheCameraIsOver(int32& OutReach)
 {
 	OutReach = 0;
 	const UVaelenWorldSubsystem* World = Held(GetWorld());
@@ -125,12 +125,19 @@ int32 AVaelenPlayerController::RegionTheCameraIsOver(int32& OutReach) const
 	// The VIEW point and not the pawn's: what the person at the keyboard is
 	// looking at is what the camera is pointed at, which is the whole question.
 	GetPlayerViewPoint(From, Facing);
+	// FRotator::Vector(): the direction a rotation faces. This module has never
+	// compiled it, but VaelenViewDrawer.cpp has compiled its exact inverse -
+	// FVector::Rotation() - so the pair is present and spelled this way.
 	const FVector Ahead = Facing.Vector();
 
 	// Where the view ray meets the ground plane the map is drawn on (Z = 0).
 	// A ray that goes up, or along the horizon, never meets it: that is a host
 	// looking at the sky, and the honest answer is nowhere.
-	if (Ahead.Z > -UE_KINDA_SMALL_NUMBER || From.Z <= 0.0)
+	// KINDA_SMALL_NUMBER and not UE_KINDA_SMALL_NUMBER. Both are spelled in
+	// UE 5.6; only one of them is spelled anywhere this project has ever
+	// compiled - VaelenViewDrawer.cpp, built on 2026-09-16 - and between a
+	// belief and a build the build wins.
+	if (Ahead.Z > -KINDA_SMALL_NUMBER || From.Z <= 0.0)
 	{
 		return 0;
 	}

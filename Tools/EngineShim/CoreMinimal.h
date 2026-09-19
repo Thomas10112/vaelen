@@ -116,9 +116,10 @@ namespace VaelenShim
 
 #define KINDA_SMALL_NUMBER 1.e-4f
 #define SMALL_NUMBER 1.e-8f
-// The UE_ prefixed spellings, which 5.6 is moving to and 15.10 uses.
-#define UE_KINDA_SMALL_NUMBER 1.e-4f
-#define UE_SMALL_NUMBER 1.e-8f
+// The UE_ prefixed spellings are NOT here. 15.10 added them, then used
+// the un-prefixed ones instead: this file is a list of what the project
+// compiles, and a declaration nothing uses is a claim about the engine
+// that nothing checks. Add them the day a file needs them.
 
 // ---------------------------------------------------------------- containers
 
@@ -370,7 +371,6 @@ constexpr typename std::remove_reference<T>::type&& MoveTemp(T&& Value) noexcept
 struct FCString
 {
 	static int32 Atoi(const TCHAR* Text) { return Text == nullptr ? 0 : 0; }
-	static double Atod(const TCHAR* Text) { return Text == nullptr ? 0.0 : 0.0; }
 };
 
 // -------------------------------------------------------------------- maths
@@ -393,7 +393,6 @@ struct FMath
 		return A < B ? A : B;
 	}
 	static double Pow(double Base, double Exponent);
-	static double FloorToDouble(double Value);
 };
 
 struct FVector;

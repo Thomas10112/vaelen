@@ -8927,6 +8927,37 @@ none.
 
 ---
 
+### Amendment, 2026-09-19 (task 15.10): the shim can only ever repeat a belief
+
+A shim entry is a claim that Unreal spells something a particular way, and
+nothing in this repository can check it. `parse_engine_modules.py` compiles the
+project against the shim, so a wrong entry makes the CI **greener**, not redder,
+and the error surfaces two days later on the owner's machine.
+
+15.10 added five entries in one afternoon — `FMath::FloorToDouble`,
+`FCString::Atod`, `FRotator::Vector()`, `UE_KINDA_SMALL_NUMBER`,
+`APlayerController::GetPlayerViewPoint` — for engine code no compiler had read.
+Four were then removed, not by verifying them, but by not needing them:
+
+- plain arithmetic replaced `FloorToDouble`, after the bounds check that makes
+  a cast equal to a floor;
+- `Vaelen.Where` takes whole centimetres through `FCString::Atoi`, which this
+  module has compiled since Phase 14, instead of fractions through `Atod`;
+- `KINDA_SMALL_NUMBER` replaced `UE_KINDA_SMALL_NUMBER`, because
+  `VaelenViewDrawer.cpp` has compiled the first one and nothing has compiled the
+  second;
+- the helper that calls `GetPlayerViewPoint` was made non-const, so whether
+  UE's is const stops mattering.
+
+The fifth, `FRotator::Vector()`, stays, with its evidence written beside it:
+the built drawer compiles its exact inverse, `FVector::Rotation()`.
+
+**Two rules come out of it, and they are the shim's whole discipline.** Prefer
+the spelling the project has already compiled over the one you are confident
+about — a build is evidence and a memory is not. And keep the shim to exactly
+what the project uses: an entry nothing references is an unchecked claim sitting
+in the file where unchecked claims do the most damage.
+
 ## ADR-0135 — Three wirings of one world, and the engine's has no bondage
 
 **Status:** **APPLIED 2026-09-14** — option 1, chosen by the project owner, plus
