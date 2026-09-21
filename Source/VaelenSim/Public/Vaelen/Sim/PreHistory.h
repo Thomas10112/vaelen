@@ -80,6 +80,22 @@ namespace Vaelen::History
 		/// True once Generate succeeded or a snapshot with history was loaded.
 		bool HasHistory() const noexcept;
 
+		/// How many times Generate has been ENTERED, successful or not.
+		///
+		/// Diagnostic only, and it exists because a claim that something was
+		/// NOT done cannot be proved from the result: a world that was
+		/// generated and then loaded over looks exactly like a world that was
+		/// only loaded. Task 16.06 asserts this reads 0 across
+		/// `Aelvor::Adopt`, which is the whole of that task's promise - a world
+		/// RESTORED rather than re-derived.
+		///
+		/// It is not serialised, so it enters no digest; the two obvious
+		/// alternatives were measured and neither works. The root stream's draw
+		/// count stays at 0 through a full Generate (the generators draw from
+		/// DERIVED streams), and tick and event count cannot tell the two
+		/// histories apart because both end at the saved values.
+		uint32 Generations() const noexcept { return Generations_; }
+
 		PopulationSystem& Peoples() noexcept { return *PopulationSystem_; }
 		MigrationSystem& Migrations() noexcept { return *MigrationSystem_; }
 		EraSystem& Eras() noexcept { return *EraSystem_; }
@@ -89,6 +105,7 @@ namespace Vaelen::History
 		Chronicle& Records() noexcept { return *Chronicle_; }
 
 	private:
+		uint32 Generations_ = 0;
 		World* Owner;
 		PreHistoryRules Rules_;
 		PreHistoryTypes Types_;

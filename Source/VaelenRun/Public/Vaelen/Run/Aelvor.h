@@ -241,6 +241,55 @@ namespace Vaelen::Run
 			std::vector<uint16> Watched;
 		};
 
+		/// How many times this run's world generation has been ENTERED.
+		/// Diagnostic, forwarded from `PreHistory::Generations()`, and the
+		/// instrument 16.06 uses to prove `Adopt` restores rather than
+		/// re-derives - a claim that something was not done cannot be read off
+		/// the result.
+		VAELEN_RUN_API uint32 Generations() const noexcept;
+
+		/// Why an Adopt refused. Named rather than a bare false, because the
+		/// six reasons want six different things from whoever asked: a
+		/// different file, a different world, a fresh Aelvor, or a bug report.
+		enum class AdoptResult : uint8
+		{
+			Ok,
+			/// This Aelvor has already been Begun or Adopted. A run is adopted
+			/// into a fresh one; re-adopting over a live world would be a
+			/// silent half-restore of everything the container does not carry.
+			AlreadyBegun,
+			/// The container itself was refused. `CheckpointResultToString`
+			/// names which of its own reasons.
+			ContainerRefused,
+			/// The checkpoint is of a world with a different seed. The seed is
+			/// the world's identity and every derived stream depends on it.
+			WrongSeed,
+			/// `LoadSnapshot` refused the STATE section. Since 16.03 that
+			/// leaves this world exactly as it was.
+			StateRefused,
+			/// The container has no RUN section, or its bytes do not describe
+			/// one. A world without its run is the defect Phase 16 exists for,
+			/// so it is refused rather than adopted half-way.
+			NoRunSection,
+			/// `SetRunState` refused it - a region this world's map does not
+			/// have, which means the run came from a world this is not.
+			RunRefused,
+		};
+		VAELEN_RUN_API static const char* AdoptResultToString(AdoptResult Result) noexcept;
+
+		/// Takes up a world this Aelvor did not generate, from the bytes
+		/// `BuildCheckpoint` wrote.
+		///
+		/// THE POINT OF IT IS WHAT IT DOES NOT DO: it never calls
+		/// `PreHistory::Generate` and never runs a year. The wiring is built by
+		/// the constructor; only the GENERATION is `Begin()`'s, and a
+		/// checkpoint already holds its result. That is the difference between
+		/// restoring a world and re-deriving one.
+		///
+		/// On any refusal this Aelvor is left exactly as it was found, which is
+		/// 16.03's promise carried up one level.
+		VAELEN_RUN_API AdoptResult Adopt(const uint8* Bytes, usize Size);
+
 		/// What this run would need to be restored into another Aelvor.
 		VAELEN_RUN_API RunState GetRunState() const;
 		/// Replaces it. False when the state is not one this wiring can hold -

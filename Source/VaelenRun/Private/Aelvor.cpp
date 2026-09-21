@@ -12,6 +12,8 @@
 // STATUS: PROTOTYPE (Phase 14) - Tests/Run/Test_Aelvor.cpp, Tests/Run/Test_Door.cpp; Kernel.WorldWiring
 #include "Vaelen/Run/Aelvor.h"
 
+#include "Vaelen/Run/Checkpoint.h"
+
 #include "Vaelen/Economy/EconomyHistory.h"
 #include "Vaelen/Gameplay/Judgement.h"
 #include "Vaelen/Player/Doings.h"
@@ -823,6 +825,94 @@ namespace Vaelen::Run
 			return Player::HourStats{};
 		}
 		return Player::MeasureHours(K->Instance, K->W.Persons, K->W.Played, K->W.Hour, Player::HourRules{});
+	}
+
+	uint32 Aelvor::Generations() const noexcept
+	{
+		return K == nullptr ? 0u : K->Ages.Generations();
+	}
+
+	const char* Aelvor::AdoptResultToString(AdoptResult Result) noexcept
+	{
+		switch (Result)
+		{
+		case AdoptResult::Ok:
+			return "Ok";
+		case AdoptResult::AlreadyBegun:
+			return "AlreadyBegun";
+		case AdoptResult::ContainerRefused:
+			return "ContainerRefused";
+		case AdoptResult::WrongSeed:
+			return "WrongSeed";
+		case AdoptResult::StateRefused:
+			return "StateRefused";
+		case AdoptResult::NoRunSection:
+			return "NoRunSection";
+		case AdoptResult::RunRefused:
+			return "RunRefused";
+		}
+		return "Unknown";
+	}
+
+	Aelvor::AdoptResult Aelvor::Adopt(const uint8* Bytes, usize Size)
+	{
+		if (Run_.Begun)
+		{
+			// Adopting over a live world would restore what the container
+			// carries and leave everything it does not - which is the exact
+			// shape of the defect this phase exists to remove.
+			return AdoptResult::AlreadyBegun;
+		}
+		if (K == nullptr)
+		{
+			return AdoptResult::ContainerRefused;
+		}
+
+		CheckpointView View;
+		if (ReadCheckpoint(Bytes, Size, View).Result != CheckpointResult::Ok)
+		{
+			return AdoptResult::ContainerRefused;
+		}
+		// CHECKED AGAINST Given_ BEFORE ANYTHING IS TOUCHED. The seed is the
+		// world's identity and every derived stream hangs off it; a checkpoint
+		// of another seed is another world wearing this one's shape. The map
+		// SIZE is deliberately not checked here - LoadSnapshot's layout gate
+		// owns that, and duplicating it would give two answers to one question.
+		if (View.Seed != Given_.Seed)
+		{
+			return AdoptResult::WrongSeed;
+		}
+
+		uint64 StateLength = 0;
+		const uint8* State = View.Find(SectionKind::State, StateLength);
+		if (State == nullptr)
+		{
+			return AdoptResult::ContainerRefused;
+		}
+		// THE RUN IS READ BEFORE THE WORLD IS TOUCHED. A container with no RUN
+		// section must refuse while this Aelvor is still untouched, not after
+		// its world has been replaced - otherwise the refusal leaves exactly
+		// the half-restored world 16.03 taught this file not to make.
+		RunState Carried;
+		if (!ReadRunSection(View, Carried))
+		{
+			return AdoptResult::NoRunSection;
+		}
+
+		if (LoadSnapshot(K->Instance, State, static_cast<usize>(StateLength)) != SnapshotResult::Ok)
+		{
+			// 16.03: the world is what it was.
+			return AdoptResult::StateRefused;
+		}
+		if (!SetRunState(Carried))
+		{
+			return AdoptResult::RunRefused;
+		}
+
+		// NO Generate, NO Run, NO year. Everything Begin() would have derived
+		// is already in the bytes - which is the whole of this task.
+		Run_.Begun = true;
+		return AdoptResult::Ok;
 	}
 
 	Aelvor::RunState Aelvor::GetRunState() const

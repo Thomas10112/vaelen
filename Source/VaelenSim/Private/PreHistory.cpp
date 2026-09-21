@@ -69,6 +69,9 @@ namespace Vaelen::History
 
 	bool PreHistory::Generate(const WorldGenConfig& Config, uint32 Years, bool RunYears)
 	{
+		// Counted on ENTRY, before any refusal, because 16.06's claim is that
+		// this function was never reached at all - not that it declined.
+		++Generations_;
 		World& W = *Owner;
 		if (HasHistory() || W.Now() != W.Config().StartTick)
 		{

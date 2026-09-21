@@ -393,3 +393,145 @@ VAELEN_TEST(Checkpoint, ARunFromAnotherWorldIsRefusedRatherThanClamped)
 				 "and the refusals left the run alone - checked by the digest below");
 	VT_CHECK_MSG(A.GetRunState().Watched == Good.Watched, "a refused SetRunState changes nothing");
 }
+
+VAELEN_TEST(Checkpoint, AdoptTakesUpAWorldItNeverGenerated)
+{
+	// Phase 16 task 16.06, and the prize of the phase: a world restored rather
+	// than RE-DERIVED. Aelvor's constructor builds the wiring; only the
+	// GENERATION is Begin()'s, and a checkpoint already holds its result. So
+	// Adopt is entitled to skip it entirely.
+	//
+	// THE INSTRUMENT IS PreHistory::Generations(), and it is a counter added to
+	// the kernel for this - which wanted justifying, so: the claim is that
+	// something was NOT done, and that cannot be read off the result. A world
+	// generated and then loaded over looks exactly like a world only loaded.
+	//
+	// Two non-invasive instruments were tried first and both failed, which is
+	// why this one is here rather than asserted into existence. The root
+	// stream's DrawCount stays at 0 through an entire Generate - the generators
+	// draw from DERIVED streams - so it measured nothing; the first version of
+	// this test asserted it was over a thousand and was caught by its own
+	// self-check. Tick and event count cannot tell the two histories apart
+	// either, because both end at the saved values.
+	//
+	// ADR-0109 forbids asserting on the wall clock, so nothing here does.
+	Options O;
+	O.Size = 32u;
+	O.PreHistory = 10u;
+	O.Years = 10u;
+	O.Play = true;
+	O.Stream = true;
+
+	Aelvor Source(O);
+	VT_REQUIRE(Source.Begin());
+	Source.TakeUp(Player::StartRules{});
+	for (uint32 Step = 0; Step < 8u; ++Step)
+	{
+		Attention At;
+		At.Region = static_cast<uint32>(1u + (Step % 5u));
+		At.Reach = 1u;
+		Source.LookAt(At);
+		Source.Day();
+	}
+	const Hash64 Truth = ComputeStateDigest(Source.Instance());
+	VT_CHECK_MSG(Source.Generations() == 1u, "the source generated its world exactly once");
+	VT_REQUIRE(Source.Generations() == 1u);
+
+	std::vector<uint8> Bytes;
+	VT_REQUIRE(BuildCheckpoint(Source, Bytes) == CheckpointResult::Ok);
+
+	// A CONSTRUCTED Aelvor. Not begun. Nothing generated.
+	Aelvor Taken(O);
+	VT_CHECK_MSG(!Taken.Begun(), "nothing has been begun");
+	VT_CHECK_MSG(Taken.Generations() == 0u, "and nothing has been generated");
+	VT_CHECK_MSG(Taken.Instance().Now() == 0u, "the world is at tick zero");
+
+	const Aelvor::AdoptResult R = Taken.Adopt(Bytes.data(), Bytes.size());
+	VT_CHECK_MSG(R == Aelvor::AdoptResult::Ok, "%s", Aelvor::AdoptResultToString(R));
+	VT_REQUIRE(R == Aelvor::AdoptResult::Ok);
+
+	VT_CHECK_MSG(Taken.Begun(), "an adopted run is begun");
+	VT_CHECK_MSG(ComputeStateDigest(Taken.Instance()) == Truth, "and it is the world that was saved");
+	VT_CHECK_MSG(Taken.Generations() == 0u,
+				 "AND PreHistory::Generate WAS NEVER ENTERED: the world was restored, not re-derived");
+	VT_CHECK_MSG(Taken.Watching() == Source.Watching(), "the run came too");
+	VT_CHECK_MSG(Taken.Detail() == Source.Detail(), "including what it had in detail");
+
+	// AND IT GOES ON BEING THAT WORLD. Against the CONTINUING SOURCE, per what
+	// 16.05 cost to learn - never against another restore.
+	for (uint32 Step = 0; Step < 8u; ++Step)
+	{
+		Attention At;
+		At.Region = static_cast<uint32>(2u + (Step % 4u));
+		At.Reach = 1u;
+		Source.LookAt(At);
+		Source.Day();
+		Taken.LookAt(At);
+		Taken.Day();
+	}
+	VT_CHECK_MSG(ComputeStateDigest(Taken.Instance()) == ComputeStateDigest(Source.Instance()),
+				 "eight day turns later the adopted world is still the source's world");
+}
+
+VAELEN_TEST(Checkpoint, AdoptRefusesByNameAndLeavesTheAelvorAlone)
+{
+	// Every refusal is NAMED, and every refusal leaves this Aelvor exactly as
+	// it was - 16.03's promise carried up a level. A silent false would make
+	// all six of these the same event to a caller who has to decide between
+	// asking for another file, another world, or a bug report.
+	Options O;
+	O.Size = 32u;
+	O.PreHistory = 6u;
+	O.Years = 6u;
+	O.Play = true;
+
+	Aelvor Source(O);
+	VT_REQUIRE(Source.Begin());
+	std::vector<uint8> Good;
+	VT_REQUIRE(BuildCheckpoint(Source, Good) == CheckpointResult::Ok);
+
+	// Not a container at all.
+	{
+		Aelvor Fresh(O);
+		std::vector<uint8> Rubbish(256u, uint8{0x5A});
+		const Aelvor::AdoptResult R = Fresh.Adopt(Rubbish.data(), Rubbish.size());
+		VT_CHECK_MSG(R == Aelvor::AdoptResult::ContainerRefused, "%s", Aelvor::AdoptResultToString(R));
+		VT_CHECK_MSG(!Fresh.Begun(), "and it was not begun by the attempt");
+	}
+
+	// A checkpoint of another world's seed.
+	{
+		Options Other = O;
+		Other.Seed = O.Seed ^ 0xABCDEFull;
+		Aelvor Elsewhere(Other);
+		VT_REQUIRE(Elsewhere.Begin());
+		std::vector<uint8> Foreign;
+		VT_REQUIRE(BuildCheckpoint(Elsewhere, Foreign) == CheckpointResult::Ok);
+
+		Aelvor Fresh(O);
+		const Aelvor::AdoptResult R = Fresh.Adopt(Foreign.data(), Foreign.size());
+		VT_CHECK_MSG(R == Aelvor::AdoptResult::WrongSeed, "%s", Aelvor::AdoptResultToString(R));
+		VT_CHECK_MSG(!Fresh.Begun(), "and it was not begun by the attempt");
+	}
+
+	// Into a world that is already living.
+	{
+		Aelvor Living(O);
+		VT_REQUIRE(Living.Begin());
+		const Hash64 Was = ComputeStateDigest(Living.Instance());
+		const Aelvor::AdoptResult R = Living.Adopt(Good.data(), Good.size());
+		VT_CHECK_MSG(R == Aelvor::AdoptResult::AlreadyBegun, "%s", Aelvor::AdoptResultToString(R));
+		VT_CHECK_MSG(ComputeStateDigest(Living.Instance()) == Was,
+					 "and the world it was already living in is untouched");
+	}
+
+	// And Begin() after an Adopt is refused, because the world is already here.
+	{
+		Aelvor Fresh(O);
+		VT_REQUIRE(Fresh.Adopt(Good.data(), Good.size()) == Aelvor::AdoptResult::Ok);
+		const Hash64 Was = ComputeStateDigest(Fresh.Instance());
+		VT_CHECK_MSG(!Fresh.Begin(), "Begin after an Adopt is refused");
+		VT_CHECK_MSG(ComputeStateDigest(Fresh.Instance()) == Was,
+					 "and the refusal did not generate over the adopted world");
+	}
+}
