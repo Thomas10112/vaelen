@@ -15,7 +15,42 @@ VAELEN BUILD STATUS
 
 PHASE       : 16 — SAVE/PERSISTENCE, opened 2026-09-21
               (15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
-TASK        : 16.01 — DONE 2026-09-21. The golden corpus and the gate list, both of
+TASK        : 16.02 — DONE 2026-09-21. SaveSnapshot can fail, and says so.
+
+              It returned void. A failing body went into a [[maybe_unused]] and was
+              reported by VAELEN_CHECKF, which Assert.h compiles to ((void)0) under
+              NDEBUG and under UE_BUILD_SHIPPING — so in a player's build nothing
+              happened at all. It now returns SnapshotResult, and on ANY refusal it
+              truncates the caller's buffer back to the size it was handed, so a caller
+              that appends never handles bytes nobody meant. The dispatch guard, which
+              was the same disappearing macro, is a returned Inconsistent.
+
+              AND THE DEFECT WAS DESCRIBED WRONGLY, INCLUDING BY ME. The planning said a
+              short image was "well-formed, wrong, and validated on load", and I repeated
+              it before checking. Measured at four cut points: a resealed short image is
+              REFUSED, Truncated every time, because the reader runs out of a section. So
+              the old code did not corrupt a loaded world. What it did was tell the caller
+              nothing at the moment of WRITING — a player was told their game was saved
+              and found out it was not only when they opened it, with the world it came
+              from already gone. Snapshot.AShortImageIsRefusedButTheWriterNeverKnew
+              carries the correction in its name.
+
+              Both new tests ran with VAELEN_ASSERTS_ENABLED = 0, verified rather than
+              assumed: the build is Release, CMAKE_CXX_FLAGS_RELEASE carries -DNDEBUG, and
+              a probe prints 0. That is the build the defect lived in. The CI debug legs
+              run them with asserts on.
+
+              NOT [[nodiscard]], and that is a decision. Ninety call sites ignore the
+              result today; putting ninety mechanical edits into the commit that fixes a
+              data-loss path is how a mistake hides. The defect was that the function
+              could not report, not that tests do not listen. Snapshot.h says so.
+
+              ALSO CONFIRMED, by the same probe: defect 2 is real. At cuts of 25, 50 and
+              75 per cent the target world is left a CHIMERA after LoadSnapshot has
+              honestly refused — neither the world it was nor the world in the image.
+              16.03 is the task for it.
+
+TASK (16.01): 16.01 — DONE 2026-09-21. The golden corpus and the gate list, both of
               them one-way doors, which is why they are the phase's first commit.
 
               THE PLANNING FOUND TWELVE DEFECTS before a line was written, and one is a

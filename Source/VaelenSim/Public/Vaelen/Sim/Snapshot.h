@@ -48,9 +48,29 @@ namespace Vaelen
 
 	VAELEN_SIM_API const char* SnapshotResultToString(SnapshotResult Result) noexcept;
 
-	/// Appends the world's state image to Out. Never fails for a world that
-	/// is not dispatching events.
-	VAELEN_SIM_API void SaveSnapshot(const World& Source, std::vector<uint8>& Out);
+	/// Appends the world's state image to Out, and says so when it cannot.
+	///
+	/// ON ANY REFUSAL Out IS LEFT EXACTLY AS IT WAS FOUND - the function
+	/// truncates back to the size it was given - so a caller that appends to a
+	/// buffer, or writes what it gets, never handles bytes nobody meant.
+	/// `Inconsistent` for a world that is dispatching events; `Truncated` when
+	/// the writer ran out; whatever a pool or a layer said, otherwise.
+	///
+	/// IT RETURNED void UNTIL 2026-09-21, and that was the one live data-loss
+	/// path Phase 16's planning found. A failing body was reported by
+	/// `VAELEN_CHECKF`, which `Assert.h` compiles to `((void)0)` under `NDEBUG`
+	/// and under `UE_BUILD_SHIPPING` - so in a player's build nothing happened,
+	/// the trailer was computed over the SHORT bytes that had been written, and
+	/// the file was well-formed, wrong, and validated on load.
+	///
+	/// NOT `[[nodiscard]]`, and that is a decision rather than an oversight.
+	/// Ninety call sites in this repository ignore the result today; marking it
+	/// would put ninety mechanical edits into the commit that fixes the defect,
+	/// which is exactly the shape of change that hides a mistake. The defect
+	/// was that this function COULD NOT report, not that tests do not listen.
+	/// 16.04 has the one production caller and checks it; a later task may add
+	/// the attribute once the call sites are worth touching for their own sake.
+	VAELEN_SIM_API SnapshotResult SaveSnapshot(const World& Source, std::vector<uint8>& Out);
 
 	/// Replaces the world's state with the image. The world must have been set
 	/// up with the same component types and pools (the same setup code); on

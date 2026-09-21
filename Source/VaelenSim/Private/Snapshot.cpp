@@ -182,7 +182,13 @@ namespace Vaelen
 
 			// Pending events and the log.
 			{
-				VAELEN_CHECKF(!W.Events().IsDispatching(), "cannot snapshot while dispatching events");
+				// SaveSnapshot refuses a dispatching world before it writes a
+				// byte (16.02); LoadSnapshot replaces the pending list wholesale
+				// and a dispatching target is the caller's error either way.
+				if (W.Events().IsDispatching())
+				{
+					return SnapshotResult::Inconsistent;
+				}
 				std::vector<Event> Pending = W.Events().GetPending();
 				if (!SerializeVector(Ar, Pending))
 				{
@@ -235,9 +241,29 @@ namespace Vaelen
 		return "Unknown";
 	}
 
-	void SaveSnapshot(const World& Source, std::vector<uint8>& Out)
+	SnapshotResult SaveSnapshot(const World& Source, std::vector<uint8>& Out)
 	{
 		const usize Start = Out.size();
+
+		// EVERY REFUSAL BELOW LEAVES Out AS IT WAS FOUND. A caller's buffer is
+		// its own; a function that half-filled it and then said no would make
+		// the caller's next decision - append, write, retry - a decision about
+		// bytes nobody meant. Phase 16 task 16.02.
+		const auto Refuse = [&Out, Start](SnapshotResult Why)
+		{
+			Out.resize(Start);
+			return Why;
+		};
+
+		// The world must not be mid-dispatch. This was a VAELEN_CHECKF, which
+		// Assert.h compiles to ((void)0) under NDEBUG and under
+		// UE_BUILD_SHIPPING - so in a player's build it was no check at all and
+		// the pending list would have been read while it was being drained.
+		if (Source.Events().IsDispatching())
+		{
+			return Refuse(SnapshotResult::Inconsistent);
+		}
+
 		MemoryWriter Ar(Out);
 		char MagicBytes[8];
 		std::memcpy(MagicBytes, Magic, 8);
@@ -250,10 +276,41 @@ namespace Vaelen
 		// The body routine is symmetric and takes a mutable world; saving does
 		// not modify it (every write path only reads).
 		World& Mutable = const_cast<World&>(Source);
-		[[maybe_unused]] const SnapshotResult Body = SerializeBody(Ar, Mutable);
-		VAELEN_CHECKF(Body == SnapshotResult::Ok, "SaveSnapshot body failed: %s", SnapshotResultToString(Body));
+		const SnapshotResult Body = SerializeBody(Ar, Mutable);
+
+		// THE DEFECT THIS FUNCTION SHIPPED WITH, AND WHY IT WAS INVISIBLE.
+		// The line below used to read:
+		//
+		//     [[maybe_unused]] const SnapshotResult Body = SerializeBody(...);
+		//     VAELEN_CHECKF(Body == SnapshotResult::Ok, "...");
+		//
+		// and the function returned void. With asserts on, a failing body
+		// stopped the process and a developer saw it. With asserts OFF - which
+		// Assert.h:33-43 means for NDEBUG and for UE_BUILD_SHIPPING and
+		// UE_BUILD_TEST, that is, every build a player ever runs - the macro is
+		// ((void)0), execution fell through, and the two lines after it hashed
+		// the SHORT bytes and appended a trailer over them. The file was then
+		// well-formed, wrong, and validated on load, because the trailer agreed
+		// with the truncated body it was computed from.
+		//
+		// A caller could not have noticed: there was no return value, and the
+		// image carries no count of what it ought to contain. Phase 16's
+		// planning found it by reading; Snapshot.SaveRefusesRatherThanLies
+		// measures it, built with NDEBUG on purpose.
+		if (Body != SnapshotResult::Ok)
+		{
+			return Refuse(Body);
+		}
+
 		Hash64 Digest = HashBytes(reinterpret_cast<const char*>(Out.data() + Start), Out.size() - Start);
 		Ar << Digest;
+		// The writer itself can run out of room, and it says so through its own
+		// error flag rather than through the body's result.
+		if (Ar.HasError())
+		{
+			return Refuse(SnapshotResult::Truncated);
+		}
+		return SnapshotResult::Ok;
 	}
 
 	SnapshotResult LoadSnapshot(World& Target, const uint8* Bytes, usize Size)

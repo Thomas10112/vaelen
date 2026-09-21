@@ -350,3 +350,116 @@ VAELEN_TEST(Snapshot, LargeWorldRoundTrips)
 	VT_CHECK_EQ(B.Instance.Components().GetPool(B.PosType).Size(), A.Instance.Components().GetPool(A.PosType).Size());
 	VT_CHECK(B.Save() == Image);
 }
+
+namespace
+{
+	/// A listener that snapshots the world from inside a dispatch, which is the
+	/// one state SaveSnapshot is documented to refuse.
+	class SaveFromInside final : public IEventListener
+	{
+	public:
+		SaveFromInside(const World& InWorld, std::vector<uint8>& InOut) : W(InWorld), Out(InOut) {}
+		const char* GetListenerName() const noexcept override { return "SaveFromInside"; }
+		void OnEvent(const Event&) override
+		{
+			Saw = true;
+			Dispatching = W.Events().IsDispatching();
+			Before = Out.size();
+			Result = SaveSnapshot(W, Out);
+			After = Out.size();
+		}
+		const World& W;
+		std::vector<uint8>& Out;
+		bool Saw = false;
+		bool Dispatching = false;
+		usize Before = 0;
+		usize After = 0;
+		SnapshotResult Result = SnapshotResult::Ok;
+	};
+} // namespace
+
+VAELEN_TEST(Snapshot, SaveRefusesRatherThanLies)
+{
+	// Phase 16 task 16.02. SaveSnapshot returned void until 2026-09-21 and
+	// reported a failing body through VAELEN_CHECKF - which Assert.h compiles
+	// to ((void)0) under NDEBUG and under UE_BUILD_SHIPPING, so in a player's
+	// build it reported nothing at all and the caller wrote a file believing it
+	// had a save. This test is built and run in both, and the assert-free build
+	// is the one that matters.
+	TestWorld A(31337);
+	A.Populate(8);
+	A.Instance.TickMany(3);
+
+	// The ordinary answer, so the refusal below means something.
+	std::vector<uint8> Good;
+	VT_CHECK_MSG(SaveSnapshot(A.Instance, Good) == SnapshotResult::Ok, "a quiet world saves and says Ok");
+	VT_CHECK(!Good.empty());
+
+	// AND IT APPENDS, which is why a refusal has to put the buffer back.
+	std::vector<uint8> Twice = Good;
+	VT_CHECK(SaveSnapshot(A.Instance, Twice) == SnapshotResult::Ok);
+	VT_CHECK_MSG(Twice.size() == Good.size() * 2, "a second save appends rather than replacing");
+
+	// THE REFUSAL: a world in the middle of delivering events, where the
+	// pending list is being drained while it would be read.
+	std::vector<uint8> Out(11u, uint8{0xAB});
+	SaveFromInside Listener(A.Instance, Out);
+	VT_REQUIRE(A.Instance.Events().Subscribe(PulseEvent.TypeHash, &Listener));
+	A.Instance.Events().Publish(A.Instance.Now(), PulseEvent, Pulse{1});
+	A.Instance.Events().Dispatch(A.Instance.Now() + 1);
+
+	VT_CHECK_MSG(Listener.Saw, "the listener ran, or this test measures nothing");
+	VT_REQUIRE(Listener.Saw);
+	VT_CHECK_MSG(Listener.Dispatching, "and it ran while the bus was dispatching");
+	VT_CHECK_MSG(Listener.Result == SnapshotResult::Inconsistent, SnapshotResultToString(Listener.Result));
+	VT_CHECK_MSG(Listener.After == Listener.Before, "and the caller's buffer is the size it was");
+	VT_CHECK_MSG(Out.size() == 11u, "down to the eleven bytes it already held");
+	uint32 Kept = 0;
+	for (const uint8 B : Out)
+	{
+		Kept += B == uint8{0xAB} ? 1u : 0u;
+	}
+	VT_CHECK_MSG(Kept == 11u, "and their contents, untouched");
+}
+
+VAELEN_TEST(Snapshot, AShortImageIsRefusedButTheWriterNeverKnew)
+{
+	// Phase 16 task 16.02, the control, and it CORRECTS the claim this task was
+	// opened on. The planning said a short image was "well-formed, wrong, and
+	// validated on load". Measured here: it is not. A body that stopped early
+	// leaves the reader short of a section, and LoadSnapshot answers Truncated
+	// at every cut point.
+	//
+	// So the defect was not silent corruption of a loaded world. It was this:
+	// the caller got NO signal at the moment of writing, because SaveSnapshot
+	// returned void - so a player was told their game was saved and found out
+	// it was not only when they tried to open it, with the world it came from
+	// already gone. A returned result is what stops that, and the arm above is
+	// what proves the result is returned.
+	TestWorld A(99);
+	A.Populate(64);
+	A.Instance.TickMany(5);
+	std::vector<uint8> Good;
+	VT_REQUIRE(SaveSnapshot(A.Instance, Good) == SnapshotResult::Ok);
+	VT_REQUIRE(Good.size() > sizeof(Hash64) * 4);
+
+	const usize Body = Good.size() - sizeof(Hash64);
+	uint32 Refused = 0;
+	uint32 Cuts = 0;
+	for (const usize Keep : {Body / 4, Body / 2, (Body * 3) / 4, (Body * 9) / 10})
+	{
+		// Exactly what the old code produced: the short bytes, then a trailer
+		// computed OVER the short bytes, so the image agrees with itself.
+		std::vector<uint8> Short(Good.begin(), Good.begin() + static_cast<long>(Keep));
+		const Hash64 Sealed = HashBytes(reinterpret_cast<const char*>(Short.data()), Short.size());
+		const usize At = Short.size();
+		Short.resize(At + sizeof(Hash64));
+		std::memcpy(Short.data() + At, &Sealed, sizeof(Hash64));
+
+		TestWorld Target(99);
+		++Cuts;
+		Refused += LoadSnapshot(Target.Instance, Short.data(), Short.size()) != SnapshotResult::Ok ? 1u : 0u;
+	}
+	VT_CHECK_MSG(Cuts == 4u, "four cut points");
+	VT_CHECK_MSG(Refused == Cuts, "every resealed short image is refused, so the trailer is not the only guard");
+}
