@@ -82,7 +82,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 12 | GAMEPLAY | Interaction verbs, knowledge (documents, maps), reputation and consequences without main quest or canonical ending. | BROKEN DOWN (12.01-12.08, section 16) |
 | 13 | PRESENTATION | Unreal rendering, animation and audio of the world state, strictly read-only. | CLOSED (13.01-13.09; gate PASSED 2026-09-14 at 100 fps on a T400; engine and headless kernel agree on every figure at 256) |
 | 14 | UI | Interface and read-only views; command submission through the gameplay layer. | **CLOSED** 2026-09-16, all five clauses met - (e) certified by CI run 215 on 4137b08, ten jobs of ten green (14.01-14.10 - eighty-three days played at the keyboard in UE 5.6, replayed headlessly to the same four digests byte for byte, and the HUD measured at 0.52 ms of game thread over a scene that runs at about 122 fps; the breakdown is section 20) |
-| 15 | STREAMING & LOD | Engine streaming coupled to the simulation's grains: what is simulated at which detail away from the player. **The row said "simulation LOD 0-4" until 15.09 found that two different things were being called LOD.** `SimLod` (Sim/System.h) is a real five-rung ladder of how OFTEN a system runs - 1, 4, 24, 720, 8640 ticks - and 15.02 moved a system down it. A REGION has two grains and not five: person by person, or counts per culture. `RegionLod::Level` is written in one place, always the same value, and levels 0, 1 and 3 have never been reachable. | BROKEN DOWN (15.01-15.10, section 21; the planning found five defects first, among them that ADR-0139's fix expires after roughly three deaths and that a demotion would destroy the played person) |
+| 15 | STREAMING & LOD | Engine streaming coupled to the simulation's grains: what is simulated at which detail away from the player. **The row said "simulation LOD 0-4" until 15.09 found that two different things were being called LOD.** `SimLod` (Sim/System.h) is a real five-rung ladder of how OFTEN a system runs - 1, 4, 24, 720, 8640 ticks - and 15.02 moved a system down it. A REGION has two grains and not five: person by person, or counts per culture. `RegionLod::Level` is written in one place, always the same value, and levels 0, 1 and 3 have never been reachable. | **CLOSED 2026-09-21** (15.01-15.10, section 21). The planning found five defects before a line was written; the review of 15.10 found 27 more, among them that the engine host recorded a world its own replay does not reach. The gate is met on a walk a person actually lived. |
 | 16 | SAVE/PERSISTENCE | Save format, serialisation of the whole world state, checkpoints on disk, migrations keyed on the save-format version. | PLANNED |
 | 17 | DEBUG TOOLS | Inspectors, replay tooling, determinism diff, world statistics, headless console. | PLANNED |
 | 18 | STRESS TEST | Long-duration and large-world runs, performance budgets, determinism at scale. | PLANNED |
@@ -4906,7 +4906,7 @@ a hope: **of the frozen constants of fourteen closed phases, zero move.**
 | 15.07 | The warden: the residency policy itself, a deterministic function from attention to detail requests, host-side, writing requests and never promotions, so ADR-0037 holds by construction. | `Run.Warden`: the same attention sequence yields the same requests on all eight legs; hysteresis proved by a walk back and forth over one border producing a bounded number of changes. | **VALIDATED headless 2026-09-16** — CTest `Door.TheWardenTurnsALookIntoRequestsAndDoesNotThrashOnABorder`, 18 checks, ADR-0144; ten crossings of one border change the watched set zero times |
 | 15.08 | The promotion hitch, bounded as a COUNT and not a wall clock, which is what ADR-0109 actually forbids. At most one region may be promoted on any single day turn, and the heads materialised per day turn are capped. | `Run.Hitch`: a 100-day walk crossing borders never promotes twice in one day turn; the cap is asserted, and removing it makes the test fail. | **VALIDATED headless 2026-09-16** — CTest `Door.NoDayTurnPromotesTwiceWhileTheCameraWalks`, ADR-0145. Control run: cap off, worst day turn promotes 3 regions and the test fails; cap on, 1 |
 | 15.09 | `RegionLod::Level`: either the gradations the number promises, or the row rewritten to say two grains and an ADR saying why. Decided in the open, not inherited. | **VALIDATED headless 2026-09-16** — the row was rewritten, not the type. CTest `Lod.ARegionHasTwoGrainsAndNotFive` pins that every mark in a world reads `DetailedLevel` and that the five-rung ladder is `SimLod`, rung by rung. ADR-0146 |
-| 15.10 | The engine half, one build and one sitting: the camera's region and reach handed to `Door::Look` each day, and a stream written with `Vaelen.Stream.Write` that carries `Looked` records. | **WIRED, WAITING ON ONE SITTING 2026-09-18** — headless: `VaelenAtlas --walk` writes a stand-in walk and refuses one that misses the clauses; `--gate FILE` asks the clauses of a walk recorded ANYWHERE and is pinned by CTest `Run.Gate`; `Run::DayWatch` lets it ask them without replaying the stream twice (`Door.AWatchedReplayIsTheSameReplay`). Engine: `UVaelenWorldSubsystem::Watch` + `RegionUnderGround`, `AdvanceDay` hands the look through the door once per day turn, `AVaelenPlayerController` reads the camera on the day key, and `Vaelen.Play <size> <years> 1` asks for the daily cadence. **The review of that commit found 27 surviving defects, among them that the host recorded a world its own replay does not reach** — 400 days with one automatic taking recorded `b6ad941689ba6b1a` and replayed `37c1a3fe1e4961b2`, with `Wrong = 0`; `Door.TheEngineHostsOwnOrderReplaysToItself` now drives the host's loop verbatim with the divergent arm beside it as the control. All 27 fixed; ADR-0147 and its amendment. The engine half is UNVERIFIED under UBT. What is left is a person at the keyboard. | engine |
+| 15.10 | The engine half, one build and one sitting: the camera's region and reach handed to `Door::Look` each day, and a stream written with `Vaelen.Stream.Write` that carries `Looked` records. | **VALIDATED 2026-09-21 — THE GATE IS MET.** Built by UnrealBuildTool (UE 5.6, MSVC 19.51, Win64 Development Editor) and PLAYED: 142 day turns, 138 looks, 4 takings and 2 Speak intents at the keyboard, with the daily cadence on. `VaelenAtlas --gate` replays it on gcc/Linux to the same four digests - `state 609253a29361ec5f, log a2839792e0837328, life 0a4babc60f6e4d90, panel c4ddbe971538c59c` - and keeps all six clauses: 15 pins published while held, 0 wrong, both grains agreeing on every one of the 142 days, no day turn promoting twice, somewhere to walk within one day turn of each taking. CTest `Replay.Lived` and `Run.Gate.Lived` pin it. | engine |
 
 **The gate.** A walk, recorded on the engine machine and replayed here, that
 proves all of: (a) the stream carries `Looked` records and at least one region
@@ -4936,6 +4936,30 @@ Vaelen.TakeUp             let this one go, take somebody else up
 (fly, Space twenty-five more)   and again, and again - four lives in all
 F9  or  Vaelen.Stream.Write
 ```
+
+**WHAT THE SITTING ACTUALLY TAUGHT, 2026-09-21.** The instructions above were
+followed and the gate REFUSED the first walk on clause (a): 99 looks, 0 pins.
+The walk was not at fault and neither was the code - the instruction was. It
+said "stay near the centre and move a little", and the camera sat on region 54
+for seventy-five days while the played person lived in region 9, forty-five
+metres away.
+
+A pin fires when a detailed region stops being wanted AND holds somebody. The
+camera is what makes a region wanted. So **the fence only fires when the camera
+passes over the played person's own region and then leaves it** - which the
+stand-in walk does by accident every ninth day, because it changes region daily
+over sixty of them. Isolated by experiment on the recorded walk rather than
+argued: raising the reach from 0 to 1 changed nothing (0 pins), making the
+camera wander changed everything (57 pins), and alternating between two regions
+that are NOT the played one gave 0 again while alternating with the played one
+gave 38.
+
+The correction needed no new session: thirty more day turns alternating
+`Vaelen.Look 9` and `Vaelen.Look 54` through `Vaelen.Day 5` were appended to the
+same PIE, and the gate passed. Note `Vaelen.Day` does not consult the camera -
+it uses the remembered look - so a whole walk can be driven from the console
+with exact region numbers, which is how the last thirty days of the checked-in
+walk were made.
 
 **`Vaelen.TakeUp` is not optional, and finding out why cost a measurement.** The
 gate asks for at least four takings, and the door takes somebody up on its own

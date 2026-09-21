@@ -182,3 +182,56 @@ ends of days — so it read that taking's wait a whole turn late and called it
 zero. `Run::DayWatch::Begun` is the hook that closes it. The disagreement between
 the two instruments is what found it, which is the second time on this task that
 a second instrument was worth more than a careful reading.
+
+## `aelvor128-played-2026-09-21.stream` — the walk somebody lived
+
+The other two streams in this folder were written by this project, to itself.
+This one came out of Unreal Engine 5.6 on Win64 (MSVC 19.51), through a camera
+and a console, from a host that had never run headlessly — and it is the only
+file here that proves the ENGINE half of 15.10 rather than the kernel's.
+
+142 day turns, 138 looks, 4 takings, 2 Speak intents, with the daily cadence on.
+
+```
+VaelenAtlas --gate Tests/Run/Streams/aelvor128-played-2026-09-21.stream --want-bound 0 \
+  --expect "state 609253a29361ec5f, log a2839792e0837328, life 0a4babc60f6e4d90, panel c4ddbe971538c59c"
+```
+
+```
+  (a) PASS  the stream carries looks and the fence fired: 138 Looked records, 15 pins published while held
+  (b) PASS  every record replayed as it was recorded: 0 wrong (0 of them takings), 0 records left unreached
+  (B) PASS  the four digests are the ones the host printed: state 609253a29361ec5f, ...
+  (c) PASS  both grains agree on every day of the walk: worst over 142 days: heads 0, slots 0, faiths 0
+  (d) PASS  no day turn promoted twice: worst day turn promoted 1
+  (e) PASS  somewhere to walk within four days of each taking: 4 takings, longest wait 1 day turn(s)
+```
+
+CTest `Replay.Lived` pins what it replays to and `Run.Gate.Lived` pins that it
+still meets the gate.
+
+**138 looks over 142 days, and the four missing ones are the point.** A look is
+skipped on any tick that already carries a taking, because `Door::Day` records a
+taking at the tick AFTER the turn — the tick the host's next look would land on
+— and a replay applies looks before takings at equal ticks. One skip per taking,
+four takings, four skips. The engine does this on its own, and the arithmetic
+coming out right in a file recorded on another machine is the best evidence
+there is that the guard works.
+
+**What a stand-in could not have invented**, and what makes this file worth
+keeping beside the tidy one:
+
+- two `Speak` intents pressed by accident while reaching for W-A-S-D;
+- a stretch where the camera looked at **region 0** — off the map, over the sea
+  — before the owner found their bearings;
+- twenty-five day turns where the camera did not move at all;
+- and, before the last thirty days, seventy-five where it sat on one region
+  while the played person lived forty-five metres away. That is what made the
+  gate refuse the first version of this walk, and the story is in ADR-0140's
+  amendment: **the fence fires only when the camera crosses the played person's
+  own region and leaves it.**
+
+The last thirty day turns were driven from the console rather than the keyboard:
+`Vaelen.Look 9`, `Vaelen.Day 5`, `Vaelen.Look 54`, `Vaelen.Day 5`, and so on.
+`Vaelen.Day` does not consult the camera — it uses the remembered look — so a
+whole walk can be recorded at exact region numbers without flying at all. Only
+the Space key routes through the controller and reads the camera.

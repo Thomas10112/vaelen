@@ -146,3 +146,47 @@ add_test(NAME Run.Gate
           "-DE=  (e) PASS  somewhere to walk within four days of each taking: 4 takings, longest wait 1 day turn(s)"
           -P ${CMAKE_CURRENT_LIST_DIR}/Gate.cmake)
 set_tests_properties(Run.Gate PROPERTIES TIMEOUT 1800)
+
+# 15.10's GATE, MET. The walk a person actually lived.
+#
+# Recorded on 2026-09-21 in UE 5.6 on Win64 (MSVC 19.51) by the owner, at the
+# keyboard: 142 day turns, 138 looks, 4 takings and 2 Speak intents, with the
+# daily cadence on. Replayed here on gcc/Linux to the same four digests.
+#
+# WHAT MAKES IT DIFFERENT from aelvor128-walk-2026-09-17.stream, which is why
+# both are kept: that one is written by --walk, by this project, to exercise
+# the clauses. This one came out of the engine, through the camera and the
+# console, from a host that had never run headlessly. It is the only stream in
+# this repository that proves the ENGINE half of 15.10 rather than the kernel.
+#
+# It also carries what a stand-in could not invent: two Speak intents the owner
+# pressed by accident while reaching for W-A-S-D, a stretch where the camera
+# looked at region 0 (off the map, over the sea) before they found their
+# bearings, and 25 day turns where nothing moved at all. A gate that only ever
+# saw tidy input would not be a gate.
+add_test(NAME Replay.Lived
+  COMMAND ${CMAKE_COMMAND}
+          -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DSTREAM=${PROJECT_SOURCE_DIR}/Tests/Run/Streams/aelvor128-played-2026-09-21.stream
+          -DOUT=${CMAKE_CURRENT_BINARY_DIR}/replay-lived.json
+          -DMORE=--stream
+          "-DSAME=replay: 2 of 2 answered identically, 142 of 142 days"
+          "-DPLAYED=LogVaelenPlay: AELVOR 128 seed 41454c564f52: played person 4171 (person 4171, region 9) 142 days, 2 intents (2 taken, 0 refused by the world, 0 dropped at the door), state 609253a29361ec5f, log a2839792e0837328, life 0a4babc60f6e4d90, panel c4ddbe971538c59c"
+          "-DVERBS=LogVaelenPlay: verbs work 0 rest 0 eat 0 wait 0 speak 2 give 0 take 0 move 0"
+          -P ${CMAKE_CURRENT_LIST_DIR}/ReplayPlayed.cmake)
+set_tests_properties(Replay.Lived PROPERTIES TIMEOUT 1800)
+
+# And the gate itself over it, which is the phase's closing clause.
+add_test(NAME Run.Gate.Lived
+  COMMAND ${CMAKE_COMMAND}
+          -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DSTREAM=${PROJECT_SOURCE_DIR}/Tests/Run/Streams/aelvor128-played-2026-09-21.stream
+          "-DEXPECT=state 609253a29361ec5f, log a2839792e0837328, life 0a4babc60f6e4d90, panel c4ddbe971538c59c"
+          "-DA=  (a) PASS  the stream carries looks and the fence fired: 138 Looked records, 15 pins published while held"
+          "-DB=  (b) PASS  every record replayed as it was recorded: 0 wrong (0 of them takings), 0 records left unreached"
+          "-DBB=  (B) PASS  the four digests are the ones the host printed: state 609253a29361ec5f, log a2839792e0837328, life 0a4babc60f6e4d90, panel c4ddbe971538c59c"
+          "-DC=  (c) PASS  both grains agree on every day of the walk: worst over 142 days: heads 0, slots 0, faiths 0"
+          "-DD=  (d) PASS  no day turn promoted twice: worst day turn promoted 1"
+          "-DE=  (e) PASS  somewhere to walk within four days of each taking: 4 takings, longest wait 1 day turn(s)"
+          -P ${CMAKE_CURRENT_LIST_DIR}/Gate.cmake)
+set_tests_properties(Run.Gate.Lived PROPERTIES TIMEOUT 1800)

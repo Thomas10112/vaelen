@@ -9647,6 +9647,50 @@ a demotion that did not happen, and nothing would say why.
 
 ---
 
+### Amendment, 2026-09-21 (task 15.10): what makes the pin actually fire
+
+The fence has been in the code since 15.01 and tested since 15.01, and nobody
+knew what makes it fire in a played world until the gate refused a walk over it.
+
+`LodSystem` pins a region when that region is **detailed**, is **no longer
+wanted**, and **holds somebody**. Two of those three are about the camera:
+detail is requested by the warden, and wanting stops when the warden stops
+asking. So the fence fires when **the camera passes over the played person's own
+region and then leaves it**, and at no other time.
+
+Nothing in this project said so. `Tools/Atlas --walk` produced 53 pins over a
+hundred days and the figure was written down as a property of the walk; it is
+actually a property of a camera that changes region every single day over sixty
+of them and therefore crosses the played one about every ninth day, by accident.
+
+The owner's first recorded walk had a camera that sat on one region for
+seventy-five days while the played person lived forty-five metres away. 99
+looks, 0 pins, clause (a) refused. Isolated by experiment on that exact stream
+rather than reasoned about:
+
+| the walk, changed in one way | pins |
+|---|---|
+| as recorded | 0 |
+| reach raised from 0 to 1 | **0** |
+| camera made to wander over sixty regions | **57** |
+| alternating between two regions, neither of them the played one | **0** |
+| alternating between the played region and one other | **38** |
+
+The reach has nothing to do with it. Crossing the played person's region is
+everything.
+
+**`LodRules::Held` is 0 in every played world**, which is the other half of the
+surprise. The line `(Rules.Held != 0 && R == Rules.Held)` reads like the
+played region is protected from demotion by name; `Run::Aelvor` never assigns
+that field, so the guard never fires and the played region is protected only by
+being wanted. That is not a defect - the fence behind it is what 15.01 built and
+it holds - but a reader of `Lod.cpp` would reasonably conclude otherwise, and
+one did.
+
+What this changes for anyone recording a walk: look at your own person
+sometimes. The roadmap's sitting instructions now say so, and the walk checked
+in as `aelvor128-played-2026-09-21.stream` does it.
+
 ## ADR-0141 — The bridge keeps its year for the crossings and gives up the day for the detail
 
 **Status:** **APPLIED 2026-09-16** (task 15.02): `Population::DetailSystem`,

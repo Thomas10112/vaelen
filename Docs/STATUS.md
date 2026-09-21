@@ -13,9 +13,34 @@ rewritten afterwards; this block is the only part that tracks today.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 15 — STREAMING & LOD (14 CLOSED 2026-09-16, all five clauses)
-TASK        : 15.10 — the engine half. WIRED 2026-09-18; what is left is one sitting
-              at the keyboard.
+PHASE       : 15 — STREAMING & LOD, **CLOSED 2026-09-21, all six clauses**
+              (14 CLOSED 2026-09-16, all five clauses)
+TASK        : 15.10 — DONE. The walk was lived at the keyboard on 2026-09-21 and the
+              gate keeps all six clauses.
+
+              142 day turns, 138 looks, 4 takings and 2 Speak intents, recorded in UE 5.6
+              on Win64 (MSVC 19.51) with the daily cadence on, replayed headlessly on
+              gcc/Linux to the SAME four digests: state 609253a29361ec5f, log
+              a2839792e0837328, life 0a4babc60f6e4d90, panel c4ddbe971538c59c. 15 pins
+              published while held, 0 wrong, both grains agreeing on every one of the 142
+              days, no day turn promoting twice, somewhere to walk within one day turn of
+              each taking. CTest Replay.Lived and Run.Gate.Lived pin it; 179 entries.
+
+              THE FIRST WALK WAS REFUSED, AND THE INSTRUCTION WAS THE DEFECT. Clause (a):
+              99 looks, 0 pins. A pin fires when a detailed region stops being wanted and
+              holds somebody - and the camera is what makes a region wanted, so the fence
+              only fires when the camera crosses the played person's own region and
+              leaves it. The instruction said "stay near the centre and move a little";
+              the camera sat on region 54 for seventy-five days while the person lived in
+              region 9, forty-five metres away. --walk's 53 pins had been written down as
+              a property of the walk when they are a property of a camera that changes
+              region daily. Isolated by experiment on the recorded stream: reach 0 to 1
+              changed nothing, wandering gave 57, alternating between two regions that
+              are not the played one gave 0, alternating with the played one gave 38.
+              ADR-0140's amendment. No new session was needed - thirty more day turns
+              appended to the same PIE closed it.
+
+              THE ENGINE HALF, WIRED 2026-09-18.
 
               THE PHASE 15 KERNEL IS BUILT AND RUN UNDER UBT. On 2026-09-18 the owner
               built the six modules Phase 15 has touched with MSVC 19.51 on Win64 and ran

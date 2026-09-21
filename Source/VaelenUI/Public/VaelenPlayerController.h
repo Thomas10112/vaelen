@@ -14,11 +14,13 @@
 // the stream headlessly to the same four digests, byte for byte.
 // Tests/Run/Streams/README.md has the lines.
 //
-// UNVERIFIED (Phase 15 task 15.10) for everything added on 2026-09-18 - the
-// look, the cadence argument, the camera. It parses against Tools/EngineShim
-// and UnrealBuildTool has never seen it. A file that said VALIDATED over code
-// no compiler has read would be exactly the fake "done" this project refuses,
-// so the line is split rather than dated forward.
+// VALIDATED (Phase 15 task 15.10) for what 15.10 added - built by
+// UnrealBuildTool and RUN on 2026-09-21 (UE 5.6, MSVC 19.51, Win64 Development
+// Editor): the look, the cadence argument, the camera and Vaelen.TakeUp. 142
+// day turns, 138 looks, 4 takings and 2 intents were played and written to
+// Tests/Run/Streams/aelvor128-played-2026-09-21.stream, which replays
+// headlessly to the same four digests and keeps all six clauses of the phase
+// gate. This line said UNVERIFIED for three days while it was true.
 #pragma once
 
 #include "CoreMinimal.h"
