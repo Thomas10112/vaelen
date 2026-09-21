@@ -366,7 +366,21 @@ namespace Vaelen
 	Hash64 ComputeStateDigest(const World& Source)
 	{
 		std::vector<uint8> Bytes;
-		SaveSnapshot(Source, Bytes);
+		// 16.02 gave SaveSnapshot the power to refuse, and a refusal truncates
+		// the buffer back to the size it was handed - here, to empty. Reading a
+		// trailer out of THAT is what the line below used to do unconditionally:
+		// on an empty vector data() may be null, and null + 0 - 8 is undefined
+		// before the memcpy is ever reached. Making the save fallible therefore
+		// made this call site worse, not better, and it is the fix's job to say
+		// so rather than the next crash report's.
+		//
+		// A refused save has no digest and zero is the value that says so. It is
+		// not a world's digest by construction: a real trailer is a hash over at
+		// least the forty bytes of header that always precede it.
+		if (SaveSnapshot(Source, Bytes) != SnapshotResult::Ok || Bytes.size() < 8)
+		{
+			return 0;
+		}
 		Hash64 Digest = 0;
 		std::memcpy(&Digest, Bytes.data() + Bytes.size() - 8, 8);
 		return Digest;

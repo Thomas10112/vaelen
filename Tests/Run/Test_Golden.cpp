@@ -104,7 +104,7 @@ VAELEN_TEST(Golden, V3RoundTrips)
 		Aelvor A(OptionsOf(G));
 		VT_REQUIRE(A.Begin());
 		const SnapshotResult Res = LoadSnapshot(A.Instance(), OnDisk.data(), OnDisk.size());
-		VT_CHECK_MSG(Res == SnapshotResult::Ok, SnapshotResultToString(Res));
+		VT_CHECK_MSG(Res == SnapshotResult::Ok, "%s", SnapshotResultToString(Res));
 		VT_REQUIRE(Res == SnapshotResult::Ok);
 		VT_CHECK_MSG(A.StateDigest() == G.State, "and it is the world the README says it is");
 

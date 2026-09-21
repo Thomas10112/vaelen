@@ -376,6 +376,26 @@ namespace
 		usize After = 0;
 		SnapshotResult Result = SnapshotResult::Ok;
 	};
+
+	// The same trick aimed at ComputeStateDigest, which has no result to return
+	// and therefore cannot refuse - it can only answer something. What it must
+	// not do is read a trailer out of a buffer the refusal emptied.
+	class DigestFromInside final : public IEventListener
+	{
+	public:
+		explicit DigestFromInside(const World& InWorld) : W(InWorld) {}
+		const char* GetListenerName() const noexcept override { return "DigestFromInside"; }
+		void OnEvent(const Event&) override
+		{
+			Saw = true;
+			Dispatching = W.Events().IsDispatching();
+			Digest = ComputeStateDigest(W);
+		}
+		const World& W;
+		bool Saw = false;
+		bool Dispatching = false;
+		Hash64 Digest = 1;
+	};
 } // namespace
 
 VAELEN_TEST(Snapshot, SaveRefusesRatherThanLies)
@@ -411,7 +431,7 @@ VAELEN_TEST(Snapshot, SaveRefusesRatherThanLies)
 	VT_CHECK_MSG(Listener.Saw, "the listener ran, or this test measures nothing");
 	VT_REQUIRE(Listener.Saw);
 	VT_CHECK_MSG(Listener.Dispatching, "and it ran while the bus was dispatching");
-	VT_CHECK_MSG(Listener.Result == SnapshotResult::Inconsistent, SnapshotResultToString(Listener.Result));
+	VT_CHECK_MSG(Listener.Result == SnapshotResult::Inconsistent, "%s", SnapshotResultToString(Listener.Result));
 	VT_CHECK_MSG(Listener.After == Listener.Before, "and the caller's buffer is the size it was");
 	VT_CHECK_MSG(Out.size() == 11u, "down to the eleven bytes it already held");
 	uint32 Kept = 0;
@@ -462,4 +482,38 @@ VAELEN_TEST(Snapshot, AShortImageIsRefusedButTheWriterNeverKnew)
 	}
 	VT_CHECK_MSG(Cuts == 4u, "four cut points");
 	VT_CHECK_MSG(Refused == Cuts, "every resealed short image is refused, so the trailer is not the only guard");
+}
+
+VAELEN_TEST(Snapshot, TheDigestOfAWorldThatCannotBeSavedIsNotRead)
+{
+	// A REGRESSION THIS CHANGE ITSELF CREATED, fixed in the commit that created
+	// it. Before 16.02 SaveSnapshot could not refuse, so ComputeStateDigest
+	// always had bytes to read a trailer from - it took the last eight of the
+	// buffer without looking. Teaching the save to refuse, and to put the
+	// caller's buffer back the way it found it, left that line reading the last
+	// eight bytes of an EMPTY vector: data() may be null, and null + 0 - 8 is
+	// undefined before std::memcpy is ever reached.
+	//
+	// Nothing in the suite would have caught it. ComputeStateDigest has some
+	// two hundred call sites and every one of them passes a quiet world, which
+	// is exactly the shape of defect that reaches a player and not a test. The
+	// only route to it is the one route the save now refuses: asking a world
+	// for its digest while its own event bus is dispatching.
+	TestWorld A(31337);
+	A.Populate(8);
+	A.Instance.TickMany(3);
+
+	const Hash64 Quiet = ComputeStateDigest(A.Instance);
+	VT_CHECK_MSG(Quiet != 0, "a quiet world has a digest, or the sentinel below means nothing");
+
+	DigestFromInside Listener(A.Instance);
+	VT_REQUIRE(A.Instance.Events().Subscribe(PulseEvent.TypeHash, &Listener));
+	A.Instance.Events().Publish(A.Instance.Now(), PulseEvent, Pulse{1});
+	A.Instance.Events().Dispatch(A.Instance.Now() + 1);
+
+	VT_CHECK_MSG(Listener.Saw, "the listener ran, or this test measures nothing");
+	VT_REQUIRE(Listener.Saw);
+	VT_CHECK_MSG(Listener.Dispatching, "and it ran while the bus was dispatching");
+	VT_CHECK_MSG(Listener.Digest == 0, "a world that cannot be saved reports zero rather than reading past a buffer");
+	VT_CHECK_MSG(Listener.Digest != Quiet, "and it is not quietly the digest it would have had");
 }
