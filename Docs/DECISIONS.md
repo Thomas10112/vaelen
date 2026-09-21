@@ -10266,3 +10266,88 @@ local space, so a host that moved that actor must say where: `MapOrigin`.
 Neither is a determinism defect — whichever region a host names, the world
 records that one and the replay reproduces it — and both are the difference
 between a walk over what somebody looked at and a walk over somewhere else.
+
+## ADR-0148 — A check that only reads the source is not a check that it builds
+
+**Status:** **APPLIED 2026-09-21** (between tasks 16.02 and 16.03). Adds
+`Tools/check_changed_compiles.py` and a seventh entry to `Tools/verify_fast.sh`.
+No kernel code and no digest is touched by this decision.
+
+### The problem
+
+On 2026-09-21 eight of ten CI legs died at the **Build** step on two consecutive
+commits, and no test ran on either. The cause both times was one line:
+
+```cpp
+VT_CHECK_MSG(Res == SnapshotResult::Ok, SnapshotResultToString(Res));
+```
+
+`VT_CHECK_MSG` forwards its second argument to `std::snprintf` as a **format**.
+A format that is not a literal trips `-Wformat-security`, and this project
+compiles with `-Werror`. One occurrence came from 16.02; the other came from
+16.01 and had been sitting broken on the branch for two commits.
+
+`Tools/verify_fast.sh` was green for both, and it was green honestly. It checks
+formatting, kernel purity, the engine shim, the engine parse, the world wiring
+and the UI fence. Laid out together those six have a shape that nobody had
+looked at: **every one of them reads the source as text.** Not one had ever
+handed a file to a compiler. The largest class of failure the CI actually
+catches had no fast check at all, and the gap was invisible precisely because
+the checks that did exist all passed.
+
+There was a second reason it stayed invisible for two days. `kernel-ci.yml` sets
+`concurrency.cancel-in-progress: true`, the long legs are budgeted at 180
+minutes, and the phase was being pushed faster than that. Runs 233, 234 and 235
+are all `cancelled`. The last run to render a verdict on the branch was
+`6dd21ec` on 2026-09-19 — before 15.10, before Phase 15 closed, before 16.01.
+"CI green" had been reported from the fast legs while the legs that build and
+run the suite never finished. A broken commit shipped into that blind spot and
+stayed there.
+
+### The decision
+
+**Before a push, compile every translation unit the change can reach.**
+
+A changed `.cpp` maps to itself. A changed `.h` maps to every TU whose build
+**actually included it**, read out of Ninja's own dependency log rather than
+guessed from `#include` lines — so a header three levels down is found exactly
+as one included directly is. One edit to `Vaelen/Sim/Snapshot.h` reaches 93
+units, `Tools/Atlas/Main.cpp` among them.
+
+Syntax-only, with the build's own flags taken verbatim from
+`compile_commands.json`, so what it accepts is what the CI accepts. Measured: 3
+seconds for a source file, 31 for that 93-unit header. `verify_fast` already
+spends longer on the shim self-test.
+
+**And it refuses rather than skips.** No build directory, no dependency log, a
+unit it cannot map — each is an exit code with a sentence saying how to fix it.
+A check that passes quietly when it could not do its job is worse than no check,
+because a green run is then read as an answer it never gave.
+
+### The control, both arms
+
+A checker that cannot fail proves nothing, so this one was run against the real
+defect rather than a sketch of it:
+
+- the defect re-introduced verbatim → 1 of 1 unit fails, with byte-for-byte the
+  diagnostic the runner printed;
+- restored → clean;
+- a benign line appended to `Snapshot.h` → 93 units, all clean;
+- that same header made invalid → 93 of 93 fail;
+- a build directory that does not exist → exit 1, naming what it tried;
+- a build directory with no dependency log → exit 1, naming the remedy;
+- and the wiring itself: with the defect in place `verify_fast` exits 1 and its
+  closing `all fast checks pass` line never prints.
+
+### What this does not change
+
+The CI's build step remains the authority; this only moves the same signal to
+before the push. It does not compile the Unreal-facing modules — those have no
+compiler here, and `parse_engine_modules.py` against `Tools/EngineShim` remains
+the only thing that reads them, with ADR-0134's limits still in force.
+
+### The consequence for pushing
+
+A run that is cancelled is not a run that passed. Where a phase is being pushed
+faster than the legs take, the verdict has to be **waited for** rather than
+inferred from whichever jobs happen to be quick.

@@ -303,7 +303,16 @@ TESTS
 ✓ CI: 10 jobs - six Linux presets, clang-format 18, Windows MSVC, macOS AppleClang, and the engine
   modules parse (clang 18) that builds nothing and reads everything
 ✓ verify_fast: purity 216 files 0 violations · shim self-test 13 mutations · 13 translation units
-  parsed · 4 wirings of AELVOR agree · UI fence 8 files, 16 mutations
+  parsed · 4 wirings of AELVOR agree · UI fence 8 files, 16 mutations · AND, since 2026-09-21,
+  every TU the change reaches COMPILED, syntax-only, with the build's own flags (ADR-0148). The
+  six checks above it all read the source as text; none had ever handed a file to a compiler, and
+  two commits shipped that would not build while all six were green. It refuses rather than skips
+  when it has no configured build directory.
+! A CANCELLED CI RUN IS NOT A PASSED ONE. kernel-ci sets concurrency.cancel-in-progress and its
+  long legs are budgeted at 180 minutes, so pushing faster than that kills the previous verdict.
+  Runs 233, 234 and 235 are all cancelled; the branch's last finished run before 96e420f was
+  6dd21ec on 2026-09-19 - before 15.10, before Phase 15 closed, before 16.01. Read the JOBS, and
+  wait for them.
 ✓ Frozen and reproducing: the ADR-0135 pair (frame abc5a5767c6cf9dd, ground 8f7f4948f49b6e86), the
   view gate 115c2ff70a5327c4, the page empty 54787451e65766c1 and played 703c838ca533a095, and the
   replay's four, which are the OWNER'S MONTH and no longer the stand-in's (state
