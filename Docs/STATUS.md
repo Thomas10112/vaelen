@@ -299,7 +299,7 @@ NEXT
   · This file listed the STAND-IN replay's four digests until 2026-09-16. Corrected above.
 
 TESTS
-✓ 175/175 CTest entries on linux-gcc-release, every gate of fourteen phases
+✓ 181 CTest entries on linux-gcc-release, every gate of fifteen phases, Run.Checkpoint among them
 ✓ CI: 10 jobs - six Linux presets, clang-format 18, Windows MSVC, macOS AppleClang, and the engine
   modules parse (clang 18) that builds nothing and reads everything
 ✓ verify_fast: purity 216 files 0 violations · shim self-test 13 mutations · 13 translation units

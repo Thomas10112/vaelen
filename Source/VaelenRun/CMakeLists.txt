@@ -6,11 +6,13 @@ set(VAELEN_RUN_PUBLIC_HEADERS
   Public/Vaelen/Run/RunApi.h
   Public/Vaelen/Run/Aelvor.h
   Public/Vaelen/Run/Door.h
+  Public/Vaelen/Run/Checkpoint.h
 )
 
 set(VAELEN_RUN_SOURCES
   Private/Aelvor.cpp
   Private/Door.cpp
+  Private/Checkpoint.cpp
 )
 
 add_library(VaelenRun STATIC ${VAELEN_RUN_SOURCES} ${VAELEN_RUN_PUBLIC_HEADERS})

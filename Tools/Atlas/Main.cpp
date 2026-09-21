@@ -36,6 +36,7 @@
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Population/Traits.h"
 #include "Vaelen/Run/Aelvor.h"
+#include "Vaelen/Run/Checkpoint.h"
 #include "Vaelen/Run/Door.h"
 #include "Vaelen/Core/Version.h"
 #include "Vaelen/Sim/PreHistory.h"
@@ -486,6 +487,12 @@ namespace
 		/// Vaelen.Stream.Write logs. Given, the gate JUDGES clause (b)'s other
 		/// half; withheld, it says it is not judging it. It does not guess.
 		std::string Expect;
+		/// 16.04: build a checkpoint of the wired run and print what is in it.
+		/// It writes no file - the container is bytes, and where they go is the
+		/// host's business, not this tool's.
+		bool Save = false;
+		/// With --save, print each section's share of the container.
+		bool Sections = false;
 	};
 
 	/// Runs Years years, keeping a frame every Opt.Every of them. Taking a view
@@ -623,6 +630,14 @@ namespace
 			else if (std::strcmp(Arg, "--expect") == 0 && HasValue)
 			{
 				Out.Expect = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--save") == 0)
+			{
+				Out.Save = true;
+			}
+			else if (std::strcmp(Arg, "--sections") == 0)
+			{
+				Out.Sections = true;
 			}
 			else if (std::strcmp(Arg, "--golden") == 0 && HasValue)
 			{
@@ -1238,6 +1253,67 @@ namespace
 		 true},
 	};
 
+	/// 16.04: build the container and say what is in it. No file is written -
+	/// the whole point of Checkpoint.h is that it deals in bytes and leaves the
+	/// question of WHERE to the host.
+	int RunSave(const Options& Opt)
+	{
+		Vaelen::Run::Options RO;
+		RO.Size = Opt.Size;
+		RO.PreHistory = Opt.PreHistory;
+		RO.Years = Opt.Years;
+		RO.Seed = Opt.Seed;
+		RO.Colony = Opt.Colony;
+		Vaelen::Run::Aelvor A(RO);
+		if (!A.Begin())
+		{
+			std::printf("save: the world could not be begun\n");
+			return 1;
+		}
+
+		std::vector<Vaelen::uint8> Bytes;
+		const Vaelen::Run::CheckpointResult R = Vaelen::Run::BuildCheckpoint(A, Bytes);
+		if (R != Vaelen::Run::CheckpointResult::Ok)
+		{
+			std::printf("save: refused, %s\n", Vaelen::Run::CheckpointResultToString(R));
+			return 1;
+		}
+
+		Vaelen::Run::CheckpointView View;
+		const Vaelen::Run::CheckpointRefusal Read =
+			Vaelen::Run::ReadCheckpoint(Bytes.data(), Bytes.size(), View);
+		if (Read.Result != Vaelen::Run::CheckpointResult::Ok)
+		{
+			std::printf("save: written and then refused by its own reader, %s\n",
+						Vaelen::Run::CheckpointResultToString(Read.Result));
+			return 1;
+		}
+
+		std::printf("save: container v%u, image v%u, seed %llx, tick %llu, %zu bytes\n", View.Version,
+					View.InnerFormat, static_cast<unsigned long long>(View.Seed),
+					static_cast<unsigned long long>(View.Tick), Bytes.size());
+		std::printf("save: log %llu events, %llu bytes - %.1f%% of the container\n",
+					static_cast<unsigned long long>(View.LogEvents),
+					static_cast<unsigned long long>(View.LogBytes),
+					Bytes.empty() ? 0.0 : 100.0 * static_cast<double>(View.LogBytes) / static_cast<double>(Bytes.size()));
+		if (Opt.Sections)
+		{
+			for (const Vaelen::Run::SectionEntry& E : View.Sections)
+			{
+				const char* Name = E.Kind == 1u	  ? "STATE"
+								   : E.Kind == 2u ? "RUN"
+								   : E.Kind == 3u ? "HOST"
+								   : E.Kind == 4u ? "STREAM"
+												  : "?";
+				std::printf("save: section %-6s %10llu bytes  %5.1f%%  digest %016llx\n", Name,
+							static_cast<unsigned long long>(E.Length),
+							100.0 * static_cast<double>(E.Length) / static_cast<double>(Bytes.size()),
+							static_cast<unsigned long long>(E.Digest));
+			}
+		}
+		return 0;
+	}
+
 	int RunGolden(const Options& Opt)
 	{
 		std::string Where = Opt.Golden;
@@ -1737,6 +1813,10 @@ namespace
 		{
 			Usage();
 			return 2;
+		}
+		if (Opt.Save)
+		{
+			return RunSave(Opt);
 		}
 		if (!Opt.Golden.empty())
 		{
