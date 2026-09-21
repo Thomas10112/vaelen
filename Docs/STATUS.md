@@ -308,6 +308,14 @@ TESTS
   six checks above it all read the source as text; none had ever handed a file to a compiler, and
   two commits shipped that would not build while all six were green. It refuses rather than skips
   when it has no configured build directory.
+! THE GATE'S OWN 128 CELL IS 2.37 GB AND TWENTY MINUTES, measured 2026-09-21 on
+  Options{128, Play, Stream, Lively, Colony} with 300+120 years: Begin() takes 1,217,277 ms and leaves
+  3,289 MiB resident; BuildCheckpoint writes 2,368.6 MiB in 95,024 ms. Three such worlds SIGKILL a
+  16 GB container. The "22 MB played AELVOR 128" quoted from 16.01 is a DIFFERENT wiring, and the
+  "~145 ms rollback" derived from it in 16.03 is wrong by two orders of magnitude for this cell.
+  Consequences, none of them yet fixed: ComputeStateDigest does a FULL SaveSnapshot per call (95 s and
+  2.37 GB here, ~200 call sites); 16.03's atomic load doubles peak memory while it runs; and the 128
+  gate cell cannot be an ordinary CTest entry.
 ! A CANCELLED CI RUN IS NOT A PASSED ONE. kernel-ci sets concurrency.cancel-in-progress and its
   long legs are budgeted at 180 minutes, so pushing faster than that kills the previous verdict.
   Runs 233, 234 and 235 are all cancelled; the branch's last finished run before 96e420f was
