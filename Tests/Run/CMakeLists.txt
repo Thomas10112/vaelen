@@ -8,6 +8,10 @@ add_executable(VaelenRunTests
   ${VAELEN_RUN_TEST_SOURCES})
 
 target_include_directories(VaelenRunTests PRIVATE ${PROJECT_SOURCE_DIR}/Tests/Harness)
+# 16.01: where the golden corpus lives, handed in rather than guessed from the
+# working directory, because the CI presets run ctest from the build tree.
+target_compile_definitions(VaelenRunTests PRIVATE
+  VAELEN_GOLDEN_DIR="${PROJECT_SOURCE_DIR}/Tests/Run/Golden")
 target_link_libraries(VaelenRunTests PRIVATE Vaelen::Run Vaelen::View Vaelen::Gameplay Vaelen::Player Vaelen::Colony Vaelen::Infrastructure Vaelen::Military Vaelen::Politics Vaelen::Economy Vaelen::Society Vaelen::Population Vaelen::Sim Vaelen::Core Threads::Threads)
 
 set(VAELEN_RUN_TEST_NAMES "")

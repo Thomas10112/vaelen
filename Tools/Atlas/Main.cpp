@@ -37,7 +37,9 @@
 #include "Vaelen/Population/Traits.h"
 #include "Vaelen/Run/Aelvor.h"
 #include "Vaelen/Run/Door.h"
+#include "Vaelen/Core/Version.h"
 #include "Vaelen/Sim/PreHistory.h"
+#include "Vaelen/Sim/Snapshot.h"
 #include "Vaelen/Sim/Deposits.h"
 #include "Vaelen/Sim/HistoryText.h"
 #include "Vaelen/Sim/Regions.h"
@@ -477,6 +479,8 @@ namespace
 		/// six clauses of the phase gate. The streaming cadence is forced on
 		/// for it - RunGate says why.
 		std::string Gate;
+		/// 16.01: write the golden corpus to this directory.
+		std::string Golden;
 		/// The four digests the host printed, as `state %016llx, log %016llx,
 		/// life %016llx, panel %016llx` - the tail of the line
 		/// Vaelen.Stream.Write logs. Given, the gate JUDGES clause (b)'s other
@@ -548,6 +552,7 @@ namespace
 					 "uses 0)\n"
 					 "  --stand FILE    write a stand-in stream: thirty days played by nobody (14.10)\n"
 					 "  --walk FILE     write a stand-in WALK: looks, takings and the streaming cadence (15.10)\n"
+					 "  --golden DIR    write the golden save corpus of 16.01 to this directory\n"
 					 "  --gate FILE     replay a walk and report the six clauses of the 15.10 gate\n"
 					 "  --expect \"...\"  with --gate: the four digests the host printed, judged rather than "
 					 "printed\n");
@@ -618,6 +623,10 @@ namespace
 			else if (std::strcmp(Arg, "--expect") == 0 && HasValue)
 			{
 				Out.Expect = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--golden") == 0 && HasValue)
+			{
+				Out.Golden = Argv[++I];
 			}
 			else if (std::strcmp(Arg, "--want-bound") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
 			{
@@ -1189,6 +1198,111 @@ namespace
 		return Held ? 0 : 1;
 	}
 
+	/// 16.01: the corpus the migration chain will be measured against.
+	///
+	/// A golden is an image written by a build that no longer exists. Phase 16
+	/// changes what a refusal means (16.08) and puts a container around the
+	/// image (16.09); after those, no build in this repository can write an
+	/// honest v3 file again, and there is nothing older than this phase for a
+	/// migration to migrate. So these are written FIRST, from the tree as it
+	/// stands, and never regenerated afterwards except to prove that today's
+	/// build still produces them byte for byte.
+	///
+	/// WHY THE WORLDS ARE SO SMALL, and it is not modesty. A golden lives in
+	/// git forever. Measured on this tree: AELVOR 16 with ten years of
+	/// pre-history and one of history weighs 78 KB, and the SAME world with
+	/// thirty and three weighs 11.4 MB - one hundred and forty-six times more
+	/// for twenty more years. The event log is 75% of any image that has any
+	/// history at all (76356 events at 112 bytes each), and it does not stop
+	/// growing. The planning proposed a third golden of "32 tiles, 5 years,
+	/// about 104 KB"; that world is 22,568,335 bytes. Two hundred and sixteen
+	/// times the estimate, in a repository whose largest file is 539 KB.
+	///
+	/// So the corpus buys format coverage, not world coverage: every section
+	/// of the image, the full type set, on two map sizes. It does NOT contain
+	/// a world with a long history, and 16.09's forge exists because of that.
+	struct Golden
+	{
+		const char* Name;
+		const char* What;
+		uint32 Size;
+		uint32 PreHistory;
+		uint32 Years;
+		bool Full;
+	};
+
+	constexpr Golden Goldens[] = {
+		{"bare-16.snapshot", "the wiring without the player: fifteen type sets, no Phase 10-12", 16, 10, 1, false},
+		{"full-16.snapshot", "every type set this tree declares, on the smallest map that generates", 16, 10, 1, true},
+		{"full-32.snapshot", "the same wiring on a different map, so a size cannot hide in the layout", 32, 10, 1,
+		 true},
+	};
+
+	int RunGolden(const Options& Opt)
+	{
+		std::string Where = Opt.Golden;
+		if (!Where.empty() && Where.back() != '/')
+		{
+			Where += '/';
+		}
+		std::string Lines;
+		for (const Golden& G : Goldens)
+		{
+			Vaelen::Run::Options RO;
+			RO.Size = G.Size;
+			RO.PreHistory = G.PreHistory;
+			RO.Years = G.Years;
+			if (G.Full)
+			{
+				RO.Play = true;
+				RO.Stream = true;
+				RO.Lively = true;
+				RO.Colony = true;
+			}
+			Vaelen::Run::Aelvor A(RO);
+			if (!A.Begin())
+			{
+				std::fprintf(stderr, "AELVOR: %s would not generate at %u\n", G.Name, G.Size);
+				return 1;
+			}
+			std::vector<uint8> Image;
+			SaveSnapshot(A.Instance(), Image);
+
+			const std::string Path = Where + G.Name;
+			std::FILE* File = std::fopen(Path.c_str(), "wb");
+			if (File == nullptr)
+			{
+				std::fprintf(stderr, "AELVOR: cannot write %s\n", Path.c_str());
+				return 1;
+			}
+			const usize Wrote = std::fwrite(Image.data(), 1, Image.size(), File);
+			const bool Closed = std::fclose(File) == 0;
+			if (Wrote != Image.size() || !Closed)
+			{
+				std::fprintf(stderr, "AELVOR: could not write all of %s\n", Path.c_str());
+				return 1;
+			}
+
+			// EVERY NUMBER A LOADER WILL LATER CHECK, recorded beside the file
+			// rather than left to be rediscovered. The layout digest is the one
+			// LoadSnapshot compares, so a corpus that did not carry it could
+			// not tell a refusal from a regression.
+			const Hash64 Layout = HashCombine(A.Instance().Types().LayoutDigest(), A.Instance().Map().LayoutDigest());
+			char Row[512];
+			std::snprintf(Row, sizeof(Row), "| `%s` | %u | %u | %u | %s | %u | `%016llx` | `%016llx` | %zu |\n", G.Name,
+						  G.Size, G.PreHistory, G.Years, G.Full ? "Play+Stream+Lively+Colony" : "none",
+						  static_cast<unsigned>(VAELEN_SAVE_FORMAT_VERSION), static_cast<unsigned long long>(Layout),
+						  static_cast<unsigned long long>(A.StateDigest()), Image.size());
+			Lines += Row;
+			std::printf("golden %-18s %8zu bytes, layout %016llx, state %016llx - %s\n", G.Name, Image.size(),
+						static_cast<unsigned long long>(Layout), static_cast<unsigned long long>(A.StateDigest()),
+						G.What);
+		}
+		std::printf("golden: %zu images written to %s\n", sizeof(Goldens) / sizeof(Goldens[0]), Where.c_str());
+		std::printf("%s", Lines.c_str());
+		return 0;
+	}
+
 	int RunStand(const Options& Opt)
 	{
 		Vaelen::Run::Options RO;
@@ -1623,6 +1737,10 @@ namespace
 		{
 			Usage();
 			return 2;
+		}
+		if (!Opt.Golden.empty())
+		{
+			return RunGolden(Opt);
 		}
 		if (!Opt.Gate.empty())
 		{

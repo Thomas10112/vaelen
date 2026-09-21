@@ -13,9 +13,53 @@ rewritten afterwards; this block is the only part that tracks today.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 15 — STREAMING & LOD, **CLOSED 2026-09-21, all six clauses**
-              (14 CLOSED 2026-09-16, all five clauses)
-TASK        : 15.10 — DONE. The walk was lived at the keyboard on 2026-09-21 and the
+PHASE       : 16 — SAVE/PERSISTENCE, opened 2026-09-21
+              (15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
+TASK        : 16.01 — DONE 2026-09-21. The golden corpus and the gate list, both of
+              them one-way doors, which is why they are the phase's first commit.
+
+              THE PLANNING FOUND TWELVE DEFECTS before a line was written, and one is a
+              live data-loss path: SaveSnapshot returns void, drops its body's result into
+              a [[maybe_unused]] and checks it with VAELEN_CHECKF, which Assert.h compiles
+              to ((void)0) under NDEBUG and under UE_BUILD_SHIPPING — the builds a player
+              runs. A failing serialisation then writes a SHORT image, and the next line
+              hashes those short bytes and appends a trailer over them, so the file is
+              well-formed, wrong, and validates on load. Verified by reading
+              Snapshot.cpp:253-255 and Assert.h:33-43, not taken on a planner's word.
+              16.02 fixes it and costs no digest.
+
+              WHAT PHASE 16 IS ABOUT, measured before it was planned: SaveSnapshot saves
+              the WORLD and it works — a played AELVOR 128 restores to an identical digest
+              and runs ten more days to the same figure. What is missing is the RUN.
+              Run::Aelvor's Near_ and Watched_ live outside the image, so the moment
+              anybody LOOKS a restored world parts company with the one it was copied from
+              (6d4b82134edfcbf6 against 02c94cdaf3367b43). About thirty bytes, one part in
+              700,000 of the image. Fifteen phases of accumulated state the Phase 01
+              snapshot never knew it had to carry.
+
+              16.01 SHIPPED, AND ITS OWN ESTIMATE WAS WRONG BY 216x. The plan costed a
+              third golden at "about 104 KB"; that world weighs 22,568,335 bytes. Measured
+              instead: the event log is 75% of any image with a history, and a 16-tile
+              world goes from 78 KB to 11.4 MB between ten years of pre-history and
+              thirty. The corpus is three young worlds — 329 KB in all — and buys FORMAT
+              coverage, not world coverage. Tests/Run/Golden/README.md says so in the file
+              rather than leaving a green test to imply more than it proves.
+
+              AND THE CORPUS PROVED A DEFECT BY EXISTING: full-16 and full-32 share the
+              layout digest 5ab1a2f994715f25, so the only value LoadSnapshot compares
+              cannot tell a 16-tile world from a 32-tile one.
+              Golden.TheLayoutDigestCannotTellTwoMapSizesApart pins it, and when 16.08
+              fixes it that test must FAIL and be rewritten to say the opposite.
+
+              The gate list is seventeen entries, not the eleven it ran through fifteen
+              phases: Run.Golden, Replay.Played, Replay.Walked, Replay.Lived, Run.Gate and
+              Run.Gate.Lived joined it. Eleven of them check a digest a system computes;
+              six check a digest a RECORDING replays to, and Phase 16 is about to change
+              the code that reads recordings. `--self-test` appends an impossible gate and
+              requires the count to go non-zero; a moved figure makes Gate.cmake exit 1.
+              Both arms were run.
+
+TASK (15)   : 15.10 — DONE. The walk was lived at the keyboard on 2026-09-21 and the
               gate keeps all six clauses.
 
               142 day turns, 138 looks, 4 takings and 2 Speak intents, recorded in UE 5.6

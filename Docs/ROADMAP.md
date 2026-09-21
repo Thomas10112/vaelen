@@ -83,7 +83,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 13 | PRESENTATION | Unreal rendering, animation and audio of the world state, strictly read-only. | CLOSED (13.01-13.09; gate PASSED 2026-09-14 at 100 fps on a T400; engine and headless kernel agree on every figure at 256) |
 | 14 | UI | Interface and read-only views; command submission through the gameplay layer. | **CLOSED** 2026-09-16, all five clauses met - (e) certified by CI run 215 on 4137b08, ten jobs of ten green (14.01-14.10 - eighty-three days played at the keyboard in UE 5.6, replayed headlessly to the same four digests byte for byte, and the HUD measured at 0.52 ms of game thread over a scene that runs at about 122 fps; the breakdown is section 20) |
 | 15 | STREAMING & LOD | Engine streaming coupled to the simulation's grains: what is simulated at which detail away from the player. **The row said "simulation LOD 0-4" until 15.09 found that two different things were being called LOD.** `SimLod` (Sim/System.h) is a real five-rung ladder of how OFTEN a system runs - 1, 4, 24, 720, 8640 ticks - and 15.02 moved a system down it. A REGION has two grains and not five: person by person, or counts per culture. `RegionLod::Level` is written in one place, always the same value, and levels 0, 1 and 3 have never been reachable. | **CLOSED 2026-09-21** (15.01-15.10, section 21). The planning found five defects before a line was written; the review of 15.10 found 27 more, among them that the engine host recorded a world its own replay does not reach. The gate is met on a walk a person actually lived. |
-| 16 | SAVE/PERSISTENCE | Save format, serialisation of the whole world state, checkpoints on disk, migrations keyed on the save-format version. | PLANNED |
+| 16 | SAVE/PERSISTENCE | **The row said "serialisation of the whole world state" until the planning measured it: that shipped in Phase 01 and works.** What is not saved is the RUN - `Run::Aelvor`'s own members - so a restored world continues identically until somebody LOOKS, and then parts company with the world it was copied from. The gap is about thirty bytes, one part in 700,000 of the image. So the phase is a save that can refuse, a load that cannot half-apply, a container around the untouched image, a verb by which a run adopts a world it did not generate, a file that cannot destroy the last good one, and a migration chain. | BROKEN DOWN (16.01-16.14, section 22; the planning found twelve defects first, among them that `SaveSnapshot` cannot fail and cannot say so in exactly the builds a player runs) |
 | 17 | DEBUG TOOLS | Inspectors, replay tooling, determinism diff, world statistics, headless console. | PLANNED |
 | 18 | STRESS TEST | Long-duration and large-world runs, performance budgets, determinism at scale. | PLANNED |
 | 19 | MODDING | Data-driven definitions, mod loading, stable ids and APIs for mods. | PLANNED |
@@ -4998,3 +4998,410 @@ the records ran out.
 
 Next: 15.01, the fence that has to exist before anything else is allowed to
 demote.
+
+## 22. Phase 16 - SAVE/PERSISTENCE: task breakdown
+
+Planned on 2026-09-21 by two readers who measured before they proposed, four
+competing breakdowns and two judges. One judge picked the evidence-first shape
+("determinism"), the other the smallest-safe shape ("minimal"); both picked the
+same load-bearing rule, so the section below is the smallest-safe skeleton with
+the evidence discipline of the other grafted into its gate, plus the four things
+the remaining two plans saw and nobody else did. Where a task came from another
+plan it says so.
+
+**What Phase 16 is actually about.** The roadmap row promises "serialisation of
+the whole world state", and that shipped in Phase 01: a played AELVOR 128
+snapshots to 21,980,402 bytes, restores to an identical state digest, is a
+byte-for-byte fixed point across load-then-re-save, and — with nobody looking —
+continues for ten day turns to the same digest as the world it was copied from
+(`cff08aea2e255220` on both sides). The world is saved. What is not saved is the
+RUN: `Run::Aelvor`'s own members live outside the image, so the moment anybody
+LOOKS, a restored world makes different detail decisions from the same records
+and the two worlds part company (`6d4b82134edfcbf6` against `02c94cdaf3367b43`).
+The whole gap is `Near_` and `Watched_` and about thirty bytes — one part in
+700,000 of the image — and it was isolated by experiment: `Near_` alone gives
+`a0e2fa35c353c33e`, `Watched_` alone `a6aaae6acbf09d00`, both together reproduce
+the original bit for bit, and at the fullest wiring over sixty days the LOG
+digest matches too. Worse than the divergence: a world loaded into a
+`Run::Aelvor` that never ran `Begin()` is inert and permanently so — `TakeUp`
+returns 0, `LookAt` skips the warden, `Day()` advances nothing, and `Begin()` is
+refused forever because the clock has moved — so "load a save" today costs a
+full world generation (722 ms at 128, 4,615 ms at 256, 52 s for a 500-year 256)
+to produce a world the image immediately overwrites. So Phase 16 is not a
+serialisation phase. It is: a save function that can refuse, a load that cannot
+half-apply, a CONTAINER around the untouched image carrying the thirty bytes and
+the provenance, a verb by which a run adopts a world it did not create, a file
+on disk that cannot destroy the last good one, and a migration chain keyed on
+something that actually moves when the format breaks.
+
+**The design rule for the whole phase, and it is the same rule Phase 15 shipped
+on.** Nothing is ever added to the image. `SaveSnapshot`'s bytes and
+`ComputeStateDigest`'s value do not change, because the trailer digest is
+computed over bytes that include the version, the flags word, the layout digest
+and the seed (`Snapshot.cpp:255`) and `ComputeStateDigest` returns that trailer
+(`Snapshot.cpp:305-312`). Every frozen phase-gate digest hangs off it. Everything
+this phase needs to add — extents, host options, run state, provenance,
+migration version, section digests — lives in a container OUTSIDE the image,
+where it costs nothing. The consequence is clause (b) of the gate rather than a
+hope: **of the frozen constants of sixteen closed phases, zero move.**
+
+### What the planning found before a line of it existed
+
+Twelve defects, every one confirmed against the code in this tree rather than
+taken on a planner's word.
+
+1. **`SaveSnapshot` cannot fail, and cannot say so.** It returns `void`, drops
+   the body's result into `[[maybe_unused]]` and checks it with `VAELEN_CHECKF`
+   (`Snapshot.cpp:253-254`), which `Assert.h:154` compiles to `((void)0)` when
+   `VAELEN_ASSERTS_ENABLED` is 0 — which `Assert.h:33-43` sets for `NDEBUG` and
+   for `UE_BUILD_SHIPPING`/`UE_BUILD_TEST`, exactly the builds a player runs.
+   A failing body writes a short image; line 255 then hashes those short bytes
+   and appends a trailer over them, so the file is well-formed, wrong, and
+   validates on load. The same macro is the only guard on
+   "cannot snapshot while dispatching events" (`Snapshot.cpp:185`). This is the
+   single live data-loss defect in the round, and it costs zero digests to fix.
+
+2. **A failed load leaves a running chimera, and `Run::Aelvor` cannot discard
+   it.** Measured: world B at `3b4b2bfece864fb4` was fed a 60%-truncated,
+   RESEALED image of world A. `LoadSnapshot` honestly returned `Truncated`. B was
+   left at `a981acc1ba3607cf` — neither world — with A's clock (tick 2851440) and
+   B's event log, then turned ten more day turns with nothing firing, reached
+   `4e95d9a61dad4c76`, and answered `Life()` with a person's name.
+   `Snapshot.h:57-59` tells callers to discard such a world; `Aelvor.h:210-211`
+   holds the world inside a `unique_ptr<Kernel>` with no reset, `World` is
+   non-copyable, and the kernel is built in the constructor. The contract is
+   unsatisfiable by the only real caller. This needs no malice, only a short
+   read — and a resealed image is precisely what the migration tooling this
+   phase promises produces by definition. (Found by "adversary", by nobody else.)
+
+3. **The image's integrity protection is inverted.** On a 7,015,163-byte
+   AELVOR 64 image: trailer intact, 400 of 400 single-byte flips are caught.
+   Trailer RECOMPUTED, the log band is still 60 of 60 refused, because
+   `EventLog::ReadFrom` re-derives the per-event chain
+   (`EventBus.cpp:60-68`) — while the pools-and-map band is 60 of 60 ACCEPTED
+   with a silently wrong state digest, and the clock/ids/entities band 52 of 60.
+   The 84-93% that is chronicle is checked twice; the 9% that is the actual
+   simulation has no interior check at all.
+
+4. **The header `Flags u32` is written 0 and never read.** `Snapshot.cpp:249`
+   writes it, `:283` reads it into a local, and no branch anywhere looks at that
+   local. Measured: an image with `Flags = 0xDEADBEEF`, trailer recomputed,
+   loads `Ok` with an identical digest. There is no channel by which an image
+   can tell an older reader "I am not what you assume", which is exactly what a
+   truncated log or a new section would have to say.
+
+5. **The host's declared world is never checked against the save.** A host
+   declaring `Options::Size = 64` loading a 128 image into a never-generated
+   world returns `Ok`: `WorldMap::LayoutDigest` (`WorldMap.cpp:29-37`) folds
+   layer name hashes and element sizes and no extents, and on load `Reset(Config)`
+   takes width and height from the image (`WorldMap.cpp:40-53`) and overwrites
+   the target's. The world that comes out is coherent; what is discarded in
+   silence is the host's statement about which world it thought it was opening.
+   `Options::Stream` is invisible to every existing guard because it declares no
+   component type — and `Aelvor::Header()` then writes a `StreamHeader` from
+   `Given_.Size`, naming a world that does not exist.
+
+6. **Six structurally different causes return one word.** A build that added a
+   type, an older build reading a save with an extra type, the same types
+   registered in the other order, a field added to a component (ADR-0090), a type
+   renamed, and a different seed — all six return `LayoutMismatch`.
+   `MissingPool` fires for none of them; its only reachable path is a registered
+   type with no pool, which no production wiring produces, and the reconciliation
+   check at `Snapshot.cpp:164` is dead behind the equality gate at `:137`. A seed
+   mismatch is reported as `LayoutMismatch` (`Snapshot.cpp:291-296`), telling a
+   player their components changed when what happened is they opened another
+   world's save. Three of the six are routine evolution and one is "this is not
+   your world". A migration keyed on a diagnosis that cannot tell them apart is
+   keyed on nothing.
+
+7. **Pools are matched by position, not by name.** The image already writes
+   `NameHash` and `ElementSize` per pool; the loader checks `TypeId == Id`
+   instead. So a pure registration-order refactor, in which nothing about the
+   world changed, makes every existing save unloadable, and a build that adds one
+   component type cannot read yesterday's save. Every phase from 03 to 15 added
+   component types; the full AELVOR wiring registers 55. (Found by "migration".)
+
+8. **The save-format version does not move when the save format breaks.**
+   `VAELEN_SAVE_FORMAT_VERSION` is 3 and its own comment dates that to Phase 02
+   ("3: 32 world-gen parameters (02.03)"), while Phases 03-15 invalidated every
+   prior save repeatedly without touching it. `Version.h:10-11` has claimed since
+   Phase 00 that "Persistence/Migration keys its upgraders on this number";
+   `grep -rn Migration Source/` returns only population migration. And the
+   roadmap line cannot be satisfied literally, because the version sits inside
+   the bytes the trailer hashes: bumping it moves `ComputeStateDigest` for every
+   world and every frozen gate digest with it. Migrations must key on the
+   container.
+
+9. **The layout digest cannot see a field.** `ComponentType.cpp:65-74` folds
+   `NameHash` and `Size << 32 | Alignment` and nothing else.
+   Reordering two same-sized fields, or retyping a `uint32` to a `float`, moves
+   no digest, passes every check the loader has, and loads old bytes into new
+   fields with no result code and no symptom. ADR-0090 prices ADDING a field;
+   nothing prices CHANGING one, and a save format is exactly where that bill
+   arrives. See OUT OF SCOPE: this phase does not close it.
+
+10. **`Run::Aelvor` has no way to adopt a world it did not create.** `Begun_` is
+    false after a load and nothing can set it: `TakeUp` returns 0 on `!Begun_`
+    (`Aelvor.cpp:617`), `LookAt` skips the warden (`:461`), `Day()` ticks nothing
+    (`:782`), and `Begin()` is refused forever because `PreHistory::Generate`
+    rejects a world whose clock has left `StartTick` (`PreHistory.cpp:73`).
+    Measured: a constructed-but-never-`Begin()`-ed world accepts the image in
+    70 ms and reaches the saved digest and the correct +10-day digest — the
+    722 ms of generation is not required at the WORLD layer, and is 93-96% of
+    restore time. The brief's finding 5 ("a load costs a world generation") is
+    wrong about the world and right about the run.
+
+11. **`Aelvor.h` documents an invariant the save path breaks, and the wrong
+    sentence is why the divergence survived two phases.** `Aelvor.h:221-232` says
+    of `Near_` and `Watched_`: "a replay rebuilds it by applying the same takings
+    in the same order, so nothing here enters a digest". The premise is true; the
+    conclusion silently assumes replay is the only way back. `Reside` releases
+    only a region it remembers asking for (`Aelvor.cpp:530`) and refuses to
+    release anything in `Near_` or equal to `Detail_` (`:532`, `:566`), so a
+    restored world remembers nothing, releases nothing, re-requests what is
+    already wanted, and the 8-slot `LodState::Wanted` leaks from
+    `[26 2 9 10 15]` to `[26 14 15 19 23 24]` and saturates at `MaxWanted`.
+    Different regions get detailed, so different people exist.
+
+12. **`Tools/run_gates.sh` does not run the Phase 14/15 gates.** Its loop
+    (`:26-28`) iterates eleven entries and contains none of `Run.Gate`,
+    `Run.Gate.Lived`, `Replay.Played`, `Replay.Walked`, `Replay.Lived` — the
+    newest code, in the phase most likely to move a digest, checked by the script
+    whose own header comment (`:8-13`) describes that exact accident happening
+    before. Two lines. (Found by "determinism".)
+
+Two more, recorded and not acted on. `<fstream>` and `<filesystem>` are banned in
+all thirteen modules of `Tools/kernel_modules.txt` — `VaelenRun` included — the
+latter with the reason "OS file-system access does not belong in the simulation
+kernel" (`check_kernel_purity.py:119-146`), and the only file I/O in the project
+is `std::fopen` in `Tools/Atlas`. So "checkpoints on disk" cannot be built where
+the roadmap line implies, and 16.07 decides that in the open rather than
+discovering it. And `DiplomacySystem::Graph`/`GraphRegions` (`Diplomacy.cpp:72`)
+is keyed on region COUNT alone; it is stale-proof today only because
+`LoadSnapshot` refuses a different seed and the map is a pure function of seed
+and config. It is the one cache that would not notice a genuinely different map,
+and the first thing to break if anything ever loads a save into a world generated
+differently. 16.10 records it. It does not fix it.
+
+One claimed danger that does NOT exist, so that no task is spent on it:
+`EventLog::ReadFrom`'s `Size != 16 + Count * sizeof(Event)` check cannot be
+defeated by integer overflow. 112's odd part is 7, invertible modulo 2^64, so
+exactly one `Count` satisfies the congruence for a given `Size` and it is the
+honest one; solved explicitly in the probe, which recovered the true event count
+and no wrapping solution.
+
+### Tasks
+
+Fourteen, which is above Phase 15's ten, and the reason is that four separate
+things are missing rather than one. They are ordered so that no commit can take
+the tree red for a reason the task did not intend: 16.01 freezes the instruments,
+16.02-16.03 make the two existing functions honest, 16.04-16.07 build outward
+from the image without touching it, and the evidence tasks come last because they
+are what the earlier ones are measured by. 16.14 is outside the gate.
+
+| Task | Deliverable | Test (with its control) | Why |
+|---|---|---|---|
+| 16.01 | **The instruments, before anything moves.** (a) `Tests/Sim/Golden/` holding three images written by TODAY's v3 build at 867a129 — bare 16-tile, full-wiring 16-tile, full-wiring 32-tile/5y (about 21 KB, 22 KB, 104 KB) — each with a README line recording the exact `Run::Options`, the writing commit, the format version, the layout digest, the state digest and the byte count, plus the command that regenerates them. Never AELVOR: a 128 golden is 22 MB against a 5.97 MB tracked repo. (b) `Tools/run_gates.sh`'s loop extended to sixteen entries with `Run.Gate`, `Run.Gate.Lived`, `Replay.Played`, `Replay.Walked`, `Replay.Lived`. | `Golden.V3RoundTrips`: each golden loads into a freshly constructed world of its recorded `Options`, returns `Ok`, matches its recorded state digest, and re-saves to identical bytes. CONTROL: `Tools/run_gates.sh` is run once with a deliberately moved digest in `Run.Gate` and must report `GATES-DONE 1 failing` — a gate list that cannot go red is not a gate list. | From "migration" 16.01 and "determinism"'s defect list. This is a one-way door: 16.09 changes what the container means and 16.08 changes what a refusal means, and after them no build in existence can write an honest v3 file again. Nothing older than this phase would then exist for the migration chain to migrate. Half a day, and it must be the first commit. **DONE 2026-09-21**, and the sizes inside this row were wrong: the third golden was costed at "about 104 KB" and the world it names weighs 22,568,335 bytes - two hundred and sixteen times. The corpus is three YOUNG worlds instead (77478, 78036, 173414 bytes; 329 KB in all), because the event log is 75% of any image that has a history and a 16-tile world goes from 78 KB to 11.4 MB between ten years of pre-history and thirty. The gate list is seventeen, not sixteen. `Tests/Run/Golden/README.md` carries the table, and the corpus proved defect 5 on the day it was written: `full-16` and `full-32` share the layout digest `5ab1a2f994715f25`, so `Golden.TheLayoutDigestCannotTellTwoMapSizesApart` pins the defect until 16.08 fixes it, at which point that test must fail and be rewritten. |
+| 16.02 | **`SaveSnapshot` can fail, and says so.** `SnapshotResult SaveSnapshot(const World&, std::vector<uint8>&)` replaces the `void` signature; on failure `Out` is truncated back to its entry size so a caller's buffer is never half-written. The `VAELEN_CHECKF(!W.Events().IsDispatching(), ...)` at `Snapshot.cpp:185` becomes a returned `Inconsistent`. No image byte and no header field changes. | `Snapshot.SaveRefusesRatherThanLies`: a world holding one pool whose `Serialize` returns false — non-`Ok` returned, `Out.size()` equal to what it was before the call; the same world dispatching returns `Inconsistent`. Built and run under `-DNDEBUG` as well as with asserts on, because the defect only exists where the assert is gone. CONTROL: restore the `void` signature and re-run — the image is written short, the trailer is computed over the short bytes and validates, and the test fails on `Out.size()`. That is the silent corruption. | Defect 1, and from "minimal" 16.01, which put it first and was right to. Nothing goes on disk until the function that produces the bytes can refuse. "determinism" states the rule in its own risk list — every refusal must be a returned result, never `VAELEN_CHECKF` — and then has no task that applies it to the one function already violating it. |
+| 16.03 | **A load that fails changes nothing.** `LoadSnapshot` splits into a validate pass over the whole image — cheap, because 16.04's section table gives every section its own length and digest — and an apply pass that runs only after validate returns `Ok`. On any refusal the target world is bit-identical to what it was. `Snapshot.h:57-59` loses "the world's state is unspecified (callers discard it)". | `Snapshot.AllOrNothing`: take world B to digest X, then feed it in turn a truncated-and-resealed image, a resealed flip in the entity section, an image with a pool's element size altered, and one with a wrong log digest. After each: `B.StateDigest() == X`, and ten further day turns reach the digest B would have reached with no failed load at all. PAIRED ARM, and it is the control: B then loads a VALID image and must change to the image's digest and continue as the original — a stub that makes `LoadSnapshot` a no-op passes the four failure arms and fails this one. | Defects 2 and 3, from "adversary" 16.03, which is the only plan that found the chimera. It belongs before 16.06, because `Adopt` is the exact caller that owns its world and cannot discard it. Shipping `Adopt` without this ships a documented-impossible contract into the path that most needs it. |
+| 16.04 | **The container: bytes, and not a file.** `Vaelen/Run/Checkpoint.h`/`.cpp` in `VaelenRun`: magic `VAELENCP`, a container version independent of `VAELEN_SAVE_FORMAT_VERSION`, the inner format version copied out of the image, seed, tick, and a section table of `{kind u16, flags u32, offset u64, length u64, digest u64}` — then the sections: STATE (the output of `SaveSnapshot` VERBATIM, never re-encoded), RUN, HOST, STREAM. Flags split: low 16 bits must-understand, an unknown set bit refuses by name; high 16 bits may-ignore, carried through a read-then-write untouched. An FNV-1a trailer over everything preceding. `BuildCheckpoint(const Aelvor&, std::vector<uint8>&)` and `ReadCheckpoint(...)`. No path, no `<fstream>`, no `<filesystem>`. The section table records the log's event count and byte length, and `Atlas --save --sections` prints each section's share. | `Save.ContainerRoundTrip`: build at three wirings, read back, every header field equal, and `memcmp` of the STATE section against a fresh `SaveSnapshot` of the same world returns 0. `Save.SectionTableIsHonest`: at three wirings the section lengths sum to the container length with delta 0. `Save.UnknownRequiredFlagIsRefused`: bit 5 of the low half set → refused naming bit 5; bit 5 of the high half → `Ok`, and a re-save carries it back out unchanged. CONTROL, from "adversary" 16.02: sweep one flipped byte across 180 offsets spanning three bands, recompute the container trailer after each, and require all 180 refused; the same sweep with per-section digests disabled must report at least 100 silent acceptances — today the pools-and-map band reports 60 of 60. Second control: log one extra event between building the header and writing the sections, and the sum must stop matching. | Defects 3, 4 and 8. The container is the load-bearing decision of the phase and both judges picked it: the image cannot grow, because a section inside it moves every frozen digest at once. Per-section digests go in the container's SECTION TABLE rather than inside the image, which is what keeps that graft at zero digest cost. The must-understand half is the channel the image's own `Flags` word was reserved for and never given. |
+| 16.05 | **The run travels with the world.** One `RunState` struct — `Begun_`, `Detail_`, `Dug_`, `Near_`, `Watched_` — that `Aelvor::Begin()` fills and the RUN section carries, so a field cannot be added to one without being added to the other. `Aelvor::GetRunState()/SetRunState()`. `Ways_` is deliberately not saved and the reason is asserted rather than assumed: `WorldMap::Serialize` calls `Reset` which does `++Replaced` (`WorldMap.cpp:53`) and every `RegionGraphCache` keys on `HashCombine(Map.Revision(), W, H)` (`Regions.cpp:417`), so a load invalidates it by construction. `Eyes_` rides along although it is written and never read, because it costs 12 bytes and the next person to read it should find it right. The comment at `Aelvor.h:221-232` is corrected. | `Run.RestoredWalkContinues`: `Options{128, Play, Stream, Lively, Colony}`, take up, 20 day turns with looks, checkpoint, then 60 more with the same looks on both sides — state digest AND log digest equal. CONTROLS, three, because the probes proved no single one is sufficient: `Watched_` withheld must diverge, `Near_` withheld must diverge, both withheld must reach the already-measured `plain` value. The 128 Play+Stream cell must reproduce `6d4b82134edfcbf6` against `02c94cdaf3367b43` and `Wanted(5)` against `Wanted(6)`. | Defect 11, measured twice independently. `Detail_` and `Dug_` are saved rather than derived: "migration" proposed recovering them from components, and the probes could NOT vary them in isolation to check that, so the phase copies eight bytes instead of trusting an unverified derivation. Robust before simple. |
+| 16.06 | **Adopt: a world `Aelvor` did not generate.** `Aelvor::Adopt(const uint8*, usize)` — verify the container header against `Given_`, validate then apply the STATE section (16.03), `SetRunState`, `Begun_ = true`. `Begin()` after an `Adopt`, and `Adopt` into a world already begun, are each refused with a distinct named reason rather than a silent `false`. | `Run.AdoptCostsNoGeneration`: adopt a 256 checkpoint into an `Aelvor` that has only been CONSTRUCTED — `Ok`, state digest equals the save, `Played()` is the saved person, `Begun()` true, `Day()` advances `Now()` by 24, `Release()` then `TakeUp()` returns a person, `LookAt()` changes `Watching()`, then 60 day turns with the recorded looks reach the original's digest. A counter inside `PreHistory::Generate` reads 0 for the whole path; the test PRINTS milliseconds and asserts on none of them (ADR-0109). CONTROLS: the same assertions against a world that was only `LoadSnapshot`-ed must all fail in the measured way — `Begun=0`, `TakeUp->0`, `Detail=0`, `Watching` 0 regions, `Day()` 3456480 → 3456480; and a world adopted with `Detail_` left at 0 must diverge, because the warden is then free to release the world's floor. Second route, from "adversary": a world that was `Begin()`-ed and then loaded must reach the SAME digest over the same 30 turns — if the two restore routes disagree, one of them is wrong and the test says which. | Defect 10, and the prize of the phase: the one thing a 3,911-byte recorded stream cannot do is restore without re-running the world. Without this task the image route costs 785 ms at 128 against the stream route's 825 ms, and twenty-two megabytes buy a one-percent saving. `Begin()`'s only non-world outputs are `Detail_`, `Dug_` and `Begun_` — everything else it writes goes through `Ages.Generate`/`Ages.Run` into the image — which is what makes 16.05's struct complete TODAY. See RISKS. |
+| 16.07 | **The store, and a write that cannot destroy the last good save.** `ICheckpointStore { bool Write(name, const uint8*, usize); bool Read(name, std::vector<uint8>&); std::vector<std::string> List(); }` declared in `VaelenRun` with no OS header at all, and two implementations outside the kernel: a stdio one for the headless tests and `Tools/Atlas` (`--save <path>`, `--load <path>`), and the Unreal one in 16.14. Writes go to a temporary name in the same directory, are flushed, then renamed into place. A ring of N checkpoints with a manifest naming each one's tick, digest and container version. Every failure is a returned result: a full disk, an unwritable path, a short read. | `Save.AtomicAndComplete`: write, read, `memcmp` 0; a file truncated at 10/50/90% is refused by name and never crashes; an unwritable path returns a failure. From "adversary" 16.08, the sharper arm: write into a directory too small for the image, assert `DiskFull`, that NO file exists at the final path, and that the previous checkpoint there is still byte-identical and still adopts to its recorded digest. CONTROL: replace temp-then-rename with a direct truncating open and re-run — the previous checkpoint is now half-overwritten and the second half of the test fails. | `ILogSink` and `AssertHandler` are the precedent: a kernel interface with a host implementation. The fence is real — `VaelenRun` is in `kernel_modules.txt` and `<filesystem>` is banned there with a stated reason — so the roadmap's "checkpoints on disk" is decided here in the open rather than discovered during implementation, and no `PURITY-ALLOW` exemption is added to reach it. Atomicity is not a format feature; it is the difference between a save system and a way to lose a game. |
+| 16.08 | **Six causes, six answers — and pools matched by name.** `SnapshotResult` replaced by a diagnosis that names the measured causes apart: `NotASave`, `FormatTooNew`, `FormatTooOld`, `UnknownRequiredFlag`, `SeedMismatch`, `WorldShapeDiffers`, `TypeAdded`, `TypeRemoved`, `TypeResized`, `TypeRenamed`, `TypesReordered`, `PoolMissing`, `Truncated`, `Corrupt`, `Inconsistent` — carrying, for every type outcome, which types differ and how — plus a `Describe()` writing one human line. `LayoutMismatch` deleted. The load path reconciles the image's pools against the registry by `NameHash`, so a type at a different `TypeId` loads into the right pool. **A type the image lacks, or has and the world does not, is still a REFUSAL by name unless 16.09 has a registered upgrader for it.** The dead `Written != PoolCount` check (`Snapshot.cpp:164`) and the `PoolCount` equality gate (`:137`) go. | `Snapshot.SixCausesSixAnswers`: rebuild the six worlds of the probe — type added, type removed, reordered, field added, renamed, other seed — and assert six DISTINCT outcomes, each naming the type it is about; an unmodified load stays `Ok` with an empty difference list. `Snapshot.ReorderedTypesLoad`: a world that reorders two types loads a golden to `Ok` with every component in the correct pool and the same state digest as a world built in the image's own order. CONTROL: `grep -rn LayoutMismatch Source/ Tests/` prints nothing outside a retirement note; and a type whose `ElementSize` differs with no upgrader must return `TypeResized` naming the type and BOTH sizes, never a partial load. | Defects 6 and 7. Name-keying is from "migration" 16.05 and is what makes 16.09 worth building at all: a migration chain over an all-or-nothing image has nothing it can repair, and Phase 17 adding a component type would still brick every save. Its empty-pool partial load is explicitly NOT taken — one judge rejected it outright and was right: a world running with an empty pool where the save had data is the chimera of defect 2, blessed as a feature and reached by a routine refactor. |
+| 16.09 | **Migrations keyed on the container, and a corpus with a forge.** `Migrate(std::vector<uint8>&, uint32 From) -> MigrateResult` applying a registered table of N→N+1 upgraders in strictly ascending order; a container from a FUTURE version is refused and never migrated. Per-type upgraders registered beside the type, keyed on `(NameHash, ElementSize) -> (NameHash, ElementSize)` with a `Why` string. `Tests/Save/Corpus/` holds one container of every version this project has shipped, each beside a `.digest` file, built from the ABSTRACT test world of `Tests/Sim/Test_Snapshot.cpp` and not from AELVOR. Plus `Tools/forge_save`: given the section table, synthesise an older-shaped container from a current one. | `Save.CorpusMigrates`: every file in the directory migrates to the current version and reaches the digest recorded beside it. `Save.MigrationChain`: three test-only upgraders run in order and exactly once; a table with a gap returns `NoUpgrader` at the gap rather than skipping it; a future version is refused untouched. `Migration.ForgeReproducesTheRealV3Golden`: a v3 image forged from a current save equals, byte for byte, the golden a real v3 build wrote at 16.01. CONTROLS: remove one upgrader and the test must fail naming the file it could no longer migrate; truncate a corpus file by one byte and it must fail as `Truncated`, not as a wrong digest; register the same upgrader twice and the "exactly once" assertion must fail. | Defect 8. The forge is from "migration" 16.08 and is the only honest answer any plan gave to "how do you test migrations for a format with no old files": a forge alone can be wrong in the same way the reader is wrong, a golden alone runs out the second time the schema moves, and a forge CHECKED against a real golden survives the disappearance of the last build that could write one. The corpus is not hypothetical — 16.10 bumps the container, so the version-1 files this phase writes are obsolete inside this phase. |
+| 16.10 | **The host's declared world is checked against the save.** `Adopt` and `ReadCheckpoint` compare the container's Size, PreHistory, Years, Seed and the four wiring bools against the host's `Options` and refuse a mismatch by name, leaving the target untouched. `Player::StreamHeader` gains the same wiring bitfield, so a stream and a save agree on what world they describe. A DECISIONS entry naming `DiplomacySystem::Graph`/`GraphRegions` as the one cache keyed on region count alone, safe today only because the seed check forbids a different map. | `Save.WrongWorldIsRefused`: a 128 checkpoint offered to a host declaring `Size = 64` is refused by name, and the host's world still has its own tick, extents and digest; the same for a different `Years`, a different seed (now `SeedMismatch`), and each of the four wiring bools — six distinct results, none of them about component layout. CONTROL: take the extents check out and the 64-host call returns `Ok` again, which is today's measured behaviour; and the `Stream=false` arm must, with the check removed, produce a different state digest within ten day turns. | Defect 5, and it is not hypothetical downstream: `Aelvor::Header()` builds the `StreamHeader` from `Given_.Size`, so a walk recorded after such a load carries a header naming a world that does not exist and `Player::SameWorld` sends the replay to build the wrong one. `Options::Stream` is invisible to every existing guard because it declares no component type. |
+| 16.11 | **Provenance: the stream and the host's rules travel with the save.** A STREAM section carrying `Door::Tape` and `Door::Start` (`StartRules`), and the full `Options` in HOST. Container version 2. `Door` gains a constructor that takes a tape back, so a loaded session keeps recording into the same stream rather than starting a new one. | `Save.ProvenanceReplays`: from the FILE ALONE, build a fresh `Aelvor` out of the container's own HOST section, replay the carried stream into it, and reach the same state, log and life digests as adopting the STATE section — two routes, one answer — then continue both by ten more recorded days and assert they stay equal. CONTROL, already calibrated: construct the fresh world from `Options{Play}` alone, which is what `Tools/Atlas --replay` does today, and the replay must come back `Wrong=4, WrongTakings=4` on both checked-in 128 walks. | Measured: the two checked-in 128 walks replay clean only with `Options::Stream = true`; without it all four takings pick a different person, because the daily detail cadence is a different world. `StreamHeader` is 24 bytes of Seed/Size/PreHistory/Years/Version (`Stream.h:110-118`) with no channel for the wiring, and `InputStream`'s own comment claims it is "everything a replay needs". A save format that claims to restore a PLAYED world cannot leave out the configuration that decides which world the records belong to — and a restored world that cannot be replayed has lost the Phase 14/15 audit route that is this project's whole determinism story. Four kilobytes against twenty-two megabytes. |
+| 16.12 | **Every day is a save point.** (a) `Tests/Run/Test_SaveContinue.cpp` and a ctest entry `Run.SaveContinue`: a matrix of wirings {plain, Play+Stream, Play+Stream+Lively+Colony} × sizes {64, 128} × save points {early, mid, late}; for each cell, save at N, adopt into a fresh run, feed the SAME remaining records to M, and assert state, log and life digests equal against a straight run to M. (b) `Tools/Atlas --savefuzz <stream> --points K --seed S`: K seeded save points over a stream's day turns, plus restore-run-save-restore, three consecutive adopts into one dirty world, and the re-save fixed point. (c) A horizon in which the played person DIES mid-horizon, saved before, on and after the death, checked into `Tests/Run/Streams/` with its README line. | The tests ARE the deliverable; the controls are what make them evidence. `Run.SaveContinue.Control`, a sibling ctest entry, runs the identical matrix with the RUN section withheld and PASSES ONLY WHEN every `Stream=true` cell DIVERGES and every `Stream=false` cell still agrees. `--withhold-run` must report a non-zero mismatch count whose first mismatch day is at or after the stream's first look; `--corrupt-byte N` must be refused by a section digest rather than loaded. `Run.SaveDeath` asserts its own PRECONDITION — `PlayedAlive()` went false at a recorded tick and the stream carries a second `TakenUp` — and FAILS if no death occurred, so it can never pass vacuously. | From "determinism" 16.04-16.06, and this discipline is why one judge made it the spine: a green main test with a green control closes nothing. One cell at one wiring proved the divergence; only a matrix proves the fix. A death exercises `Release`, a fresh `TakeUp`, `NearDetail`'s give-back path (`Aelvor.cpp:694`) and a recorded `TakenUp` — the exact machinery `Near_` feeds, and the most likely place for a fourth piece of run state to be hiding. 15.03's history says what happens when a give-back path is never exercised: saturation at `MaxWanted`, every Move refused `TooFar`, silently, for the rest of that world's life. |
+| 16.13 | **A state digest that does not write the world.** A `HashingWriter` implementing `IArchive` that folds bytes as they are produced and allocates nothing, and `ComputeStateDigest` rewritten onto it. The returned `Hash64` must be BIT-IDENTICAL to today's for every world: this is a performance task with a zero-change contract. Lands LAST of the headless tasks, after 16.12 exists to run it against both implementations. | `Sim.DigestParity`: over the whole 16.12 matrix, old and new return the same `Hash64`, and the new path's allocation counter reads 0 bytes for the image; the test prints the bytes no longer allocated (22 MB at 128, 61 MB at 256). CONTROL: advance one world by a single tick and require BOTH implementations to move to the same NEW value — a hasher returning a constant, or ignoring a section, passes a parity test that only ever compares two readings of the same world. | Measured: `ComputeStateDigest` IS a full cold `SaveSnapshot` — 20.5 ms/11 MB at 64, 75.6 ms/22 MB at 128, 192.0 ms/61 MB at 256, allocated and thrown away to read eight bytes off the end. `Aelvor::StateDigest()` is that call, and it is what every gate and every per-day check uses; 16.12's matrix and fuzzer will call it tens of thousands of times. Both judges flagged the hazard, and it is real: this re-implements the number every frozen gate asserts, inside the phase whose first rule is that the number must not move. Hence last, and hence the both-must-move arm. |
+| 16.14 | **The engine half, and the sitting. OUTSIDE THE GATE.** `Vaelen.Save <name>` and `Vaelen.Load <name>` in `VaelenGame`, an `ICheckpointStore` over Unreal's `IFileManager` under the project's saved directory, and `FVaelenHeld` retaking its presentation state after an adopt. One sitting on the owner's Windows machine: play, save, CLOSE the editor, reopen, load, keep playing, write the stream out. STATUS says `UNVERIFIED (engine)` until that sitting happens. | `Run.Gate.Saved`: the checkpoint written in the engine is carried here, `VaelenAtlas --load` adopts it to the same state digest, tick and played person the engine printed, and then replays the checkpoint's own STREAM section to the digest the engine printed at the end of the sitting. CONTROL: offer it the same checkpoint with its RUN section zeroed and the continuation must diverge — 16.05's control, run at the end on real bytes from a real machine. | A checkpoint that has never survived a process exit has been round-tripped in memory, not tested, and Phase 15 closed on a sitting that taught it the instruction rather than the code was wrong. But Phase 15 was also gated for days by that machine, and a gate that cannot be run here is not a gate. So this is the phase's closing confirmation and not one of its clauses. Everything in 16.01-16.13 must be green headless before the sitting is scheduled, not during it. |
+
+### The gate
+
+Every clause is runnable on this machine, and each names the command that decides
+it. Any one missing and Phase 16 stays open.
+
+- **(a)** `Tools/run_gates.sh linux-clang-debug` prints `GATES-DONE 0 failing
+  (of 17)`: the eleven it ran before 16.01 plus `Run.Golden`, `Replay.Played`,
+  `Replay.Walked`, `Replay.Lived`, `Run.Gate` and `Run.Gate.Lived`. Seventeen
+  and not the sixteen this section first said: `Run.Golden` was added on top of
+  the planning's five, because the corpus is the instrument the rest of the
+  phase is measured by and a gate list that omits it measures nothing about it.
+  `Tools/run_gates.sh linux-clang-debug --self-test` prints `SELF-TEST OK`.
+- **(b)** Not one frozen digest moved.
+  `git diff 867a129..HEAD -- Tests/ Source/ Tools/ Docs/ROADMAP.md | grep -E '^-.*\b[0-9a-f]{16}\b'`
+  prints nothing. Checked by diff, not asserted by eye.
+- **(c)** `ctest --preset linux-clang-debug` and `ctest --preset linux-gcc-release`
+  each report 100% passed, and `ctest -R '^Kernel\.(Purity|WorldWiring|UiFence)$'`
+  is green — no kernel module includes `<fstream>` or `<filesystem>`, and no
+  `PURITY-ALLOW` exemption was added to reach this gate.
+- **(d)** `ctest -R '^Run\.SaveContinue$'` passes over at least 18 cells, each
+  asserting state, log and life digests equal between "saved at N, adopted, run
+  to M" and "run straight to M". The test prints the cell count and every digest.
+- **(e)** THE CONTROL FIRES. `ctest -R '^Run\.SaveContinue\.Control$'` passes,
+  where passing means every `Stream=true` cell DIVERGES with the RUN section
+  withheld and every `Stream=false` cell still agrees, the 128 Play+Stream cell
+  reproducing `6d4b82134edfcbf6` against `02c94cdaf3367b43`.
+- **(f)** `ctest -R '^Run\.SaveDeath$'` passes and prints the tick of the death
+  and of the second `TakenUp`; it fails, loudly, if no death occurred.
+- **(g)** `Tools/Atlas --savefuzz <stream> --points 64 --seed 1` reports
+  `0 mismatches` on each of the three streams in `Tests/Run/Streams/`; the same
+  command with `--withhold-run` reports a non-zero count and names the first
+  mismatching day, and with `--corrupt-byte` reports a section-digest refusal
+  rather than a load.
+- **(h)** `ctest -R '^Run\.AdoptCostsNoGeneration$'` passes: a 256 checkpoint
+  adopted into a CONSTRUCTED-only `Run::Aelvor` reaches the saved digest, is
+  playable (`Day()` advances, `TakeUp` returns a person, `LookAt` changes
+  `Watching()`), and calls `PreHistory::Generate` zero times, proven by a call
+  counter and never by a stopwatch (ADR-0109). Milliseconds are printed and
+  nothing asserts on them.
+- **(i)** Every refusal names itself and leaves the target bit-identical.
+  `ctest -R '^Snapshot\.AllOrNothing$|^Snapshot\.SixCausesSixAnswers$|^Save\.WrongWorldIsRefused$|^Save\.MigrationChain$'`
+  passes; `Snapshot.AllOrNothing` prints the target's digest before and after
+  every refusal and they are equal; and running it with 16.03's validate pass
+  disabled makes at least one line read CLOBBERED.
+- **(j)** `ctest -R '^Golden\.V3RoundTrips$|^Save\.CorpusMigrates$|^Migration\.ForgeReproducesTheRealV3Golden$'`
+  passes on `linux-clang-debug`, `linux-gcc-release` AND on the existing Windows
+  MSVC leg of `kernel-ci.yml` (`ctest --preset windows-msvc-debug -E Shuffled`)
+  and the macOS leg. That leg exists; nothing in this planning has ever run
+  there, and the corpus is the first thing that makes the cross-compiler claim a
+  measurement rather than an argument from `static_assert`.
+- **(k)** `ctest -R '^Save\.AtomicAndComplete$|^Atlas\.SaveThenLoadFromDisk$'`
+  passes: Atlas saves, a second PROCESS loads and runs ten days to the
+  one-process digest; a write into a directory too small for the image reports
+  `DiskFull` with no file at the final path, and the previous checkpoint there
+  still reads and still adopts to its recorded digest.
+- **(l)** `ctest -R '^Save\.ProvenanceReplays$'` passes: the STREAM section
+  replays into a world built ONLY from the container's HOST section and reaches
+  the checkpoint's state, log and life digests with `Wrong = 0`.
+- **(m)** `ctest -R '^Save\.ContainerRoundTrip$|^Save\.SectionTableIsHonest$|^Save\.UnknownRequiredFlagIsRefused$'`
+  passes: STATE `memcmp`s to a bare `SaveSnapshot`, section lengths sum to the
+  container length with delta 0, and the 180-offset resealed-flip sweep reports
+  0 silent acceptances while the same sweep with section digests off reports at
+  least 100. Both numbers printed.
+- **(n)** `ctest -R '^Sim\.DigestParity$'` passes: identical `Hash64` old and
+  new for every world in the 16.12 matrix, both moving together when one world
+  advances a tick, 0 bytes allocated for the image.
+- **(o)** No fake done. Every STATUS comment this phase touched says VALIDATED
+  only where the code was built AND run here; 16.14 reads `UNVERIFIED (engine)`
+  until the owner's machine produces its line; and 16.12's log finding — a
+  divergence found, or a null result with the horizons and wirings it was
+  searched over — is written into DECISIONS whichever way it came out.
+
+### Out of scope for Phase 16, and where it belongs
+
+- **Log truncation.** All four plans measured the same thing — the log is 83.6%
+  of the image at 256, 90.9% at 128, 93.5% at 64 and 90.6-95.6% of a 500-year
+  world; it grows 49.2/151.0/285.5 kB per simulated year without bound; only the
+  last simulated year is ever read by a running system, and that tail is 0.65%
+  of the events at 128 and 0.80% at 256, a 10.4× / 5.9× image reduction. All four
+  are also right that the evidence it can be dropped is TWO worlds run 400 day
+  turns each with the log cleared, against five systems that demonstrably read
+  `W.Log().All()` inside `Tick` — `ProductionSystem` (`Production.cpp:91`),
+  `MarketSystem` (`Markets.cpp:138`), `DecaySystem` (`Decay.cpp:56`),
+  `FactionSystem` (`Factions.cpp:284`), `RegardSystem` (`Regard.cpp:95`).
+  Truncating also moves every frozen digest, because the log is inside the image
+  the trailer hashes. **Phase 16 truncates nothing, compresses nothing, and
+  builds no truncation machinery — not even switched off.** It records the
+  numbers and the question. The SEARCH for a divergence, with the injected-event
+  control that proves the search can see the log at all, is folded into 16.12's
+  fuzzer as a reported measurement, not a shipped policy. The decision belongs to
+  **Phase 18 STRESS TEST**, which is where a 500-year AELVOR 256 — a 182 MB save
+  that takes 52 s to generate — is exercised at all, and to a phase that OPENS
+  with it rather than one that stumbles into it while shipping a save.
+- **Severing `ComputeStateDigest` from the image trailer, and any project-wide
+  re-freeze.** "adversary" 16.04 and "migration" 16.02 both proposed it, by
+  different means. Nothing in this phase requires it once the container carries
+  the new state, and doing it mid-phase destroys the only instrument that could
+  catch this phase's own regressions: afterwards the eleven gates assert new
+  numbers produced by the same changed code. If it is ever wanted, it belongs to
+  a later phase that opens with it, and migration's version/flags substitution is
+  the cheaper of the two forms.
+- **A per-field layout digest** (defect 9). "determinism" 16.09 proposed deriving
+  it "from `PlainData.h`'s existing traits"; `PlainDataTraits` carries exactly one
+  member, `static constexpr bool NoPadding`, and there is no member enumeration
+  anywhere to derive offsets or type tags from. A real fix needs a member-listing
+  macro applied across ~55 component types and every map layer and the `Event`
+  payload set. That is its own job and belongs with **Phase 19 MODDING**'s stable
+  ids and APIs. Until then the hole stands and this phase says so: a same-size
+  field reorder or retype is not caught by anything 16.08 adds.
+- **Loading a save into a world generated differently.** Explicitly refused by
+  16.10. The `DiplomacySystem` region-count cache is recorded as the thing that
+  breaks first if that refusal is ever loosened.
+- **A save browser, thumbnails, named slots, autosave UI.** `Phase 17 DEBUG
+  TOOLS` for the inspector side, `Phase 20 POLISH` for the player-facing side.
+  16.04's section table and manifest are what makes listing saves without
+  generating a world possible; this phase stops there.
+- **Compression.** If it comes, it comes as an optional section under 16.04's
+  may-ignore flag rule, in a later phase.
+
+### Open questions only the owner can answer
+
+1. **Where do saves live on the Windows machine, and what are the verbs called?**
+   16.14 assumes `Vaelen.Save <name>` / `Vaelen.Load <name>` under the project's
+   saved directory. If the sitting should instead use a key like F9 (as
+   `Vaelen.Stream.Write` does), say so before 16.07 fixes the store's naming.
+2. **Does a save carry its recorded tape by default?** 16.11 says yes: four
+   kilobytes against twenty-two megabytes, and without it a restored world cannot
+   be audited or replayed. If saves are ever to be shared, that tape is a record
+   of what somebody did, and that is the owner's call and not the code's.
+3. **How many checkpoints in the ring, and is there an autosave?** 16.07 builds
+   the ring; nothing decides N, and nothing decides whether the game writes one
+   on its own. If it does, the cadence must be counted in DAY TURNS and never in
+   wall clock (ADR-0109).
+4. **Is a save ever to be loadable into a world generated differently?** Today
+   the seed check forbids it, and that is the only thing making
+   `DiplomacySystem`'s region-count cache safe. Answering "yes, one day" makes
+   fixing that cache a Phase 17 task rather than a recorded note.
+5. **What is an acceptable save size at the far end?** A 500-year AELVOR 256 is
+   182 MB today and unbounded thereafter. Phase 16 ships that and calls it
+   correct. If it is not acceptable, Phase 18 needs to open with the log question
+   rather than inherit it.
+6. **Does the MSVC leg get the corpus?** Clause (j) says yes, and the leg exists
+   (`kernel-ci.yml`, `windows-2022`, `ctest --preset windows-msvc-debug -E Shuffled`).
+   It adds a few seconds and it is the only cross-compiler witness the format
+   will ever have. Confirm it should not be excluded.
+
+### What the probes could NOT settle, and the risks that follow
+
+- **A death across a save was never reached.** The longest horizon measured is 60
+  day turns at the fullest wiring with the played person alive throughout. A
+  death exercises `Release`, a fresh `TakeUp`, `NearDetail`'s give-back path and
+  a recorded `TakenUp` — the machinery `Near_` feeds — and is the most likely
+  place for a fourth piece of run state to be hiding. 16.12(c) asks for one and
+  asserts its own precondition; if no workable seed reaches a death in a
+  workable horizon, the task must SAY so in its STATUS line rather than let a
+  gate that never met a death imply it did.
+- **`Detail_` and `Dug_` could not be varied in isolation.** They are private and
+  only `Begin()` writes them, so the argument for saving them is from the code
+  (`Reside` reads `Detail_` at `:532` and `:566`) and from the never-`Begin()`-ed
+  run where both read 0. Confirming needs a setter, which is a task and not a
+  probe. This is why 16.05 copies them rather than deriving them.
+- **Everything measured is gcc on Linux.** `sizeof(Event) == 112`, the
+  `static_assert`s on padding, and `WorldGenConfig` being written as raw bytes
+  through one `SerializeBytes` call are an ARGUMENT that MSVC and AppleClang
+  agree, not a run. Clause (j) is the only thing that turns it into a
+  measurement, which is why the corpus is small enough to live in git.
+- **16.06's `Adopt` sets `Begun_` without `Begin()` running.** That is provably
+  complete today — `Begin()`'s only non-world outputs are `Detail_`, `Dug_` and
+  `Begun_` — and that completeness is a property of today's `Begin()`, not of the
+  design. 16.05's single struct filled by both paths is the guard; if a later
+  phase adds a line to `Begin()` that writes a member and not the struct, a
+  restored world diverges silently again and 16.12's matrix is the only
+  instrument that would catch it.
+- **The two probes disagree by 27,565 bytes on the same wiring** (21,980,402
+  against 22,007,967 at AELVOR 128, Play+Stream, 20 played days). The walks
+  differed by a few hundred logged events. Same world, same conclusion, and
+  neither number should be quoted as a constant.
+- **The count of frozen digest literals is not a constant either.** The planners
+  quoted 249 and 252; a bare `[0-9a-f]{16}` grep over `Tests/`, `Source/` and
+  `Docs/ROADMAP.md` here returns 178. Clause (b) checks the DIFF, not a count, for
+  that reason.
+- **Fourteen tasks is above this project's range**, and 16.12 is the biggest of
+  them. If the phase has to shed weight, 16.13 goes first (it is a performance
+  task with a zero-change contract) and 16.09's forge second (the corpus alone
+  still migrates, it just stops being a witness once the schema moves twice).
+  16.01 through 16.06 are not sheddable: they are the save.
+
+Next: 16.01, the goldens and the gate list, because both are one-way doors and
+neither can be recovered once another task has landed.
