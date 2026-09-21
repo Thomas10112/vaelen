@@ -396,6 +396,30 @@ namespace
 		bool Dispatching = false;
 		Hash64 Digest = 1;
 	};
+
+	// And the same trick aimed at LoadSnapshot, for 16.03: a world that
+	// SaveSnapshot refuses cannot be rolled back, so it must not be taken apart.
+	class LoadFromInside final : public IEventListener
+	{
+	public:
+		LoadFromInside(World& InWorld, const std::vector<uint8>& InImage) : W(InWorld), Image(InImage) {}
+		const char* GetListenerName() const noexcept override { return "LoadFromInside"; }
+		void OnEvent(const Event&) override
+		{
+			Saw = true;
+			Dispatching = W.Events().IsDispatching();
+			Before = ComputeStateDigest(W);
+			Result = LoadSnapshot(W, Image.data(), Image.size());
+			After = ComputeStateDigest(W);
+		}
+		World& W;
+		const std::vector<uint8>& Image;
+		bool Saw = false;
+		bool Dispatching = false;
+		Hash64 Before = 0;
+		Hash64 After = 1;
+		SnapshotResult Result = SnapshotResult::Ok;
+	};
 } // namespace
 
 VAELEN_TEST(Snapshot, SaveRefusesRatherThanLies)
@@ -516,4 +540,128 @@ VAELEN_TEST(Snapshot, TheDigestOfAWorldThatCannotBeSavedIsNotRead)
 	VT_CHECK_MSG(Listener.Dispatching, "and it ran while the bus was dispatching");
 	VT_CHECK_MSG(Listener.Digest == 0, "a world that cannot be saved reports zero rather than reading past a buffer");
 	VT_CHECK_MSG(Listener.Digest != Quiet, "and it is not quietly the digest it would have had");
+}
+
+VAELEN_TEST(Snapshot, ARefusedLoadLeavesTheWorldItRefusedToChange)
+{
+	// Phase 16 task 16.03: THE CHIMERA. LoadSnapshot applies an image section
+	// by section - clock, streams, ids, entities, then every component pool,
+	// then the map - and commits each to the target before the next is read.
+	// Pools and the map are worse than the rest: they deserialise IN PLACE, so
+	// there is not even a local to throw away. A refusal at the map therefore
+	// left every pool already overwritten, and the caller got an honest
+	// Truncated over a world that was neither what it had been nor what the
+	// image held.
+	//
+	// Measured before it was fixed, at four cut points: refused every time,
+	// CHIMERA every time. The fix keeps the world before the first byte of it
+	// is overwritten and puts it back on any refusal.
+	//
+	// THE TARGET MUST DIFFER FROM THE SOURCE or this test cannot fail. Same
+	// seed, because the header gate demands it; further on in time, so that
+	// "unchanged" and "became the image" are two different digests. The first
+	// version of the probe behind this test missed exactly that and reported
+	// success against worlds that were already identical.
+	TestWorld Source(4242);
+	Source.Populate(64);
+	Source.Instance.TickMany(5);
+	std::vector<uint8> Image;
+	VT_REQUIRE(SaveSnapshot(Source.Instance, Image) == SnapshotResult::Ok);
+	const Hash64 Held = ComputeStateDigest(Source.Instance);
+
+	const usize Body = Image.size() - sizeof(Hash64);
+	uint32 Cuts = 0;
+	uint32 Refused = 0;
+	uint32 Intact = 0;
+	uint32 Usable = 0;
+	for (const usize Keep : {Body / 4, Body / 2, (Body * 3) / 4, (Body * 9) / 10})
+	{
+		// Resealed, so the trailer is not what rejects it. An unsealed cut is
+		// turned away by the digest check before a byte is touched - a guard,
+		// not the defect, and a test that used one would measure the guard.
+		std::vector<uint8> Short(Image.begin(), Image.begin() + static_cast<long>(Keep));
+		const Hash64 Sealed = HashBytes(reinterpret_cast<const char*>(Short.data()), Short.size());
+		const usize At = Short.size();
+		Short.resize(At + sizeof(Hash64));
+		std::memcpy(Short.data() + At, &Sealed, sizeof(Hash64));
+
+		TestWorld Target(4242);
+		Target.Populate(64);
+		Target.Instance.TickMany(11);
+		const Hash64 Was = ComputeStateDigest(Target.Instance);
+		VT_REQUIRE(Was != Held);
+
+		++Cuts;
+		const SnapshotResult R = LoadSnapshot(Target.Instance, Short.data(), Short.size());
+		Refused += R != SnapshotResult::Ok ? 1u : 0u;
+		Intact += ComputeStateDigest(Target.Instance) == Was ? 1u : 0u;
+
+		// AND STILL A WORKING WORLD, which the digest alone does not say. A
+		// world can match on the way out and diverge on the next turn if what
+		// was put back is not everything that was taken. Run both on.
+		TestWorld Control(4242);
+		Control.Populate(64);
+		Control.Instance.TickMany(11);
+		Target.Instance.TickMany(9);
+		Control.Instance.TickMany(9);
+		Usable += ComputeStateDigest(Target.Instance) == ComputeStateDigest(Control.Instance) ? 1u : 0u;
+	}
+	VT_CHECK_MSG(Cuts == 4u, "four cut points");
+	VT_CHECK_MSG(Refused == Cuts, "every resealed short image is still refused");
+	VT_CHECK_MSG(Intact == Cuts, "and the world it refused is the world it was handed");
+	VT_CHECK_MSG(Usable == Cuts, "and it goes on turning exactly as an untouched world does");
+}
+
+VAELEN_TEST(Snapshot, AWorldThatCannotBeKeptIsNotOverwritten)
+{
+	// The other half of 16.03's promise. The rollback is taken with
+	// SaveSnapshot, so a world SaveSnapshot refuses cannot be put back - and
+	// therefore must not be taken apart in the first place. LoadSnapshot
+	// refuses up front with whatever the save said, and the target is untouched.
+	//
+	// THE FIRST VERSION OF THIS TEST MEASURED NOTHING AND PASSED ANYWAY, which
+	// is why it is written this way. It compared ComputeStateDigest before and
+	// after the attempted load, from INSIDE the dispatch - where 16.02 makes
+	// that function return its zero sentinel, because the world cannot be
+	// saved. Zero equalled zero, the check was vacuous, and it passed just as
+	// happily against the unfixed loader. It was caught by running the
+	// pre-16.03 control, not by reading it.
+	//
+	// So the world is measured from OUTSIDE the dispatch, against a control
+	// that lived through the same event without anybody trying to load into it.
+	TestWorld Source(4242);
+	Source.Populate(32);
+	Source.Instance.TickMany(5);
+	std::vector<uint8> Image;
+	VT_REQUIRE(SaveSnapshot(Source.Instance, Image) == SnapshotResult::Ok);
+	const Hash64 TheImage = ComputeStateDigest(Source.Instance);
+
+	TestWorld Target(4242);
+	Target.Populate(32);
+	Target.Instance.TickMany(11);
+	TestWorld Control(4242);
+	Control.Populate(32);
+	Control.Instance.TickMany(11);
+	VT_REQUIRE(ComputeStateDigest(Target.Instance) == ComputeStateDigest(Control.Instance));
+	VT_REQUIRE(ComputeStateDigest(Target.Instance) != TheImage);
+
+	LoadFromInside Listener(Target.Instance, Image);
+	VT_REQUIRE(Target.Instance.Events().Subscribe(PulseEvent.TypeHash, &Listener));
+	Target.Instance.Events().Publish(Target.Instance.Now(), PulseEvent, Pulse{1});
+	Target.Instance.Events().Dispatch(Target.Instance.Now() + 1);
+	// The control lives through the same event, so that what is compared below
+	// is the attempted load and not the pulse.
+	Control.Instance.Events().Publish(Control.Instance.Now(), PulseEvent, Pulse{1});
+	Control.Instance.Events().Dispatch(Control.Instance.Now() + 1);
+
+	VT_CHECK_MSG(Listener.Saw, "the listener ran, or this test measures nothing");
+	VT_REQUIRE(Listener.Saw);
+	VT_CHECK_MSG(Listener.Dispatching, "and it ran while the bus was dispatching");
+	VT_CHECK_MSG(Listener.Result != SnapshotResult::Ok, "%s", SnapshotResultToString(Listener.Result));
+
+	const Hash64 After = ComputeStateDigest(Target.Instance);
+	VT_CHECK_MSG(After != 0, "measured outside the dispatch, so this is a real digest");
+	VT_CHECK_MSG(After == ComputeStateDigest(Control.Instance),
+				 "a world that could not be kept was not overwritten either");
+	VT_CHECK_MSG(After != TheImage, "and it certainly did not become the image");
 }

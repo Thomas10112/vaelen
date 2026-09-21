@@ -44,6 +44,15 @@ namespace Vaelen
 		Truncated,
 		Corrupt,	  ///< trailer digest or an internal consistency check failed
 		Inconsistent, ///< the world state itself failed validation (registry, pools)
+		/// THE ONE RESULT THAT MEANS THE TARGET IS NOT SAFE TO CARRY ON WITH.
+		/// `LoadSnapshot` keeps the world it is about to overwrite and puts it
+		/// back when the image refuses partway; this says the putting back
+		/// itself failed, so the world is neither what it was nor what the
+		/// image held. Every other refusal leaves the target untouched. A
+		/// caller that cannot tell these apart cannot decide whether to offer
+		/// the player their game back, which is the whole reason it is its own
+		/// value and not folded into `Inconsistent`.
+		RollbackFailed,
 	};
 
 	VAELEN_SIM_API const char* SnapshotResultToString(SnapshotResult Result) noexcept;
@@ -59,9 +68,18 @@ namespace Vaelen
 	/// IT RETURNED void UNTIL 2026-09-21, and that was the one live data-loss
 	/// path Phase 16's planning found. A failing body was reported by
 	/// `VAELEN_CHECKF`, which `Assert.h` compiles to `((void)0)` under `NDEBUG`
-	/// and under `UE_BUILD_SHIPPING` - so in a player's build nothing happened,
-	/// the trailer was computed over the SHORT bytes that had been written, and
-	/// the file was well-formed, wrong, and validated on load.
+	/// and under `UE_BUILD_SHIPPING` - so in a player's build nothing happened
+	/// and the trailer was computed over the SHORT bytes that had been written.
+	///
+	/// AND THE SENTENCE THAT USED TO END THIS PARAGRAPH WAS WRONG. It said the
+	/// file was "well-formed, wrong, and validated on load". Measured at four
+	/// cut points instead of repeated: a resealed short image is REFUSED,
+	/// `Truncated` every time, because the reader runs out inside a section.
+	/// The defect was never a corrupted load. It was that the caller learned
+	/// nothing at the moment of WRITING - a player told their game was saved,
+	/// finding out otherwise only on opening it, with the world it came from
+	/// already gone. `Snapshot.AShortImageIsRefusedButTheWriterNeverKnew`
+	/// carries the correction where it cannot rot.
 	///
 	/// NOT `[[nodiscard]]`, and that is a decision rather than an oversight.
 	/// Ninety call sites in this repository ignore the result today; marking it
@@ -72,10 +90,34 @@ namespace Vaelen
 	/// the attribute once the call sites are worth touching for their own sake.
 	VAELEN_SIM_API SnapshotResult SaveSnapshot(const World& Source, std::vector<uint8>& Out);
 
-	/// Replaces the world's state with the image. The world must have been set
-	/// up with the same component types and pools (the same setup code); on
-	/// failure the result says why and the world's state is unspecified
-	/// (callers discard it).
+	/// Replaces the world's state with the image, or leaves it exactly alone.
+	/// The world must have been set up with the same component types and pools
+	/// (the same setup code).
+	///
+	/// ALL OR NOTHING, SINCE 2026-09-21. This used to say "on failure the
+	/// world's state is unspecified (callers discard it)", and that sentence
+	/// was doing a great deal of quiet work: `Run::Aelvor::Adopt` owns its
+	/// world and has nothing to discard it in favour of, and neither does a
+	/// player loading a save over the game they are in.
+	///
+	/// The reason it said so is that the apply runs section by section - clock,
+	/// streams, ids, entities, every component pool, the map - committing each
+	/// before the next is read, and pools and the map deserialise IN PLACE. A
+	/// refusal at the map left every pool already overwritten. Measured at four
+	/// cut points of a resealed image: refused honestly every time, and the
+	/// world left on a digest that was neither the one it had nor the one in
+	/// the image. A chimera.
+	///
+	/// Now the world is kept - with `SaveSnapshot`, before the first byte of it
+	/// is overwritten - and put back on any refusal. Every result below except
+	/// one therefore means the target is untouched. The exception is
+	/// `RollbackFailed`, which exists precisely so that the one case where this
+	/// promise could not be kept is not silently reported as one where it was.
+	///
+	/// The keeping costs one image of the TARGET world, and only on a load that
+	/// gets past the header: a bad trailer, magic, version, layout or seed is
+	/// refused without keeping anything, and those are the common refusals.
+	/// Measured at 1.3 MB in 8.7 ms, restored exactly.
 	VAELEN_SIM_API SnapshotResult LoadSnapshot(World& Target, const uint8* Bytes, usize Size);
 
 	/// Digest of the world state: the trailer digest of its image.

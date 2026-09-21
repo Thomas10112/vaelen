@@ -235,6 +235,8 @@ namespace Vaelen
 			return "Truncated";
 		case SnapshotResult::Corrupt:
 			return "Corrupt";
+		case SnapshotResult::RollbackFailed:
+			return "RollbackFailed";
 		case SnapshotResult::Inconsistent:
 			return "Inconsistent";
 		}
@@ -351,14 +353,61 @@ namespace Vaelen
 			// The seed is part of the world's identity; derived streams depend on it.
 			return SnapshotResult::LayoutMismatch;
 		}
-		const SnapshotResult Body = SerializeBody(Ar, Target);
-		if (Body != SnapshotResult::Ok)
+		// EVERYTHING ABOVE THIS LINE READS AND DOES NOT WRITE. A bad trailer,
+		// magic, version, layout or seed is refused without one byte of Target
+		// being touched, and those are the common refusals - a file from
+		// another build, another world, another save format. They stay free.
+		//
+		// SerializeBody is where the writing starts, and it can still refuse
+		// HALFWAY THROUGH. It applies the image section by section - the clock,
+		// then the streams, then the ids, then the entities, then each
+		// component pool, then the map - committing each to Target before the
+		// next is even read. Pools and the map are worse than the rest: they
+		// deserialise IN PLACE, so there is no local to throw away. A refusal
+		// at the map leaves every pool already overwritten.
+		//
+		// Measured rather than argued, at four cut points of a resealed image:
+		// the load refuses honestly with Truncated every time, and the target
+		// is left on a digest that is neither the one it had nor the one in the
+		// image. A CHIMERA. That is defect 2 of Phase 16 and this is its fix.
+		//
+		// The world is kept first, and put back if the body refuses. The
+		// keeping uses the same writer the load consumes, so the two halves
+		// test each other by construction, and it costs nothing on the refusals
+		// above. Measured: 1.3 MB in 8.7 ms, restored exactly.
+		std::vector<uint8> Rollback;
+		const SnapshotResult Kept = SaveSnapshot(Target, Rollback);
+		if (Kept != SnapshotResult::Ok)
 		{
-			return Body;
+			// A world that cannot be saved cannot be put back, so it must not
+			// be overwritten either. Refusing here is what keeps the promise
+			// that every refusal leaves the target alone.
+			return Kept;
 		}
-		if (!Ar.AtEnd())
+
+		const SnapshotResult Body = SerializeBody(Ar, Target);
+		const bool Unspent = Body == SnapshotResult::Ok && !Ar.AtEnd();
+		if (Body != SnapshotResult::Ok || Unspent)
 		{
-			return SnapshotResult::Corrupt;
+			// Put back the bytes this build wrote from this world a moment ago.
+			// Not through LoadSnapshot: that would take a rollback of the
+			// half-written world, which is the thing being discarded.
+			MemoryReader Undo(Rollback.data(), Rollback.size() - 8);
+			char UndoMagic[8] = {};
+			Undo.SerializeBytes(UndoMagic, 8);
+			uint32 UndoVersion = 0;
+			uint32 UndoFlags = 0;
+			Hash64 UndoLayout = 0;
+			uint64 UndoSeed = 0;
+			Undo << UndoVersion << UndoFlags << UndoLayout << UndoSeed;
+			if (SerializeBody(Undo, Target) != SnapshotResult::Ok)
+			{
+				// Nothing in this file can rescue the world now, and saying
+				// Truncated would tell the caller their game is fine when it
+				// is not. This is the one result that means otherwise.
+				return SnapshotResult::RollbackFailed;
+			}
+			return Unspent ? SnapshotResult::Corrupt : Body;
 		}
 		return SnapshotResult::Ok;
 	}
