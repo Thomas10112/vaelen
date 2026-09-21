@@ -89,6 +89,23 @@ public:
 	/// the camera leaving is something the world is entitled to know. Until
 	/// this is called the host is not looking at all and no look is recorded,
 	/// which is exactly the stream Phase 14 wrote.
+	/// Lets the played person go and takes somebody else up, recorded. The
+	/// person taken, or 0 when the world offers nobody.
+	///
+	/// THIS IS A VERB THE HOST WAS MISSING, and 15.10's gate is what found it.
+	/// The gate wants at least four takings over a walk, and the door takes
+	/// somebody up on its own only when the played person dies - which,
+	/// measured rather than assumed, does not happen: four thousand day turns
+	/// at AELVOR 128, eleven years of play, and the first person taken up was
+	/// still alive at the end. A host with no way to let go could not record a
+	/// second taking, so the clause was unmeetable at the keyboard for want of
+	/// a verb rather than for want of a world.
+	///
+	/// A release is not itself a record: Run::Replay releases whoever is played
+	/// before applying any TakenUp, so the record of the taking is the whole
+	/// of it. That is the same thing Tools/Atlas --walk does between lives.
+	int32 TakeSomebodyElse();
+
 	void Watch(int32 Region, int32 Reach, int32 Most);
 	/// What Watch was last given. False, and the three untouched, when it never
 	/// was - which is a different thing from looking at region 0.

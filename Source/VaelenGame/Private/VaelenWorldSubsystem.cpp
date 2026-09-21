@@ -137,6 +137,26 @@ bool UVaelenWorldSubsystem::Begin(int32 Size, int32 Years, bool bStreaming)
 	return true;
 }
 
+int32 UVaelenWorldSubsystem::TakeSomebodyElse()
+{
+	if (!Held || !Held->Door || !Held->World || !Held->World->Begun())
+	{
+		return 0;
+	}
+	// Release first: TakeUp refuses while somebody is played (Aelvor.h), and
+	// the release is not recorded because a replay performs it for itself
+	// before every TakenUp it applies.
+	if (Held->World->Played() != 0)
+	{
+		Held->World->Release();
+	}
+	const int32 Who = static_cast<int32>(Held->Door->TakeUp());
+	// The life and the page, not the frame: nothing of the world moved, but
+	// who is being played did, and both of those read from it.
+	Held->TakeLifeAndPage();
+	return Who;
+}
+
 bool UVaelenWorldSubsystem::Streaming() const
 {
 	return Held && Held->Streaming;

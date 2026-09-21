@@ -152,6 +152,30 @@ namespace
 			   ANSI_TO_TCHAR(Vaelen::Player::RefusalName(Answer)), static_cast<unsigned>(World->Life().Held));
 	}
 
+	/// Let this one go and take somebody else up. The verb 15.10's gate found
+	/// missing: the door takes over on its own only when the played person
+	/// dies, and measured over four thousand day turns at AELVOR 128 they do
+	/// not - so without this a sitting records exactly one taking and the gate
+	/// asks for four.
+	void TakeUp(const TArray<FString>& Args, UWorld* World_)
+	{
+		UVaelenWorldSubsystem* World = Held(World_);
+		if (World == nullptr || !World->Begun())
+		{
+			return;
+		}
+		const int32 Who = World->TakeSomebodyElse();
+		if (Who == 0)
+		{
+			UE_LOG(LogVaelenPlay, Warning, TEXT("LogVaelenPlay: the world offers nobody to take up"));
+			return;
+		}
+		const Vaelen::View::LifeView& Life = World->Life();
+		UE_LOG(LogVaelenPlay, Log, TEXT("LogVaelenPlay: now playing %s (person %d, region %u), %u takings recorded"),
+			   ANSI_TO_TCHAR(Life.Name), Who, static_cast<unsigned>(Life.Region),
+			   static_cast<unsigned>(World->Stream().Takings.size()));
+	}
+
 	/// Where the host is looking, named outright. The camera does this for
 	/// itself on every day turn (AVaelenPlayerController); this is the same
 	/// input typed, for a host with no camera over the played world and for
@@ -304,6 +328,10 @@ namespace
 	FAutoConsoleCommandWithWorldAndArgs
 		GDo(TEXT("Vaelen.Do"), TEXT("Mean one intent, through the page. Vaelen.Do <verb> [target] [amount]"),
 			FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Do));
+
+	FAutoConsoleCommandWithWorldAndArgs GTakeUp(TEXT("Vaelen.TakeUp"),
+												TEXT("Let this one go and take somebody else up, recorded"),
+												FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&TakeUp));
 
 	FAutoConsoleCommandWithWorldAndArgs GLook(TEXT("Vaelen.Look"),
 											  TEXT("Where the host is looking. Vaelen.Look <region> [reach] [most]"),

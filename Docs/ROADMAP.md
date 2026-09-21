@@ -4931,9 +4931,21 @@ unmoved, checked rather than asserted. Any one missing and the phase stays open.
 ```
 Vaelen.Play 128 100 1     the daily cadence; without the 1 the world ignores the
                           camera, and the controller then records no look at all
-(fly, and press Space a hundred times)
+(fly, and press Space twenty-five times)
+Vaelen.TakeUp             let this one go, take somebody else up
+(fly, Space twenty-five more)   and again, and again - four lives in all
 F9  or  Vaelen.Stream.Write
 ```
+
+**`Vaelen.TakeUp` is not optional, and finding out why cost a measurement.** The
+gate asks for at least four takings, and the door takes somebody up on its own
+only when the played person dies. They do not: four thousand day turns at
+AELVOR 128 - eleven years of play - and the first person taken up was still
+alive at the end. Without that verb a sitting records exactly ONE taking, and
+the clause was unmeetable at the keyboard for want of a verb rather than for
+want of a world. `Door.TheHostsOwnSittingMeetsTheGate` drives this exact
+sequence headlessly and asks the gate's clauses of it, so the recipe cannot rot
+in silence.
 
 `Vaelen.Look <region>` is there for a host with no camera over the played world.
 It is NOT a step of the sitting: `AVaelenPlayerController::TurnTheDay` overwrites

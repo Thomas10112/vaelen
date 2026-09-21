@@ -66,8 +66,18 @@ TASK        : 15.10 — the engine half. WIRED 2026-09-18; what is left is one s
               amendment: prefer the spelling the project has compiled over the one you are
               confident about, and keep the shim to what the project uses.
 
-              What remains: `Vaelen.Play 128 100 1`, fly, Space a hundred times through
-              at least four takings, F9, then `--gate` on the file.
+              AND THE SITTING COULD NOT HAVE SUCCEEDED (2026-09-21). The gate asks for
+              four takings; the door takes somebody up on its own only when the played
+              person dies, and measured rather than assumed, they do not - 4000 day turns
+              at AELVOR 128, eleven years, and the first person taken up was still alive.
+              A sitting would have recorded ONE taking and failed clause (e) after an
+              evening's work. The host was missing a verb, not the world:
+              UVaelenWorldSubsystem::TakeSomebodyElse and `Vaelen.TakeUp`. The whole
+              sitting is now simulated headlessly with the host's own loop and passes all
+              six clauses, and Door.TheHostsOwnSittingMeetsTheGate pins the shape.
+
+              What remains: `Vaelen.Play 128 100 1`, then four lives of twenty-five days -
+              Space twenty-five times, `Vaelen.TakeUp`, and again - then F9 and `--gate`.
 
               THE REVIEW of 2026-09-17, which rebuilt the headless half.
 

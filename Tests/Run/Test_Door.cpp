@@ -797,3 +797,111 @@ VAELEN_TEST(Door, TheEngineHostsOwnOrderReplaysToItself)
 	VT_CHECK_MSG(Back.State == Was, "and the world the host recorded is the world the replay reaches");
 	VT_CHECK_MSG(Looks + Shared >= Days - 4, "and skipping costs at most one look per taking");
 }
+
+VAELEN_TEST(Door, TheHostsOwnSittingMeetsTheGate)
+{
+	// Phase 15 task 15.10. The gate asks for at least four takings across a
+	// walk, and the engine host could record exactly ONE: the door takes
+	// somebody up on its own only when the played person dies, and measured
+	// rather than assumed, they do not. Four thousand day turns at AELVOR 128 -
+	// eleven years of play - and the first person taken up was still alive.
+	//
+	// So a verb was missing, not a world: UVaelenWorldSubsystem::TakeSomebodyElse
+	// (Vaelen.TakeUp). This is the sitting that verb makes possible, driven with
+	// the host's own loop, and the properties the gate asks of it - because a
+	// recipe nobody checks is a recipe that stops working quietly.
+	Options O;
+	O.Size = 128;
+	O.Years = 100;
+	O.Play = true;
+	O.Stream = true; // Vaelen.Play 128 100 1
+	Aelvor A(O);
+	VT_REQUIRE(A.Begin());
+	Player::StartRules Rules;
+	Rules.WantBound = 0; // what the engine host sets
+	Door D(A, Rules);
+	VT_REQUIRE(D.TakeUp() != 0); // Vaelen.Play takes the first one up
+
+	const uint32 Lives = 4;
+	const uint32 PerLife = 25;
+	WorldGen::RegionGraphCache Ways;
+	View::LifeView Life;
+	uint32 WorstWait = 0;
+	uint32 WorstPromotions = 0;
+	uint32 Before = Population::MeasureLod(A.Instance(), A.Ages(), A.Handles().Persons, A.Handles().Lod).Promotions;
+
+	for (uint32 Which = 0; Which < Lives; ++Which)
+	{
+		if (Which > 0)
+		{
+			// Vaelen.TakeUp, exactly: release, then take, and the release is
+			// not a record because a replay performs it for itself.
+			if (A.Played() != 0)
+			{
+				VT_CHECK(A.Release());
+			}
+			VT_REQUIRE(D.TakeUp() != 0); // the world still offers somebody to take up
+		}
+		uint32 Waited = 0xFFFFFFFFu;
+		for (uint32 Day = 0; Day < PerLife; ++Day)
+		{
+			if (Waited == 0xFFFFFFFFu)
+			{
+				View::TakeLifeView(A.Instance(), A.Sources(), Ways, Life);
+				if (Life.NearCount > 0)
+				{
+					Waited = Day;
+				}
+			}
+			// UVaelenWorldSubsystem::AdvanceDay, verbatim - the skip included.
+			const Player::InputStream& Tape = D.Stream();
+			const bool TookHere = !Tape.Takings.empty() && Tape.Takings.back().Tick == A.Now();
+			if (!TookHere)
+			{
+				D.Look(Attention{1u + ((Which * PerLife + Day) * 7u) % 60u, 1u, 4u});
+			}
+			D.Day();
+			const uint32 Now =
+				Population::MeasureLod(A.Instance(), A.Ages(), A.Handles().Persons, A.Handles().Lod).Promotions;
+			WorstPromotions = (Now - Before) > WorstPromotions ? (Now - Before) : WorstPromotions;
+			Before = Now;
+		}
+		WorstWait = Waited > WorstWait ? (Waited == 0xFFFFFFFFu ? PerLife : Waited) : WorstWait;
+	}
+
+	const Player::InputStream& Tape = D.Stream();
+	VT_CHECK_MSG(Tape.Takings.size() == Lives, "four takings, which a sitting could not reach before the verb existed");
+	VT_CHECK_MSG(Tape.Days.size() == Lives * PerLife, "a day turn for every day of it");
+	// One look short per taking, and no more. FOUR and not three: the taking
+	// Vaelen.Play itself makes lands on the world's starting tick, which is
+	// the tick day zero's look would have landed on, so it is skipped like the
+	// rest. This line said Lives - 1 first, and the test caught the arithmetic
+	// rather than the code - which is the only reason to write the figure down
+	// instead of reading it back out of the stream.
+	VT_CHECK_MSG(Tape.Looks.size() == Lives * PerLife - Lives, "one look skipped per taking, the first one included");
+	for (const Player::TakenUp& K : Tape.Takings)
+	{
+		for (const Player::Looked& L : Tape.Looks)
+		{
+			VT_CHECK_MSG(L.Tick != K.Tick, "and no tick carries both");
+		}
+	}
+
+	// THE GATE'S OWN CLAUSES, on this shape.
+	const Population::AuditReport Books = Population::Audit(A.Instance(), A.Ages(), A.Handles().Persons);
+	VT_CHECK_MSG(Books.Disagreeing == 0 && Books.SlotSumWrong == 0 && Books.FaithsOverHeads == 0,
+				 "(c) both grains agree");
+	VT_CHECK_MSG(WorstPromotions <= 1, "(d) no day turn promoted twice");
+	VT_CHECK_MSG(WorstWait <= 4, "(e) somewhere to walk within four days of each taking");
+
+	// AND IT REPLAYS TO THE WORLD IT RECORDED, which is the property no figure
+	// above would have caught: the sitting's takings are on the same ticks its
+	// day turns land on, and a look on one of those would put the stream and
+	// the replay in different orders.
+	Aelvor Fresh(O);
+	VT_REQUIRE(Fresh.Begin());
+	const ReplayReport Back = Replay(Fresh, Tape, Rules);
+	VT_CHECK_MSG(Back.Refused == 0 && Back.Wrong == 0, "(b) every record replayed as it was recorded");
+	VT_CHECK_MSG(Back.Takings == Lives && Back.Days == Tape.Days.size(), "and all of them were reached");
+	VT_CHECK_MSG(Back.State == A.StateDigest(), "and the world the sitting recorded is the one the replay reaches");
+}
