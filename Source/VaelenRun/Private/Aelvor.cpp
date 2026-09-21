@@ -388,7 +388,7 @@ namespace Vaelen::Run
 
 	bool Aelvor::Begin()
 	{
-		if (Begun_)
+		if (Run_.Begun)
 		{
 			return false;
 		}
@@ -406,26 +406,26 @@ namespace Vaelen::Run
 		{
 			K->Ages.Run(Given_.PreHistory);
 		}
-		Detail_ = K->Busiest();
+		Run_.Detail = K->Busiest();
 		if (Given_.Colony)
 		{
 			const uint32 Seamed = K->BusiestWithOre();
-			Detail_ = Seamed != 0 ? Seamed : Detail_;
+			Run_.Detail = Seamed != 0 ? Seamed : Run_.Detail;
 		}
-		RequestDetail(K->Instance, K->W.Lod, Detail_);
-		if (Given_.Colony && Detail_ != 0 && FoundColony(K->Instance, K->Ages.Types(), K->W.Pit, Detail_))
+		RequestDetail(K->Instance, K->W.Lod, Run_.Detail);
+		if (Given_.Colony && Run_.Detail != 0 && FoundColony(K->Instance, K->Ages.Types(), K->W.Pit, Run_.Detail))
 		{
-			Dug_ = Detail_;
+			Run_.Dug = Run_.Detail;
 		}
-		if (Given_.Lively && Detail_ != 0)
+		if (Given_.Lively && Run_.Detail != 0)
 		{
-			MakeLively(K->Instance, K->Ages.Types(), K->W.Living, Detail_);
+			MakeLively(K->Instance, K->Ages.Types(), K->W.Living, Run_.Detail);
 		}
 		if (Given_.Years != 0)
 		{
 			K->Ages.Run(Given_.Years);
 		}
-		Begun_ = true;
+		Run_.Begun = true;
 		return true;
 	}
 
@@ -452,13 +452,13 @@ namespace Vaelen::Run
 
 	void Aelvor::LookAt(const Attention& At)
 	{
-		Eyes_ = At;
+		Run_.Eyes = At;
 		// HERE rather than in a host, for the reason NearDetail gives: a host
 		// that asked for detail itself would be a host whose stream replays
 		// into a different world. And only when asked for, because a world that
 		// pays attention to where somebody is looking is a different world from
 		// the same seed (ADR-0141).
-		if (Given_.Stream && Begun_)
+		if (Given_.Stream && Run_.Begun)
 		{
 			Reside(At);
 		}
@@ -521,15 +521,16 @@ namespace Vaelen::Run
 		// safe without being named here: 15.01's fence refuses to demote a
 		// region holding somebody, so releasing it costs them nothing.
 		//
-		// What survives stays IN Watched_, and that is not bookkeeping tidiness:
+		// What survives stays IN Run_.Watched, and that is not bookkeeping tidiness:
 		// a region kept by the band and forgotten here would be one this warden
 		// never released again, because releasing is only ever done to something
 		// it remembers asking for. The first draft dropped them and leaked a
 		// slot per crossing.
 		std::vector<uint16> Now;
-		for (const uint16 Old : Watched_)
+		for (const uint16 Old : Run_.Watched)
 		{
-			const bool Held = uint32{Old} == Detail_ || std::find(Near_.begin(), Near_.end(), Old) != Near_.end() ||
+			const bool Held = uint32{Old} == Run_.Detail ||
+							  std::find(Run_.Near.begin(), Run_.Near.end(), Old) != Run_.Near.end() ||
 							  std::binary_search(Keep.begin(), Keep.end(), Old);
 			if (Held)
 			{
@@ -562,8 +563,8 @@ namespace Vaelen::Run
 			for (usize i = Most; i < Now.size(); ++i)
 			{
 				const uint16 Over = Now[i];
-				const bool Keeps =
-					uint32{Over} == Detail_ || std::find(Near_.begin(), Near_.end(), Over) != Near_.end();
+				const bool Keeps = uint32{Over} == Run_.Detail ||
+								   std::find(Run_.Near.begin(), Run_.Near.end(), Over) != Run_.Near.end();
 				if (!Keeps)
 				{
 					ReleaseDetail(K->Instance, K->W.Lod, Over);
@@ -571,7 +572,7 @@ namespace Vaelen::Run
 			}
 			Now.resize(Most);
 		}
-		Watched_.swap(Now);
+		Run_.Watched.swap(Now);
 	}
 
 	Player::StreamHeader Aelvor::Header() const
@@ -614,7 +615,7 @@ namespace Vaelen::Run
 
 	uint32 Aelvor::TakeUp(const Player::StartRules& Rules)
 	{
-		if (!Begun_ || !Given_.Play || Played() != 0)
+		if (!Run_.Begun || !Given_.Play || Played() != 0)
 		{
 			return 0;
 		}
@@ -691,15 +692,15 @@ namespace Vaelen::Run
 		// The 15.01 fence is what makes this safe to ship at all - releasing is
 		// what finally lets the bridge demote, and a demotion used to destroy
 		// whoever was being played.
-		for (const uint16 Old : Near_)
+		for (const uint16 Old : Run_.Near)
 		{
-			if (uint32{Old} == P->Region || uint32{Old} == Detail_)
+			if (uint32{Old} == P->Region || uint32{Old} == Run_.Detail)
 			{
 				continue;
 			}
 			ReleaseDetail(K->Instance, K->W.Lod, Old);
 		}
-		Near_.clear();
+		Run_.Near.clear();
 
 		// HOW MANY NEIGHBOURS A WALK NEEDS, and it is not "all the budget but
 		// one". This read MaxDetailed - 1, which tied the walk's appetite to
@@ -731,7 +732,7 @@ namespace Vaelen::Run
 			if (RequestDetail(K->Instance, K->W.Lod, N))
 			{
 				++Asked;
-				Near_.push_back(N);
+				Run_.Near.push_back(N);
 			}
 		}
 	}
@@ -779,7 +780,7 @@ namespace Vaelen::Run
 	{
 		// Nothing to turn before Begin(): the world has no map and no history,
 		// and a tick of it would fail a check rather than do nothing.
-		if (Begun_)
+		if (Run_.Begun)
 		{
 			K->Instance.TickMany(24);
 		}
@@ -822,5 +823,63 @@ namespace Vaelen::Run
 			return Player::HourStats{};
 		}
 		return Player::MeasureHours(K->Instance, K->W.Persons, K->W.Played, K->W.Hour, Player::HourRules{});
+	}
+
+	Aelvor::RunState Aelvor::GetRunState() const
+	{
+		// A copy of the whole thing, deliberately. Handing back a reference
+		// would let a caller hold the run's state while the run moves under it,
+		// and 16.06 hands this across a restore where that would be exactly
+		// wrong.
+		return Run_;
+	}
+
+	bool Aelvor::SetRunState(const RunState& In)
+	{
+		// REFUSED RATHER THAN CLAMPED. A region past the end of this world's map
+		// means the state came from a world this one is not - a different size,
+		// a different wiring - and quietly dropping it would restore a run that
+		// LOOKS right and watches somewhere that does not exist. 16.03 settled
+		// the principle for the world; this is the same principle for the run.
+		if (K == nullptr)
+		{
+			return false;
+		}
+		// The bound comes from the same region graph LookAt uses, through the
+		// same cache, so a state this accepts is one the warden can act on.
+		// Region indices are 1-based with entry 0 unused (Regions.h:85), so the
+		// last valid one is RegionCount() itself.
+		const uint32 Regions = Ways_.Of(K->Instance.Map(), K->Ages.Types().World.Regions).RegionCount();
+		const auto Beyond = [Regions](uint32 Region) { return Region > Regions; };
+		for (const uint16 Region : In.Near)
+		{
+			if (Beyond(Region))
+			{
+				return false;
+			}
+		}
+		for (const uint16 Region : In.Watched)
+		{
+			if (Beyond(Region))
+			{
+				return false;
+			}
+		}
+		if (Beyond(In.Eyes.Region))
+		{
+			return false;
+		}
+		if (Beyond(In.Detail))
+		{
+			return false;
+		}
+
+		Run_ = In;
+		// Ways_ is NOT restored and NOT cleared here. It is a cache keyed on
+		// HashCombine(HashUInt64(Map.Revision()), ...) (Regions.cpp:421), and
+		// WorldMap::Reset bumps Replaced on every load (WorldMap.cpp:53), so
+		// the load that brought this state in has already invalidated it. There
+		// is nothing to do, and doing something would hide that.
+		return true;
 	}
 } // namespace Vaelen::Run

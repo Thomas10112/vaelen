@@ -51,6 +51,10 @@
 #pragma once
 
 #include "Vaelen/Core/CoreTypes.h"
+// Included rather than forward-declared since 16.05: RunState is Aelvor's
+// nested type and ReadRunSection hands one back by value. No cycle - Aelvor.h
+// knows nothing about the container.
+#include "Vaelen/Run/Aelvor.h"
 #include "Vaelen/Core/Hash.h"
 #include "Vaelen/Core/Version.h"
 #include "Vaelen/Run/RunApi.h"
@@ -59,8 +63,6 @@
 
 namespace Vaelen::Run
 {
-	class Aelvor;
-
 	/// "VAELENCP" - eight bytes, matching the image's own magic in shape so
 	/// that a reader handed the wrong one of the two says so immediately.
 	inline constexpr char CheckpointMagic[8] = {'V', 'A', 'E', 'L', 'E', 'N', 'C', 'P'};
@@ -72,7 +74,7 @@ namespace Vaelen::Run
 	{
 		/// `SaveSnapshot`'s output, byte for byte. Never re-encoded.
 		State = 1,
-		/// `Aelvor`'s own state - Begun_, Detail_, Dug_, Near_, Watched_ - which
+		/// `Aelvor::RunState` - Begun, Detail, Dug, Eyes, Near, Watched - which
 		/// lives OUTSIDE the image and is the defect this phase exists for.
 		/// Declared here, filled by 16.05.
 		Run = 2,
@@ -158,6 +160,15 @@ namespace Vaelen::Run
 	/// that appends, or writes what it gets, must never handle bytes nobody
 	/// meant. `MayIgnore` is carried into the high half of the container flags.
 	VAELEN_RUN_API CheckpointResult BuildCheckpoint(const Aelvor& Run, std::vector<uint8>& Out, uint16 MayIgnore = 0);
+
+	/// Decodes the RUN section into a `RunState`. False when the checkpoint has
+	/// no RUN section, or when its bytes do not describe one - which, because
+	/// the section digest has already agreed with them, means the section was
+	/// written by a build whose `RunState` is a different shape.
+	///
+	/// It does NOT apply the state: `Aelvor::SetRunState` decides whether this
+	/// world can hold it, and refuses a region the map does not have.
+	VAELEN_RUN_API bool ReadRunSection(const CheckpointView& View, Aelvor::RunState& Out);
 
 	/// Reads a checkpoint's header and section table. It does NOT apply
 	/// anything to a world - that is 16.06's `Adopt`, which is the only caller

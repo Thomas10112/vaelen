@@ -138,7 +138,7 @@ namespace Vaelen::Run
 		/// PreHistory years. False when the map cannot be generated or when
 		/// called twice.
 		bool Begin();
-		bool Begun() const noexcept { return Begun_; }
+		bool Begun() const noexcept { return Run_.Begun; }
 
 		World& Instance() noexcept;
 		const World& Instance() const noexcept;
@@ -147,9 +147,9 @@ namespace Vaelen::Run
 		const Wired& Handles() const noexcept;
 		const History::PreHistoryTypes& Ages() const noexcept;
 		/// The region simulated person by person, 0 before Begin().
-		uint32 Detail() const noexcept { return Detail_; }
+		uint32 Detail() const noexcept { return Run_.Detail; }
 		/// The region the colony was founded on, 0 when none was.
-		uint32 Founded() const noexcept { return Dug_; }
+		uint32 Founded() const noexcept { return Run_.Dug; }
 
 		/// Told where the host is looking. 15.06 remembers it and no more; the
 		/// warden of 15.07 is what turns attention into detail requests, and it
@@ -164,10 +164,10 @@ namespace Vaelen::Run
 		/// promotes, and it still decides on its own cadence.
 		void LookAt(const Attention& At);
 		/// The last attention this Run was told about.
-		const Attention& Attending() const noexcept { return Eyes_; }
+		const Attention& Attending() const noexcept { return Run_.Eyes; }
 		/// What the warden currently asks to have detailed, ascending. Empty
 		/// without Options::Stream, and host-side either way.
-		const std::vector<uint16>& Watching() const noexcept { return Watched_; }
+		const std::vector<uint16>& Watching() const noexcept { return Run_.Watched; }
 
 		/// What a stream of this world is headed with (Stream.h).
 		Player::StreamHeader Header() const;
@@ -205,27 +205,58 @@ namespace Vaelen::Run
 
 		struct Kernel; ///< the wiring, in Aelvor.cpp where the wiring guard reads it
 
+		/// EVERYTHING THE RUN KNOWS THAT THE WORLD DOES NOT, in one struct, and
+		/// the reason it is one struct rather than six members is the whole of
+		/// task 16.05: these live OUTSIDE the image, so a field added here and
+		/// forgotten in the RUN section is a world that restores and then
+		/// quietly diverges. Making them a single object means the thing that
+		/// is saved IS the thing that is kept - a new field is carried by
+		/// construction, not by remembering.
+		///
+		/// Measured, because the divergence is not visible where you would look
+		/// for it: a restored world with Watched empty has the SAME state digest
+		/// as its source, and goes on having it for as many LOOKS as you care to
+		/// make. With Options::Stream the warden runs on a DAY TURN, so it takes
+		/// a day turn for the absence to bite - 431f81069619ca49 against
+		/// 35d4827934886778 at 32 tiles. A test that only looked would pass
+		/// against the unfixed code, which is why Run.Checkpoint carries both
+		/// arms.
+		///
+		/// Ways_ IS DELIBERATELY NOT HERE, and the reason is asserted rather
+		/// than assumed: WorldMap::Reset does ++Replaced (WorldMap.cpp:53, and
+		/// the Serialize path at :109), and RegionGraphCache keys on
+		/// HashCombine(HashUInt64(Map.Revision()), ...) (Regions.cpp:421), so a
+		/// load invalidates it by construction. Saving it would be saving a
+		/// cache that the act of loading has already thrown away.
+		struct RunState
+		{
+			bool Begun = false;
+			uint32 Detail = 0;
+			uint32 Dug = 0;
+			/// Written and never read, and it rides along anyway: it costs
+			/// twelve bytes, and the next person to read it should find it
+			/// right rather than find it stale.
+			Attention Eyes;
+			std::vector<uint16> Near;
+			std::vector<uint16> Watched;
+		};
+
+		/// What this run would need to be restored into another Aelvor.
+		VAELEN_RUN_API RunState GetRunState() const;
+		/// Replaces it. False when the state is not one this wiring can hold -
+		/// a region past the end of the map, or a detail request the world has
+		/// no region for.
+		VAELEN_RUN_API bool SetRunState(const RunState& In);
+
 	private:
 		Options Given_;
 		std::unique_ptr<Kernel> K;
-		bool Begun_ = false;
+		RunState Run_;
 		/// ADR-0139: after a taking, ask for the neighbours of the played
 		/// person's region, so that a Move has somewhere the world will let it
 		/// go. See Aelvor.cpp for why it lives here and not in a host.
 		void NearDetail(uint32 Who);
 
-		uint32 Detail_ = 0;
-		uint32 Dug_ = 0;
-		/// What the LAST taking asked to have detailed, so that the next one can
-		/// give it back (15.03). Host-side bookkeeping and not world state: a
-		/// replay rebuilds it by applying the same takings in the same order,
-		/// so nothing here enters a digest.
-		std::vector<uint16> Near_;
-		Attention Eyes_; ///< 15.06: the last look, host-side and out of every digest
-		/// 15.07: what the last look asked for, so the next one can give back
-		/// what it no longer wants. Host-side, rebuilt by a replay from the same
-		/// Looked records in the same order, and therefore in no digest.
-		std::vector<uint16> Watched_;
 		/// Derived, and rebuilt only when the map it came from is replaced.
 		WorldGen::RegionGraphCache Ways_;
 		/// The warden's decision, out of LookAt so it can be read on its own.

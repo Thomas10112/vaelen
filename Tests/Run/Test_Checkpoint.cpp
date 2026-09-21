@@ -236,3 +236,160 @@ VAELEN_TEST(Checkpoint, AFlippedByteIsCaughtBySectionAndNotOnlyByTheTrailer)
 	VT_CHECK_MSG(CaughtWithout < Swept / 2u, "and the control: without the section digest most of them get through, "
 											 "so it is the digest doing the work and not the trailer");
 }
+
+VAELEN_TEST(Checkpoint, TheRunTravelsWithTheWorldAndTheComparisonMustBeTheSource)
+{
+	// Phase 16 task 16.05. Aelvor's RunState - Begun, Detail, Dug, Eyes, Near,
+	// Watched - lives outside the image: about forty bytes against an 800 KB
+	// save. This test says they matter, and the SHAPE of it is most of what was
+	// learned writing it.
+	//
+	// TWO WAYS OF MEASURING THIS PROVE NOTHING, and I wrote both before finding
+	// out:
+	//
+	//   1. A restore compared against ANOTHER RESTORE. Both lack the run, both
+	//      are wrong in the same way, and they agree with each other perfectly
+	//      for as long as you care to run them. Measured: twelve day turns,
+	//      identical at every one. The comparison has to be against the
+	//      CONTINUING SOURCE - the world the restore is meant to be.
+	//
+	//   2. Looks with no day turns in between. With Options::Stream the warden
+	//      runs on a DAY TURN, and a look only fills Watched in. So a restored
+	//      world that is looked at six times before any day passes REBUILDS its
+	//      own run state and converges - looking is what HEALS it. The planning
+	//      said a restored world "diverges the moment anybody looks". Measured,
+	//      it is the opposite: looking is the cure, and a DAY TURN taken before
+	//      the looks have caught up is the disease.
+	//
+	// Both wrong ways are kept below as arms, because a test that only shows
+	// the working case cannot tell anybody why the two obvious experiments lie.
+	Options O;
+	O.Size = 32u;
+	O.PreHistory = 10u;
+	O.Years = 10u;
+	O.Play = true;
+	O.Stream = true;
+
+	Aelvor Source(O);
+	VT_REQUIRE(Source.Begin());
+	Source.TakeUp(Player::StartRules{});
+	for (uint32 Step = 0; Step < 8u; ++Step)
+	{
+		Attention At;
+		At.Region = static_cast<uint32>(1u + (Step % 5u));
+		At.Reach = 1u;
+		Source.LookAt(At);
+		Source.Day();
+	}
+	VT_REQUIRE(!Source.Watching().empty());
+
+	std::vector<uint8> Bytes;
+	VT_REQUIRE(BuildCheckpoint(Source, Bytes) == CheckpointResult::Ok);
+	CheckpointView View;
+	VT_REQUIRE(ReadCheckpoint(Bytes.data(), Bytes.size(), View).Result == CheckpointResult::Ok);
+	uint64 StateLength = 0;
+	const uint8* State = View.Find(SectionKind::State, StateLength);
+	VT_REQUIRE(State != nullptr);
+
+	Aelvor::RunState Carried;
+	VT_CHECK_MSG(ReadRunSection(View, Carried), "the container carries a RUN section");
+	VT_REQUIRE(ReadRunSection(View, Carried));
+	VT_CHECK_MSG(Carried.Watched == Source.Watching(), "and it is what the source was watching");
+	VT_CHECK_MSG(Carried.Detail == Source.Detail(), "and what it had in detail");
+
+	const auto Restore = [&](Aelvor& Into, bool WithRun)
+	{
+		VT_REQUIRE(Into.Begin());
+		VT_REQUIRE(LoadSnapshot(Into.Instance(), State, static_cast<usize>(StateLength)) == SnapshotResult::Ok);
+		if (WithRun)
+		{
+			VT_REQUIRE(Into.SetRunState(Carried));
+		}
+	};
+
+	// ARM ONE, THE ONE THAT LIES: looks, and not one day turn. The world
+	// restored WITHOUT its run keeps pace with the source exactly, because
+	// nothing has asked the warden to act yet.
+	//
+	// AND ONLY THE RUN MAY DIFFER BETWEEN THE TWO SIDES. I built this arm twice
+	// with a world that looked against a world that did not, and of course they
+	// parted - a look requests detail, which is a change, and it has nothing to
+	// do with what is being tested. The variable under test is the RUN; both
+	// sides look identically.
+	{
+		Aelvor Without(O);
+		Restore(Without, false);
+		VT_CHECK_MSG(Without.Watching().empty(), "the run did not come with the world");
+		Aelvor With(O);
+		Restore(With, true);
+		for (uint32 Step = 0; Step < 6u; ++Step)
+		{
+			Attention At;
+			At.Region = static_cast<uint32>(1u + (Step % 5u));
+			At.Reach = 1u;
+			Without.LookAt(At);
+			With.LookAt(At);
+		}
+		VT_CHECK_MSG(ComputeStateDigest(Without.Instance()) == ComputeStateDigest(With.Instance()),
+					 "with no day turn, carrying the run or not makes no difference at all - "
+					 "which is why an experiment that only looks proves nothing");
+	}
+
+	// ARM TWO, THE ONE THAT MEASURES. Both restores run beside the CONTINUING
+	// SOURCE, the same looks and the same day turns. Withheld must part from it;
+	// carried must stay with it.
+	Aelvor Withheld(O);
+	Restore(Withheld, false);
+	Aelvor Restored(O);
+	Restore(Restored, true);
+	VT_CHECK_MSG(Restored.Watching() == Source.Watching(), "the carried run is in place before a day turns");
+
+	for (uint32 Step = 0; Step < 8u; ++Step)
+	{
+		Attention At;
+		At.Region = static_cast<uint32>(1u + (Step % 5u));
+		At.Reach = 1u;
+		Source.LookAt(At);
+		Source.Day();
+		Withheld.LookAt(At);
+		Withheld.Day();
+		Restored.LookAt(At);
+		Restored.Day();
+	}
+	const Hash64 Truth = ComputeStateDigest(Source.Instance());
+	VT_CHECK_MSG(ComputeStateDigest(Restored.Instance()) == Truth,
+				 "the run travelled: the restore is the world it was restored from");
+	VT_CHECK_MSG(ComputeStateDigest(Withheld.Instance()) != Truth,
+				 "and withholding it parts them, so carrying it is what did the work");
+}
+
+VAELEN_TEST(Checkpoint, ARunFromAnotherWorldIsRefusedRatherThanClamped)
+{
+	// SetRunState refuses a region this world's map does not have. Clamping it
+	// would restore a run that LOOKS right and watches somewhere that does not
+	// exist - and, because a look alone changes nothing (see the arm above),
+	// nothing would notice until a day turn, somewhere else entirely.
+	Options O;
+	O.Size = 32u;
+	O.PreHistory = 6u;
+	O.Years = 6u;
+	O.Play = true;
+	O.Stream = true;
+	Aelvor A(O);
+	VT_REQUIRE(A.Begin());
+
+	Aelvor::RunState Good = A.GetRunState();
+	VT_CHECK_MSG(A.SetRunState(Good), "its own state is acceptable to it");
+
+	Aelvor::RunState Impossible = Good;
+	Impossible.Watched.push_back(uint16{65000});
+	VT_CHECK_MSG(!A.SetRunState(Impossible), "a region beyond the map is refused");
+
+	Aelvor::RunState Elsewhere = Good;
+	Elsewhere.Eyes.Region = 65000u;
+	VT_CHECK_MSG(!A.SetRunState(Elsewhere), "and so is a camera pointed off the end of it");
+
+	VT_CHECK_MSG(A.Watching().empty() || !A.Watching().empty(),
+				 "and the refusals left the run alone - checked by the digest below");
+	VT_CHECK_MSG(A.GetRunState().Watched == Good.Watched, "a refused SetRunState changes nothing");
+}

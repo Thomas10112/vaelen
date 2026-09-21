@@ -76,6 +76,77 @@ namespace Vaelen::Run
 			return Value;
 		}
 
+		/// The RUN section's payload. Its shape is deliberately boring - the
+		/// interesting decision is that it exists at all.
+		void PutRunState(std::vector<uint8>& Out, const Aelvor::RunState& R)
+		{
+			Out.push_back(R.Begun ? uint8{1} : uint8{0});
+			PutU32(Out, R.Detail);
+			PutU32(Out, R.Dug);
+			PutU32(Out, R.Eyes.Region);
+			PutU32(Out, R.Eyes.Reach);
+			PutU32(Out, R.Eyes.Most);
+			PutU32(Out, static_cast<uint32>(R.Near.size()));
+			for (const uint16 Region : R.Near)
+			{
+				PutU16(Out, Region);
+			}
+			PutU32(Out, static_cast<uint32>(R.Watched.size()));
+			for (const uint16 Region : R.Watched)
+			{
+				PutU16(Out, Region);
+			}
+		}
+
+		/// False when the bytes do not describe a RunState - which, because the
+		/// section digest has already agreed with them, means the section is
+		/// from a build that wrote a different shape.
+		bool GetRunState(const uint8* At, usize Size, Aelvor::RunState& Out)
+		{
+			usize Need = 1u + 4u * 6u;
+			if (Size < Need)
+			{
+				return false;
+			}
+			Out.Begun = At[0] != 0u;
+			Out.Detail = GetU32(At + 1);
+			Out.Dug = GetU32(At + 5);
+			Out.Eyes.Region = GetU32(At + 9);
+			Out.Eyes.Reach = GetU32(At + 13);
+			Out.Eyes.Most = GetU32(At + 17);
+
+			usize Cursor = 21u;
+			const auto Read = [&](std::vector<uint16>& Into)
+			{
+				if (Size - Cursor < 4u)
+				{
+					return false;
+				}
+				const uint32 Count = GetU32(At + Cursor);
+				Cursor += 4u;
+				if (Count > (Size - Cursor) / 2u)
+				{
+					return false;
+				}
+				Into.clear();
+				Into.reserve(Count);
+				for (uint32 Index = 0; Index < Count; ++Index)
+				{
+					Into.push_back(GetU16(At + Cursor));
+					Cursor += 2u;
+				}
+				return true;
+			};
+			if (!Read(Out.Near) || !Read(Out.Watched))
+			{
+				return false;
+			}
+			// Trailing bytes inside a section are the same fault as trailing
+			// bytes inside the container: something wrote a meaning this build
+			// does not read.
+			return Cursor == Size;
+		}
+
 		Hash64 DigestOf(const uint8* At, usize Size) noexcept
 		{
 			return HashBytes(reinterpret_cast<const char*>(At), Size);
@@ -122,6 +193,17 @@ namespace Vaelen::Run
 		return nullptr;
 	}
 
+	bool ReadRunSection(const CheckpointView& View, Aelvor::RunState& Out)
+	{
+		uint64 Length = 0;
+		const uint8* At = View.Find(SectionKind::Run, Length);
+		if (At == nullptr)
+		{
+			return false;
+		}
+		return GetRunState(At, static_cast<usize>(Length), Out);
+	}
+
 	CheckpointResult BuildCheckpoint(const Aelvor& Run, std::vector<uint8>& Out, uint16 MayIgnore)
 	{
 		const usize Start = Out.size();
@@ -158,10 +240,14 @@ namespace Vaelen::Run
 		std::vector<uint8> LogBytes;
 		W.Log().WriteTo(LogBytes);
 
-		// 16.04 writes one section. RUN, HOST and STREAM are declared in the
-		// header and filled by 16.05 to 16.07; the table is variable-length by
-		// design, so adding them costs no container version.
-		const uint32 SectionCount = 1u;
+		// 16.05 adds the RUN section beside STATE. HOST and STREAM are declared
+		// in the header and filled by 16.07; the table is variable-length by
+		// design, so this cost no container version - which is what the table
+		// was for.
+		std::vector<uint8> RunBytes;
+		PutRunState(RunBytes, Run.GetRunState());
+
+		const uint32 SectionCount = 2u;
 		const uint64 TableAt = HeaderBytes;
 		const uint64 PayloadAt = TableAt + static_cast<uint64>(SectionCount) * EntryBytes;
 
@@ -181,7 +267,14 @@ namespace Vaelen::Run
 		PutU64(Out, static_cast<uint64>(State.size()));
 		PutU64(Out, DigestOf(State.data(), State.size()));
 
+		PutU16(Out, static_cast<uint16>(SectionKind::Run));
+		PutU32(Out, 0u);
+		PutU64(Out, PayloadAt + static_cast<uint64>(State.size()));
+		PutU64(Out, static_cast<uint64>(RunBytes.size()));
+		PutU64(Out, DigestOf(RunBytes.data(), RunBytes.size()));
+
 		Out.insert(Out.end(), State.begin(), State.end());
+		Out.insert(Out.end(), RunBytes.begin(), RunBytes.end());
 
 		PutU64(Out, DigestOf(Out.data() + Start, Out.size() - Start));
 		return CheckpointResult::Ok;
