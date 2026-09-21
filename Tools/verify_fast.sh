@@ -46,7 +46,16 @@ if ! command -v "$CLANG_FORMAT" >/dev/null 2>&1; then
 fi
 
 echo "[verify] clang-format"
-git ls-files 'Source/*.h' 'Source/*.cpp' 'Tests/*.h' 'Tests/*.cpp' | grep -v 'Source/Vaelen/' \
+# --others --exclude-standard IS NOT DECORATION. This used `git ls-files` alone
+# until 2026-09-21, which lists only TRACKED files - so a file that had just
+# been written and not yet staged was invisible to the one check most likely to
+# have something to say about it. 16.04 added three new files, verify_fast went
+# green on all six checks, and the clang-format leg of the CI was red on all
+# three of them. A new file is exactly when this check is worth running.
+{
+	git ls-files 'Source/*.h' 'Source/*.cpp' 'Tests/*.h' 'Tests/*.cpp'
+	git ls-files --others --exclude-standard 'Source/*.h' 'Source/*.cpp' 'Tests/*.h' 'Tests/*.cpp'
+} | sort -u | grep -v 'Source/Vaelen/' \
 	| xargs "$CLANG_FORMAT" --style=file --dry-run -Werror
 
 echo "[verify] purity"

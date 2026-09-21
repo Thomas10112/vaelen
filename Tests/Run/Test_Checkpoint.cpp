@@ -156,8 +156,7 @@ VAELEN_TEST(Checkpoint, UnknownRequiredFlagIsRefusedAndTheOtherHalfIsCarried)
 
 	CheckpointView Ignored;
 	const CheckpointRefusal R = ReadCheckpoint(Refused.data(), Refused.size(), Ignored);
-	VT_CHECK_MSG(R.Result == CheckpointResult::UnknownRequiredFlag, "%s",
-				 CheckpointResultToString(R.Result));
+	VT_CHECK_MSG(R.Result == CheckpointResult::UnknownRequiredFlag, "%s", CheckpointResultToString(R.Result));
 	VT_CHECK_MSG(R.UnknownBit == 5u, "and it names the bit rather than saying 'newer version'");
 }
 
@@ -234,7 +233,6 @@ VAELEN_TEST(Checkpoint, AFlippedByteIsCaughtBySectionAndNotOnlyByTheTrailer)
 				CaughtWithDigests, CaughtWithout);
 	VT_CHECK_MSG(Swept >= 180u, "180 offsets across three bands");
 	VT_CHECK_MSG(CaughtWithDigests == Swept, "every one of them refused, by the section it landed in");
-	VT_CHECK_MSG(CaughtWithout < Swept / 2u,
-				 "and the control: without the section digest most of them get through, "
-				 "so it is the digest doing the work and not the trailer");
+	VT_CHECK_MSG(CaughtWithout < Swept / 2u, "and the control: without the section digest most of them get through, "
+											 "so it is the digest doing the work and not the trailer");
 }

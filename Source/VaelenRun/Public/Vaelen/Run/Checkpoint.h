@@ -157,8 +157,7 @@ namespace Vaelen::Run
 	/// 16.02 established for `SaveSnapshot` and for the same reason: a caller
 	/// that appends, or writes what it gets, must never handle bytes nobody
 	/// meant. `MayIgnore` is carried into the high half of the container flags.
-	VAELEN_RUN_API CheckpointResult BuildCheckpoint(const Aelvor& Run, std::vector<uint8>& Out,
-													uint16 MayIgnore = 0);
+	VAELEN_RUN_API CheckpointResult BuildCheckpoint(const Aelvor& Run, std::vector<uint8>& Out, uint16 MayIgnore = 0);
 
 	/// Reads a checkpoint's header and section table. It does NOT apply
 	/// anything to a world - that is 16.06's `Adopt`, which is the only caller

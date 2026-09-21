@@ -125,7 +125,8 @@ namespace Vaelen::Run
 	CheckpointResult BuildCheckpoint(const Aelvor& Run, std::vector<uint8>& Out, uint16 MayIgnore)
 	{
 		const usize Start = Out.size();
-		const auto Refuse = [&Out, Start](CheckpointResult Why) {
+		const auto Refuse = [&Out, Start](CheckpointResult Why)
+		{
 			Out.resize(Start);
 			return Why;
 		};
@@ -189,7 +190,8 @@ namespace Vaelen::Run
 	CheckpointRefusal ReadCheckpoint(const uint8* Bytes, usize Size, CheckpointView& Out)
 	{
 		CheckpointRefusal Refusal;
-		const auto Refuse = [&Refusal](CheckpointResult Why, uint32 Which = 0) {
+		const auto Refuse = [&Refusal](CheckpointResult Why, uint32 Which = 0)
+		{
 			Refusal.Result = Why;
 			Refusal.Section = Which;
 			return Refusal;
