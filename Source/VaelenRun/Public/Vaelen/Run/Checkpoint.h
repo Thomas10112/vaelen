@@ -54,6 +54,8 @@
 // Included rather than forward-declared since 16.05: RunState is Aelvor's
 // nested type and ReadRunSection hands one back by value. No cycle - Aelvor.h
 // knows nothing about the container.
+#include "Vaelen/Player/Start.h"
+#include "Vaelen/Player/Stream.h"
 #include "Vaelen/Run/Aelvor.h"
 #include "Vaelen/Core/Hash.h"
 #include "Vaelen/Core/Version.h"
@@ -68,7 +70,15 @@ namespace Vaelen::Run
 	inline constexpr char CheckpointMagic[8] = {'V', 'A', 'E', 'L', 'E', 'N', 'C', 'P'};
 
 	/// The container's version, deliberately not the image's.
-	inline constexpr uint32 CheckpointVersion = 1u;
+	///
+	/// 2 since 16.11, which added the STREAM section. The bump is deliberate
+	/// even though the section table is variable-length and would have carried
+	/// it silently: a build that did not understand STREAM would load the world
+	/// and DROP ITS PROVENANCE without a word, and a save that quietly forgets
+	/// how it came to exist is the thing this task exists to prevent. Refusing
+	/// is the honest answer. Nothing has shipped, so no v1 container exists
+	/// outside a test run and `BuiltInUpgrades()` stays empty.
+	inline constexpr uint32 CheckpointVersion = 2u;
 
 	enum class SectionKind : uint16
 	{
@@ -162,6 +172,19 @@ namespace Vaelen::Run
 	/// that appends, or writes what it gets, must never handle bytes nobody
 	/// meant. `MayIgnore` is carried into the high half of the container flags.
 	VAELEN_RUN_API CheckpointResult BuildCheckpoint(const Aelvor& Run, std::vector<uint8>& Out, uint16 MayIgnore = 0);
+
+	/// The same, carrying the tape this world was played on.
+	///
+	/// The `Door` is not taken directly, so this header goes on knowing nothing
+	/// about it; what travels is named rather than implied.
+	VAELEN_RUN_API CheckpointResult BuildCheckpoint(const Aelvor& Run, const Player::InputStream& Tape,
+													const Player::StartRules& Rules, std::vector<uint8>& Out,
+													uint16 MayIgnore = 0);
+
+	/// Decodes the STREAM section. False when there is none, or its bytes are
+	/// not a stream this build reads.
+	VAELEN_RUN_API bool ReadStreamSection(const CheckpointView& View, Player::InputStream& Tape,
+										  Player::StartRules& Rules);
 
 	/// ONE STEP OF A MIGRATION: it takes a container at version `From` and
 	/// leaves it at `From + 1`, or returns false having changed nothing.

@@ -5,6 +5,8 @@
 // STATUS: PROTOTYPE (Phase 14) - Tests/Run/Test_Door.cpp
 #include "Vaelen/Run/Door.h"
 
+#include <utility>
+
 #include <string>
 
 namespace Vaelen::Run
@@ -16,6 +18,19 @@ namespace Vaelen::Run
 
 	Door::Door(Aelvor& InWorld, const Player::StartRules& InRules) : W(InWorld), Start(InRules)
 	{
+		Tape.Header = W.Header();
+	}
+
+	Door::Door(Aelvor& InWorld, const Player::StartRules& InRules, Player::InputStream InTape)
+		: W(InWorld), Start(InRules), Tape(std::move(InTape))
+	{
+		// THE HEADER IS TAKEN FROM THE WORLD, NOT FROM THE TAPE, and that is
+		// the whole of 16.10 arriving here. A tape carries a header naming the
+		// world it was recorded on; this world has just been checked, field by
+		// field, against the one the checkpoint declared, so the two already
+		// agree. Trusting the tape's copy instead would mean believing a number
+		// that travelled with the records rather than the one that was
+		// verified - and Aelvor::Header() is what a replay is later handed.
 		Tape.Header = W.Header();
 	}
 

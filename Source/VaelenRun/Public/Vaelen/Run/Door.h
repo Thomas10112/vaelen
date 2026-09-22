@@ -46,6 +46,17 @@ namespace Vaelen::Run
 		/// be given the same ones, and the tests are.
 		explicit Door(Aelvor& InWorld, const Player::StartRules& InRules = Player::StartRules{});
 
+		/// 16.11: A DOOR THAT TAKES ITS TAPE BACK. A session restored from a
+		/// checkpoint goes on recording into the stream it came with, rather
+		/// than starting a fresh one that begins in the middle of a life.
+		///
+		/// Without this, a save could be restored and played on, and the walk
+		/// that came out would be unreplayable: its first record would land at
+		/// a tick the world had already passed, and Phase 14 and 15's whole
+		/// audit route - record here, replay there, compare four digests -
+		/// would stop at the first save a player made.
+		Door(Aelvor& InWorld, const Player::StartRules& InRules, Player::InputStream InTape);
+
 		/// Takes somebody up now and records it. 0 when the world offers
 		/// nobody or somebody is already played.
 		uint32 TakeUp();

@@ -17,6 +17,7 @@
 #include "Vaelen/Core/Version.h"
 #include "Vaelen/Run/Aelvor.h"
 #include "Vaelen/Run/Checkpoint.h"
+#include "Vaelen/Run/Door.h"
 #include "Vaelen/Sim/Snapshot.h"
 #include "Vaelen/Sim/World.h"
 
@@ -269,10 +270,16 @@ VAELEN_TEST(Checkpoint, TheRunTravelsWithTheWorldAndTheComparisonMustBeTheSource
 	O.Years = 10u;
 	O.Play = true;
 	O.Stream = true;
+	// LIVELY, AND THE TAKING IS CHECKED NOW. Without this flag the world
+	// offers nobody, so the unchecked TakeUp that stood here returned 0 for
+	// as long as this test existed: it ran on an unplayed world while its own
+	// setup said it was played. Measured at 16.11 - (32, 10+10, lively=0)
+	// offers 0, and still 0 after ten day turns; with Lively it offers one.
+	O.Lively = true;
 
 	Aelvor Source(O);
 	VT_REQUIRE(Source.Begin());
-	Source.TakeUp(Player::StartRules{});
+	VT_CHECK_MSG(Source.TakeUp(Player::StartRules{}) != 0u, "somebody is played in the source");
 	for (uint32 Step = 0; Step < 8u; ++Step)
 	{
 		Attention At;
@@ -307,9 +314,27 @@ VAELEN_TEST(Checkpoint, TheRunTravelsWithTheWorldAndTheComparisonMustBeTheSource
 		}
 	};
 
-	// ARM ONE, THE ONE THAT LIES: looks, and not one day turn. The world
-	// restored WITHOUT its run keeps pace with the source exactly, because
-	// nothing has asked the warden to act yet.
+	// ARM ONE, THE SAMPLING TRAP: looks, and not one day turn. This arm used
+	// to assert that the two sides stay IDENTICAL however long you look at
+	// them, and it passed for exactly as long as this test ran on a world
+	// that offered nobody to play - nothing was ever promoted, so two worlds
+	// that did nothing agreed. With Options::Lively set above, the
+	// measurement is this, step by step, and it is the whole reason a
+	// looking-only experiment is worthless:
+	//
+	//     restored   without watches 0   with watches 5   same
+	//     look 0     without watches 1   with watches 5   DIFFER
+	//     look 1     without watches 4   with watches 5   same
+	//     look 2     without watches 5   with watches 5   same
+	//     look 3     without watches 6   with watches 6   same
+	//     look 4     without watches 7   with watches 7   same
+	//     look 5     without watches 2   with watches 5   DIFFER
+	//
+	// The world denied its run REBUILDS a watched set out of the looks and
+	// walks in and out of agreement with the one that carried it. Stop after
+	// look 2 and the run reads as irrelevant; stop after look 0 or look 5 and
+	// it reads as decisive. Neither is an answer, which is what arm two is
+	// for: it turns days, and a day turn is when the warden acts.
 	//
 	// AND ONLY THE RUN MAY DIFFER BETWEEN THE TWO SIDES. I built this arm twice
 	// with a world that looked against a world that did not, and of course they
@@ -322,6 +347,8 @@ VAELEN_TEST(Checkpoint, TheRunTravelsWithTheWorldAndTheComparisonMustBeTheSource
 		VT_CHECK_MSG(Without.Watching().empty(), "the run did not come with the world");
 		Aelvor With(O);
 		Restore(With, true);
+		uint32 Agreed = 0;
+		uint32 Parted = 0;
 		for (uint32 Step = 0; Step < 6u; ++Step)
 		{
 			Attention At;
@@ -329,10 +356,15 @@ VAELEN_TEST(Checkpoint, TheRunTravelsWithTheWorldAndTheComparisonMustBeTheSource
 			At.Reach = 1u;
 			Without.LookAt(At);
 			With.LookAt(At);
+			// EVERY step, not the last one: the last one is a sample, and the
+			// sample is the trap this arm exists to name.
+			const bool Same = ComputeStateDigest(Without.Instance()) == ComputeStateDigest(With.Instance());
+			Agreed += Same ? 1u : 0u;
+			Parted += Same ? 0u : 1u;
 		}
-		VT_CHECK_MSG(ComputeStateDigest(Without.Instance()) == ComputeStateDigest(With.Instance()),
-					 "with no day turn, carrying the run or not makes no difference at all - "
-					 "which is why an experiment that only looks proves nothing");
+		VT_CHECK_MSG(Parted != 0u, "looking alone does part a world from the run it was denied");
+		VT_CHECK_MSG(Agreed != 0u, "and it also brings them back together - so an experiment that only looks "
+								   "reports whichever answer the step it stopped at happened to hold");
 	}
 
 	// ARM TWO, THE ONE THAT MEASURES. Both restores run beside the CONTINUING
@@ -421,10 +453,16 @@ VAELEN_TEST(Checkpoint, AdoptTakesUpAWorldItNeverGenerated)
 	O.Years = 10u;
 	O.Play = true;
 	O.Stream = true;
+	// LIVELY, AND THE TAKING IS CHECKED NOW. Without this flag the world
+	// offers nobody, so the unchecked TakeUp that stood here returned 0 for
+	// as long as this test existed: it ran on an unplayed world while its own
+	// setup said it was played. Measured at 16.11 - (32, 10+10, lively=0)
+	// offers 0, and still 0 after ten day turns; with Lively it offers one.
+	O.Lively = true;
 
 	Aelvor Source(O);
 	VT_REQUIRE(Source.Begin());
-	Source.TakeUp(Player::StartRules{});
+	VT_CHECK_MSG(Source.TakeUp(Player::StartRules{}) != 0u, "somebody is played in the source");
 	for (uint32 Step = 0; Step < 8u; ++Step)
 	{
 		Attention At;
@@ -843,8 +881,12 @@ VAELEN_TEST(Checkpoint, TheHostsDeclaredWorldIsCheckedAgainstTheSave)
 		Aelvor Daily(Declaring(32u, 6u, 6u, false, true, false, true));
 		VT_REQUIRE(Steady.Begin());
 		VT_REQUIRE(Daily.Begin());
-		Steady.TakeUp(Player::StartRules{});
-		Daily.TakeUp(Player::StartRules{});
+		// NO TAKING HERE, and it is not an omission. At 6+6 years AELVOR
+		// offers nobody to play, with Lively or without it (measured at
+		// 16.11), so the two TakeUp calls that used to stand here returned 0
+		// and did nothing at all. This control is about Options::Stream
+		// changing the world, which it does through the warden on a day turn
+		// and not through a played person.
 		for (uint32 Step = 0; Step < 10u; ++Step)
 		{
 			Attention At;
@@ -858,5 +900,135 @@ VAELEN_TEST(Checkpoint, TheHostsDeclaredWorldIsCheckedAgainstTheSave)
 		VT_CHECK_MSG(ComputeStateDigest(Steady.Instance()) != ComputeStateDigest(Daily.Instance()),
 					 "the cadence flag changes the world within ten day turns, so refusing on it is not "
 					 "ceremony");
+	}
+}
+
+VAELEN_TEST(Checkpoint, ProvenanceReplaysFromTheFileAlone)
+{
+	// Phase 16 task 16.11. A save that claims to restore a PLAYED world cannot
+	// leave out the tape it was played on, nor the configuration that decides
+	// which world the records belong to.
+	//
+	// TWO ROUTES, ONE ANSWER. Route one adopts the STATE section. Route two
+	// throws the state away, builds a world from the container's OWN HOST
+	// section, and replays the carried tape into it. They must agree - and if
+	// they do, the file is self-sufficient: it says what world it is of, and
+	// how that world came to be what it is.
+	//
+	// LIVELY IS WHAT MAKES ANYBODY PLAYABLE, and it took a measurement to find
+	// out: across sizes 32 and 64 and histories of 10, 30 and 60 years,
+	// TakeUp returns 0 in EVERY case without it and a person in most cases with
+	// it. Two versions of this test asserted a taking at 6+6 and 10+10 without
+	// Lively and were told plainly that the world offers nobody.
+	//
+	// It is worth saying that several older tests call TakeUp without Lively
+	// and without checking the result, so they have been taking up nobody all
+	// along - which costs them nothing, because none of them asserts on the
+	// played person. This one does.
+	Options Played;
+	Played.Size = 32u;
+	Played.PreHistory = 10u;
+	Played.Years = 10u;
+	Played.Play = true;
+	Played.Stream = true;
+	Played.Lively = true;
+
+	Aelvor Source(Played);
+	VT_REQUIRE(Source.Begin());
+	Player::StartRules Rules;
+	Door Recording(Source, Rules);
+	VT_CHECK_MSG(Recording.TakeUp() != 0u, "the world offers somebody to play");
+	VT_REQUIRE(Recording.Stream().Takings.size() == 1u);
+	for (uint32 Step = 0; Step < 12u; ++Step)
+	{
+		Attention At;
+		At.Region = static_cast<uint32>(1u + (Step % 5u));
+		At.Reach = 1u;
+		Recording.Look(At);
+		Recording.Day();
+	}
+	const Hash64 Truth = ComputeStateDigest(Source.Instance());
+
+	std::vector<uint8> Bytes;
+	VT_REQUIRE(BuildCheckpoint(Source, Recording.Stream(), Recording.Rules(), Bytes) == CheckpointResult::Ok);
+
+	CheckpointView View;
+	VT_REQUIRE(ReadCheckpoint(Bytes.data(), Bytes.size(), View).Result == CheckpointResult::Ok);
+	VT_CHECK_MSG(View.Version == 2u, "the container is version 2 since the tape travels");
+
+	// THE FILE SAYS WHAT WORLD IT IS OF.
+	Options Declared;
+	VT_REQUIRE(ReadHostSection(View, Declared));
+	Player::InputStream Carried;
+	Player::StartRules CarriedRules;
+	VT_CHECK_MSG(ReadStreamSection(View, Carried, CarriedRules), "and it carries its tape");
+	VT_REQUIRE(ReadStreamSection(View, Carried, CarriedRules));
+	VT_CHECK_MSG(Carried.Days.size() == Recording.Stream().Days.size(), "every day turn came back: %zu of %zu",
+				 Carried.Days.size(), Recording.Stream().Days.size());
+	VT_CHECK_MSG(Carried.Looks.size() == Recording.Stream().Looks.size(), "and every look");
+	VT_CHECK_MSG(Carried.Takings.size() == Recording.Stream().Takings.size(), "and every taking");
+	VT_CHECK_MSG(CarriedRules.WantBound == Rules.WantBound && CarriedRules.FromAge == Rules.FromAge,
+				 "and the host's rules, which are not in the tape and are not an input");
+
+	// ROUTE ONE: adopt the state.
+	Aelvor Adopted(Played);
+	VT_REQUIRE(Adopted.Adopt(Bytes.data(), Bytes.size()) == Aelvor::AdoptResult::Ok);
+	VT_CHECK_MSG(ComputeStateDigest(Adopted.Instance()) == Truth, "the adopted route reaches the world");
+
+	// ROUTE TWO: from the FILE's own declaration, replayed.
+	Aelvor Rebuilt(Declared);
+	VT_REQUIRE(Rebuilt.Begin());
+	const ReplayReport R = Replay(Rebuilt, Carried, CarriedRules);
+	VT_CHECK_MSG(R.Wrong == 0u, "the carried tape replays clean: %u wrong", R.Wrong);
+	VT_CHECK_MSG(ComputeStateDigest(Rebuilt.Instance()) == Truth,
+				 "and the replayed route reaches THE SAME world - two routes, one answer");
+
+	// THE CONTROL, AND IT IS THE POINT OF THE TASK. Rebuild from Options{Play}
+	// alone - which is what a reader that ignores the wiring would do - and the
+	// same tape no longer replays, because the daily detail cadence is a
+	// different world and the takings pick different people.
+	{
+		Options Guessed;
+		Guessed.Size = Declared.Size;
+		Guessed.PreHistory = Declared.PreHistory;
+		Guessed.Years = Declared.Years;
+		Guessed.Play = true; // and Stream left false
+		Aelvor Wrongly(Guessed);
+		VT_REQUIRE(Wrongly.Begin());
+		const ReplayReport Bad = Replay(Wrongly, Carried, CarriedRules);
+		VT_CHECK_MSG(Bad.Wrong != 0u || ComputeStateDigest(Wrongly.Instance()) != Truth,
+					 "without the wiring the tape does not describe this world: %u wrong", Bad.Wrong);
+	}
+
+	// AND A RESTORED SESSION GOES ON RECORDING INTO THE TAPE IT CAME WITH -
+	// BOTH ROUTES, TEN MORE DAYS, THE SAME LOOKS, AND THEY STAY TOGETHER.
+	//
+	// Continuing only ONE of them would say nothing: a route that reaches the
+	// right world and then drifts is a save that restores a world you cannot
+	// keep playing, and that is the failure this whole task is against. The
+	// two are driven through Doors, so the ten days are RECORDED days on both
+	// sides and the tape each ends up holding is the tape a host would have.
+	{
+		Aelvor Continuing(Played);
+		VT_REQUIRE(Continuing.Adopt(Bytes.data(), Bytes.size()) == Aelvor::AdoptResult::Ok);
+		Door Resumed(Continuing, CarriedRules, Carried);
+		Door Replayed(Rebuilt, CarriedRules, Carried);
+		const usize Had = Carried.Days.size();
+		for (uint32 Step = 0; Step < 10u; ++Step)
+		{
+			Attention At;
+			At.Region = static_cast<uint32>(2u + (Step % 4u));
+			At.Reach = 1u;
+			Resumed.Look(At);
+			Resumed.Day();
+			Replayed.Look(At);
+			Replayed.Day();
+		}
+		VT_CHECK_MSG(Resumed.Stream().Days.size() == Had + 10u,
+					 "the session kept the tape it came with: %zu day turns, was %zu", Resumed.Stream().Days.size(),
+					 Had);
+		VT_CHECK_MSG(ComputeStateDigest(Continuing.Instance()) == ComputeStateDigest(Rebuilt.Instance()),
+					 "and ten days on, the adopted world and the replayed one are still the same world");
+		VT_CHECK_MSG(Continuing.LogDigest() == Rebuilt.LogDigest(), "down to what they wrote in the log");
 	}
 }

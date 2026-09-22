@@ -14,6 +14,8 @@
 #include "Vaelen/Sim/World.h"
 
 #include <cstring>
+#include <string>
+#include <string_view>
 
 namespace Vaelen::Run
 {
@@ -183,6 +185,35 @@ namespace Vaelen::Run
 			return true;
 		}
 
+		/// The STREAM section: four StartRules words, then EncodeStream's text.
+		void PutStream(std::vector<uint8>& Out, const Player::InputStream& Tape, const Player::StartRules& Rules)
+		{
+			PutU32(Out, Rules.FromAge);
+			PutU32(Out, Rules.ToAge);
+			PutU32(Out, Rules.WantBound);
+			PutU32(Out, Rules.PreferOre);
+			const std::string Text = Player::EncodeStream(Tape);
+			Out.insert(Out.end(), Text.begin(), Text.end());
+		}
+
+		bool GetStream(const uint8* At, usize Size, Player::InputStream& Tape, Player::StartRules& Rules)
+		{
+			if (At == nullptr || Size < 16u)
+			{
+				return false;
+			}
+			Rules.FromAge = GetU32(At);
+			Rules.ToAge = GetU32(At + 4);
+			Rules.WantBound = GetU32(At + 8);
+			Rules.PreferOre = GetU32(At + 12);
+			const std::string_view Text(reinterpret_cast<const char*>(At + 16), Size - 16u);
+			Player::StreamReport Report;
+			// THE SAME DECODER THE .stream FILES GO THROUGH. A second one could
+			// disagree with it about the same walk, and the Phase 14 and 15
+			// gates pin this one.
+			return Player::DecodeStream(Text, Tape, Report);
+		}
+
 		Hash64 DigestOf(const uint8* At, usize Size) noexcept
 		{
 			return HashBytes(reinterpret_cast<const char*>(At), Size);
@@ -316,6 +347,13 @@ namespace Vaelen::Run
 		return Report;
 	}
 
+	bool ReadStreamSection(const CheckpointView& View, Player::InputStream& Tape, Player::StartRules& Rules)
+	{
+		uint64 Length = 0;
+		const uint8* At = View.Find(SectionKind::Stream, Length);
+		return At != nullptr && GetStream(At, static_cast<usize>(Length), Tape, Rules);
+	}
+
 	bool ReadHostSection(const CheckpointView& View, Options& Out)
 	{
 		uint64 Length = 0;
@@ -335,6 +373,12 @@ namespace Vaelen::Run
 	}
 
 	CheckpointResult BuildCheckpoint(const Aelvor& Run, std::vector<uint8>& Out, uint16 MayIgnore)
+	{
+		return BuildCheckpoint(Run, Player::InputStream{}, Player::StartRules{}, Out, MayIgnore);
+	}
+
+	CheckpointResult BuildCheckpoint(const Aelvor& Run, const Player::InputStream& Tape,
+									 const Player::StartRules& Rules, std::vector<uint8>& Out, uint16 MayIgnore)
 	{
 		const usize Start = Out.size();
 		const auto Refuse = [&Out, Start](CheckpointResult Why)
@@ -383,7 +427,13 @@ namespace Vaelen::Run
 		std::vector<uint8> HostBytes;
 		PutOptions(HostBytes, Run.Given());
 
-		const uint32 SectionCount = 3u;
+		// 16.11: the tape this world was played on. Written even when empty, so
+		// that "this save carries no tape" and "this save is from a build that
+		// did not carry tapes" are different states rather than one absence.
+		std::vector<uint8> StreamBytes;
+		PutStream(StreamBytes, Tape, Rules);
+
+		const uint32 SectionCount = 4u;
 		const uint64 TableAt = HeaderBytes;
 		const uint64 PayloadAt = TableAt + static_cast<uint64>(SectionCount) * EntryBytes;
 
@@ -409,15 +459,23 @@ namespace Vaelen::Run
 		PutU64(Out, static_cast<uint64>(RunBytes.size()));
 		PutU64(Out, DigestOf(RunBytes.data(), RunBytes.size()));
 
+		const uint64 HostAt = PayloadAt + static_cast<uint64>(State.size()) + static_cast<uint64>(RunBytes.size());
 		PutU16(Out, static_cast<uint16>(SectionKind::Host));
 		PutU32(Out, 0u);
-		PutU64(Out, PayloadAt + static_cast<uint64>(State.size()) + static_cast<uint64>(RunBytes.size()));
+		PutU64(Out, HostAt);
 		PutU64(Out, static_cast<uint64>(HostBytes.size()));
 		PutU64(Out, DigestOf(HostBytes.data(), HostBytes.size()));
+
+		PutU16(Out, static_cast<uint16>(SectionKind::Stream));
+		PutU32(Out, 0u);
+		PutU64(Out, HostAt + static_cast<uint64>(HostBytes.size()));
+		PutU64(Out, static_cast<uint64>(StreamBytes.size()));
+		PutU64(Out, DigestOf(StreamBytes.data(), StreamBytes.size()));
 
 		Out.insert(Out.end(), State.begin(), State.end());
 		Out.insert(Out.end(), RunBytes.begin(), RunBytes.end());
 		Out.insert(Out.end(), HostBytes.begin(), HostBytes.end());
+		Out.insert(Out.end(), StreamBytes.begin(), StreamBytes.end());
 
 		PutU64(Out, DigestOf(Out.data() + Start, Out.size() - Start));
 		return CheckpointResult::Ok;

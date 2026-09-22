@@ -207,3 +207,40 @@ add_test(NAME Run.Gate.Lived
           "-DE=  (e) PASS  somewhere to walk within four days of each taking: 4 takings, longest wait 1 day turn(s)"
           -P ${CMAKE_CURRENT_LIST_DIR}/Gate.cmake)
 set_tests_properties(Run.Gate.Lived PROPERTIES TIMEOUT 1800)
+
+# 16.11's CONTROL, on both checked-in 128 walks: the wiring is not ceremony.
+#
+# Replay.Lived and Replay.Walked above pass --stream, because the daily detail
+# cadence is the host's configuration and not the stream's. These two run the
+# SAME walks without it - the world a reader builds from `Options{Play}` alone
+# - and pin that the walks no longer describe it.
+#
+# Measured 2026-09-22, and the same on both: four takings, four wrong. Every
+# command still answers identically (2 of 2 on the lived walk, 0 of 0 on the
+# walked one), which is exactly why this needs pinning on the TAKINGS rather
+# than on an answer count: a world with a different detail cadence details
+# different regions, so TakeUp chooses a different person - person 4178 here
+# where the wired route takes person 4171 - and the intents that follow are
+# answered by somebody else, in a world that is not the one recorded.
+#
+# They cost about five seconds each: a replay that diverges at the first
+# taking does not do the work the correct route does.
+add_test(NAME Replay.Lived.WithoutWiring
+  COMMAND ${CMAKE_COMMAND}
+          -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DSTREAM=${PROJECT_SOURCE_DIR}/Tests/Run/Streams/aelvor128-played-2026-09-21.stream
+          -DOUT=${CMAKE_CURRENT_BINARY_DIR}/nowiring-lived.json
+          "-DWRONG=2 answered, 4 wrong, 142 day(s), 4 taking(s), 0 left"
+          "-DRIGHT=state 609253a29361ec5f"
+          -P ${CMAKE_CURRENT_LIST_DIR}/ReplayWithoutWiring.cmake)
+set_tests_properties(Replay.Lived.WithoutWiring PROPERTIES TIMEOUT 1800)
+
+add_test(NAME Replay.Walked.WithoutWiring
+  COMMAND ${CMAKE_COMMAND}
+          -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DSTREAM=${PROJECT_SOURCE_DIR}/Tests/Run/Streams/aelvor128-walk-2026-09-17.stream
+          -DOUT=${CMAKE_CURRENT_BINARY_DIR}/nowiring-walk.json
+          "-DWRONG=0 answered, 4 wrong, 100 day(s), 4 taking(s), 0 left"
+          "-DRIGHT=state 18e6984252055df0"
+          -P ${CMAKE_CURRENT_LIST_DIR}/ReplayWithoutWiring.cmake)
+set_tests_properties(Replay.Walked.WithoutWiring PROPERTIES TIMEOUT 1800)
