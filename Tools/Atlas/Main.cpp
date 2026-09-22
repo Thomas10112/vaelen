@@ -493,6 +493,16 @@ namespace
 		bool Save = false;
 		/// With --save, print each section's share of the container.
 		bool Sections = false;
+		/// 16.12(b): a recorded walk, saved at K seeded points along its day
+		/// turns, and every save asked the questions a save has to answer.
+		std::string SaveFuzz;
+		uint32 Points = 4u;
+		/// A CONTROL, and the tool refuses to call it a pass. Restores without
+		/// the RUN section; the run must then report mismatches.
+		bool WithholdRun = false;
+		/// A CONTROL. Flips one byte of the container before reading it back;
+		/// the read must REFUSE, by a section digest and not by luck.
+		long CorruptByte = -1;
 	};
 
 	/// Runs Years years, keeping a frame every Opt.Every of them. Taking a view
@@ -634,6 +644,24 @@ namespace
 			else if (std::strcmp(Arg, "--save") == 0)
 			{
 				Out.Save = true;
+			}
+			else if (std::strcmp(Arg, "--savefuzz") == 0 && HasValue)
+			{
+				Out.SaveFuzz = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--points") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
+			{
+				Out.Points = static_cast<uint32>(Value);
+				++I;
+			}
+			else if (std::strcmp(Arg, "--withhold-run") == 0)
+			{
+				Out.WithholdRun = true;
+			}
+			else if (std::strcmp(Arg, "--corrupt-byte") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
+			{
+				Out.CorruptByte = static_cast<long>(Value);
+				++I;
 			}
 			else if (std::strcmp(Arg, "--sections") == 0)
 			{
@@ -1280,8 +1308,7 @@ namespace
 		}
 
 		Vaelen::Run::CheckpointView View;
-		const Vaelen::Run::CheckpointRefusal Read =
-			Vaelen::Run::ReadCheckpoint(Bytes.data(), Bytes.size(), View);
+		const Vaelen::Run::CheckpointRefusal Read = Vaelen::Run::ReadCheckpoint(Bytes.data(), Bytes.size(), View);
 		if (Read.Result != Vaelen::Run::CheckpointResult::Ok)
 		{
 			std::printf("save: written and then refused by its own reader, %s\n",
@@ -1289,13 +1316,13 @@ namespace
 			return 1;
 		}
 
-		std::printf("save: container v%u, image v%u, seed %llx, tick %llu, %zu bytes\n", View.Version,
-					View.InnerFormat, static_cast<unsigned long long>(View.Seed),
-					static_cast<unsigned long long>(View.Tick), Bytes.size());
+		std::printf("save: container v%u, image v%u, seed %llx, tick %llu, %zu bytes\n", View.Version, View.InnerFormat,
+					static_cast<unsigned long long>(View.Seed), static_cast<unsigned long long>(View.Tick),
+					Bytes.size());
 		std::printf("save: log %llu events, %llu bytes - %.1f%% of the container\n",
-					static_cast<unsigned long long>(View.LogEvents),
-					static_cast<unsigned long long>(View.LogBytes),
-					Bytes.empty() ? 0.0 : 100.0 * static_cast<double>(View.LogBytes) / static_cast<double>(Bytes.size()));
+					static_cast<unsigned long long>(View.LogEvents), static_cast<unsigned long long>(View.LogBytes),
+					Bytes.empty() ? 0.0
+								  : 100.0 * static_cast<double>(View.LogBytes) / static_cast<double>(Bytes.size()));
 		if (Opt.Sections)
 		{
 			for (const Vaelen::Run::SectionEntry& E : View.Sections)
@@ -1312,6 +1339,389 @@ namespace
 			}
 		}
 		return 0;
+	}
+
+	/// 16.12(b): the seeded save points, and the fixed point they have to be.
+	///
+	/// A save is not a picture of a world - it is a CLAIM that the world can be
+	/// put back. This walks a recorded stream, stops at K points chosen by the
+	/// seed rather than by whoever wrote the test, and at each one asks four
+	/// things that a save which merely LOOKS right would fail:
+	///
+	///   1. RE-SAVE IS A FIXED POINT. Adopt the container, save the adopted
+	///      world again, and the bytes must be identical. A save that cannot
+	///      reproduce itself is carrying something it did not restore.
+	///   2. ADOPTING THE RE-SAVE lands on the same state digest.
+	///   3. THE REST OF THE WALK still leads where it led. The remainder of the
+	///      stream is replayed into the adopted world and must reach the
+	///      digests the uninterrupted replay reached.
+	///   4. A SECOND ADOPT INTO THE SAME WORLD IS REFUSED, by name. Re-adopting
+	///      over a live world would be a silent half-restore of everything the
+	///      container does not carry (16.06).
+	///
+	/// --withhold-run and --corrupt-byte are the controls, and they are what
+	/// make the four above evidence rather than a green light. See where each
+	/// is handled below.
+	/// A SAVE BOUNDARY IS TWO CUTS AND NOT ONE, and this walk taught it. Replay
+	/// submits the commands due BEFORE it turns the day and applies the looks
+	/// and takings due AFTER it:
+	///
+	///     SubmitDue()   commands with Tick <= Now   <- Now is still yesterday
+	///     Day()                                     <- Now becomes today
+	///     LookDue() TakeUpDue()                     <- against today
+	///     the save is taken here
+	///
+	/// So at a save taken at the end of day d, a LOOK at today's tick has
+	/// already been applied and a COMMAND at today's tick has NOT. Cutting both
+	/// at the same tick loses that command, and the walk resumes without an
+	/// intent the original executed.
+	///
+	/// Measured on the owner's lived walk: its two Speak intents sit at ticks
+	/// 3458520 and 3458544, which are exactly the ticks of days 105 and 106.
+	/// A save at day 105 cut with one tick dropped the first of them, and the
+	/// restored walk parted from the uninterrupted one - three save points of
+	/// four landed, and the fourth was the only one that had an intent sitting
+	/// on its boundary. A stream with no commands would never have shown it.
+	struct FuzzPoint
+	{
+		uint32 Day = 0;
+		/// The world's tick when the save was taken: the cut for looks and
+		/// takings, which have been applied up to and including it.
+		uint64 Tick = 0;
+		/// The tick before this day was turned: the cut for commands, which
+		/// have been submitted only up to and including THAT.
+		uint64 Before = 0;
+		std::vector<Vaelen::uint8> Bytes;
+	};
+
+	struct FuzzCatch
+	{
+		const std::vector<uint32>* Wanted = nullptr;
+		std::vector<FuzzPoint>* Points = nullptr;
+		uint64 Prev = 0;
+	};
+
+	void FuzzBegun(const Vaelen::Run::Aelvor& W, void* User)
+	{
+		// Before the first day turn: the command cut for a save taken at the
+		// end of day 0.
+		static_cast<FuzzCatch*>(User)->Prev = W.Now();
+	}
+
+	void FuzzAfterDay(const Vaelen::Run::Aelvor& W, Vaelen::uint32 Day, void* User)
+	{
+		FuzzCatch& C = *static_cast<FuzzCatch*>(User);
+		for (Vaelen::uint32 Want : *C.Wanted)
+		{
+			if (Want != Day)
+			{
+				continue;
+			}
+			FuzzPoint P;
+			P.Day = Day;
+			P.Tick = W.Now();
+			P.Before = C.Prev;
+			if (Vaelen::Run::BuildCheckpoint(W, P.Bytes) == Vaelen::Run::CheckpointResult::Ok)
+			{
+				C.Points->push_back(std::move(P));
+			}
+		}
+		// After it is used, never before: this is tomorrow's yesterday.
+		C.Prev = W.Now();
+	}
+
+	/// What is left of a walk after a given tick: the same records, the same
+	/// header, starting where the save was taken. Records at or before the
+	/// tick have already been applied to the world being restored - the save
+	/// was taken at the END of that day, after its looks and takings.
+	Player::InputStream RestOf(const Player::InputStream& S, uint64 Tick, uint64 Before, Vaelen::usize AfterDay)
+	{
+		Player::InputStream R;
+		R.Header = S.Header;
+		for (const Player::Recorded& C : S.Commands)
+		{
+			// Before, not Tick: see FuzzPoint. A command on the boundary tick
+			// has not been submitted yet.
+			if (C.Tick > Before)
+			{
+				R.Commands.push_back(C);
+			}
+		}
+		for (const Player::TakenUp& T : S.Takings)
+		{
+			if (T.Tick > Tick)
+			{
+				R.Takings.push_back(T);
+			}
+		}
+		for (const Player::Looked& L : S.Looks)
+		{
+			if (L.Tick > Tick)
+			{
+				R.Looks.push_back(L);
+			}
+		}
+		for (Vaelen::usize d = AfterDay + 1u; d < S.Days.size(); ++d)
+		{
+			R.Days.push_back(S.Days[d]);
+		}
+		return R;
+	}
+
+	/// Deterministic, and from the seed the caller gave: which day turns get a
+	/// save. Chosen this way so that a run is reproducible from its printed
+	/// seed, and so that the points are not the three a person would pick.
+	std::vector<uint32> WhichDays(uint64 Seed, uint32 Points, uint32 Days)
+	{
+		std::vector<uint32> Picked;
+		if (Days == 0u || Points == 0u)
+		{
+			return Picked;
+		}
+		uint64 X = Seed + 0x9E3779B97F4A7C15ull;
+		for (uint32 i = 0; i < Points * 8u && Picked.size() < Points; ++i)
+		{
+			X += 0x9E3779B97F4A7C15ull;
+			uint64 Z = X;
+			Z = (Z ^ (Z >> 30)) * 0xBF58476D1CE4E5B9ull;
+			Z = (Z ^ (Z >> 27)) * 0x94D049BB133111EBull;
+			Z ^= Z >> 31;
+			// Never the last day: a save taken there is never CONTINUED, and
+			// continuing is most of what these points are for.
+			const uint32 Day = static_cast<uint32>(Z % (Days > 1u ? Days - 1u : 1u));
+			bool Had = false;
+			for (uint32 P : Picked)
+			{
+				Had = Had || P == Day;
+			}
+			if (!Had)
+			{
+				Picked.push_back(Day);
+			}
+		}
+		std::sort(Picked.begin(), Picked.end());
+		return Picked;
+	}
+
+	int RunSaveFuzz(const Options& Opt)
+	{
+		std::string Text;
+		if (!ReadFile(Opt.SaveFuzz, Text))
+		{
+			std::fprintf(stderr, "savefuzz: cannot read %s\n", Opt.SaveFuzz.c_str());
+			return 1;
+		}
+		Player::InputStream S;
+		Player::StreamReport Report;
+		if (!Player::DecodeStream(Text, S, Report))
+		{
+			std::fprintf(stderr, "savefuzz: %s is not a stream this build reads\n", Opt.SaveFuzz.c_str());
+			return 1;
+		}
+		if (S.Days.empty())
+		{
+			std::fprintf(stderr, "savefuzz: %s turns no days, so it has no save points\n", Opt.SaveFuzz.c_str());
+			return 1;
+		}
+
+		Vaelen::Run::Options RO;
+		RO.Size = S.Header.Size;
+		RO.PreHistory = S.Header.PreHistory;
+		RO.Years = S.Header.Years;
+		RO.Seed = S.Header.Seed;
+		RO.Colony = Opt.Colony;
+		RO.Play = true;
+		RO.Stream = Opt.Stream;
+
+		const std::vector<uint32> Wanted = WhichDays(Opt.Seed, Opt.Points, static_cast<uint32>(S.Days.size()));
+		if (Wanted.empty())
+		{
+			std::fprintf(stderr, "savefuzz: no save points chosen\n");
+			return 1;
+		}
+
+		Vaelen::Run::Aelvor Whole(RO);
+		if (!Whole.Begin())
+		{
+			std::fprintf(stderr, "savefuzz: generation failed at %u\n", RO.Size);
+			return 1;
+		}
+		Player::StartRules Host;
+		Host.WantBound = Opt.WantBound;
+
+		std::vector<FuzzPoint> Points;
+		FuzzCatch Catch;
+		Catch.Wanted = &Wanted;
+		Catch.Points = &Points;
+		Vaelen::Run::DayWatch Watching;
+		Watching.Begun = &FuzzBegun;
+		Watching.After = &FuzzAfterDay;
+		Watching.User = &Catch;
+		const Vaelen::Run::ReplayReport Straight = Vaelen::Run::Replay(Whole, S, Host, Watching);
+		if (Straight.Refused != 0u)
+		{
+			std::fprintf(stderr, "savefuzz: the walk was refused by its own replay\n");
+			return 1;
+		}
+		std::printf("savefuzz: %s, %zu day turns, %zu save point(s) from seed %llx, wiring stream=%d\n",
+					Opt.SaveFuzz.c_str(), S.Days.size(), Points.size(), static_cast<unsigned long long>(Opt.Seed),
+					Opt.Stream ? 1 : 0);
+		std::printf("savefuzz: uninterrupted: state %016llx, log %016llx, life %016llx\n",
+					static_cast<unsigned long long>(Straight.State), static_cast<unsigned long long>(Straight.Log),
+					static_cast<unsigned long long>(Straight.Life));
+
+		// THE CORRUPTION CONTROL, taken on the first save point because one
+		// container is enough to answer it: a byte is flipped and the reader
+		// must REFUSE. A save format whose reader accepts a flipped byte is a
+		// save format that will one day hand a host a world nobody simulated.
+		if (Opt.CorruptByte >= 0 && !Points.empty())
+		{
+			std::vector<Vaelen::uint8> Hurt = Points[0].Bytes;
+			const Vaelen::usize At = static_cast<Vaelen::usize>(Opt.CorruptByte) % Hurt.size();
+			Hurt[At] = static_cast<Vaelen::uint8>(Hurt[At] ^ 0x40u);
+			Vaelen::Run::CheckpointView View;
+			const Vaelen::Run::CheckpointRefusal R = Vaelen::Run::ReadCheckpoint(Hurt.data(), Hurt.size(), View);
+			const bool Refused = R.Result != Vaelen::Run::CheckpointResult::Ok;
+			std::printf("savefuzz: byte %zu of %zu flipped -> %s\n", At, Hurt.size(),
+						Vaelen::Run::CheckpointResultToString(R.Result));
+			if (!Refused)
+			{
+				std::printf("savefuzz: FAIL a flipped byte was accepted\n");
+				return 1;
+			}
+			std::printf("savefuzz: PASS a flipped byte is refused, not loaded\n");
+			return 0;
+		}
+
+		uint32 Bad = 0;
+		uint32 Parted = 0;
+		long FirstParted = -1;
+		for (const FuzzPoint& P : Points)
+		{
+			// (1) and (2): adopt, re-save, and the fixed point.
+			Vaelen::Run::Aelvor Back(RO);
+			const Vaelen::Run::Aelvor::AdoptResult A = Back.Adopt(P.Bytes.data(), P.Bytes.size());
+			if (A != Vaelen::Run::Aelvor::AdoptResult::Ok)
+			{
+				std::printf("savefuzz: day %u REFUSED, %s\n", P.Day, Vaelen::Run::Aelvor::AdoptResultToString(A));
+				++Bad;
+				continue;
+			}
+			// (4), and it is asked before anything else touches this world: a
+			// second adopt must be refused BY NAME, not merely fail somehow.
+			const Vaelen::Run::Aelvor::AdoptResult Again = Back.Adopt(P.Bytes.data(), P.Bytes.size());
+			const bool RefusedAgain = Again == Vaelen::Run::Aelvor::AdoptResult::AlreadyBegun;
+
+			std::vector<Vaelen::uint8> Twice;
+			const bool Resaved = Vaelen::Run::BuildCheckpoint(Back, Twice) == Vaelen::Run::CheckpointResult::Ok;
+			const bool FixedPoint = Resaved && Twice == P.Bytes;
+
+			Vaelen::Run::Aelvor Third(RO);
+			const bool ThirdOk =
+				Resaved && Third.Adopt(Twice.data(), Twice.size()) == Vaelen::Run::Aelvor::AdoptResult::Ok;
+			const bool SameAgain = ThirdOk && Third.StateDigest() == Back.StateDigest();
+
+			// (3): the rest of the walk, from where the save was taken.
+			const Player::InputStream Rest = RestOf(S, P.Tick, P.Before, P.Day);
+			const Vaelen::Run::ReplayReport Went = Vaelen::Run::Replay(Back, Rest, Host);
+			const bool Landed = Went.Refused == 0u && Went.State == Straight.State && Went.Log == Straight.Log &&
+								Went.Life == Straight.Life;
+
+			const bool Cell = FixedPoint && SameAgain && RefusedAgain && Landed;
+			if (!Cell)
+			{
+				++Bad;
+			}
+			if (!Landed)
+			{
+				++Parted;
+				if (FirstParted < 0)
+				{
+					FirstParted = static_cast<long>(P.Day);
+				}
+			}
+			std::printf("savefuzz: day %3u  %zu bytes  resave %s  re-adopt %s  second adopt %s  rest %s"
+						"  state %016llx\n",
+						P.Day, P.Bytes.size(), FixedPoint ? "identical" : "DIFFERS", SameAgain ? "same" : "DIFFERS",
+						RefusedAgain ? "refused" : "ACCEPTED", Landed ? "lands" : "PARTS",
+						static_cast<unsigned long long>(Went.State));
+		}
+
+		// THE WITHHELD-RUN CONTROL. Every save point is restored again through
+		// Begin() + LoadSnapshot, which is the one path that can leave the RUN
+		// section behind, and the walk continued from there. With the daily
+		// cadence on, this MUST report mismatches: the warden reads what the
+		// run holds. A savefuzz that came back clean here would be reporting
+		// that its own subject does not matter.
+		if (Opt.WithholdRun)
+		{
+			uint32 Mismatched = 0;
+			long FirstDay = -1;
+			uint64 FirstTick = 0;
+			for (const FuzzPoint& P : Points)
+			{
+				Vaelen::Run::CheckpointView View;
+				if (Vaelen::Run::ReadCheckpoint(P.Bytes.data(), P.Bytes.size(), View).Result !=
+					Vaelen::Run::CheckpointResult::Ok)
+				{
+					continue;
+				}
+				Vaelen::uint64 Length = 0;
+				const Vaelen::uint8* State = View.Find(Vaelen::Run::SectionKind::State, Length);
+				if (State == nullptr)
+				{
+					continue;
+				}
+				Vaelen::Run::Aelvor Without(RO);
+				if (!Without.Begin() ||
+					Vaelen::LoadSnapshot(Without.Instance(), State, static_cast<Vaelen::usize>(Length)) !=
+						Vaelen::SnapshotResult::Ok)
+				{
+					continue;
+				}
+				const Player::InputStream Rest = RestOf(S, P.Tick, P.Before, P.Day);
+				const Vaelen::Run::ReplayReport Went = Vaelen::Run::Replay(Without, Rest, Host);
+				if (Went.State != Straight.State || Went.Log != Straight.Log || Went.Life != Straight.Life)
+				{
+					++Mismatched;
+					if (FirstDay < 0)
+					{
+						FirstDay = static_cast<long>(P.Day);
+						FirstTick = P.Tick;
+					}
+				}
+			}
+			const uint64 FirstLook = S.Looks.empty() ? 0ull : S.Looks[0].Tick;
+			std::printf("savefuzz: WITHOUT the run, %u of %zu save point(s) mismatch, first on day %ld "
+						"(tick %llu); the walk's first look is at tick %llu\n",
+						Mismatched, Points.size(), FirstDay, static_cast<unsigned long long>(FirstTick),
+						static_cast<unsigned long long>(FirstLook));
+			if (Mismatched == 0u)
+			{
+				std::printf("savefuzz: FAIL withholding the run changed nothing, so this run measures nothing\n");
+				return 1;
+			}
+			// AND IT HAS TO PART FOR THE RIGHT REASON. The run state is built
+			// by LOOKING - Detail, Near and Watched are what a look fills in -
+			// so a world denied its run cannot differ before the walk's first
+			// look. A mismatch earlier than that is not the run being missed;
+			// it is the restore itself being broken, and it would sail through
+			// a check that only counted mismatches.
+			if (FirstLook != 0ull && FirstTick < FirstLook)
+			{
+				std::printf("savefuzz: FAIL the first mismatch is at tick %llu, BEFORE the walk's first look "
+							"at %llu - that is not the run being withheld\n",
+							static_cast<unsigned long long>(FirstTick), static_cast<unsigned long long>(FirstLook));
+				return 1;
+			}
+			std::printf("savefuzz: PASS withholding the run is what parts the walk, and not before the first "
+						"look\n");
+			return 0;
+		}
+
+		std::printf("savefuzz: %u of %zu save point(s) bad, %u parted (first on day %ld)\n", Bad, Points.size(), Parted,
+					FirstParted);
+		return Bad == 0u ? 0 : 1;
 	}
 
 	int RunGolden(const Options& Opt)
@@ -1813,6 +2223,10 @@ namespace
 		{
 			Usage();
 			return 2;
+		}
+		if (!Opt.SaveFuzz.empty())
+		{
+			return RunSaveFuzz(Opt);
 		}
 		if (Opt.Save)
 		{

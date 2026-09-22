@@ -252,3 +252,52 @@ add_test(NAME Replay.Walked.WithoutWiring
           "-DRIGHT=state 18e6984252055df0"
           -P ${CMAKE_CURRENT_LIST_DIR}/ReplayWithoutWiring.cmake)
 set_tests_properties(Replay.Walked.WithoutWiring PROPERTIES TIMEOUT 1800)
+
+# 16.12(b): the walk saved at seeded points, and the two controls that make
+# those points evidence.
+#
+# THE FUZZER FOUND SOMETHING ON ITS FIRST RUN, which is the best argument for
+# keeping it: three of four save points landed and the fourth parted, and the
+# one that parted was the only one with a recorded INTENT sitting on its
+# boundary tick. Replay submits commands BEFORE it turns the day and applies
+# looks and takings AFTER it, so a save taken at the end of day d has already
+# seen a look at today's tick and has NOT yet seen a command at it. A save
+# boundary is two cuts, not one. The owner's lived walk has its two Speak
+# intents at ticks 3458520 and 3458544 - exactly the ticks of days 105 and 106
+# - and a stream with no commands in it would never have shown this.
+#
+# The seed is fixed so a failure is reproducible from the entry alone; the
+# points it picks are 10, 51, 90 and 105 on this walk.
+add_test(NAME Run.SaveFuzz
+  COMMAND ${CMAKE_COMMAND}
+          -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DSTREAM=${PROJECT_SOURCE_DIR}/Tests/Run/Streams/aelvor128-played-2026-09-21.stream
+          -DPOINTS=4 -DSEED=7
+          "-DWANT=savefuzz: 0 of 4 save point(s) bad, 0 parted"
+          -P ${CMAKE_CURRENT_LIST_DIR}/SaveFuzz.cmake)
+
+# CONTROL ONE. Restore every save point WITHOUT its RUN section and continue:
+# the walk must part, and it must not part before its own first look, because
+# looking is what fills the run in. A count alone would pass a restore that was
+# broken outright.
+add_test(NAME Run.SaveFuzz.WithheldRun
+  COMMAND ${CMAKE_COMMAND}
+          -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DSTREAM=${PROJECT_SOURCE_DIR}/Tests/Run/Streams/aelvor128-played-2026-09-21.stream
+          -DPOINTS=4 -DSEED=7 -DMORE=--withhold-run
+          "-DWANT=savefuzz: PASS withholding the run is what parts the walk, and not before the first look"
+          -P ${CMAKE_CURRENT_LIST_DIR}/SaveFuzz.cmake)
+
+# CONTROL TWO. One byte of a 22 MB container flipped, and the reader must
+# REFUSE it rather than load a world nobody simulated.
+add_test(NAME Run.SaveFuzz.Corrupt
+  COMMAND ${CMAKE_COMMAND}
+          -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DSTREAM=${PROJECT_SOURCE_DIR}/Tests/Run/Streams/aelvor128-played-2026-09-21.stream
+          -DPOINTS=2 -DSEED=7 "-DMORE=--corrupt-byte;5000000"
+          "-DWANT=savefuzz: PASS a flipped byte is refused, not loaded"
+          -P ${CMAKE_CURRENT_LIST_DIR}/SaveFuzz.cmake)
+
+set_tests_properties(Run.SaveFuzz Run.SaveFuzz.WithheldRun Run.SaveFuzz.Corrupt PROPERTIES TIMEOUT 1800)
+set_tests_properties(Run.SaveFuzz PROPERTIES COST 400)
+set_tests_properties(Run.SaveFuzz.WithheldRun PROPERTIES COST 400)
