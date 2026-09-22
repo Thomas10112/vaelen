@@ -404,6 +404,43 @@ namespace Vaelen
 		return Wrote < 0 ? 0u : static_cast<usize>(Wrote);
 	}
 
+	/// 16.13: EVERYTHING AN IMAGE IS, EXCEPT ITS TRAILER.
+	///
+	/// Pulled out of `SaveSnapshot` so that `ComputeStateDigest` can run the
+	/// SAME writes into a `HashingWriter`. The two used to be one function and
+	/// a caller that wanted only the number had to take the whole image; the
+	/// alternative - a second function that wrote the same fields in the same
+	/// order - is a promise that drifts the first time somebody adds a field
+	/// to one and not the other, and the drift would show up as a digest that
+	/// changed for no reason anybody could name.
+	///
+	/// So the bit-identical contract is STRUCTURAL: there is one place the
+	/// bytes of an image are decided, and both callers go through it.
+	SnapshotResult WriteImage(IArchive& Ar, const World& Source)
+	{
+		// The world must not be mid-dispatch. This was a VAELEN_CHECKF, which
+		// Assert.h compiles to ((void)0) under NDEBUG and under
+		// UE_BUILD_SHIPPING - so in a player's build it was no check at all and
+		// the pending list would have been read while it was being drained.
+		if (Source.Events().IsDispatching())
+		{
+			return SnapshotResult::Inconsistent;
+		}
+
+		char MagicBytes[8];
+		std::memcpy(MagicBytes, Magic, 8);
+		Ar.SerializeBytes(MagicBytes, 8);
+		uint32 Version = VAELEN_SAVE_FORMAT_VERSION;
+		uint32 Flags = 0;
+		Hash64 Layout = HashCombine(Source.Types().LayoutDigest(), Source.Map().LayoutDigest());
+		uint64 Seed = Source.Config().Seed;
+		Ar << Version << Flags << Layout << Seed;
+		// The body routine is symmetric and takes a mutable world; saving does
+		// not modify it (every write path only reads).
+		World& Mutable = const_cast<World&>(Source);
+		return SerializeBody(Ar, Mutable);
+	}
+
 	SnapshotResult SaveSnapshot(const World& Source, std::vector<uint8>& Out)
 	{
 		const usize Start = Out.size();
@@ -418,28 +455,8 @@ namespace Vaelen
 			return Why;
 		};
 
-		// The world must not be mid-dispatch. This was a VAELEN_CHECKF, which
-		// Assert.h compiles to ((void)0) under NDEBUG and under
-		// UE_BUILD_SHIPPING - so in a player's build it was no check at all and
-		// the pending list would have been read while it was being drained.
-		if (Source.Events().IsDispatching())
-		{
-			return Refuse(SnapshotResult::Inconsistent);
-		}
-
 		MemoryWriter Ar(Out);
-		char MagicBytes[8];
-		std::memcpy(MagicBytes, Magic, 8);
-		Ar.SerializeBytes(MagicBytes, 8);
-		uint32 Version = VAELEN_SAVE_FORMAT_VERSION;
-		uint32 Flags = 0;
-		Hash64 Layout = HashCombine(Source.Types().LayoutDigest(), Source.Map().LayoutDigest());
-		uint64 Seed = Source.Config().Seed;
-		Ar << Version << Flags << Layout << Seed;
-		// The body routine is symmetric and takes a mutable world; saving does
-		// not modify it (every write path only reads).
-		World& Mutable = const_cast<World&>(Source);
-		const SnapshotResult Body = SerializeBody(Ar, Mutable);
+		const SnapshotResult Body = WriteImage(Ar, Source);
 
 		// THE DEFECT THIS FUNCTION SHIPPED WITH, AND WHY IT WAS INVISIBLE.
 		// The line below used to read:
@@ -639,24 +656,28 @@ namespace Vaelen
 
 	Hash64 ComputeStateDigest(const World& Source)
 	{
-		std::vector<uint8> Bytes;
-		// 16.02 gave SaveSnapshot the power to refuse, and a refusal truncates
-		// the buffer back to the size it was handed - here, to empty. Reading a
-		// trailer out of THAT is what the line below used to do unconditionally:
-		// on an empty vector data() may be null, and null + 0 - 8 is undefined
-		// before the memcpy is ever reached. Making the save fallible therefore
-		// made this call site worse, not better, and it is the fix's job to say
-		// so rather than the next crash report's.
+		// 16.13: NO BUFFER AT ALL. This used to build the whole image and read
+		// the trailer off the end of it - 2.37 GB produced and discarded per
+		// call at AELVOR 128 with four centuries behind it, with a vector that
+		// doubles needing about twice that transient. That cost is why the
+		// 300+120 gate cell could not be compared on a 16 GB machine.
 		//
-		// A refused save has no digest and zero is the value that says so. It is
-		// not a world's digest by construction: a real trailer is a hash over at
-		// least the forty bytes of header that always precede it.
-		if (SaveSnapshot(Source, Bytes) != SnapshotResult::Ok || Bytes.size() < 8)
+		// The older shape also had a defect worth remembering: 16.02 gave
+		// SaveSnapshot the power to refuse, and a refusal truncates the buffer
+		// to empty, so reading `data() + size() - 8` was undefined before the
+		// memcpy was ever reached. Making the save fallible made this call site
+		// worse, not better. The guard below keeps the answer that fix chose.
+		//
+		// A refused image has no digest and zero is the value that says so. It
+		// is not a world's digest by construction: a real one folds at least
+		// the forty bytes of header that always precede the body.
+		HashingWriter Ar;
+		if (WriteImage(Ar, Source) != SnapshotResult::Ok)
 		{
 			return 0;
 		}
-		Hash64 Digest = 0;
-		std::memcpy(&Digest, Bytes.data() + Bytes.size() - 8, 8);
-		return Digest;
+		// The trailer is HashBytes over exactly these bytes, and this IS that
+		// value - see HashingWriter. Nothing was allocated to find it.
+		return Ar.Digest();
 	}
 } // namespace Vaelen

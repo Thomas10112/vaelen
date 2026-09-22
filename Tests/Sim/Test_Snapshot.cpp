@@ -809,3 +809,74 @@ VAELEN_TEST(Snapshot, SixCausesSixAnswers)
 		VT_CHECK_MSG(std::strstr(Line, "different world") != nullptr, "and says so in words: %s", Line);
 	}
 }
+
+VAELEN_TEST(Snapshot, TheDigestIsTheTrailerAndNoImageIsBuiltToFindIt)
+{
+	// Phase 16 task 16.13. ComputeStateDigest no longer builds a snapshot: it
+	// folds the same bytes through a HashingWriter and keeps none of them. The
+	// contract is that the ANSWER DOES NOT MOVE - every frozen digest in this
+	// repository is a trailer, and a digest that shifted by a byte would
+	// invalidate all of them at once while looking like a performance change.
+	//
+	// So this asserts the equality directly rather than trusting that the
+	// frozen tests would have caught it. They would have, today; they would
+	// not necessarily catch a later edit that adds a field to one writer's
+	// path and not the other's, which is why WriteImage is now the single
+	// place an image's bytes are decided and why this test exists to say so.
+	//
+	// Worlds of several shapes, because a hash agreeing on one world proves
+	// nothing about the order it folds anything in.
+	const uint32 Seeds[] = {1u, 5u, 9u};
+	const uint32 Peoples[] = {0u, 1u, 30u};
+	const uint32 Ticks[] = {0u, 1u, 100u};
+	uint32 Compared = 0;
+	for (uint32 Seed : Seeds)
+	{
+		for (uint32 People : Peoples)
+		{
+			for (uint32 Turns : Ticks)
+			{
+				TestWorld W(Seed);
+				W.Populate(People);
+				W.Instance.TickMany(Turns);
+
+				const std::vector<uint8> Image = W.Save();
+				VT_REQUIRE(Image.size() >= 8u);
+				Hash64 Trailer = 0;
+				std::memcpy(&Trailer, Image.data() + Image.size() - 8, 8);
+
+				const Hash64 Folded = ComputeStateDigest(W.Instance);
+				VT_CHECK_MSG(Folded == Trailer,
+							 "seed %u, %u people, %u ticks: folded %016llx, the image's trailer %016llx", Seed, People,
+							 Turns, static_cast<unsigned long long>(Folded), static_cast<unsigned long long>(Trailer));
+				++Compared;
+			}
+		}
+	}
+	VT_CHECK_MSG(Compared == 27u, "all twenty-seven shapes were compared, not %u", Compared);
+
+	// AND THE WRITER ITSELF, on bytes nobody has to trust a world for: folding
+	// in chunks is the same arithmetic as hashing the whole buffer, which is
+	// the property that lets the class exist at all.
+	{
+		const char Text[] = "AELVOR is a world that keeps its own books.";
+		const usize Len = sizeof(Text) - 1u;
+		HashingWriter Ar;
+		usize At = 0;
+		for (const usize Chunk : {usize{1}, usize{7}, usize{3}, usize{13}, usize{19}})
+		{
+			const usize Take = Chunk < Len - At ? Chunk : Len - At;
+			if (Take == 0u)
+			{
+				break;
+			}
+			char Copy[32];
+			std::memcpy(Copy, Text + At, Take);
+			Ar.SerializeBytes(Copy, Take);
+			At += Take;
+		}
+		VT_CHECK_MSG(Ar.BytesWritten() == At, "it counted what it folded: %zu of %zu", Ar.BytesWritten(), At);
+		VT_CHECK_MSG(Ar.Digest() == HashBytes(Text, At),
+					 "five uneven chunks fold to what one call over the same bytes returns");
+	}
+}

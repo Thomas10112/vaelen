@@ -12,6 +12,7 @@
 #pragma once
 
 #include "Vaelen/Core/CoreTypes.h"
+#include "Vaelen/Core/Hash.h"
 #include "Vaelen/Sim/SimApi.h"
 
 #include <cstring>
@@ -51,6 +52,51 @@ namespace Vaelen
 
 	private:
 		std::vector<uint8>* Out;
+	};
+
+	/// 16.13: FOLDS THE BYTES AND KEEPS NONE OF THEM.
+	///
+	/// `ComputeStateDigest` used to build an entire snapshot in memory and read
+	/// the eight-byte trailer off the end of it. At AELVOR 128 with four
+	/// centuries behind it that is 2.37 GB produced and thrown away per call,
+	/// and a std::vector that doubles as it grows needs about twice that
+	/// transient - which is why the 300+120 gate cell could not be COMPARED on
+	/// a 16 GB machine at all. The digest is a number; producing two gigabytes
+	/// to read eight bytes off the end of it was the cost of not having this
+	/// class.
+	///
+	/// IT IS BIT-IDENTICAL TO THE TRAILER BY CONSTRUCTION, and that is a
+	/// property of FNV-1a rather than a promise anybody has to keep. The
+	/// trailer is `HashBytes` over every byte of the image; `HashBytes` takes
+	/// the running value as its seed; so folding chunk by chunk and hashing the
+	/// whole buffer at once are the same arithmetic in the same order. Had the
+	/// project hashed with anything block-structured, this class could not have
+	/// existed without changing every frozen digest in the repository.
+	///
+	/// It allocates nothing and it never fails: there is no buffer to run out
+	/// of. A caller that wants to know whether the image could be WRITTEN must
+	/// still ask `SaveSnapshot`.
+	class VAELEN_SIM_API HashingWriter final : public IArchive
+	{
+	public:
+		bool IsLoading() const noexcept override { return false; }
+		bool SerializeBytes(void* Data, usize Size) noexcept override
+		{
+			H = HashBytes(static_cast<const char*>(Data), Size, H);
+			Count += Size;
+			return true;
+		}
+		bool HasError() const noexcept override { return false; }
+		usize RemainingBytes() const noexcept override { return ~usize{0}; }
+		void Fail() noexcept override {}
+		/// The hash of everything written so far - the value a trailer over
+		/// those same bytes would hold.
+		Hash64 Digest() const noexcept { return H; }
+		usize BytesWritten() const noexcept { return Count; }
+
+	private:
+		Hash64 H = HashConstants::Fnv1a64Offset;
+		usize Count = 0;
 	};
 
 	/// Reads from a caller-owned byte range with bounds checking.
