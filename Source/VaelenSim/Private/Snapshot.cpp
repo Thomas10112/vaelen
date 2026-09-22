@@ -8,6 +8,7 @@
 #include "Vaelen/Sim/Archive.h"
 #include "Vaelen/Sim/World.h"
 
+#include <cstdio>
 #include <cstring>
 
 namespace Vaelen
@@ -25,6 +26,23 @@ namespace Vaelen
 		void SerializeStream(IArchive& Ar, RandomStreamState& State) noexcept
 		{
 			Ar << State.Seed << State.S[0] << State.S[1] << State.S[2] << State.S[3] << State.DrawCount;
+		}
+
+		/// WHERE THE PARTICULARS GO. SerializeBody is one long function with a
+		/// dozen exits and it returns a bare enum to ninety call sites; giving
+		/// every one of them an out-parameter to thread would be a change far
+		/// larger than the defect. This holds the last refusal's detail, and
+		/// DiagnoseLoad reads it immediately after the call that produced it.
+		/// It is only ever written on a refusal and only ever read once.
+		thread_local SnapshotDiagnosis LastRefusal;
+
+		void Diagnose(SnapshotResult Why, const char* Type, uint32 ImageSize, uint32 WorldSize) noexcept
+		{
+			LastRefusal = SnapshotDiagnosis{};
+			LastRefusal.Result = Why;
+			LastRefusal.Type = Type;
+			LastRefusal.ImageSize = ImageSize;
+			LastRefusal.WorldSize = WorldSize;
 		}
 
 		SnapshotResult SerializeBody(IArchive& Ar, World& W)
@@ -126,58 +144,114 @@ namespace Vaelen
 			{
 				uint32 PoolCount = W.Components().PoolCount();
 				Ar << PoolCount;
+				if (Ar.IsLoading() && Ar.HasError())
+				{
+					return SnapshotResult::Truncated;
+				}
+
 				if (Ar.IsLoading())
 				{
-					if (Ar.HasError())
+					// LOADING IS DRIVEN BY THE IMAGE'S RECORDS, not by this
+					// world's type ids. That is the whole of "reconcile by
+					// name": the image says which types it holds, and each one
+					// is looked up in this registry by NameHash. A type that
+					// moved to another id loads into the right pool; a type that
+					// is not here at all is named as missing rather than
+					// reported as a count that did not match.
+					//
+					// The old code walked the WORLD's types and demanded
+					// TypeId == Id, so any reordering refused a readable save,
+					// and an eager PoolCount comparison answered before anything
+					// could say WHICH type was involved.
+					for (uint32 Record = 0; Record < PoolCount; ++Record)
 					{
-						return SnapshotResult::Truncated;
-					}
-					if (PoolCount != W.Components().PoolCount())
-					{
-						return SnapshotResult::MissingPool;
-					}
-				}
-				const uint32 TypeCount = W.Types().Count();
-				uint32 Written = 0;
-				for (uint32 Id = 0; Id < TypeCount && Written < PoolCount; ++Id)
-				{
-					IComponentPool* Pool = W.Components().GetPoolBase(static_cast<ComponentTypeId>(Id));
-					if (Pool == nullptr)
-					{
-						continue;
-					}
-					uint16 TypeId = static_cast<uint16>(Id);
-					Hash64 NameHash = W.Types().GetInfo(TypeId).NameHash;
-					uint32 ElementSize = Pool->ElementSize();
-					Ar << TypeId << NameHash << ElementSize;
-					if (Ar.IsLoading())
-					{
+						uint16 TypeId = 0;
+						Hash64 NameHash = 0;
+						uint32 ElementSize = 0;
+						Ar << TypeId << NameHash << ElementSize;
 						if (Ar.HasError())
 						{
 							return SnapshotResult::Truncated;
 						}
-						if (TypeId != Id || NameHash != W.Types().GetInfo(TypeId).NameHash ||
-							ElementSize != Pool->ElementSize())
+
+						const uint32 Known = W.Types().Count();
+						uint32 Found = Known;
+						for (uint32 Id = 0; Id < Known; ++Id)
 						{
-							return SnapshotResult::LayoutMismatch;
+							if (W.Types().GetInfo(static_cast<uint16>(Id)).NameHash == NameHash)
+							{
+								Found = Id;
+								break;
+							}
+						}
+						if (Found == Known)
+						{
+							// The image holds a type this world has never heard
+							// of. From the IMAGE's side a type was added.
+							Diagnose(SnapshotResult::TypeAdded, nullptr, ElementSize, 0u);
+							return SnapshotResult::TypeAdded;
+						}
+						IComponentPool* Into = W.Components().GetPoolBase(static_cast<ComponentTypeId>(Found));
+						if (Into == nullptr)
+						{
+							// REGISTERED BUT WITH NO STORE, which is a different
+							// fault from "no such type" and wants a different
+							// fix from whoever wired this world.
+							Diagnose(SnapshotResult::PoolMissing, W.Types().GetInfo(static_cast<uint16>(Found)).Name,
+									 ElementSize, 0u);
+							return SnapshotResult::PoolMissing;
+						}
+						if (ElementSize != Into->ElementSize())
+						{
+							Diagnose(SnapshotResult::TypeResized, W.Types().GetInfo(static_cast<uint16>(Found)).Name,
+									 ElementSize, Into->ElementSize());
+							return SnapshotResult::TypeResized;
+						}
+						if (!Into->Serialize(Ar))
+						{
+							return Ar.HasError() ? SnapshotResult::Truncated : SnapshotResult::Inconsistent;
 						}
 					}
-					if (!Pool->Serialize(Ar))
+					// A type THIS world has that the image does not. Counted
+					// rather than searched: the image's records have all been
+					// consumed, so any surplus here is this build's.
+					if (W.Components().PoolCount() > PoolCount)
 					{
-						return Ar.HasError() ? SnapshotResult::Truncated : SnapshotResult::Inconsistent;
+						Diagnose(SnapshotResult::TypeRemoved, nullptr, PoolCount, W.Components().PoolCount());
+						return SnapshotResult::TypeRemoved;
 					}
-					++Written;
 				}
-				if (Written != PoolCount)
+				else
 				{
-					return SnapshotResult::MissingPool;
+					const uint32 TypeCount = W.Types().Count();
+					uint32 Written = 0;
+					for (uint32 Id = 0; Id < TypeCount && Written < PoolCount; ++Id)
+					{
+						IComponentPool* Pool = W.Components().GetPoolBase(static_cast<ComponentTypeId>(Id));
+						if (Pool == nullptr)
+						{
+							continue;
+						}
+						uint16 TypeId = static_cast<uint16>(Id);
+						Hash64 NameHash = W.Types().GetInfo(TypeId).NameHash;
+						uint32 ElementSize = Pool->ElementSize();
+						Ar << TypeId << NameHash << ElementSize;
+						if (!Pool->Serialize(Ar))
+						{
+							return SnapshotResult::Inconsistent;
+						}
+						++Written;
+					}
 				}
 			}
 
-			// World map (format version 2).
+			// World map (format version 2). A map that will not take the
+			// image's own layers IS the world being shaped differently, and
+			// that is where WorldShapeDiffers belongs - not on a folded digest
+			// that cannot tell one difference from another.
 			if (!W.Map().Serialize(Ar))
 			{
-				return Ar.HasError() ? SnapshotResult::Truncated : SnapshotResult::Inconsistent;
+				return Ar.HasError() ? SnapshotResult::Truncated : SnapshotResult::WorldShapeDiffers;
 			}
 
 			// Pending events and the log.
@@ -223,24 +297,111 @@ namespace Vaelen
 		{
 		case SnapshotResult::Ok:
 			return "Ok";
-		case SnapshotResult::BadMagic:
-			return "BadMagic";
-		case SnapshotResult::VersionMismatch:
-			return "VersionMismatch";
-		case SnapshotResult::LayoutMismatch:
-			return "LayoutMismatch";
-		case SnapshotResult::MissingPool:
-			return "MissingPool";
+		case SnapshotResult::NotASave:
+			return "NotASave";
+		case SnapshotResult::FormatTooNew:
+			return "FormatTooNew";
+		case SnapshotResult::FormatTooOld:
+			return "FormatTooOld";
+		case SnapshotResult::UnknownRequiredFlag:
+			return "UnknownRequiredFlag";
+		case SnapshotResult::SeedMismatch:
+			return "SeedMismatch";
+		case SnapshotResult::WorldShapeDiffers:
+			return "WorldShapeDiffers";
+		case SnapshotResult::TypeAdded:
+			return "TypeAdded";
+		case SnapshotResult::TypeRemoved:
+			return "TypeRemoved";
+		case SnapshotResult::TypeResized:
+			return "TypeResized";
+		case SnapshotResult::TypeRenamed:
+			return "TypeRenamed";
+		case SnapshotResult::TypesReordered:
+			return "TypesReordered";
+		case SnapshotResult::PoolMissing:
+			return "PoolMissing";
 		case SnapshotResult::Truncated:
 			return "Truncated";
 		case SnapshotResult::Corrupt:
 			return "Corrupt";
-		case SnapshotResult::RollbackFailed:
-			return "RollbackFailed";
 		case SnapshotResult::Inconsistent:
 			return "Inconsistent";
+		case SnapshotResult::RollbackFailed:
+			return "RollbackFailed";
 		}
 		return "Unknown";
+	}
+
+	usize SnapshotDiagnosis::Describe(char* Out, usize Room) const noexcept
+	{
+		if (Out == nullptr || Room == 0)
+		{
+			return 0;
+		}
+		const char* Named = Type != nullptr ? Type : "a component type";
+		int Wrote = 0;
+		switch (Result)
+		{
+		case SnapshotResult::Ok:
+			Wrote = std::snprintf(Out, Room, "the save loaded");
+			break;
+		case SnapshotResult::NotASave:
+			Wrote = std::snprintf(Out, Room, "this file is not a VAELEN save");
+			break;
+		case SnapshotResult::FormatTooNew:
+			Wrote = std::snprintf(Out, Room,
+								  "this save is from a newer version of the game (save format %u, this build reads %u)",
+								  ImageFormat, WorldFormat);
+			break;
+		case SnapshotResult::FormatTooOld:
+			Wrote = std::snprintf(
+				Out, Room, "this save is from an older version of the game (save format %u, this build reads %u)",
+				ImageFormat, WorldFormat);
+			break;
+		case SnapshotResult::UnknownRequiredFlag:
+			Wrote = std::snprintf(Out, Room, "this save uses something this build does not understand");
+			break;
+		case SnapshotResult::SeedMismatch:
+			Wrote = std::snprintf(Out, Room, "this save is of a different world");
+			break;
+		case SnapshotResult::WorldShapeDiffers:
+			Wrote = std::snprintf(Out, Room, "this save's world is not shaped like this one");
+			break;
+		case SnapshotResult::TypeAdded:
+			Wrote = std::snprintf(Out, Room, "the save has '%s' and this build does not", Named);
+			break;
+		case SnapshotResult::TypeRemoved:
+			Wrote = std::snprintf(Out, Room, "this build has '%s' and the save does not", Named);
+			break;
+		case SnapshotResult::TypeResized:
+			Wrote = std::snprintf(Out, Room, "'%s' is %u bytes in the save and %u in this build", Named, ImageSize,
+								  WorldSize);
+			break;
+		case SnapshotResult::TypeRenamed:
+			Wrote = std::snprintf(Out, Room, "'%s' is under another name in the save", Named);
+			break;
+		case SnapshotResult::TypesReordered:
+			Wrote = std::snprintf(Out, Room, "the save's components are in an order this build cannot resolve");
+			break;
+		case SnapshotResult::PoolMissing:
+			Wrote = std::snprintf(Out, Room, "this build has no store for '%s'", Named);
+			break;
+		case SnapshotResult::Truncated:
+			Wrote = std::snprintf(Out, Room, "this save is incomplete");
+			break;
+		case SnapshotResult::Corrupt:
+			Wrote = std::snprintf(Out, Room, "this save is damaged");
+			break;
+		case SnapshotResult::Inconsistent:
+			Wrote = std::snprintf(Out, Room, "this save does not describe a world that can exist");
+			break;
+		case SnapshotResult::RollbackFailed:
+			Wrote = std::snprintf(
+				Out, Room, "the save could not be loaded AND the world it was loaded over could not be put back");
+			break;
+		}
+		return Wrote < 0 ? 0u : static_cast<usize>(Wrote);
 	}
 
 	SnapshotResult SaveSnapshot(const World& Source, std::vector<uint8>& Out)
@@ -333,7 +494,8 @@ namespace Vaelen
 		Ar.SerializeBytes(MagicBytes, 8);
 		if (std::memcmp(MagicBytes, Magic, 8) != 0)
 		{
-			return SnapshotResult::BadMagic;
+			Diagnose(SnapshotResult::NotASave, nullptr, 0u, 0u);
+			return SnapshotResult::NotASave;
 		}
 		uint32 Version = 0;
 		uint32 Flags = 0;
@@ -342,17 +504,52 @@ namespace Vaelen
 		Ar << Version << Flags << Layout << Seed;
 		if (Version != VAELEN_SAVE_FORMAT_VERSION)
 		{
-			return SnapshotResult::VersionMismatch;
+			// WHICH DIRECTION, because the two want opposite things from the
+			// person reading the message: update the game, or find an older
+			// build. One `VersionMismatch` could say neither.
+			const SnapshotResult Which =
+				Version > VAELEN_SAVE_FORMAT_VERSION ? SnapshotResult::FormatTooNew : SnapshotResult::FormatTooOld;
+			Diagnose(Which, nullptr, 0u, 0u);
+			LastRefusal.ImageFormat = Version;
+			LastRefusal.WorldFormat = VAELEN_SAVE_FORMAT_VERSION;
+			return Which;
 		}
-		if (Layout != HashCombine(Target.Types().LayoutDigest(), Target.Map().LayoutDigest()))
-		{
-			return SnapshotResult::LayoutMismatch;
-		}
+		// THE SEED BEFORE THE SHAPE, and that order is the whole point of this
+		// task. Both used to answer `LayoutMismatch`, so a player opening
+		// somebody else's save was told what a player with a mismatched build
+		// was told. The seed is the world's IDENTITY: if it differs, this is
+		// not that game, and nothing about the type registry is worth saying.
 		if (Seed != Target.Config().Seed)
 		{
-			// The seed is part of the world's identity; derived streams depend on it.
-			return SnapshotResult::LayoutMismatch;
+			Diagnose(SnapshotResult::SeedMismatch, nullptr, 0u, 0u);
+			return SnapshotResult::SeedMismatch;
 		}
+		// THE LAYOUT DIGEST IS NO LONGER A REFUSAL, and that is the change that
+		// makes the rest of 16.08 worth anything.
+		//
+		// It is one number folded from every type's name and size. It can say
+		// THAT two worlds differ and never WHICH WAY, so refusing here meant
+		// every type cause arrived as one word - which is the defect this task
+		// exists for. Measured after the first attempt at this task, which left
+		// the gate in place: a type added, removed, reordered, resized and
+		// renamed all still answered identically. Renaming LayoutMismatch to
+		// WorldShapeDiffers had changed the spelling of the problem.
+		//
+		// So the digest is not consulted. SerializeBody reconciles the pools by
+		// name and names the cause it finds, and a difference it CAN resolve -
+		// the same types in another order - now loads instead of refusing.
+		//
+		// This is only safe because of 16.03: the body may write into Target
+		// and still refuse, and the rollback puts the world back. The two tasks
+		// were planned in this order for a reason that is only visible here.
+		//
+		// It is still WORTH KNOWING, though, and kept for one job below: the
+		// body can only describe the component types, so a difference in the
+		// MAP's layers reaches it as an archive that ran out - and answering
+		// "this save is incomplete" about a complete save is worse than the one
+		// word it replaced. Where the body has nothing better to say and the
+		// digests disagree, the digest's one fact is the honest answer.
+		const bool LayoutDiffers = Layout != HashCombine(Target.Types().LayoutDigest(), Target.Map().LayoutDigest());
 		// EVERYTHING ABOVE THIS LINE READS AND DOES NOT WRITE. A bad trailer,
 		// magic, version, layout or seed is refused without one byte of Target
 		// being touched, and those are the common refusals - a file from
@@ -385,7 +582,15 @@ namespace Vaelen
 			return Kept;
 		}
 
-		const SnapshotResult Body = SerializeBody(Ar, Target);
+		SnapshotResult Body = SerializeBody(Ar, Target);
+		if (Body == SnapshotResult::Truncated && LayoutDiffers)
+		{
+			// The image is not short; this world is shaped differently, and the
+			// body had no way to say so. Measured: a world missing one map
+			// LAYER reached here as Truncated.
+			Body = SnapshotResult::WorldShapeDiffers;
+			Diagnose(SnapshotResult::WorldShapeDiffers, nullptr, 0u, 0u);
+		}
 		const bool Unspent = Body == SnapshotResult::Ok && !Ar.AtEnd();
 		if (Body != SnapshotResult::Ok || Unspent)
 		{
@@ -410,6 +615,26 @@ namespace Vaelen
 			return Unspent ? SnapshotResult::Corrupt : Body;
 		}
 		return SnapshotResult::Ok;
+	}
+
+	SnapshotDiagnosis DiagnoseLoad(World& Target, const uint8* Bytes, usize Size)
+	{
+		// The bare result is what ninety call sites ask for; this is the same
+		// call answering at more length. LastRefusal is written by whichever
+		// exit produced the result and read here, immediately, before anything
+		// else can load.
+		Diagnose(SnapshotResult::Ok, nullptr, 0u, 0u);
+		const SnapshotResult R = LoadSnapshot(Target, Bytes, Size);
+		SnapshotDiagnosis Out = LastRefusal;
+		if (Out.Result != R)
+		{
+			// An exit that did not record particulars - Truncated, Corrupt and
+			// the rest, which have nothing to name. The result is still the
+			// truth; there is simply no type to point at.
+			Out = SnapshotDiagnosis{};
+			Out.Result = R;
+		}
+		return Out;
 	}
 
 	Hash64 ComputeStateDigest(const World& Source)

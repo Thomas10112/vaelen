@@ -167,7 +167,8 @@ VAELEN_TEST(WorldMap, SnapshotSectionRoundTripsThroughTheWorld)
 
 	// A different layer set is a layout mismatch, even with the same config.
 	MapWorld C(11, /*WithMoisture=*/false);
-	VT_CHECK(LoadSnapshot(C.Instance, Image.data(), Image.size()) == SnapshotResult::LayoutMismatch);
+	const SnapshotResult Shape = LoadSnapshot(C.Instance, Image.data(), Image.size());
+	VT_CHECK_MSG(Shape == SnapshotResult::WorldShapeDiffers, "%s", SnapshotResultToString(Shape));
 }
 
 VAELEN_TEST(WorldMap, UnsetMapRoundTripsAndVersionOneIsRejected)
@@ -191,7 +192,7 @@ VAELEN_TEST(WorldMap, UnsetMapRoundTripsAndVersionOneIsRejected)
 	MapWorld C(3);
 	C.Generate(4, 4);
 	const Hash64 Before = C.Instance.Map().StateDigest();
-	VT_CHECK(LoadSnapshot(C.Instance, Old.data(), Old.size()) == SnapshotResult::VersionMismatch);
+	VT_CHECK(LoadSnapshot(C.Instance, Old.data(), Old.size()) == SnapshotResult::FormatTooOld);
 	VT_CHECK_EQ(C.Instance.Map().StateDigest(), Before);
 }
 

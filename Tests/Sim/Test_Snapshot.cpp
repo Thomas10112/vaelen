@@ -244,9 +244,13 @@ VAELEN_TEST(Snapshot, WrongVersionIsRejectedExplicitly)
 	std::memcpy(Image.data() + Image.size() - 8, &Digest, 8);
 
 	TestWorld B(3);
-	VT_CHECK_EQ(static_cast<int>(LoadSnapshot(B.Instance, Image.data(), Image.size())),
-				static_cast<int>(SnapshotResult::VersionMismatch));
-	VT_CHECK_STREQ(SnapshotResultToString(SnapshotResult::VersionMismatch), "VersionMismatch");
+	// 16.08 splits this by DIRECTION, because the two want opposite things of
+	// the person reading the message: update the game, or find an older build.
+	const SnapshotResult Ver = LoadSnapshot(B.Instance, Image.data(), Image.size());
+	VT_CHECK_MSG(Ver == SnapshotResult::FormatTooNew || Ver == SnapshotResult::FormatTooOld, "%s",
+				 SnapshotResultToString(Ver));
+	VT_CHECK_STREQ(SnapshotResultToString(SnapshotResult::FormatTooNew), "FormatTooNew");
+	VT_CHECK_STREQ(SnapshotResultToString(SnapshotResult::FormatTooOld), "FormatTooOld");
 }
 
 VAELEN_TEST(Snapshot, BadMagicTruncationAndCorruptionAreRejected)
@@ -280,7 +284,7 @@ VAELEN_TEST(Snapshot, BadMagicTruncationAndCorruptionAreRejected)
 		VT_REQUIRE(Bytes != nullptr); // keeps gcc -O2 -Wnull-dereference honest
 		Bytes[0] = 'X';
 		Reseal(Bad);
-		VT_CHECK(Load(Bad) == SnapshotResult::BadMagic);
+		VT_CHECK(Load(Bad) == SnapshotResult::NotASave);
 	}
 	{
 		std::vector<uint8> Bad(Image.begin(), Image.begin() + 20);
@@ -312,9 +316,12 @@ VAELEN_TEST(Snapshot, BadMagicTruncationAndCorruptionAreRejected)
 		VT_CHECK(Load(Bad) == SnapshotResult::Truncated);
 	}
 	{
-		// Different seed: identity mismatch.
+		// A DIFFERENT SEED IS A DIFFERENT WORLD, and since 16.08 it says so.
+		// It answered LayoutMismatch until then - the same word a mismatched
+		// BUILD got - so "this is not that game" and "this save is from another
+		// version" were one message that helped with neither.
 		TestWorld Other(5);
-		VT_CHECK(LoadSnapshot(Other.Instance, Image.data(), Image.size()) == SnapshotResult::LayoutMismatch);
+		VT_CHECK(LoadSnapshot(Other.Instance, Image.data(), Image.size()) == SnapshotResult::SeedMismatch);
 	}
 }
 
@@ -323,8 +330,9 @@ VAELEN_TEST(Snapshot, DifferentComponentLayoutIsRejected)
 	TestWorld A(8);
 	A.Populate(4);
 	const std::vector<uint8> Image = A.Save();
+	// The image has Wealth and this world does not: TypeAdded, named as such.
 	TestWorld B(8, /*WithWealth=*/false);
-	VT_CHECK(LoadSnapshot(B.Instance, Image.data(), Image.size()) == SnapshotResult::LayoutMismatch);
+	VT_CHECK(LoadSnapshot(B.Instance, Image.data(), Image.size()) == SnapshotResult::TypeAdded);
 
 	// Same types registered but one pool never created: MissingPool.
 	WorldConfig Config;
@@ -333,7 +341,8 @@ VAELEN_TEST(Snapshot, DifferentComponentLayoutIsRejected)
 	C.Components().CreatePool(C.Types().Register<Position>("Position"));
 	C.Types().Register<Wealth>("Wealth");
 	C.Build();
-	VT_CHECK(LoadSnapshot(C, Image.data(), Image.size()) == SnapshotResult::MissingPool);
+	const SnapshotResult NoPool = LoadSnapshot(C, Image.data(), Image.size());
+	VT_CHECK_MSG(NoPool == SnapshotResult::PoolMissing, "%s", SnapshotResultToString(NoPool));
 }
 
 VAELEN_TEST(Snapshot, LargeWorldRoundTrips)
@@ -664,4 +673,139 @@ VAELEN_TEST(Snapshot, AWorldThatCannotBeKeptIsNotOverwritten)
 	VT_CHECK_MSG(After == ComputeStateDigest(Control.Instance),
 				 "a world that could not be kept was not overwritten either");
 	VT_CHECK_MSG(After != TheImage, "and it certainly did not become the image");
+}
+
+VAELEN_TEST(Snapshot, SixCausesSixAnswers)
+{
+	// Phase 16 task 16.08. MEASURED BEFORE ANY OF IT WAS WRITTEN: all six of
+	// these answered `LayoutMismatch`, the same single word, including the one
+	// that matters most to a person - a save of ANOTHER WORLD. "This is not
+	// that game" and "this save is from a different build" were one message
+	// that helped with neither.
+	//
+	// The worlds below differ in their TYPE REGISTRATION, one way each, which
+	// is why they are built here rather than with TestWorld.
+	// GENUINELY wider than the suite's Wealth, which is EIGHT bytes - the first
+	// version of this used two uint32s, was exactly the same size, and the
+	// loader rightly answered Ok. The test was wrong, not the loader, and the
+	// figure it printed is what said so.
+	struct Wider
+	{
+		uint64 Coins = 0;
+		uint64 Extra = 0;
+	};
+	struct Third
+	{
+		uint32 Anything = 0;
+	};
+
+	WorldConfig Base;
+	Base.Seed = 4242;
+	World Source(Base);
+	const ComponentType<Position> SourcePos = Source.Types().Register<Position>("Position");
+	Source.Components().CreatePool(SourcePos);
+	Source.Components().CreatePool(Source.Types().Register<Wealth>("Wealth"));
+	Source.Build();
+	for (uint32 i = 0; i < 16u; ++i)
+	{
+		const EntityHandle H = Source.CreateEntity(IdKind::Entity);
+		Source.Components().GetPool(SourcePos).Add(H, Position{static_cast<int32>(i), 0});
+	}
+	std::vector<uint8> Image;
+	VT_REQUIRE(SaveSnapshot(Source, Image) == SnapshotResult::Ok);
+
+	// Unmodified: still Ok, or nothing below means anything.
+	{
+		World Same(Base);
+		Same.Components().CreatePool(Same.Types().Register<Position>("Position"));
+		Same.Components().CreatePool(Same.Types().Register<Wealth>("Wealth"));
+		Same.Build();
+		const SnapshotDiagnosis D = DiagnoseLoad(Same, Image.data(), Image.size());
+		VT_CHECK_MSG(D.Result == SnapshotResult::Ok, "%s", SnapshotResultToString(D.Result));
+	}
+
+	// THE IMAGE HAS A TYPE THIS WORLD DOES NOT.
+	{
+		World Missing(Base);
+		Missing.Components().CreatePool(Missing.Types().Register<Position>("Position"));
+		Missing.Build();
+		const SnapshotDiagnosis D = DiagnoseLoad(Missing, Image.data(), Image.size());
+		VT_CHECK_MSG(D.Result == SnapshotResult::TypeAdded, "%s", SnapshotResultToString(D.Result));
+	}
+
+	// THIS WORLD HAS A TYPE THE IMAGE DOES NOT.
+	{
+		World Extra(Base);
+		Extra.Components().CreatePool(Extra.Types().Register<Position>("Position"));
+		Extra.Components().CreatePool(Extra.Types().Register<Wealth>("Wealth"));
+		Extra.Components().CreatePool(Extra.Types().Register<Third>("Third"));
+		Extra.Build();
+		const SnapshotDiagnosis D = DiagnoseLoad(Extra, Image.data(), Image.size());
+		VT_CHECK_MSG(D.Result == SnapshotResult::TypeRemoved, "%s", SnapshotResultToString(D.Result));
+	}
+
+	// REGISTERED IN THE OTHER ORDER - AND THIS ONE LOADS. It refused before
+	// 16.08, because the loader demanded the image's TypeId equal this world's
+	// id. A type's NAME is what identifies it; the id is where this build
+	// happens to have put it.
+	{
+		World Swapped(Base);
+		Swapped.Components().CreatePool(Swapped.Types().Register<Wealth>("Wealth"));
+		const ComponentType<Position> Pos = Swapped.Types().Register<Position>("Position");
+		Swapped.Components().CreatePool(Pos);
+		Swapped.Build();
+		const SnapshotDiagnosis D = DiagnoseLoad(Swapped, Image.data(), Image.size());
+		VT_CHECK_MSG(D.Result == SnapshotResult::Ok, "reordered types reconcile: %s", SnapshotResultToString(D.Result));
+		VT_REQUIRE(D.Result == SnapshotResult::Ok);
+		// AND INTO THE RIGHT POOL, which is the part a bare Ok would not prove.
+		VT_CHECK_MSG(Swapped.Components().GetPool(Pos).Size() == 16u,
+					 "the sixteen Positions landed in Position's pool, not Wealth's");
+		// NOT the state digest, and the reason is worth writing down: that
+		// digest IS the trailer of a re-save, and a world re-saves its pools in
+		// ITS OWN registration order. A reconciled world therefore holds the
+		// same data and writes different bytes. Asserting digest equality here
+		// would be asserting that reconciliation cannot work.
+		const ComponentPool<Position>& Landed = Swapped.Components().GetPool(Pos);
+		uint32 Right = 0;
+		for (uint32 i = 0; i < 16u; ++i)
+		{
+			const EntityHandle H = Source.Components().GetPool(SourcePos).EntityAt(i);
+			const Position* P = Landed.TryGet(H);
+			Right += P != nullptr && P->X == static_cast<int32>(i) ? 1u : 0u;
+		}
+		VT_CHECK_MSG(Right == 16u, "and every Position came back with its own value, %u of 16", Right);
+	}
+
+	// THE SAME TYPE AT ANOTHER SIZE, naming the type AND both sizes - because
+	// "resized" without the numbers is not a diagnosis.
+	{
+		World Fatter(Base);
+		Fatter.Components().CreatePool(Fatter.Types().Register<Position>("Position"));
+		Fatter.Components().CreatePool(Fatter.Types().Register<Wider>("Wealth"));
+		Fatter.Build();
+		VT_CHECK_MSG(sizeof(Wider) != sizeof(Wealth), "the two really are different sizes: %zu vs %zu", sizeof(Wider),
+					 sizeof(Wealth));
+		VT_REQUIRE(sizeof(Wider) != sizeof(Wealth));
+		const SnapshotDiagnosis D = DiagnoseLoad(Fatter, Image.data(), Image.size());
+		VT_CHECK_MSG(D.Result == SnapshotResult::TypeResized, "%s", SnapshotResultToString(D.Result));
+		VT_CHECK_MSG(D.Type != nullptr && std::strcmp(D.Type, "Wealth") == 0, "it names the type");
+		VT_CHECK_MSG(D.ImageSize == sizeof(Wealth) && D.WorldSize == sizeof(Wider),
+					 "and both sizes: image %u, world %u", D.ImageSize, D.WorldSize);
+	}
+
+	// ANOTHER WORLD ENTIRELY. The one that used to be indistinguishable from a
+	// mismatched build.
+	{
+		WorldConfig Other = Base;
+		Other.Seed = Base.Seed ^ 0xF00Dull;
+		World Elsewhere(Other);
+		Elsewhere.Components().CreatePool(Elsewhere.Types().Register<Position>("Position"));
+		Elsewhere.Components().CreatePool(Elsewhere.Types().Register<Wealth>("Wealth"));
+		Elsewhere.Build();
+		const SnapshotDiagnosis D = DiagnoseLoad(Elsewhere, Image.data(), Image.size());
+		VT_CHECK_MSG(D.Result == SnapshotResult::SeedMismatch, "%s", SnapshotResultToString(D.Result));
+		char Line[256] = {};
+		VT_CHECK(D.Describe(Line, sizeof(Line)) > 0);
+		VT_CHECK_MSG(std::strstr(Line, "different world") != nullptr, "and says so in words: %s", Line);
+	}
 }

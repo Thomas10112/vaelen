@@ -34,25 +34,80 @@ namespace Vaelen
 {
 	class World;
 
+	/// WHY A LOAD REFUSED, told apart far enough to act on.
+	///
+	/// Until 2026-09-21 this had one value, `LayoutMismatch`, for every way a
+	/// world could fail to match an image - and MEASURED, all six of the causes
+	/// below collapsed onto it. The one that mattered most was the seed: a
+	/// player opening somebody else's save, or the wrong save, was told exactly
+	/// what a player with a mismatched build was told. "This is not that game"
+	/// and "this save is from another version" are not the same sentence, and
+	/// neither is a thing anyone can act on when both read `LayoutMismatch`.
 	enum class SnapshotResult : uint8
 	{
 		Ok,
-		BadMagic,
-		VersionMismatch,
-		LayoutMismatch, ///< component type set differs from the loading world's
-		MissingPool,	///< the loading world has no pool for a saved type
+		/// The bytes are not a VAELEN image at all.
+		NotASave,
+		/// Written by a build newer than this one.
+		FormatTooNew,
+		/// Written by a build older than this one, and no upgrader exists.
+		FormatTooOld,
+		/// A must-understand flag this build does not know.
+		UnknownRequiredFlag,
+		/// ANOTHER WORLD. The seed is the world's identity and every derived
+		/// stream hangs off it, so this is "wrong save", not "wrong build".
+		SeedMismatch,
+		/// Same seed, different world shape - the map is not this map.
+		WorldShapeDiffers,
+		/// The image has a component type this world does not.
+		TypeAdded,
+		/// This world has a component type the image does not.
+		TypeRemoved,
+		/// A type is in both, at a different size. `Diagnosis` carries BOTH
+		/// sizes, because "resized" without the numbers is not a diagnosis.
+		TypeResized,
+		/// A type is in both under different names.
+		TypeRenamed,
+		/// The same types, registered in a different order. Since 16.08 this is
+		/// RECONCILED rather than refused - pools are matched by name hash - so
+		/// it survives only for an order the reconciliation cannot resolve.
+		TypesReordered,
+		/// The image names a pool this world has not created.
+		PoolMissing,
 		Truncated,
-		Corrupt,	  ///< trailer digest or an internal consistency check failed
-		Inconsistent, ///< the world state itself failed validation (registry, pools)
+		/// Trailer digest or an internal consistency check failed.
+		Corrupt,
+		/// The world state itself failed validation (registry, pools).
+		Inconsistent,
 		/// THE ONE RESULT THAT MEANS THE TARGET IS NOT SAFE TO CARRY ON WITH.
 		/// `LoadSnapshot` keeps the world it is about to overwrite and puts it
 		/// back when the image refuses partway; this says the putting back
 		/// itself failed, so the world is neither what it was nor what the
 		/// image held. Every other refusal leaves the target untouched. A
 		/// caller that cannot tell these apart cannot decide whether to offer
-		/// the player their game back, which is the whole reason it is its own
-		/// value and not folded into `Inconsistent`.
+		/// the player their game back.
 		RollbackFailed,
+	};
+
+	/// A refusal with the particulars attached. `LoadSnapshot` returns the bare
+	/// result for the ninety-odd call sites that only ask "did it work"; a
+	/// caller with a person to apologise to asks for this instead.
+	struct SnapshotDiagnosis
+	{
+		SnapshotResult Result = SnapshotResult::Ok;
+		/// The component type the result is about, when it is about one. Points
+		/// into the loading world's own type registry, so it outlives the call.
+		const char* Type = nullptr;
+		/// For `TypeResized`: what the image holds and what this world wants.
+		uint32 ImageSize = 0;
+		uint32 WorldSize = 0;
+		/// For `FormatTooNew` / `FormatTooOld`.
+		uint32 ImageFormat = 0;
+		uint32 WorldFormat = 0;
+
+		/// One line a human can read, into Out. Returns the characters written,
+		/// not counting the terminator.
+		VAELEN_SIM_API usize Describe(char* Out, usize Room) const noexcept;
 	};
 
 	VAELEN_SIM_API const char* SnapshotResultToString(SnapshotResult Result) noexcept;
@@ -119,6 +174,10 @@ namespace Vaelen
 	/// refused without keeping anything, and those are the common refusals.
 	/// Measured at 1.3 MB in 8.7 ms, restored exactly.
 	VAELEN_SIM_API SnapshotResult LoadSnapshot(World& Target, const uint8* Bytes, usize Size);
+
+	/// The same load, with the particulars. Every word of the contract above
+	/// applies unchanged - this is the same function answering at more length.
+	VAELEN_SIM_API SnapshotDiagnosis DiagnoseLoad(World& Target, const uint8* Bytes, usize Size);
 
 	/// Digest of the world state: the trailer digest of its image.
 	VAELEN_SIM_API Hash64 ComputeStateDigest(const World& Source);
