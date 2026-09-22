@@ -84,6 +84,41 @@ namespace
 		return Size == 64u ? W.PlaysAt64 : W.PlaysAt128;
 	}
 
+	/// WHICH person, not merely whether one.
+	///
+	/// The matrix used to reduce TakeUp's answer to `Who != 0u`. Because Truth
+	/// and every restore derive from the same Source, a world that offered a
+	/// DIFFERENT person moved them together and all eighteen cells stayed
+	/// green: the identity was measured when the table above was written, and
+	/// then thrown away into a bit. Found by the Phase 16 adversarial review.
+	///
+	/// 0 means this cell offers nobody. Every other value is pinned, so a
+	/// change that steers BeginEnslaved's candidate order - a different
+	/// Bridging.MaxDetailed, a reordered person index - fails here instead of
+	/// quietly re-basing the whole matrix on another world.
+	///
+	/// These are measured at 20+10 years WITH each row's own wiring, which is
+	/// not the same as the bare probe in the table above: the lively row also
+	/// declares Colony, and a type declared in a different position is a
+	/// different world.
+	uint32 WhoPlaysAt(const Wiring& W, uint32 Size)
+	{
+		if (!PlaysAt(W, Size))
+		{
+			return 0u;
+		}
+		// AND THE COLONY ROW PROVED THE POINT ABOVE WHILE THIS WAS WRITTEN.
+		// The bare probe measured person 8 at 128 with Lively; this row also
+		// declares Colony, and it takes person 11. Pinning the identity caught
+		// that on the first run - the bit the matrix used to keep could not
+		// have, because Truth and every restore moved to person 11 together.
+		if (W.Lively)
+		{
+			return 11u;
+		}
+		return Size == 64u ? 0u : 11u;
+	}
+
 	Options OptionsFor(const Wiring& W, uint32 Size)
 	{
 		Options O;

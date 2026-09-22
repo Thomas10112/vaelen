@@ -50,7 +50,7 @@ VAELEN_TEST(SaveWithheld, TheRunSectionIsWhatTheStreamCellsNeed)
 			Door Recording(Source, Rules);
 			if (W.Play)
 			{
-				VT_REQUIRE(PlaysAt(W, Size) == (Recording.TakeUp() != 0u));
+				VT_REQUIRE(Recording.TakeUp() == WhoPlaysAt(W, Size));
 			}
 
 			std::vector<std::vector<uint8>> Saves;

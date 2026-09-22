@@ -49,8 +49,8 @@ VAELEN_TEST(SaveContinue, EveryDayIsASavePointAcrossTheMatrix)
 				// The anti-vacuity check this matrix would be worthless
 				// without: a cell that claims to carry a played person and
 				// carries nobody measures the empty world twice.
-				VT_CHECK_MSG(PlaysAt(W, Size) == (Who != 0u), "%s at %u: offers somebody to play == %d (took %u)",
-							 W.Name, Size, PlaysAt(W, Size) ? 1 : 0, Who);
+				VT_CHECK_MSG(Who == WhoPlaysAt(W, Size), "%s at %u: took person %u, and this cell is pinned to %u",
+							 W.Name, Size, Who, WhoPlaysAt(W, Size));
 			}
 
 			std::vector<std::vector<uint8>> Saves;

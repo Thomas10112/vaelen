@@ -854,6 +854,12 @@ namespace
 		}
 		Player::StartRules Rules;
 		Rules.WantBound = Opt.WantBound;
+		Rules.FromAge = Opt.FromAge;
+		Rules.ToAge = Opt.ToAge;
+		// The window is the host's configuration exactly as --want-bound is,
+		// and three modes plumbed it while four accepted it and threw it away.
+		Rules.FromAge = Opt.FromAge;
+		Rules.ToAge = Opt.ToAge;
 		Vaelen::Run::Door D(A, Rules);
 
 		const WorldGen::RegionGraph Graph = WorldGen::BuildRegionGraph(A.Instance().Map(), A.Ages().World.Regions);
@@ -1188,6 +1194,8 @@ namespace
 					Opt.Gate.c_str(), Opt.WantBound);
 		Player::StartRules Rules;
 		Rules.WantBound = Opt.WantBound;
+		Rules.FromAge = Opt.FromAge;
+		Rules.ToAge = Opt.ToAge;
 		Walked Seen;
 		Seen.Tape = &S;
 		// The baseline, read here and not assumed: see Walked::Promotions.
@@ -1902,6 +1910,8 @@ namespace
 		Rules.WantBound = Opt.WantBound;
 		Rules.FromAge = Opt.FromAge;
 		Rules.ToAge = Opt.ToAge;
+		Rules.FromAge = Opt.FromAge;
+		Rules.ToAge = Opt.ToAge;
 		Vaelen::Run::Door D(A, Rules);
 		const uint32 First = D.TakeUp();
 		if (First == 0u)
@@ -2058,6 +2068,8 @@ namespace
 		}
 		Player::StartRules Rules;
 		Rules.WantBound = Opt.WantBound;
+		Rules.FromAge = Opt.FromAge;
+		Rules.ToAge = Opt.ToAge;
 		Vaelen::Run::Door D(A, Rules);
 		if (D.TakeUp() == 0)
 		{

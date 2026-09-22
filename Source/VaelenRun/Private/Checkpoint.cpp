@@ -211,7 +211,25 @@ namespace Vaelen::Run
 			// THE SAME DECODER THE .stream FILES GO THROUGH. A second one could
 			// disagree with it about the same walk, and the Phase 14 and 15
 			// gates pin this one.
-			return Player::DecodeStream(Text, Tape, Report);
+			if (!Player::DecodeStream(Text, Tape, Report))
+			{
+				return false;
+			}
+			// BUT NOT THE SAME TOLERANCE, and the report used to be thrown
+			// away. DecodeStream returns true whenever the header is good,
+			// counting unparseable lines in BadLines and skipping them. For a
+			// .stream file on disk that forgiveness is deliberate. For THESE
+			// bytes it is wrong: they are this build's own EncodeStream output,
+			// so a line the decoder will not read is by definition a
+			// round-trip defect, not noise.
+			//
+			// The two are not symmetric today. EncodeStream writes any uint32
+			// Looked::Reach; the decoder refuses Reach above MaxReach.
+			// Attention::Reach is unclamped host input and Door::Look records
+			// it verbatim, so a host that looked too far produced a save whose
+			// looks were silently dropped on restore - and the looks are what
+			// decided which regions were detailed.
+			return Report.BadLines == 0u;
 		}
 
 		Hash64 DigestOf(const uint8* At, usize Size) noexcept
@@ -248,6 +266,22 @@ namespace Vaelen::Run
 
 	const uint8* CheckpointView::Find(SectionKind Kind, uint64& OutLength) const noexcept
 	{
+		// BASE FIRST, AND IT WAS NOT CHECKED. ReadCheckpoint sets Base only on
+		// its success path but pushes each validated entry as it walks the
+		// table, so a container refused part-way returns a view holding
+		// entries with a null Base. `Base + Entry.Offset` is then undefined,
+		// and in practice yields a non-null address, so GetStream's own null
+		// guard could not fire and its size check passed against a length that
+		// described a buffer nobody owned.
+		//
+		// No caller in the tree ignores the refusal today, which is why this
+		// was latent rather than live - but the guard written to catch it did
+		// not work, and a latent wild read is not a style question.
+		if (Base == nullptr)
+		{
+			OutLength = 0;
+			return nullptr;
+		}
 		for (const SectionEntry& Entry : Sections)
 		{
 			if (Entry.Kind == static_cast<uint16>(Kind))
@@ -372,113 +406,157 @@ namespace Vaelen::Run
 		return GetRunState(At, static_cast<usize>(Length), Out);
 	}
 
-	CheckpointResult BuildCheckpoint(const Aelvor& Run, std::vector<uint8>& Out, uint16 MayIgnore)
+	namespace
 	{
-		return BuildCheckpoint(Run, Player::InputStream{}, Player::StartRules{}, Out, MayIgnore);
-	}
+		/// The one builder. A null Tape means NO STREAM SECTION - see the
+		/// three-argument BuildCheckpoint for why an empty one was worse than
+		/// none.
+		CheckpointResult BuildContainer(const Aelvor& Run, const Player::InputStream* Tape,
+										const Player::StartRules* Rules, std::vector<uint8>& Out, uint16 MayIgnore)
+		{
+			const bool WithStream = Tape != nullptr && Rules != nullptr;
+			const usize Start = Out.size();
+			const auto Refuse = [&Out, Start](CheckpointResult Why)
+			{
+				Out.resize(Start);
+				return Why;
+			};
+
+			const World& W = Run.Instance();
+
+			// THE STATE SECTION IS SaveSnapshot'S OUTPUT AND NOTHING ELSE. It is
+			// built into its own buffer first, because the container's header has
+			// to record the image's format version and the section's length before
+			// either is known, and because a refusal here must leave Out alone.
+			std::vector<uint8> State;
+			const SnapshotResult Saved = SaveSnapshot(W, State);
+			if (Saved != SnapshotResult::Ok)
+			{
+				return Refuse(CheckpointResult::StateRefused);
+			}
+			if (State.size() < MagicBytes + 4)
+			{
+				return Refuse(CheckpointResult::Truncated);
+			}
+			// Copied out of the image rather than assumed from the build's own
+			// constant: a reader must be able to say WHICH of the two versions it
+			// disagrees with, and that is only possible if this is the image's.
+			const uint32 InnerFormat = GetU32(State.data() + MagicBytes);
+
+			// The log's shape, so that a reader can say why a save is large without
+			// parsing the image. Measured in 16.01: the log is 75% of any image
+			// that has a history at all.
+			std::vector<uint8> LogBytes;
+			W.Log().WriteTo(LogBytes);
+
+			// 16.05 adds the RUN section beside STATE. HOST and STREAM are declared
+			// in the header and filled by 16.07; the table is variable-length by
+			// design, so this cost no container version - which is what the table
+			// was for.
+			std::vector<uint8> RunBytes;
+			PutRunState(RunBytes, Run.GetRunState());
+
+			// 16.10 adds HOST. It cost NO container version, because 16.04 made the
+			// section table variable-length for exactly this - which is the first
+			// time that decision has paid rather than merely been defensible.
+			std::vector<uint8> HostBytes;
+			PutOptions(HostBytes, Run.Given());
+
+			// 16.11: the tape this world was played on, when there is one.
+			//
+			// This used to be written EVEN WHEN EMPTY, on the argument that "this
+			// save carries no tape" and "this save is from a build that did not
+			// carry tapes" should be different states. The argument was right and
+			// the remedy was wrong: a present, empty section is indistinguishable
+			// from a genuine empty tape played under default rules, and
+			// ReadStreamSection returned true for it, handing a restoring host
+			// FromAge 16 / ToAge 40 / WantBound 1 / PreferOre 1 that nobody chose.
+			// An ABSENT section says "no tape" without also asserting four numbers.
+			std::vector<uint8> StreamBytes;
+			if (WithStream)
+			{
+				PutStream(StreamBytes, *Tape, *Rules);
+			}
+
+			const uint32 SectionCount = WithStream ? 4u : 3u;
+			const uint64 TableAt = HeaderBytes;
+			const uint64 PayloadAt = TableAt + static_cast<uint64>(SectionCount) * EntryBytes;
+
+			Out.insert(Out.end(), CheckpointMagic, CheckpointMagic + MagicBytes);
+			PutU32(Out, CheckpointVersion);
+			PutU32(Out, static_cast<uint32>(MayIgnore) << 16);
+			PutU32(Out, InnerFormat);
+			PutU64(Out, W.Config().Seed);
+			PutU64(Out, static_cast<uint64>(W.Now()));
+			PutU64(Out, W.Log().Count());
+			PutU64(Out, static_cast<uint64>(LogBytes.size()));
+			PutU32(Out, SectionCount);
+
+			PutU16(Out, static_cast<uint16>(SectionKind::State));
+			PutU32(Out, 0u);
+			PutU64(Out, PayloadAt);
+			PutU64(Out, static_cast<uint64>(State.size()));
+			PutU64(Out, DigestOf(State.data(), State.size()));
+
+			PutU16(Out, static_cast<uint16>(SectionKind::Run));
+			PutU32(Out, 0u);
+			PutU64(Out, PayloadAt + static_cast<uint64>(State.size()));
+			PutU64(Out, static_cast<uint64>(RunBytes.size()));
+			PutU64(Out, DigestOf(RunBytes.data(), RunBytes.size()));
+
+			const uint64 HostAt = PayloadAt + static_cast<uint64>(State.size()) + static_cast<uint64>(RunBytes.size());
+			PutU16(Out, static_cast<uint16>(SectionKind::Host));
+			PutU32(Out, 0u);
+			PutU64(Out, HostAt);
+			PutU64(Out, static_cast<uint64>(HostBytes.size()));
+			PutU64(Out, DigestOf(HostBytes.data(), HostBytes.size()));
+
+			if (WithStream)
+			{
+				PutU16(Out, static_cast<uint16>(SectionKind::Stream));
+				PutU32(Out, 0u);
+				PutU64(Out, HostAt + static_cast<uint64>(HostBytes.size()));
+				PutU64(Out, static_cast<uint64>(StreamBytes.size()));
+				PutU64(Out, DigestOf(StreamBytes.data(), StreamBytes.size()));
+			}
+
+			Out.insert(Out.end(), State.begin(), State.end());
+			Out.insert(Out.end(), RunBytes.begin(), RunBytes.end());
+			Out.insert(Out.end(), HostBytes.begin(), HostBytes.end());
+			if (WithStream)
+			{
+				Out.insert(Out.end(), StreamBytes.begin(), StreamBytes.end());
+			}
+
+			PutU64(Out, DigestOf(Out.data() + Start, Out.size() - Start));
+			return CheckpointResult::Ok;
+		}
+	} // namespace
 
 	CheckpointResult BuildCheckpoint(const Aelvor& Run, const Player::InputStream& Tape,
 									 const Player::StartRules& Rules, std::vector<uint8>& Out, uint16 MayIgnore)
 	{
-		const usize Start = Out.size();
-		const auto Refuse = [&Out, Start](CheckpointResult Why)
-		{
-			Out.resize(Start);
-			return Why;
-		};
+		return BuildContainer(Run, &Tape, &Rules, Out, MayIgnore);
+	}
 
-		const World& W = Run.Instance();
-
-		// THE STATE SECTION IS SaveSnapshot'S OUTPUT AND NOTHING ELSE. It is
-		// built into its own buffer first, because the container's header has
-		// to record the image's format version and the section's length before
-		// either is known, and because a refusal here must leave Out alone.
-		std::vector<uint8> State;
-		const SnapshotResult Saved = SaveSnapshot(W, State);
-		if (Saved != SnapshotResult::Ok)
-		{
-			return Refuse(CheckpointResult::StateRefused);
-		}
-		if (State.size() < MagicBytes + 4)
-		{
-			return Refuse(CheckpointResult::Truncated);
-		}
-		// Copied out of the image rather than assumed from the build's own
-		// constant: a reader must be able to say WHICH of the two versions it
-		// disagrees with, and that is only possible if this is the image's.
-		const uint32 InnerFormat = GetU32(State.data() + MagicBytes);
-
-		// The log's shape, so that a reader can say why a save is large without
-		// parsing the image. Measured in 16.01: the log is 75% of any image
-		// that has a history at all.
-		std::vector<uint8> LogBytes;
-		W.Log().WriteTo(LogBytes);
-
-		// 16.05 adds the RUN section beside STATE. HOST and STREAM are declared
-		// in the header and filled by 16.07; the table is variable-length by
-		// design, so this cost no container version - which is what the table
-		// was for.
-		std::vector<uint8> RunBytes;
-		PutRunState(RunBytes, Run.GetRunState());
-
-		// 16.10 adds HOST. It cost NO container version, because 16.04 made the
-		// section table variable-length for exactly this - which is the first
-		// time that decision has paid rather than merely been defensible.
-		std::vector<uint8> HostBytes;
-		PutOptions(HostBytes, Run.Given());
-
-		// 16.11: the tape this world was played on. Written even when empty, so
-		// that "this save carries no tape" and "this save is from a build that
-		// did not carry tapes" are different states rather than one absence.
-		std::vector<uint8> StreamBytes;
-		PutStream(StreamBytes, Tape, Rules);
-
-		const uint32 SectionCount = 4u;
-		const uint64 TableAt = HeaderBytes;
-		const uint64 PayloadAt = TableAt + static_cast<uint64>(SectionCount) * EntryBytes;
-
-		Out.insert(Out.end(), CheckpointMagic, CheckpointMagic + MagicBytes);
-		PutU32(Out, CheckpointVersion);
-		PutU32(Out, static_cast<uint32>(MayIgnore) << 16);
-		PutU32(Out, InnerFormat);
-		PutU64(Out, W.Config().Seed);
-		PutU64(Out, static_cast<uint64>(W.Now()));
-		PutU64(Out, W.Log().Count());
-		PutU64(Out, static_cast<uint64>(LogBytes.size()));
-		PutU32(Out, SectionCount);
-
-		PutU16(Out, static_cast<uint16>(SectionKind::State));
-		PutU32(Out, 0u);
-		PutU64(Out, PayloadAt);
-		PutU64(Out, static_cast<uint64>(State.size()));
-		PutU64(Out, DigestOf(State.data(), State.size()));
-
-		PutU16(Out, static_cast<uint16>(SectionKind::Run));
-		PutU32(Out, 0u);
-		PutU64(Out, PayloadAt + static_cast<uint64>(State.size()));
-		PutU64(Out, static_cast<uint64>(RunBytes.size()));
-		PutU64(Out, DigestOf(RunBytes.data(), RunBytes.size()));
-
-		const uint64 HostAt = PayloadAt + static_cast<uint64>(State.size()) + static_cast<uint64>(RunBytes.size());
-		PutU16(Out, static_cast<uint16>(SectionKind::Host));
-		PutU32(Out, 0u);
-		PutU64(Out, HostAt);
-		PutU64(Out, static_cast<uint64>(HostBytes.size()));
-		PutU64(Out, DigestOf(HostBytes.data(), HostBytes.size()));
-
-		PutU16(Out, static_cast<uint16>(SectionKind::Stream));
-		PutU32(Out, 0u);
-		PutU64(Out, HostAt + static_cast<uint64>(HostBytes.size()));
-		PutU64(Out, static_cast<uint64>(StreamBytes.size()));
-		PutU64(Out, DigestOf(StreamBytes.data(), StreamBytes.size()));
-
-		Out.insert(Out.end(), State.begin(), State.end());
-		Out.insert(Out.end(), RunBytes.begin(), RunBytes.end());
-		Out.insert(Out.end(), HostBytes.begin(), HostBytes.end());
-		Out.insert(Out.end(), StreamBytes.begin(), StreamBytes.end());
-
-		PutU64(Out, DigestOf(Out.data() + Start, Out.size() - Start));
-		return CheckpointResult::Ok;
+	CheckpointResult BuildCheckpoint(const Aelvor& Run, std::vector<uint8>& Out, uint16 MayIgnore)
+	{
+		// NO STREAM SECTION AT ALL, rather than an empty one that lies.
+		//
+		// This used to delegate with `InputStream{}, StartRules{}`, so every
+		// save through the old signature wrote a section declaring FromAge 16,
+		// ToAge 40, WantBound 1, PreferOre 1 and no records - indistinguishable
+		// from a genuine empty tape played under the default rules, and
+		// ReadStreamSection returned true for it. Atlas's savefuzz takes its
+		// containers this way while running under a Host built from --from-age
+		// and --to-age, so a container from day 1081 of a played walk asserted
+		// default rules and an empty tape. Restore it and the session resumes
+		// under rules nobody chose.
+		//
+		// A caller that wants provenance in the file passes a tape; one that
+		// does not gets a container that SAYS it carries none, which is a
+		// state ReadStreamSection can report honestly by returning false.
+		return BuildContainer(Run, nullptr, nullptr, Out, MayIgnore);
 	}
 
 	CheckpointRefusal ReadCheckpoint(const uint8* Bytes, usize Size, CheckpointView& Out)

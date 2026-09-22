@@ -1083,3 +1083,78 @@ VAELEN_TEST(Checkpoint, ProvenanceReplaysFromTheFileAlone)
 		VT_CHECK_MSG(Continuing.LogDigest() == Rebuilt.LogDigest(), "down to what they wrote in the log");
 	}
 }
+
+VAELEN_TEST(Checkpoint, ASaveWithNoTapeSaysSoInsteadOfInventingOne)
+{
+	// Found by the Phase 16 adversarial review. The two-argument
+	// BuildCheckpoint delegated with `InputStream{}, StartRules{}`, so every
+	// save taken through it wrote a STREAM section declaring FromAge 16,
+	// ToAge 40, WantBound 1, PreferOre 1 and no records.
+	//
+	// The original comment defended this: "this save carries no tape" and
+	// "this save is from a build that did not carry tapes" should be different
+	// states rather than one absence. That is right, and the remedy was wrong.
+	// A present, empty section is indistinguishable from a GENUINE empty tape
+	// played under the default rules, and ReadStreamSection returned true for
+	// it - so a restoring host was handed four numbers nobody chose. Atlas's
+	// savefuzz takes its containers this way while running under a Host built
+	// from --from-age and --to-age, so a container from deep inside a played
+	// walk asserted default rules and an empty tape.
+	//
+	// An ABSENT section says "no tape" without asserting anything else, and
+	// ReadStreamSection reports it by returning false.
+	Options O;
+	O.Size = 32u;
+	O.PreHistory = 10u;
+	O.Years = 10u;
+	O.Play = true;
+	O.Stream = true;
+	O.Lively = true;
+
+	Aelvor A(O);
+	VT_REQUIRE(A.Begin());
+
+	std::vector<uint8> Bare;
+	VT_REQUIRE(BuildCheckpoint(A, Bare) == CheckpointResult::Ok);
+	CheckpointView NoTape;
+	VT_REQUIRE(ReadCheckpoint(Bare.data(), Bare.size(), NoTape).Result == CheckpointResult::Ok);
+	VT_CHECK_MSG(NoTape.Sections.size() == 3u, "a save with no tape carries three sections, not four: %zu",
+				 NoTape.Sections.size());
+	uint64 Len = 0;
+	VT_CHECK_MSG(NoTape.Find(SectionKind::Stream, Len) == nullptr, "and there is no STREAM section to find");
+	Player::InputStream Tape;
+	Player::StartRules Rules;
+	VT_CHECK_MSG(!ReadStreamSection(NoTape, Tape, Rules), "so ReadStreamSection says no rather than inventing four");
+	VT_CHECK_MSG(Rules.FromAge == Player::StartRules{}.FromAge,
+				 "and it left the caller's rules alone rather than overwriting them with a fabrication");
+	// The other three sections are still there and still readable, because
+	// dropping STREAM must not disturb the table it shares.
+	Options Declared;
+	VT_CHECK_MSG(ReadHostSection(NoTape, Declared), "HOST survives the missing STREAM");
+	Aelvor::RunState Carried;
+	VT_CHECK_MSG(ReadRunSection(NoTape, Carried), "and so does RUN");
+	Aelvor Back(O);
+	VT_CHECK_MSG(Back.Adopt(Bare.data(), Bare.size()) == Aelvor::AdoptResult::Ok,
+				 "and a tapeless container still adopts");
+
+	// AND THE TAPE-CARRYING FORM IS UNCHANGED.
+	Player::StartRules Mine;
+	Mine.FromAge = 15u;
+	Mine.ToAge = 45u;
+	Mine.WantBound = 0u;
+	Mine.PreferOre = 0u;
+	Door Played(A, Mine);
+	Played.TakeUp();
+	Played.Day();
+	std::vector<uint8> Full;
+	VT_REQUIRE(BuildCheckpoint(A, Played.Stream(), Played.Rules(), Full) == CheckpointResult::Ok);
+	CheckpointView WithTape;
+	VT_REQUIRE(ReadCheckpoint(Full.data(), Full.size(), WithTape).Result == CheckpointResult::Ok);
+	VT_CHECK_MSG(WithTape.Sections.size() == 4u, "a save WITH a tape carries four: %zu", WithTape.Sections.size());
+	Player::InputStream Got;
+	Player::StartRules GotRules;
+	VT_CHECK_MSG(ReadStreamSection(WithTape, Got, GotRules), "and its tape reads back");
+	VT_CHECK_MSG(GotRules.FromAge == 15u && GotRules.PreferOre == 0u,
+				 "with the rules that were recorded, not the defaults: %u..%u bound %u ore %u", GotRules.FromAge,
+				 GotRules.ToAge, GotRules.WantBound, GotRules.PreferOre);
+}
