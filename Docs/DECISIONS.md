@@ -10351,3 +10351,82 @@ the only thing that reads them, with ADR-0134's limits still in force.
 A run that is cancelled is not a run that passed. Where a phase is being pushed
 faster than the legs take, the verdict has to be **waited for** rather than
 inferred from whichever jobs happen to be quick.
+
+## ADR-0149 — An instrument is guilty until it has failed on purpose
+
+**Status:** **APPLIED 2026-09-21** (Phase 16, after 16.06). Method rather than
+code: it changes how a measurement is accepted, not what the kernel does.
+
+### The problem
+
+Phase 16 was measured more carefully than any phase before it, and the
+measurements were wrong four times. Not the code — the instruments. Each one
+produced a clean, plausible number that meant nothing, and each was caught by
+something other than reading it again:
+
+1. **A test that compared zero to zero.**
+   `AWorldThatCannotBeKeptIsNotOverwritten` measured `ComputeStateDigest` before
+   and after a refused load, from INSIDE an event dispatch — where 16.02 makes
+   that function return its zero sentinel. Zero equalled zero. It passed against
+   the unfixed loader just as happily. Caught by running the pre-fix control.
+
+2. **A control that crashed for its own reasons.** Disabling 16.03's rollback to
+   get a "before" picture left the restore path reachable with an EMPTY buffer,
+   so `MemoryReader(nullptr, 0 - 8)` segfaulted. I nearly wrote that down as the
+   pre-fix behaviour. It was an artefact of the control.
+
+3. **Two experiments that could not fail.** For 16.05: a restore compared
+   against ANOTHER restore — both lack the run, both are wrong identically, and
+   they agree at every one of twelve day turns. Then a world that looks compared
+   against a world that does not — they part for a reason that has nothing to do
+   with what is being tested. I built the second one twice, in the same test,
+   ten minutes apart.
+
+4. **An instrument that measured nothing at all.** For 16.06, the root stream's
+   `DrawCount`, on the assumption that generating a world draws heavily from it.
+   It stays at **0** through an entire `Generate`, because the generators draw
+   from DERIVED streams. Caught by the test's own self-check.
+
+And one more, of a different kind: a figure carried forward without rechecking
+what it described. "22 MB played AELVOR 128", true of the world 16.01 measured,
+repeated across three commits as though it described the phase gate's cell —
+which is **2.37 GB**, a factor of 107.
+
+### The decision
+
+**Four rules, each the direct residue of a failure above.**
+
+1. **Every instrument carries a self-check that fails when it is measuring
+   nothing.** `SavedDraws > 1000` cost one line and caught (4) immediately. A
+   measurement with no floor and no ceiling is an assertion about the world
+   dressed as a reading.
+
+2. **Only the variable under test may differ between two sides.** A world that
+   looks against one that does not is not a test of the run. Write the two sides
+   out and name what differs; if it is more than one thing, the experiment is
+   already wrong.
+
+3. **Compare against the thing being claimed, not against a sibling.** A restore
+   is claimed to be the CONTINUING SOURCE. Two restores are not a control for
+   each other — they fail identically and agree perfectly, which reads exactly
+   like success.
+
+4. **A control that fails must fail for the reason under test.** A segfault, a
+   crash, a refusal from an unrelated guard: none of these is the "before"
+   picture. Restore the real prior code line for line, and require the failure
+   to name the clause that matters. Ours does: 11 of 13 still pass, and the two
+   that fail name `Intact` and `Usable`.
+
+**And the figures rule:** a number quoted from another task is re-measured
+against the case at hand before it is used to decide anything. Every one of
+these was found by a SECOND INSTRUMENT DISAGREEING WITH THE FIRST — never once
+by reading the first more carefully.
+
+### What this costs
+
+A self-check and a paired arm on every measurement, and the wrong shapes kept in
+the tests rather than deleted once the right one works. `Run.Checkpoint` carries
+both failing experiment shapes as named arms for exactly that reason: a test
+that shows only the working case cannot tell the next reader why the two obvious
+experiments lie — and the two obvious experiments are what the next reader will
+write, because I wrote them first.
