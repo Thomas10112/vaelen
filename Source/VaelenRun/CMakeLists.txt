@@ -7,12 +7,14 @@ set(VAELEN_RUN_PUBLIC_HEADERS
   Public/Vaelen/Run/Aelvor.h
   Public/Vaelen/Run/Door.h
   Public/Vaelen/Run/Checkpoint.h
+  Public/Vaelen/Run/Store.h
 )
 
 set(VAELEN_RUN_SOURCES
   Private/Aelvor.cpp
   Private/Door.cpp
   Private/Checkpoint.cpp
+  Private/Store.cpp
 )
 
 add_library(VaelenRun STATIC ${VAELEN_RUN_SOURCES} ${VAELEN_RUN_PUBLIC_HEADERS})

@@ -84,6 +84,13 @@ set_tests_properties(Run.Door PROPERTIES COST 3000)
 # picked up last.
 set_tests_properties(Run.Checkpoint PROPERTIES COST 3500)
 
+# 16.07's store writes real files. It is given a directory of its own under the
+# build tree and the include path to the host-side implementation, which lives
+# in Tools/Store because WHERE a save goes is not the simulation's business.
+target_include_directories(VaelenRunTests PRIVATE ${PROJECT_SOURCE_DIR}/Tools/Store)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/store)
+target_compile_definitions(VaelenRunTests PRIVATE VAELEN_STORE_DIR="${CMAKE_CURRENT_BINARY_DIR}/store")
+
 # VAELEN - Phase 15 task 15.10, HEADLESS HALF.
 #
 # A stand-in WALK, written by VaelenAtlas --walk and replayed here. Not a month
