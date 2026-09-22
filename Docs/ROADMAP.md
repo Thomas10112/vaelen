@@ -5433,6 +5433,26 @@ Same answer, **2.7× the speed, 370 MiB less peak** — and the comparison is ag
 Every clause is runnable on this machine, and each names the command that decides
 it. Any one missing and Phase 16 stays open.
 
+**THE 300+120 CELL, MEASURED 2026-09-22 — and it could not be run at all before 16.13.**
+
+AELVOR 128 with three hundred years of pre-history and a hundred and twenty lived, full `{Play, Stream, Lively, Colony}` wiring, generated once and adopted once:
+
+| | source | adopted |
+|---|---|---|
+| Begin / Adopt | **778.3 s** | **57.6 s** |
+| `Generations()` | 1 | **0** |
+| state digest | `bdad42cde9a8197e` | `bdad42cde9a8197e` |
+| peak RSS | 12 209.7 MiB | 7 478.8 MiB |
+
+Adopt is **13.5× faster than generating the same world**, and `Generations() == 0` is the claim that matters: the adopted world never entered generation at all. That is 16.06's instrument, which exists because "something was NOT done" cannot be read off a result — a world generated and then loaded over looks exactly like a world only loaded.
+
+**IT RUNS IN TWO PROCESSES THROUGH A FILE, and the peak figures say why.** The container is 2 368.6 MiB and `BuildCheckpoint`'s doubling vector takes the saving process to **12.2 GB on a 15 GB machine**. One process holding the source world, the container and the adopted world would need about nineteen; it would not run. Split, neither half exceeds 12.2 GB, and the shape is what a host actually does with a save anyway.
+
+**WHAT 16.13 BOUGHT, CONCRETELY.** `ComputeStateDigest` folded this world in **11.5 s**. The old body would have serialised another 2 368.6 MiB with a doubling vector behind it, on top of the 5 GB the world already occupied, and then `BuildCheckpoint` would have wanted its own 12.2 GB in the same process. That is the "cannot be COMPARED on a 16 GB machine" this row carried as a blocker from 16.08 onward, and it is now a number rather than a note.
+
+`Tools/Atlas` does not drive this yet: it was measured with a two-half probe. Making it a CTest entry is not proposed — twelve gigabytes of peak and thirteen minutes of generation is not something to put on eight CI legs.
+
+
 - **(a)** `Tools/run_gates.sh linux-clang-debug` prints `GATES-DONE 0 failing
   (of 17)`: the eleven it ran before 16.01 plus `Run.Golden`, `Replay.Played`,
   `Replay.Walked`, `Replay.Lived`, `Run.Gate` and `Run.Gate.Lived`. Seventeen
