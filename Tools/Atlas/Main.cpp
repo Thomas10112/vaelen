@@ -493,6 +493,13 @@ namespace
 		bool Save = false;
 		/// With --save, print each section's share of the container.
 		bool Sections = false;
+		/// Phase 16 gate clause (k): write the container to a FILE, and load one
+		/// back in a SECOND PROCESS. A save that only ever lives in one
+		/// process's memory has not been proven to survive the one journey it
+		/// exists to make.
+		std::string SaveTo;
+		std::string LoadFrom;
+		uint32 ThenDays = 0u;
 		/// 16.12(b): a recorded walk, saved at K seeded points along its day
 		/// turns, and every save asked the questions a save has to answer.
 		std::string SaveFuzz;
@@ -693,6 +700,19 @@ namespace
 			else if (std::strcmp(Arg, "--corrupt-byte") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
 			{
 				Out.CorruptByte = static_cast<long>(Value);
+				++I;
+			}
+			else if (std::strcmp(Arg, "--save-to") == 0 && HasValue)
+			{
+				Out.SaveTo = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--load-from") == 0 && HasValue)
+			{
+				Out.LoadFrom = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--then-days") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
+			{
+				Out.ThenDays = static_cast<uint32>(Value);
 				++I;
 			}
 			else if (std::strcmp(Arg, "--expect-state") == 0 && HasValue)
@@ -1987,6 +2007,138 @@ namespace
 		return 0;
 	}
 
+	/// Phase 16 gate clause (k). Two halves, two PROCESSES, one file.
+	///
+	/// --save-to writes a container and prints the digest the world was at
+	/// when it was written, plus the digest it reaches after --then-days more
+	/// day turns IN THIS PROCESS. --load-from reads that file in a fresh
+	/// process, adopts it, turns the same number of days and prints what it
+	/// reaches. The two must agree.
+	///
+	/// Run.Store already proves the WRITE is atomic and that a full disk
+	/// refuses without destroying what was there. This proves the other half:
+	/// that the bytes which reached the disk are a world, and that continuing
+	/// from them in a process that never saw the original lands where the
+	/// original landed. Nothing in the tree did that before - every save test
+	/// held both worlds in one address space.
+	int RunSaveTo(const Options& Opt)
+	{
+		Vaelen::Run::Options RO;
+		RO.Size = Opt.Size;
+		RO.PreHistory = Opt.PreHistory;
+		RO.Years = Opt.Years;
+		RO.Seed = Opt.Seed;
+		RO.Colony = Opt.Colony;
+		RO.Play = true;
+		RO.Stream = Opt.Stream;
+		RO.Lively = Opt.Lively;
+		Vaelen::Run::Aelvor A(RO);
+		if (!A.Begin())
+		{
+			std::fprintf(stderr, "save-to: generation failed at %u\n", RO.Size);
+			return 1;
+		}
+		Player::StartRules Rules;
+		Rules.WantBound = Opt.WantBound;
+		Rules.FromAge = Opt.FromAge;
+		Rules.ToAge = Opt.ToAge;
+		A.TakeUp(Rules);
+		for (uint32 d = 0; d < 6u; ++d)
+		{
+			Vaelen::Run::Attention At;
+			At.Region = 1u + (d % 5u);
+			At.Reach = 1u;
+			A.LookAt(At);
+			A.Day();
+		}
+
+		std::vector<Vaelen::uint8> Bytes;
+		if (Vaelen::Run::BuildCheckpoint(A, Bytes) != Vaelen::Run::CheckpointResult::Ok)
+		{
+			std::fprintf(stderr, "save-to: the container was refused\n");
+			return 1;
+		}
+		std::FILE* F = std::fopen(Opt.SaveTo.c_str(), "wb");
+		if (F == nullptr)
+		{
+			std::fprintf(stderr, "save-to: cannot write %s\n", Opt.SaveTo.c_str());
+			return 1;
+		}
+		const usize Wrote = std::fwrite(Bytes.data(), 1, Bytes.size(), F);
+		const bool Closed = std::fclose(F) == 0;
+		if (Wrote != Bytes.size() || !Closed)
+		{
+			std::fprintf(stderr, "save-to: short write to %s\n", Opt.SaveTo.c_str());
+			return 1;
+		}
+		std::printf("save-to: %zu bytes to %s, saved at %016llx\n", Bytes.size(), Opt.SaveTo.c_str(),
+					static_cast<unsigned long long>(Vaelen::ComputeStateDigest(A.Instance())));
+		// The same continuation the other process will make, in THIS one.
+		for (uint32 d = 0; d < Opt.ThenDays; ++d)
+		{
+			Vaelen::Run::Attention At;
+			At.Region = 2u + (d % 4u);
+			At.Reach = 1u;
+			A.LookAt(At);
+			A.Day();
+		}
+		std::printf("save-to: %u more day(s) in one process reach %016llx\n", Opt.ThenDays,
+					static_cast<unsigned long long>(Vaelen::ComputeStateDigest(A.Instance())));
+		return 0;
+	}
+
+	int RunLoadFrom(const Options& Opt)
+	{
+		std::FILE* F = std::fopen(Opt.LoadFrom.c_str(), "rb");
+		if (F == nullptr)
+		{
+			std::fprintf(stderr, "load-from: cannot read %s\n", Opt.LoadFrom.c_str());
+			return 1;
+		}
+		std::fseek(F, 0, SEEK_END);
+		const long Len = std::ftell(F);
+		std::fseek(F, 0, SEEK_SET);
+		std::vector<Vaelen::uint8> Bytes(static_cast<usize>(Len > 0 ? Len : 0));
+		const usize Got = Bytes.empty() ? 0u : std::fread(Bytes.data(), 1, Bytes.size(), F);
+		std::fclose(F);
+		if (Bytes.empty() || Got != Bytes.size())
+		{
+			std::fprintf(stderr, "load-from: short read of %s\n", Opt.LoadFrom.c_str());
+			return 1;
+		}
+
+		Vaelen::Run::Options RO;
+		RO.Size = Opt.Size;
+		RO.PreHistory = Opt.PreHistory;
+		RO.Years = Opt.Years;
+		RO.Seed = Opt.Seed;
+		RO.Colony = Opt.Colony;
+		RO.Play = true;
+		RO.Stream = Opt.Stream;
+		RO.Lively = Opt.Lively;
+		// CONSTRUCTED, NOT BEGUN: this process never generates the world.
+		Vaelen::Run::Aelvor A(RO);
+		const Vaelen::Run::Aelvor::AdoptResult R = A.Adopt(Bytes.data(), Bytes.size());
+		if (R != Vaelen::Run::Aelvor::AdoptResult::Ok)
+		{
+			std::fprintf(stderr, "load-from: REFUSED, %s\n", Vaelen::Run::Aelvor::AdoptResultToString(R));
+			return 1;
+		}
+		std::printf("load-from: %zu bytes, Generations %u, adopted at %016llx\n", Bytes.size(), A.Generations(),
+					static_cast<unsigned long long>(Vaelen::ComputeStateDigest(A.Instance())));
+		for (uint32 d = 0; d < Opt.ThenDays; ++d)
+		{
+			Vaelen::Run::Attention At;
+			At.Region = 2u + (d % 4u);
+			At.Reach = 1u;
+			A.LookAt(At);
+			A.Day();
+		}
+		std::printf("load-from: %u more day(s) in a second process reach %016llx\n", Opt.ThenDays,
+					static_cast<unsigned long long>(Vaelen::ComputeStateDigest(A.Instance())));
+		return 0;
+	}
+
 	int RunGolden(const Options& Opt)
 	{
 		std::string Where = Opt.Golden;
@@ -2490,6 +2642,14 @@ namespace
 		{
 			Usage();
 			return 2;
+		}
+		if (!Opt.SaveTo.empty())
+		{
+			return RunSaveTo(Opt);
+		}
+		if (!Opt.LoadFrom.empty())
+		{
+			return RunLoadFrom(Opt);
 		}
 		if (!Opt.DeathWalk.empty())
 		{

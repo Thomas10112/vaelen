@@ -103,6 +103,31 @@ set_tests_properties(Run.SaveDeath PROPERTIES COST 3400)
 # 51.7 MiB, Adopt 712 ms, peak 223 MiB.
 set_tests_properties(Run.AdoptCostsNoGeneration PROPERTIES COST 1200)
 
+# Phase 16 gate clause (k), the half Run.Store does not cover: a container that
+# went to a DISK, read back by a process that never generated a world, carried
+# ten more day turns, and landing where the one-process run landed. Every other
+# save test in the tree holds both worlds in one address space.
+add_test(NAME Atlas.SaveThenLoadFromDisk
+  COMMAND ${CMAKE_COMMAND}
+          -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DFILE=${CMAKE_CURRENT_BINARY_DIR}/two-process.cp
+          -DDAYS=10
+          -P ${CMAKE_CURRENT_LIST_DIR}/SaveThenLoad.cmake)
+set_tests_properties(Atlas.SaveThenLoadFromDisk PROPERTIES TIMEOUT 1800 COST 800)
+
+# Clause (g) as the gate writes it: sixty-four seeded save points, not four.
+# Measured at 87 s on the lived walk - every point re-saves byte-identically,
+# re-adopts, refuses a second adopt, and its remainder lands.
+add_test(NAME Run.SaveFuzz.SixtyFour
+  COMMAND ${CMAKE_COMMAND}
+          -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DSTREAM=${PROJECT_SOURCE_DIR}/Tests/Run/Streams/aelvor128-played-2026-09-21.stream
+          -DPOINTS=64 -DSEED=1
+          "-DEXPECT=609253a29361ec5f"
+          "-DWANT=savefuzz: 0 of 64 save point(s) bad, 0 parted"
+          -P ${CMAKE_CURRENT_LIST_DIR}/SaveFuzz.cmake)
+set_tests_properties(Run.SaveFuzz.SixtyFour PROPERTIES TIMEOUT 1800 COST 3000)
+
 # 16.07's store writes real files. It is given a directory of its own under the
 # build tree and the include path to the host-side implementation, which lives
 # in Tools/Store because WHERE a save goes is not the simulation's business.

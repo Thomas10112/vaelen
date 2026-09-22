@@ -5453,11 +5453,11 @@ I reported Phase 16 as "closed but for 16.14" in several session reports. That w
 | (d) 18-cell matrix | met — `Run.SaveContinue` |
 | (e) the control fires | met in substance, **renamed** `Run.SaveWithheld` (one ctest entry per `Test_*.cpp`; a filtered duplicate would re-run the matrix on all eight legs) |
 | (f) `Run.SaveDeath` | met |
-| (g) `--savefuzz` | met at 3–4 points, **never run at `--points 64 --seed 1`** as the clause writes it |
+| **(g) `--savefuzz`** | **MET 2026-09-22** — `Run.SaveFuzz.SixtyFour`, sixty-four seeded points at seed 1: 0 bad, 0 parted, 87 s. Every point re-saves byte-identically, re-adopts, refuses a second adopt, and its remainder lands on `609253a29361ec5f` |
 | **(h) `Run.AdoptCostsNoGeneration`** | **BUILT 2026-09-22, see below** |
 | (i) refusals name themselves | met in substance inside `Run.Checkpoint` and `Sim.Snapshot`, under other entry names |
 | **(j) corpus and forge** | **NOT BUILT — deferred by decision** to the commit that bumps the save format to v4, because the current version IS 3 and forging a v3 forges the identity |
-| **(k) second-process load, `DiskFull`** | **PARTLY**: `Run.Store` covers the atomic write and the full-disk refusal; `Atlas.SaveThenLoadFromDisk` — a second PROCESS loading and running ten days — does not exist |
+| **(k) second-process load, `DiskFull`** | **MET 2026-09-22** — `Run.Store` covers the atomic write and the full-disk refusal; `Atlas.SaveThenLoadFromDisk` now covers the other half |
 | (l) provenance replays | met — `Checkpoint.ProvenanceReplaysFromTheFileAlone` |
 | (m) container round trip | met inside `Run.Checkpoint`, including the 180-offset sweep |
 
@@ -5466,6 +5466,12 @@ I reported Phase 16 as "closed but for 16.14" in several session reports. That w
 **AND ITS FIRST DELIBERATE FAILURE DID NOT FAIL.** Pointing the look at region 0 — a host looking NOWHERE — was meant to break the `Watching()` guard and did not: looking nowhere is itself a change. That is a fact about the world rather than about the test, and it is recorded in the test. The experiment that does fire is removing the look entirely, which was then run. The other guard was checked by asserting `Generations() == 1` where it is 0, which fired.
 
 Nothing here asserts on a stopwatch; the milliseconds are printed (ADR-0109).
+
+**CLAUSES (g) AND (k) CLOSED THE SAME DAY.** (g) needed no code at all, only running what the clause actually writes: sixty-four points instead of four. (k) needed `Atlas --save-to` and `--load-from`, and it is the only test in this repository where the two worlds are not in one address space — a container written to a DISK, read by a process that never generated anything (`Generations 0`), carried ten more day turns, and landing on `9eea0e868b841058`, exactly where the one-process run landed. Everything else proves the format round-trips in memory.
+
+**AND ONE OF ITS DELIBERATE FAILURES WAS VOID.** Truncating the container before running the driver proved nothing: the driver SAVES to that path before loading it, so the short file was overwritten and the run passed. That is the second time today an experiment failed to fail and told me about the experiment rather than the guard — the first being a look at region 0, which changes `Watching()` after all. The comparison does bite: ten days in one process reach `9eea0e868b841058` and five in the other reach `c17e659b51a4bbbf`. A wrong wiring is refused by name (`LivelyDiffers`) and a missing file is refused before anything is compared.
+
+**WHAT REMAINS BETWEEN PHASE 16 AND ITS GATE:** clause (j) alone — the golden corpus and the migration forge — deferred by decision to the commit that bumps the save format to v4, because the current version IS 3 and forging a v3 forges the identity. Plus 16.14, which needs the owner's Windows machine.
 
 
 
