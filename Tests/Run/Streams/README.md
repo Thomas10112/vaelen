@@ -235,3 +235,45 @@ The last thirty day turns were driven from the console rather than the keyboard:
 `Vaelen.Day` does not consult the camera — it uses the remembered look — so a
 whole walk can be recorded at exact region numbers without flying at all. Only
 the Space key routes through the controller and reads the camera.
+
+---
+
+## `aelvor64-death-2026-09-22.stream` — the one where the played person dies
+
+Written by `Tools/Atlas --deathwalk` on 2026-09-22 for Phase 16 task 16.12(c).
+AELVOR 64 with sixty years of pre-history and thirty more lived, a start window
+from age 85, twelve hundred recorded day turns: **person 300 is taken up, dies
+on day 1080, and person 100 is taken up after them.** Two takings, one death,
+28 866 bytes.
+
+**This file cannot tell you how to replay it**, and that is the point of saying
+so here. `Player::StreamHeader` carries a seed, a size, a pre-history, a year
+count and a version — and no wiring bits at all. Replay it with the defaults
+and you get a different world and a different person:
+
+```
+Tools/Atlas --savefuzz Tests/Run/Streams/aelvor64-death-2026-09-22.stream \
+    --points 3 --seed 63 --stream --lively --from-age 85 --to-age 120 --want-bound 0
+```
+
+Drop `--lively` and the world is not the one this was recorded in. Drop
+`--from-age 85` and `TakeUp` hands you a twenty-year-old who does not die
+inside the horizon, so every taking after the first is somebody else's. A save
+carries its `Options` in a HOST section (16.10); a `.stream` file has nowhere
+to put them. That asymmetry is why `Run.SaveFuzz.Death` spells all four flags
+out rather than relying on a default.
+
+**Why it was written at all.** A death is the single day that exercises
+`Release`, a fresh `TakeUp`, `NearDetail`'s give-back path and a recorded
+`TakenUp` at once. At seed 63 the save points land on days 537, 891 and
+**1081 — the day after the death** — and all three re-save byte-identically,
+re-adopt to the same digest, refuse a second adopt, and lead the rest of the
+walk to `state 18aec14e39a68a8c`.
+
+**Why `--walk` could not write it.** That mode enforces the Phase 15 gate's
+clauses on what it writes — somewhere to walk within four days of each taking,
+no day turn promoting twice — and a horizon long enough for somebody to die of
+old age is not shaped like that. `--deathwalk` enforces its own clause instead,
+and refuses to write a file whose name would be a lie: no death in the horizon,
+or a death with nobody taken up afterwards, and nothing is written at all. Both
+refusals were exercised on purpose before this file was kept.

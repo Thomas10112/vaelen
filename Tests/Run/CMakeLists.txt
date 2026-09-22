@@ -307,3 +307,24 @@ add_test(NAME Run.SaveFuzz.Corrupt
 set_tests_properties(Run.SaveFuzz Run.SaveFuzz.WithheldRun Run.SaveFuzz.Corrupt PROPERTIES TIMEOUT 1800)
 set_tests_properties(Run.SaveFuzz PROPERTIES COST 400)
 set_tests_properties(Run.SaveFuzz.WithheldRun PROPERTIES COST 400)
+
+# 16.12(c)'s artefact, fuzzed. The death walk saved at three seeded points -
+# 537, 891 and 1081, the last being THE DAY AFTER the played person died, which
+# is the only reason this entry exists beside Run.SaveFuzz. Seed 63 was chosen
+# by modelling the point picker rather than by running the fuzzer at two
+# minutes a guess; Tests/Run/Streams/README.md records what the walk is.
+#
+# ALL FOUR WIRING FLAGS ARE SPELLED OUT because a .stream file cannot carry
+# them: StreamHeader has a seed, a size, a pre-history, a year count and a
+# version, and no room for Options. Drop --lively and this replays a different
+# world; drop --from-age and TakeUp hands back a twenty-year-old who never dies
+# inside the horizon.
+add_test(NAME Run.SaveFuzz.Death
+  COMMAND ${CMAKE_COMMAND}
+          -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DSTREAM=${PROJECT_SOURCE_DIR}/Tests/Run/Streams/aelvor64-death-2026-09-22.stream
+          -DPOINTS=3 -DSEED=63
+          "-DMORE=--lively;--from-age;85;--to-age;120"
+          "-DWANT=savefuzz: 0 of 3 save point(s) bad, 0 parted"
+          -P ${CMAKE_CURRENT_LIST_DIR}/SaveFuzz.cmake)
+set_tests_properties(Run.SaveFuzz.Death PROPERTIES TIMEOUT 1800 COST 3600)

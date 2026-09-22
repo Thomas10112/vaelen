@@ -503,6 +503,25 @@ namespace
 		/// A CONTROL. Flips one byte of the container before reading it back;
 		/// the read must REFUSE, by a section digest and not by luck.
 		long CorruptByte = -1;
+		/// 16.12(c): the start window. It is the HOST's configuration exactly
+		/// as --want-bound is, so a replay must be given the same one: a stream
+		/// recorded from an eighty-five-year-old replayed with the default 16
+		/// to 40 takes up somebody else entirely, and every taking after that
+		/// is a different person's.
+		uint32 FromAge = 16u;
+		uint32 ToAge = 40u;
+		/// 16.12(c): write a walk in which the played person DIES. Refuses to
+		/// write one in which nobody did, for the reason --walk refuses a walk
+		/// that misses a clause.
+		std::string DeathWalk;
+		uint32 DeathDays = 1200u;
+		/// TOLD, NOT READ, exactly as Options::Stream is. Player::StreamHeader
+		/// carries Seed, Size, PreHistory, Years and a version and NO wiring
+		/// bits, so a walk recorded in a lively world and replayed without this
+		/// flag is replayed in a DIFFERENT world - which is the defect 16.10
+		/// and 16.11 are about, met again here from the tool's side. A save
+		/// carries its Options in a HOST section; a `.stream` file cannot.
+		bool Lively = false;
 	};
 
 	/// Runs Years years, keeping a frame every Opt.Every of them. Taking a view
@@ -661,6 +680,29 @@ namespace
 			else if (std::strcmp(Arg, "--corrupt-byte") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
 			{
 				Out.CorruptByte = static_cast<long>(Value);
+				++I;
+			}
+			else if (std::strcmp(Arg, "--lively") == 0)
+			{
+				Out.Lively = true;
+			}
+			else if (std::strcmp(Arg, "--from-age") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
+			{
+				Out.FromAge = static_cast<uint32>(Value);
+				++I;
+			}
+			else if (std::strcmp(Arg, "--to-age") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
+			{
+				Out.ToAge = static_cast<uint32>(Value);
+				++I;
+			}
+			else if (std::strcmp(Arg, "--deathwalk") == 0 && HasValue)
+			{
+				Out.DeathWalk = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--death-days") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
+			{
+				Out.DeathDays = static_cast<uint32>(Value);
 				++I;
 			}
 			else if (std::strcmp(Arg, "--sections") == 0)
@@ -1532,6 +1574,7 @@ namespace
 		RO.Colony = Opt.Colony;
 		RO.Play = true;
 		RO.Stream = Opt.Stream;
+		RO.Lively = Opt.Lively;
 
 		const std::vector<uint32> Wanted = WhichDays(Opt.Seed, Opt.Points, static_cast<uint32>(S.Days.size()));
 		if (Wanted.empty())
@@ -1548,6 +1591,8 @@ namespace
 		}
 		Player::StartRules Host;
 		Host.WantBound = Opt.WantBound;
+		Host.FromAge = Opt.FromAge;
+		Host.ToAge = Opt.ToAge;
 
 		std::vector<FuzzPoint> Points;
 		FuzzCatch Catch;
@@ -1722,6 +1767,116 @@ namespace
 		std::printf("savefuzz: %u of %zu save point(s) bad, %u parted (first on day %ld)\n", Bad, Points.size(), Parted,
 					FirstParted);
 		return Bad == 0u ? 0 : 1;
+	}
+
+	/// 16.12(c): a walk in which the played person DIES, written out.
+	///
+	/// IT REFUSES TO WRITE A WALK WITHOUT A DEATH IN IT, and that refusal is
+	/// the whole value of the mode. A stream named for a death that contains
+	/// none would be checked in, replayed by a CTest entry, come back clean,
+	/// and pin nothing at all - the same failure --walk refuses, and the same
+	/// failure Run.SaveDeath's precondition exists to prevent.
+	///
+	/// WHY --walk COULD NOT DO THIS. That mode enforces the Phase 15 gate's
+	/// clauses on what it writes - somewhere to walk within four days of each
+	/// taking, no day turn promoting twice - and a horizon long enough for
+	/// somebody to die of old age is not a horizon shaped like that. The two
+	/// modes want opposite things from a walk, so they are two modes.
+	///
+	/// A world only holds people as old as its history, so the defaults here
+	/// are sixty years of pre-history and thirty more lived, and a start window
+	/// from eighty-five up. Tests/Run/Test_SaveDeath.cpp records the search
+	/// that found them.
+	int RunDeathWalk(const Options& Opt)
+	{
+		Vaelen::Run::Options RO;
+		RO.Size = Opt.Size;
+		RO.PreHistory = Opt.PreHistory;
+		RO.Years = Opt.Years;
+		RO.Seed = Opt.Seed;
+		RO.Play = true;
+		RO.Stream = true;
+		// Declared by the caller and printed below, because whoever replays
+		// this walk has to be told the same thing: the file cannot carry it.
+		RO.Lively = Opt.Lively;
+		Vaelen::Run::Aelvor A(RO);
+		if (!A.Begin())
+		{
+			std::fprintf(stderr, "deathwalk: generation failed at %u x %u\n", RO.Size, RO.Size);
+			return 1;
+		}
+		Player::StartRules Rules;
+		Rules.WantBound = Opt.WantBound;
+		Rules.FromAge = Opt.FromAge;
+		Rules.ToAge = Opt.ToAge;
+		Vaelen::Run::Door D(A, Rules);
+		const uint32 First = D.TakeUp();
+		if (First == 0u)
+		{
+			std::fprintf(stderr,
+						 "deathwalk: a world of %u+%u years offers nobody aged %u to %u - a world holds only "
+						 "people as old as its history\n",
+						 RO.PreHistory, RO.Years, Opt.FromAge, Opt.ToAge);
+			return 1;
+		}
+
+		uint32 Deaths = 0;
+		long DiedOn = -1;
+		for (uint32 Day = 0; Day < Opt.DeathDays; ++Day)
+		{
+			const uint32 Playing = A.Played();
+			Vaelen::Run::Attention At;
+			At.Region = static_cast<uint32>(1u + (Day % 7u));
+			At.Reach = 1u;
+			D.Look(At);
+			D.Day();
+			if (A.Played() != Playing)
+			{
+				++Deaths;
+				if (DiedOn < 0)
+				{
+					DiedOn = static_cast<long>(Day);
+				}
+			}
+		}
+
+		if (Deaths == 0u)
+		{
+			std::fprintf(stderr,
+						 "deathwalk: NOBODY DIED in %u day turns, so this walk is not what its name says and it "
+						 "will not be written. Person %u was taken up and outlived the horizon.\n",
+						 Opt.DeathDays, First);
+			return 1;
+		}
+		if (D.Stream().Takings.size() < 2u)
+		{
+			std::fprintf(stderr, "deathwalk: somebody died but nobody was taken up after them, so the tape carries one "
+								 "taking. That is a different horizon - see Door.h - and it is not written here.\n");
+			return 1;
+		}
+
+		const std::string Text = Player::EncodeStream(D.Stream());
+		std::FILE* File = std::fopen(Opt.DeathWalk.c_str(), "wb");
+		if (File == nullptr)
+		{
+			std::fprintf(stderr, "deathwalk: cannot write %s\n", Opt.DeathWalk.c_str());
+			return 1;
+		}
+		const usize Wrote = std::fwrite(Text.data(), 1, Text.size(), File);
+		const bool Closed = std::fclose(File) == 0;
+		if (Wrote != Text.size() || !Closed)
+		{
+			std::fprintf(stderr, "deathwalk: could not write all of %s\n", Opt.DeathWalk.c_str());
+			return 1;
+		}
+		std::printf("deathwalk: AELVOR %u, %u+%u years, ages %u-%u, lively=%d: person %u taken up, died on day "
+					"%ld, %u death(s), %zu takings, %zu day turns, %zu bytes\n",
+					RO.Size, RO.PreHistory, RO.Years, Opt.FromAge, Opt.ToAge, RO.Lively ? 1 : 0, First, DiedOn, Deaths,
+					D.Stream().Takings.size(), D.Stream().Days.size(), Text.size());
+		std::printf("deathwalk: REPLAY IT WITH --stream --lively --from-age %u --to-age %u --want-bound %u; the "
+					"file carries none of that\n",
+					Opt.FromAge, Opt.ToAge, Opt.WantBound);
+		return 0;
 	}
 
 	int RunGolden(const Options& Opt)
@@ -2074,6 +2229,8 @@ namespace
 		}
 		Player::StartRules Host;
 		Host.WantBound = Opt.WantBound;
+		Host.FromAge = Opt.FromAge;
+		Host.ToAge = Opt.ToAge;
 		const Vaelen::Run::ReplayReport R = Vaelen::Run::Replay(A, S, Host);
 		const double Seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - Started).count();
 
@@ -2223,6 +2380,10 @@ namespace
 		{
 			Usage();
 			return 2;
+		}
+		if (!Opt.DeathWalk.empty())
+		{
+			return RunDeathWalk(Opt);
 		}
 		if (!Opt.SaveFuzz.empty())
 		{
