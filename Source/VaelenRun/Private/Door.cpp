@@ -24,14 +24,40 @@ namespace Vaelen::Run
 	Door::Door(Aelvor& InWorld, const Player::StartRules& InRules, Player::InputStream InTape)
 		: W(InWorld), Start(InRules), Tape(std::move(InTape))
 	{
-		// THE HEADER IS TAKEN FROM THE WORLD, NOT FROM THE TAPE, and that is
-		// the whole of 16.10 arriving here. A tape carries a header naming the
-		// world it was recorded on; this world has just been checked, field by
-		// field, against the one the checkpoint declared, so the two already
-		// agree. Trusting the tape's copy instead would mean believing a number
-		// that travelled with the records rather than the one that was
-		// verified - and Aelvor::Header() is what a replay is later handed.
-		Tape.Header = W.Header();
+		// THREE CASES, AND THE FIRST VERSION OF THIS HAD ONLY ONE.
+		//
+		// It stamped the world's header onto the tape unconditionally, which is
+		// right when the two already agree and is a SILENT ERASURE when they do
+		// not: Player::SameWorld(Fresh.Header(), S.Header) is the only guard a
+		// later Replay has that a stream belongs to its world, and relabelling
+		// the tape disarms it. The comment justified the stamp by saying the
+		// world "has just been checked, field by field, against the one the
+		// checkpoint declared" - true of Adopt's HOST comparison, but nothing
+		// on this path compares the tape's OWN header to anything, and the
+		// Begin() + LoadSnapshot restore route has no HOST check at all.
+		// Found by the Phase 16 adversarial review.
+		const Player::StreamHeader Mine = W.Header();
+		if (Tape.Header.Size == 0u)
+		{
+			// A tape that never recorded names no world - a real one always has
+			// a side in tiles. Nothing is being overwritten.
+			Tape.Header = Mine;
+		}
+		else if (Player::SameWorld(Tape.Header, Mine))
+		{
+			// They agree, so take the VERIFIED copy rather than the one that
+			// travelled with the records. That is 16.10's reasoning and it
+			// stands - it just does not license the case below.
+			Tape.Header = Mine;
+		}
+		else
+		{
+			// They do NOT agree. Leave the tape's own header exactly as it came
+			// so that Replay refuses it, and say so out loud: a host that built
+			// this Door has a tape from another world and needs to know before
+			// it records one more day into it.
+			Foreign_ = true;
+		}
 	}
 
 	uint32 Door::TakeUp()

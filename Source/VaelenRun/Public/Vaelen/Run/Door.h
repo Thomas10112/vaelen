@@ -80,6 +80,16 @@ namespace Vaelen::Run
 		/// taken up, recorded; returns the tick it is now.
 		uint64 Day();
 
+		/// True when the tape handed to the three-argument constructor named a
+		/// DIFFERENT world from the one this door opens onto.
+		///
+		/// It is not a refusal - a constructor cannot refuse - and it is not a
+		/// repair. The tape keeps its own header, so `Replay` will reject it by
+		/// the guard it already has; this says the same thing early, to a host
+		/// that is about to record another day into a walk that does not belong
+		/// to its world. Always false for the two-argument constructor.
+		bool Foreign() const noexcept { return Foreign_; }
+
 		const Player::InputStream& Stream() const noexcept { return Tape; }
 		uint32 Days() const noexcept { return static_cast<uint32>(Tape.Days.size()); }
 		Aelvor& Of() noexcept { return W; }
@@ -89,6 +99,7 @@ namespace Vaelen::Run
 		Aelvor& W;
 		Player::StartRules Start;
 		Player::InputStream Tape;
+		bool Foreign_ = false;
 	};
 
 	/// What a replay came to.

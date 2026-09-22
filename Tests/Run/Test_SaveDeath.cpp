@@ -196,3 +196,80 @@ VAELEN_TEST(SaveDeath, ASaveOnTheDayTheyDieIsStillASave)
 					 C.Name);
 	}
 }
+
+VAELEN_TEST(SaveDeath, ADoorRefusesToRelabelATapeFromAnotherWorld)
+{
+	// Found by the Phase 16 adversarial review, and it is a defect in 16.11's
+	// own reasoning rather than in its machinery.
+	//
+	// Door(Aelvor&, StartRules, InputStream) stamped the WORLD's header onto
+	// the tape unconditionally. Where the two already agree that is right, and
+	// it is what 16.10 argued for: the world has been checked field by field
+	// against what the file declared, the tape's copy has not. But the stamp
+	// was applied where they DISAGREE too, and there it erases the only thing
+	// Replay has to go on - Player::SameWorld(Fresh.Header(), S.Header) is the
+	// single guard that a stream belongs to its world.
+	//
+	// Nothing on the 16.11 path compares a tape's header to anything:
+	// ReadStreamSection does not, the decoder is called with no expectation,
+	// and BuildCheckpoint accepts whatever InputStream it is handed. There is
+	// also a restore route with no HOST check at all - Begin() + LoadSnapshot,
+	// which Test_SaveWithheld uses. So a foreign tape could be adopted into a
+	// live session, relabelled, and written back into the next save's STREAM
+	// section under the wrong world's name.
+	//
+	// THIS TEST IS THE DELIBERATE FAILURE of the old behaviour: on the code as
+	// it stood, Foreign() did not exist and the header comparison below found
+	// two identical headers.
+	Options Small;
+	Small.Size = 32u;
+	Small.PreHistory = 10u;
+	Small.Years = 10u;
+	Small.Play = true;
+	Small.Stream = true;
+	Small.Lively = true;
+
+	Options Other = Small;
+	Other.Seed = Small.Seed + 1u; // another world by the one field SameWorld weighs first
+
+	Aelvor Here(Small);
+	VT_REQUIRE(Here.Begin());
+	Aelvor There(Other);
+	VT_REQUIRE(There.Begin());
+	VT_CHECK_MSG(!Player::SameWorld(Here.Header(), There.Header()),
+				 "the two worlds really are different, or this test proves nothing");
+
+	// A tape that was recorded THERE, handed to a door that opens HERE.
+	Player::StartRules Rules;
+	Door Elsewhere(There, Rules);
+	Elsewhere.TakeUp();
+	for (uint32 Day = 0; Day < 3u; ++Day)
+	{
+		Elsewhere.Look(BeatOf(Day));
+		Elsewhere.Day();
+	}
+	const Player::StreamHeader Recorded = Elsewhere.Stream().Header;
+	VT_REQUIRE(Recorded.Size != 0u);
+
+	Door Wrong(Here, Rules, Elsewhere.Stream());
+	VT_CHECK_MSG(Wrong.Foreign(), "the door says the tape names another world");
+	VT_CHECK_MSG(Wrong.Stream().Header.Seed == Recorded.Seed, "and it did NOT relabel it: seed %llu, recorded %llu",
+				 static_cast<unsigned long long>(Wrong.Stream().Header.Seed),
+				 static_cast<unsigned long long>(Recorded.Seed));
+	VT_CHECK_MSG(!Player::SameWorld(Wrong.Stream().Header, Here.Header()),
+				 "so Replay's own guard still has something to refuse");
+
+	// AND THE ORDINARY CASE IS UNTOUCHED: a tape from THIS world is taken, and
+	// the header it ends up with is the world's verified one.
+	Door Right(Here, Rules, Player::InputStream{});
+	VT_CHECK_MSG(!Right.Foreign(), "a tape that never recorded names no world and is not foreign");
+	VT_CHECK_MSG(Player::SameWorld(Right.Stream().Header, Here.Header()), "and it is stamped with this world");
+
+	Door Mine(Here, Rules);
+	Mine.TakeUp();
+	Mine.Look(BeatOf(0u));
+	Mine.Day();
+	Door Resumed(Here, Rules, Mine.Stream());
+	VT_CHECK_MSG(!Resumed.Foreign(), "a tape recorded HERE is not foreign");
+	VT_CHECK_MSG(Player::SameWorld(Resumed.Stream().Header, Here.Header()), "and it still carries this world's header");
+}
