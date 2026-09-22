@@ -161,6 +161,68 @@ namespace Vaelen::Run
 	/// meant. `MayIgnore` is carried into the high half of the container flags.
 	VAELEN_RUN_API CheckpointResult BuildCheckpoint(const Aelvor& Run, std::vector<uint8>& Out, uint16 MayIgnore = 0);
 
+	/// ONE STEP OF A MIGRATION: it takes a container at version `From` and
+	/// leaves it at `From + 1`, or returns false having changed nothing.
+	///
+	/// Steps are never allowed to skip. A save four versions old goes through
+	/// every upgrader in between, in order, because each was written knowing
+	/// only what the one before it produced.
+	struct Upgrade
+	{
+		uint32 From = 0;
+		bool (*Step)(std::vector<uint8>& Bytes) = nullptr;
+		/// What this step changed, for the log line a failed migration writes.
+		const char* Why = nullptr;
+	};
+
+	/// A table of steps. Passed in rather than registered globally: a global
+	/// registry would need a way for tests to clear it, and a seam that exists
+	/// only for tests is a seam production can fall through.
+	struct UpgradePath
+	{
+		const Upgrade* Steps = nullptr;
+		usize Count = 0;
+	};
+
+	enum class MigrateResult : uint8
+	{
+		Ok,
+		/// Already at the version asked for. Not an error.
+		NothingToDo,
+		/// The container is NEWER than this build. Refused and never touched -
+		/// a newer format is not a thing an older build may guess at.
+		FromTheFuture,
+		/// The chain has a gap: no step from the version in `At`.
+		NoUpgrader,
+		/// A step ran and refused. `At` is the version it was leaving.
+		StepFailed,
+	};
+
+	VAELEN_RUN_API const char* MigrateResultToString(MigrateResult Result) noexcept;
+
+	struct MigrateReport
+	{
+		MigrateResult Result = MigrateResult::Ok;
+		/// Where it stopped, for NoUpgrader and StepFailed.
+		uint32 At = 0;
+		/// How many steps ran.
+		uint32 Ran = 0;
+	};
+
+	/// The upgraders this build ships. EMPTY TODAY, and that is a fact rather
+	/// than an omission: `VAELEN_SAVE_FORMAT_VERSION` is 3, the container is at
+	/// 1, and this project has never shipped a game - so no save older than the
+	/// current one exists anywhere in the world. The machinery is here because
+	/// it has to exist BEFORE the version that needs it, not after.
+	VAELEN_RUN_API UpgradePath BuiltInUpgrades() noexcept;
+
+	/// Walks `Bytes` from `From` up to `To`, one step at a time.
+	///
+	/// ON ANY REFUSAL Bytes IS LEFT EXACTLY AS IT WAS FOUND, which is the rule
+	/// this file has followed since 16.02: a half-migrated container is a
+	/// container nobody can read and nobody knows not to trust.
+	VAELEN_RUN_API MigrateReport Migrate(std::vector<uint8>& Bytes, uint32 From, uint32 To, const UpgradePath& Path);
+
 	/// Decodes the RUN section into a `RunState`. False when the checkpoint has
 	/// no RUN section, or when its bytes do not describe one - which, because
 	/// the section digest has already agreed with them, means the section was

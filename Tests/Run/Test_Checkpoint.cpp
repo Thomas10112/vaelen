@@ -612,3 +612,112 @@ VAELEN_TEST(Checkpoint, TheGateCellAtOneTwentyEight)
 	VT_CHECK_MSG(ComputeStateDigest(Taken.Instance()) == Truth,
 				 "thirty day turns later the adopted world is still the source's world");
 }
+
+namespace
+{
+	/// Test-only upgraders. Each appends its own version byte, so the bytes
+	/// themselves record WHICH steps ran and IN WHAT ORDER - a counter would
+	/// say how many, and the row asks for both.
+	uint32 StepRuns[8] = {};
+
+	template <uint32 N>
+	bool Appends(std::vector<uint8>& Bytes)
+	{
+		++StepRuns[N];
+		Bytes.push_back(static_cast<uint8>(N));
+		return true;
+	}
+
+	bool Refuses(std::vector<uint8>& Bytes)
+	{
+		Bytes.push_back(uint8{0xEE}); // and it must NOT survive
+		return false;
+	}
+} // namespace
+
+VAELEN_TEST(Checkpoint, MigrationChainRunsInOrderAndExactlyOnce)
+{
+	// Phase 16 task 16.09. THE UPGRADERS EXIST BEFORE THERE IS ANYTHING TO
+	// UPGRADE, which is the only order in which they can exist at all: the
+	// first entry in the real table goes in beside the change that bumps a
+	// version, and by then it is too late to be designing the mechanism.
+	//
+	// BuiltInUpgrades() is EMPTY today and this test does not pretend
+	// otherwise. VAELEN_SAVE_FORMAT_VERSION is 3, CheckpointVersion is 1, and
+	// nothing has shipped - so no save older than the current one exists
+	// anywhere. The steps below are test-only and say so.
+	for (uint32& Runs : StepRuns)
+	{
+		Runs = 0;
+	}
+	const Upgrade Chain[] = {
+		{1u, &Appends<1>, "test-only: one to two"},
+		{2u, &Appends<2>, "test-only: two to three"},
+		{3u, &Appends<3>, "test-only: three to four"},
+	};
+	const UpgradePath Path{Chain, 3u};
+
+	std::vector<uint8> Bytes{uint8{0xA0}};
+	const MigrateReport R = Migrate(Bytes, 1u, 4u, Path);
+	VT_CHECK_MSG(R.Result == MigrateResult::Ok, "%s", MigrateResultToString(R.Result));
+	VT_CHECK_MSG(R.Ran == 3u, "three steps ran, not %u", R.Ran);
+	VT_CHECK_MSG(R.At == 4u, "and it arrived at four");
+	// IN ORDER, read off the bytes rather than off a counter.
+	VT_CHECK_MSG(Bytes.size() == 4u && Bytes[1] == 1u && Bytes[2] == 2u && Bytes[3] == 3u,
+				 "the steps left their marks in ascending order");
+	VT_CHECK_MSG(StepRuns[1] == 1u && StepRuns[2] == 1u && StepRuns[3] == 1u, "and each ran EXACTLY once: %u, %u, %u",
+				 StepRuns[1], StepRuns[2], StepRuns[3]);
+
+	// A GAP STOPS AT THE GAP AND NAMES IT. Skipping to the next available step
+	// would run an upgrader over bytes its author never saw.
+	{
+		const Upgrade Gapped[] = {
+			{1u, &Appends<1>, "test-only"},
+			{3u, &Appends<3>, "test-only, and nothing for 2"},
+		};
+		std::vector<uint8> Short{uint8{0xA0}};
+		const MigrateReport G = Migrate(Short, 1u, 4u, UpgradePath{Gapped, 2u});
+		VT_CHECK_MSG(G.Result == MigrateResult::NoUpgrader, "%s", MigrateResultToString(G.Result));
+		VT_CHECK_MSG(G.At == 2u, "and it names the version it stopped at, not the one it wanted");
+		VT_CHECK_MSG(Short.size() == 1u && Short[0] == 0xA0u,
+					 "and the bytes are untouched - a half-migrated container is one nobody can read "
+					 "and nobody knows not to trust");
+	}
+
+	// A CONTAINER FROM THE FUTURE IS REFUSED UNTOUCHED.
+	{
+		std::vector<uint8> Newer{uint8{0xA0}, uint8{0xA1}};
+		const MigrateReport F = Migrate(Newer, 9u, 4u, Path);
+		VT_CHECK_MSG(F.Result == MigrateResult::FromTheFuture, "%s", MigrateResultToString(F.Result));
+		VT_CHECK_MSG(Newer.size() == 2u, "and nothing was written over it");
+		VT_CHECK_MSG(F.Ran == 0u, "no step ran");
+	}
+
+	// A STEP THAT REFUSES TAKES NOTHING WITH IT, even though it had already
+	// written into the buffer it was handed.
+	{
+		const Upgrade Breaks[] = {
+			{1u, &Appends<1>, "test-only"},
+			{2u, &Refuses, "test-only: refuses after writing"},
+		};
+		std::vector<uint8> Doomed{uint8{0xA0}};
+		const MigrateReport S = Migrate(Doomed, 1u, 3u, UpgradePath{Breaks, 2u});
+		VT_CHECK_MSG(S.Result == MigrateResult::StepFailed, "%s", MigrateResultToString(S.Result));
+		VT_CHECK_MSG(S.At == 2u, "naming the version it was leaving");
+		VT_CHECK_MSG(Doomed.size() == 1u && Doomed[0] == 0xA0u,
+					 "and the first step's work is gone too, not left half-applied");
+	}
+
+	// Asking for the version it already is.
+	{
+		std::vector<uint8> Current{uint8{0xA0}};
+		const MigrateReport N = Migrate(Current, 3u, 3u, Path);
+		VT_CHECK_MSG(N.Result == MigrateResult::NothingToDo, "%s", MigrateResultToString(N.Result));
+		VT_CHECK_MSG(N.Ran == 0u, "and nothing ran");
+	}
+
+	// THE SHIPPED TABLE IS EMPTY, asserted rather than assumed - so the day it
+	// stops being empty, whoever added the first upgrader sees this line.
+	VT_CHECK_MSG(BuiltInUpgrades().Count == 0u, "nothing has shipped, so there is nothing to migrate from: %zu entries",
+				 BuiltInUpgrades().Count);
+}

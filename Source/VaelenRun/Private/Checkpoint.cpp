@@ -193,6 +193,93 @@ namespace Vaelen::Run
 		return nullptr;
 	}
 
+	const char* MigrateResultToString(MigrateResult Result) noexcept
+	{
+		switch (Result)
+		{
+		case MigrateResult::Ok:
+			return "Ok";
+		case MigrateResult::NothingToDo:
+			return "NothingToDo";
+		case MigrateResult::FromTheFuture:
+			return "FromTheFuture";
+		case MigrateResult::NoUpgrader:
+			return "NoUpgrader";
+		case MigrateResult::StepFailed:
+			return "StepFailed";
+		}
+		return "Unknown";
+	}
+
+	UpgradePath BuiltInUpgrades() noexcept
+	{
+		// EMPTY, and the emptiness is the honest state of this project rather
+		// than a gap. VAELEN_SAVE_FORMAT_VERSION is 3, CheckpointVersion is 1,
+		// and nothing has shipped - there is no save anywhere that is older
+		// than the one this build writes. The first entry here goes in beside
+		// the change that bumps a version, which is the only moment anyone
+		// knows what it has to do.
+		return UpgradePath{};
+	}
+
+	MigrateReport Migrate(std::vector<uint8>& Bytes, uint32 From, uint32 To, const UpgradePath& Path)
+	{
+		MigrateReport Report;
+		Report.At = From;
+		if (From == To)
+		{
+			Report.Result = MigrateResult::NothingToDo;
+			return Report;
+		}
+		if (From > To)
+		{
+			// A CONTAINER FROM THE FUTURE IS NEVER TOUCHED. An older build
+			// cannot know what a newer one meant, and a guess here would be a
+			// guess written back over the player's only copy.
+			Report.Result = MigrateResult::FromTheFuture;
+			return Report;
+		}
+
+		// The work happens on a COPY and replaces Bytes only on success, so a
+		// chain that fails four steps in leaves nothing half-done. Same rule as
+		// 16.02's writer and 16.03's loader, for the same reason.
+		std::vector<uint8> Working = Bytes;
+		for (uint32 Version = From; Version < To; ++Version)
+		{
+			const Upgrade* Found = nullptr;
+			for (usize Index = 0; Index < Path.Count; ++Index)
+			{
+				if (Path.Steps[Index].From == Version && Path.Steps[Index].Step != nullptr)
+				{
+					Found = &Path.Steps[Index];
+					break;
+				}
+			}
+			if (Found == nullptr)
+			{
+				// STOPS AT THE GAP AND NAMES IT, rather than skipping to the
+				// next step it does have. Each upgrader was written knowing
+				// only what the one before it produced; running step N+1 over
+				// bytes step N never saw is how a migration corrupts quietly.
+				Report.Result = MigrateResult::NoUpgrader;
+				Report.At = Version;
+				return Report;
+			}
+			if (!Found->Step(Working))
+			{
+				Report.Result = MigrateResult::StepFailed;
+				Report.At = Version;
+				return Report;
+			}
+			++Report.Ran;
+		}
+
+		Bytes.swap(Working);
+		Report.Result = MigrateResult::Ok;
+		Report.At = To;
+		return Report;
+	}
+
 	bool ReadRunSection(const CheckpointView& View, Aelvor::RunState& Out)
 	{
 		uint64 Length = 0;
