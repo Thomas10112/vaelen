@@ -535,3 +535,80 @@ VAELEN_TEST(Checkpoint, AdoptRefusesByNameAndLeavesTheAelvorAlone)
 					 "and the refusal did not generate over the adopted world");
 	}
 }
+
+VAELEN_TEST(Checkpoint, TheGateCellAtOneTwentyEight)
+{
+	// THE PHASE GATE'S OWN CELL, which 16.05 and 16.06 both deferred and which
+	// took three failed runs to size correctly. Options{128, Play, Stream,
+	// Lively, Colony} - the full wiring, the real map - saved, adopted into an
+	// Aelvor that generated nothing, and run on beside its source.
+	//
+	// 60+30 YEARS AND NOT 300+120, and the reason is a measurement rather than
+	// impatience. At 300+120 this world is 2.37 GB and the run got all the way
+	// through a successful Adopt before being killed on the two digests below:
+	// ComputeStateDigest serialises the whole world, and a std::vector doubling
+	// on reallocation needs about twice the image transiently, which on top of
+	// two live worlds is past 16 GB. At 60+30 the same cell is 276 MB and peaks
+	// at 1.1 GB, which a CI runner holds without noticing.
+	//
+	// So the shorter history is not a weaker test of ADOPT - it exercises every
+	// line of the same path - it is the longest history that can be COMPARED on
+	// an ordinary machine. That limit belongs to ComputeStateDigest and not to
+	// anything this phase built.
+	Options O;
+	O.Size = 128u;
+	O.PreHistory = 60u;
+	O.Years = 30u;
+	O.Play = true;
+	O.Stream = true;
+	O.Lively = true;
+	O.Colony = true;
+
+	Aelvor Source(O);
+	VT_REQUIRE(Source.Begin());
+	VT_CHECK_MSG(Source.Generations() == 1u, "the source generated its world once");
+	Source.TakeUp(Player::StartRules{});
+	for (uint32 Step = 0; Step < 20u; ++Step)
+	{
+		Attention At;
+		At.Region = static_cast<uint32>(1u + (Step % 7u));
+		At.Reach = 1u;
+		Source.LookAt(At);
+		Source.Day();
+	}
+	VT_CHECK_MSG(!Source.Watching().empty(), "and it is watching somewhere");
+
+	std::vector<uint8> Bytes;
+	VT_REQUIRE(BuildCheckpoint(Source, Bytes) == CheckpointResult::Ok);
+	VT_CHECK_MSG(Bytes.size() > 100u * 1024u * 1024u, "a real world, not a toy: %zu bytes", Bytes.size());
+
+	Aelvor Taken(O);
+	const Aelvor::AdoptResult R = Taken.Adopt(Bytes.data(), Bytes.size());
+	VT_CHECK_MSG(R == Aelvor::AdoptResult::Ok, "%s", Aelvor::AdoptResultToString(R));
+	VT_REQUIRE(R == Aelvor::AdoptResult::Ok);
+	VT_CHECK_MSG(Taken.Generations() == 0u,
+				 "AND IT GENERATED NOTHING - 128 tiles and ninety years of history, restored");
+	Bytes.clear();
+	Bytes.shrink_to_fit();
+
+	// Against the CONTINUING SOURCE, per what 16.05 cost to learn.
+	for (uint32 Step = 0; Step < 30u; ++Step)
+	{
+		Attention At;
+		At.Region = static_cast<uint32>(2u + (Step % 5u));
+		At.Reach = 1u;
+		Source.LookAt(At);
+		Source.Day();
+		Taken.LookAt(At);
+		Taken.Day();
+	}
+	const Hash64 Truth = ComputeStateDigest(Source.Instance());
+	// The digest is PRINTED and not frozen. The claim here is a RELATION - that
+	// a restore is its source - and it holds whatever that number happens to
+	// be. A constant would add nothing and would break on every unrelated
+	// kernel change, which is a re-freeze this test has no reason to demand.
+	std::printf("  [gate128] source %016llx, %zu regions watched\n", static_cast<unsigned long long>(Truth),
+				Source.Watching().size());
+	VT_CHECK_MSG(ComputeStateDigest(Taken.Instance()) == Truth,
+				 "thirty day turns later the adopted world is still the source's world");
+}

@@ -77,6 +77,12 @@ set_tests_properties(Run.Shuffled PROPERTIES COST 10000)
 set_tests_properties(Run.Aelvor PROPERTIES COST 6000)
 set_tests_properties(Replay.Played PROPERTIES COST 4000)
 set_tests_properties(Run.Door PROPERTIES COST 3000)
+# Phase 16's gate cell lives in Run.Checkpoint: 128 tiles with the full Play,
+# Stream, Lively and Colony wiring, generated once and adopted once. Measured at
+# about 95 seconds and a peak of 1.1 GB, which puts it between Run.Door and
+# Replay.Played - and it is declared here so it starts early rather than being
+# picked up last.
+set_tests_properties(Run.Checkpoint PROPERTIES COST 3500)
 
 # VAELEN - Phase 15 task 15.10, HEADLESS HALF.
 #
