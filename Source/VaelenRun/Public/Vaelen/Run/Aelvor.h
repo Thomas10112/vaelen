@@ -274,6 +274,27 @@ namespace Vaelen::Run
 			/// `SetRunState` refused it - a region this world's map does not
 			/// have, which means the run came from a world this is not.
 			RunRefused,
+			/// The container has no HOST section, so what world it is of cannot
+			/// be established. Refused rather than guessed.
+			NoHostSection,
+			/// EACH DECLARED FIELD REFUSES UNDER ITS OWN NAME, and the reason
+			/// is defect 5 measured rather than argued: before 16.10, a 32-tile
+			/// checkpoint adopted cleanly into a host declaring 16 or 64, and
+			/// the host went on believing its own number. `Aelvor::Header()`
+			/// builds the `StreamHeader` from `Given_.Size`, so a walk recorded
+			/// after such a load names a world that does not exist and
+			/// `Player::SameWorld` sends the replay to build the wrong one.
+			///
+			/// Four of the seven mismatches were completely silent, one was
+			/// caught by accident as `StateRefused` because the component types
+			/// happened to differ, and only the seed was caught on purpose.
+			WorldSizeDiffers,
+			PreHistoryDiffers,
+			YearsDiffers,
+			ColonyDiffers,
+			PlayDiffers,
+			LivelyDiffers,
+			StreamDiffers,
 		};
 		VAELEN_RUN_API static const char* AdoptResultToString(AdoptResult Result) noexcept;
 

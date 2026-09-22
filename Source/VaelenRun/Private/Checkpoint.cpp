@@ -147,6 +147,42 @@ namespace Vaelen::Run
 			return Cursor == Size;
 		}
 
+		/// The HOST section: the world the host DECLARED, so a reader can refuse
+		/// a checkpoint of another one instead of loading it and leaving the
+		/// host wrong about what it is holding.
+		void PutOptions(std::vector<uint8>& Out, const Options& O)
+		{
+			PutU32(Out, O.Size);
+			PutU32(Out, O.PreHistory);
+			PutU32(Out, O.Years);
+			PutU64(Out, O.Seed);
+			// One byte per flag rather than a packed bitfield: a bit that moves
+			// when somebody inserts a flag in the middle is a save that reads as
+			// a different world, silently, which is the exact defect 16.10 is
+			// about.
+			Out.push_back(O.Colony ? uint8{1} : uint8{0});
+			Out.push_back(O.Play ? uint8{1} : uint8{0});
+			Out.push_back(O.Lively ? uint8{1} : uint8{0});
+			Out.push_back(O.Stream ? uint8{1} : uint8{0});
+		}
+
+		bool GetOptions(const uint8* At, usize Size, Options& Out)
+		{
+			if (At == nullptr || Size != 4u + 4u + 4u + 8u + 4u)
+			{
+				return false;
+			}
+			Out.Size = GetU32(At);
+			Out.PreHistory = GetU32(At + 4);
+			Out.Years = GetU32(At + 8);
+			Out.Seed = GetU64(At + 12);
+			Out.Colony = At[20] != 0u;
+			Out.Play = At[21] != 0u;
+			Out.Lively = At[22] != 0u;
+			Out.Stream = At[23] != 0u;
+			return true;
+		}
+
 		Hash64 DigestOf(const uint8* At, usize Size) noexcept
 		{
 			return HashBytes(reinterpret_cast<const char*>(At), Size);
@@ -280,6 +316,13 @@ namespace Vaelen::Run
 		return Report;
 	}
 
+	bool ReadHostSection(const CheckpointView& View, Options& Out)
+	{
+		uint64 Length = 0;
+		const uint8* At = View.Find(SectionKind::Host, Length);
+		return At != nullptr && GetOptions(At, static_cast<usize>(Length), Out);
+	}
+
 	bool ReadRunSection(const CheckpointView& View, Aelvor::RunState& Out)
 	{
 		uint64 Length = 0;
@@ -334,7 +377,13 @@ namespace Vaelen::Run
 		std::vector<uint8> RunBytes;
 		PutRunState(RunBytes, Run.GetRunState());
 
-		const uint32 SectionCount = 2u;
+		// 16.10 adds HOST. It cost NO container version, because 16.04 made the
+		// section table variable-length for exactly this - which is the first
+		// time that decision has paid rather than merely been defensible.
+		std::vector<uint8> HostBytes;
+		PutOptions(HostBytes, Run.Given());
+
+		const uint32 SectionCount = 3u;
 		const uint64 TableAt = HeaderBytes;
 		const uint64 PayloadAt = TableAt + static_cast<uint64>(SectionCount) * EntryBytes;
 
@@ -360,8 +409,15 @@ namespace Vaelen::Run
 		PutU64(Out, static_cast<uint64>(RunBytes.size()));
 		PutU64(Out, DigestOf(RunBytes.data(), RunBytes.size()));
 
+		PutU16(Out, static_cast<uint16>(SectionKind::Host));
+		PutU32(Out, 0u);
+		PutU64(Out, PayloadAt + static_cast<uint64>(State.size()) + static_cast<uint64>(RunBytes.size()));
+		PutU64(Out, static_cast<uint64>(HostBytes.size()));
+		PutU64(Out, DigestOf(HostBytes.data(), HostBytes.size()));
+
 		Out.insert(Out.end(), State.begin(), State.end());
 		Out.insert(Out.end(), RunBytes.begin(), RunBytes.end());
+		Out.insert(Out.end(), HostBytes.begin(), HostBytes.end());
 
 		PutU64(Out, DigestOf(Out.data() + Start, Out.size() - Start));
 		return CheckpointResult::Ok;

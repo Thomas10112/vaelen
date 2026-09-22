@@ -721,3 +721,142 @@ VAELEN_TEST(Checkpoint, MigrationChainRunsInOrderAndExactlyOnce)
 	VT_CHECK_MSG(BuiltInUpgrades().Count == 0u, "nothing has shipped, so there is nothing to migrate from: %zu entries",
 				 BuiltInUpgrades().Count);
 }
+
+VAELEN_TEST(Checkpoint, TheHostsDeclaredWorldIsCheckedAgainstTheSave)
+{
+	// Phase 16 task 16.10, defect 5. MEASURED BEFORE IT WAS WRITTEN, and the
+	// measurement is worse than one defect: of seven ways a host can declare a
+	// different world from the one in the save, FOUR were completely silent,
+	// one was caught by accident (`StateRefused`, because the component types
+	// happened to differ, which says nothing about the world), and only the
+	// seed was caught on purpose.
+	//
+	// A 32-tile checkpoint adopted cleanly into a host declaring 16, and into a
+	// host declaring 64, and the host went on believing its own number.
+	// `Aelvor::Header()` builds the StreamHeader from `Given_.Size`, so a walk
+	// recorded after such a load names a world that does not exist and
+	// `Player::SameWorld` sends the replay to build the wrong one.
+	const auto Declaring = [](uint32 Size, uint32 Pre, uint32 Years, bool Colony, bool Play, bool Lively, bool Stream)
+	{
+		Options O;
+		O.Size = Size;
+		O.PreHistory = Pre;
+		O.Years = Years;
+		O.Colony = Colony;
+		O.Play = Play;
+		O.Lively = Lively;
+		O.Stream = Stream;
+		return O;
+	};
+
+	const Options Source = Declaring(32u, 6u, 6u, false, true, false, true);
+	Aelvor A(Source);
+	VT_REQUIRE(A.Begin());
+	std::vector<uint8> Image;
+	VT_REQUIRE(BuildCheckpoint(A, Image) == CheckpointResult::Ok);
+
+	// The container now CARRIES the declaration, which is what makes the rest
+	// possible. It cost no container version: 16.04 made the section table
+	// variable-length for exactly this.
+	CheckpointView View;
+	VT_REQUIRE(ReadCheckpoint(Image.data(), Image.size(), View).Result == CheckpointResult::Ok);
+	Options Carried;
+	VT_CHECK_MSG(ReadHostSection(View, Carried), "the container carries a HOST section");
+	VT_REQUIRE(ReadHostSection(View, Carried));
+	VT_CHECK_MSG(Carried.Size == 32u && Carried.PreHistory == 6u && Carried.Years == 6u,
+				 "and it is the world the host declared");
+	VT_CHECK_MSG(Carried.Play && Carried.Stream && !Carried.Lively && !Carried.Colony,
+				 "including every one of the four flags");
+	VT_CHECK_MSG(View.Version == CheckpointVersion, "and the container version did not have to move");
+
+	const auto Offer = [&Image](const Options& Host)
+	{
+		Aelvor Fresh(Host);
+		return Fresh.Adopt(Image.data(), Image.size());
+	};
+
+	VT_CHECK_MSG(Offer(Source) == Aelvor::AdoptResult::Ok, "the world it is actually of still loads");
+
+	struct Case
+	{
+		const char* What;
+		Options Host;
+		Aelvor::AdoptResult Want;
+	};
+	const Case Wrong[] = {
+		{"a smaller map", Declaring(16u, 6u, 6u, false, true, false, true), Aelvor::AdoptResult::WorldSizeDiffers},
+		{"a larger map", Declaring(64u, 6u, 6u, false, true, false, true), Aelvor::AdoptResult::WorldSizeDiffers},
+		{"another pre-history", Declaring(32u, 40u, 6u, false, true, false, true),
+		 Aelvor::AdoptResult::PreHistoryDiffers},
+		{"another span of years", Declaring(32u, 6u, 40u, false, true, false, true), Aelvor::AdoptResult::YearsDiffers},
+		{"a colony that is not there", Declaring(32u, 6u, 6u, true, true, false, true),
+		 Aelvor::AdoptResult::ColonyDiffers},
+		{"nobody played", Declaring(32u, 6u, 6u, false, false, false, true), Aelvor::AdoptResult::PlayDiffers},
+		{"a lively region", Declaring(32u, 6u, 6u, false, true, true, true), Aelvor::AdoptResult::LivelyDiffers},
+		{"another cadence", Declaring(32u, 6u, 6u, false, true, false, false), Aelvor::AdoptResult::StreamDiffers},
+	};
+	uint32 Named = 0;
+	for (const Case& C : Wrong)
+	{
+		const Aelvor::AdoptResult Got = Offer(C.Host);
+		VT_CHECK_MSG(Got == C.Want, "%s: %s, wanted %s", C.What, Aelvor::AdoptResultToString(Got),
+					 Aelvor::AdoptResultToString(C.Want));
+		Named += Got == C.Want ? 1u : 0u;
+	}
+	VT_CHECK_MSG(Named == 8u, "every mismatch refuses under its OWN name, %u of 8", Named);
+
+	// AND THE HOST STILL HAS ITS OWN WORLD. A refusal that left the target
+	// half-loaded would be worse than the silence it replaced.
+	//
+	// AND IT IS A FRESH AELVOR THAT MUST BE LEFT ALONE, which is the only case
+	// this check applies to: a host whose world is already LIVING is refused
+	// earlier and by a different name, AlreadyBegun, because adopting over a
+	// live world would half-restore everything the container does not carry.
+	// The first version of this arm called Begin() first and was refused there
+	// instead - the test was wrong and the loader was right.
+	{
+		Aelvor Small(Declaring(16u, 6u, 6u, false, true, false, true));
+		VT_CHECK(Small.Adopt(Image.data(), Image.size()) == Aelvor::AdoptResult::WorldSizeDiffers);
+		VT_CHECK_MSG(!Small.Begun(), "the refusal did not leave it begun");
+		VT_CHECK_MSG(Small.Generations() == 0u, "and generated nothing on its way to refusing");
+		VT_CHECK_MSG(Small.Instance().Now() == 0u, "and its world is still at tick zero");
+		// It can still be begun afterwards, as the world it actually declared.
+		VT_CHECK_MSG(Small.Begin(), "and it can still become the world it declared");
+		VT_CHECK_MSG(Small.Instance().Map().Config().Width == 16u, "which is 16 wide, not the save's 32");
+	}
+
+	{
+		// A LIVING host is refused earlier, by name, with its world untouched.
+		Aelvor Living(Source);
+		VT_REQUIRE(Living.Begin());
+		const Hash64 Was = ComputeStateDigest(Living.Instance());
+		VT_CHECK(Living.Adopt(Image.data(), Image.size()) == Aelvor::AdoptResult::AlreadyBegun);
+		VT_CHECK_MSG(ComputeStateDigest(Living.Instance()) == Was, "and its world is exactly as it was");
+	}
+
+	// THE CONTROL FOR THE FLAG THAT DECLARES NO COMPONENT TYPE. Options::Stream
+	// is invisible to every guard the kernel already had, so refusing on it is
+	// only worth anything if it actually changes the world. Two worlds
+	// identical but for that flag, run the same way: they must part.
+	{
+		Aelvor Steady(Declaring(32u, 6u, 6u, false, true, false, false));
+		Aelvor Daily(Declaring(32u, 6u, 6u, false, true, false, true));
+		VT_REQUIRE(Steady.Begin());
+		VT_REQUIRE(Daily.Begin());
+		Steady.TakeUp(Player::StartRules{});
+		Daily.TakeUp(Player::StartRules{});
+		for (uint32 Step = 0; Step < 10u; ++Step)
+		{
+			Attention At;
+			At.Region = static_cast<uint32>(1u + (Step % 5u));
+			At.Reach = 1u;
+			Steady.LookAt(At);
+			Steady.Day();
+			Daily.LookAt(At);
+			Daily.Day();
+		}
+		VT_CHECK_MSG(ComputeStateDigest(Steady.Instance()) != ComputeStateDigest(Daily.Instance()),
+					 "the cadence flag changes the world within ten day turns, so refusing on it is not "
+					 "ceremony");
+	}
+}

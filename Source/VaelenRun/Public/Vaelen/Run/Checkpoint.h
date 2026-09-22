@@ -78,7 +78,9 @@ namespace Vaelen::Run
 		/// lives OUTSIDE the image and is the defect this phase exists for.
 		/// Declared here, filled by 16.05.
 		Run = 2,
-		/// What the host was doing: the camera, the cadence. 16.07.
+		/// The `Options` the saving host DECLARED - size, pre-history, years,
+		/// seed and the four wiring flags. 16.10, and it cost no container
+		/// version because the table is variable-length.
 		Host = 3,
 		/// The recorded input stream, when a save is asked to carry its own
 		/// tape. 16.07, and it is one of the questions still open for the owner.
@@ -222,6 +224,10 @@ namespace Vaelen::Run
 	/// this file has followed since 16.02: a half-migrated container is a
 	/// container nobody can read and nobody knows not to trust.
 	VAELEN_RUN_API MigrateReport Migrate(std::vector<uint8>& Bytes, uint32 From, uint32 To, const UpgradePath& Path);
+
+	/// Decodes the HOST section: the world the saving host DECLARED. False when
+	/// the container has none, or its bytes are not an `Options`.
+	VAELEN_RUN_API bool ReadHostSection(const CheckpointView& View, Options& Out);
 
 	/// Decodes the RUN section into a `RunState`. False when the checkpoint has
 	/// no RUN section, or when its bytes do not describe one - which, because

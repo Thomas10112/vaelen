@@ -10430,3 +10430,78 @@ both failing experiment shapes as named arms for exactly that reason: a test
 that shows only the working case cannot tell the next reader why the two obvious
 experiments lie — and the two obvious experiments are what the next reader will
 write, because I wrote them first.
+
+## ADR-0150 — A host's declared world is part of the save, and one cache is safe only by accident
+
+**Status:** **APPLIED 2026-09-22** (task 16.10). Adds the HOST section and seven
+named refusals to `Aelvor::Adopt`. No image byte and no frozen digest moved.
+
+### What was measured
+
+Seven ways a host can declare a different world from the one in a checkpoint,
+offered to `Adopt` before anything was changed:
+
+| the host declares | what it answered |
+|---|---|
+| `Size` 16, given a 32 save | **Ok** — and went on believing 16 |
+| `Size` 64, given a 32 save | **Ok** — and went on believing 64 |
+| another `PreHistory` | **Ok** |
+| another `Years` | **Ok** |
+| `Stream = false` | **Ok** |
+| `Play = false` | `StateRefused` — by accident |
+| another `Seed` | `WrongSeed` — on purpose |
+
+Four silent. One caught only because the component types happened to differ,
+reported as a fault of the state rather than of the world. One caught on
+purpose. `Options::Stream` is invisible to every guard the kernel had, because
+it declares no component type at all — and it decides what is detailed WHEN,
+which decides who exists.
+
+And the damage is not confined to the load. `Aelvor::Header()` builds the
+`StreamHeader` from `Given_.Size`, so a walk recorded after such a load names a
+world that does not exist, and `Player::SameWorld` sends the replay to build the
+wrong one.
+
+### The decision
+
+**The container carries the `Options` the saving host declared**, in a HOST
+section, and `Adopt` refuses each field under its own name before touching
+anything: `WorldSizeDiffers`, `PreHistoryDiffers`, `YearsDiffers`,
+`ColonyDiffers`, `PlayDiffers`, `LivelyDiffers`, `StreamDiffers`, plus
+`NoHostSection` for a container that does not say.
+
+**It cost no container version**, because 16.04 made the section table
+variable-length. That is the first time that decision has paid rather than
+merely been defensible, and it is worth noting which earlier choice made which
+later task cheap.
+
+Flags are one byte each and not a packed bitfield. A bit that shifts when
+somebody inserts a flag in the middle is a save that reads as a different world,
+silently — which is the exact defect this entry is about.
+
+### The cache that is safe by accident
+
+`DiplomacySystem` (`Diplomacy.cpp:72-75`) rebuilds its `Graph` only when the
+region COUNT changes:
+
+```cpp
+if (GraphRegions != static_cast<uint32>(N)) { Graph = BuildRegionGraph(...); }
+```
+
+Compare `WorldGen::RegionGraphCache` (`Regions.cpp:421`), which keys on
+`HashCombine(HashUInt64(Map.Revision()), Width, Height)` and is therefore
+invalidated by any load at all.
+
+A map replaced by one with the same region count and a different shape would
+leave that graph stale, and nothing would say so. **It is safe today only
+because a different map requires a different seed or a different size, and both
+are now refused** — before 16.10, only the seed was. This is written down
+because the safety is a consequence of two checks elsewhere, not a property of
+the cache, and the next person to relax either check needs to find this.
+
+### The control
+
+Refusing on `Options::Stream` is only worth anything if the flag changes the
+world. Two worlds identical but for it, played the same way, part company within
+**ten day turns** — asserted in
+`Checkpoint.TheHostsDeclaredWorldIsCheckedAgainstTheSave` rather than assumed.

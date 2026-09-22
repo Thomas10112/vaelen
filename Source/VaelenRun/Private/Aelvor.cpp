@@ -850,6 +850,22 @@ namespace Vaelen::Run
 			return "NoRunSection";
 		case AdoptResult::RunRefused:
 			return "RunRefused";
+		case AdoptResult::NoHostSection:
+			return "NoHostSection";
+		case AdoptResult::WorldSizeDiffers:
+			return "WorldSizeDiffers";
+		case AdoptResult::PreHistoryDiffers:
+			return "PreHistoryDiffers";
+		case AdoptResult::YearsDiffers:
+			return "YearsDiffers";
+		case AdoptResult::ColonyDiffers:
+			return "ColonyDiffers";
+		case AdoptResult::PlayDiffers:
+			return "PlayDiffers";
+		case AdoptResult::LivelyDiffers:
+			return "LivelyDiffers";
+		case AdoptResult::StreamDiffers:
+			return "StreamDiffers";
 		}
 		return "Unknown";
 	}
@@ -881,6 +897,52 @@ namespace Vaelen::Run
 		if (View.Seed != Given_.Seed)
 		{
 			return AdoptResult::WrongSeed;
+		}
+
+		// THE WHOLE DECLARED WORLD, NOT JUST ITS SEED - task 16.10, and the
+		// order matters: every one of these is checked BEFORE the world is
+		// touched, so a host handed a checkpoint of another world keeps the one
+		// it has. Measured before it was written: a 32-tile save adopted
+		// cleanly into hosts declaring 16 and 64, and into hosts declaring
+		// other pre-histories, other year counts and Stream=false. Four silent,
+		// one caught by accident, one on purpose.
+		Options Declared;
+		if (!ReadHostSection(View, Declared))
+		{
+			// Without it there is no way to know what world this is OF, and
+			// guessing is what the whole task exists to stop.
+			return AdoptResult::NoHostSection;
+		}
+		if (Declared.Size != Given_.Size)
+		{
+			return AdoptResult::WorldSizeDiffers;
+		}
+		if (Declared.PreHistory != Given_.PreHistory)
+		{
+			return AdoptResult::PreHistoryDiffers;
+		}
+		if (Declared.Years != Given_.Years)
+		{
+			return AdoptResult::YearsDiffers;
+		}
+		// EACH FLAG UNDER ITS OWN NAME. `Options::Stream` declares no component
+		// type, so it is invisible to every guard the kernel already had - and
+		// it decides what is detailed WHEN, which decides who exists.
+		if (Declared.Colony != Given_.Colony)
+		{
+			return AdoptResult::ColonyDiffers;
+		}
+		if (Declared.Play != Given_.Play)
+		{
+			return AdoptResult::PlayDiffers;
+		}
+		if (Declared.Lively != Given_.Lively)
+		{
+			return AdoptResult::LivelyDiffers;
+		}
+		if (Declared.Stream != Given_.Stream)
+		{
+			return AdoptResult::StreamDiffers;
 		}
 
 		uint64 StateLength = 0;
