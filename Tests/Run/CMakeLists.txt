@@ -92,6 +92,12 @@ set_tests_properties(Run.Checkpoint PROPERTIES COST 3500)
 set_tests_properties(Run.SaveWithheld PROPERTIES COST 2800)
 set_tests_properties(Run.SaveContinue PROPERTIES COST 900)
 
+# 16.12(c). A 64-tile world with sixty years of pre-history behind it, because
+# a world only contains people as old as its history and a death test needs
+# somebody old. Measured at 91 s: most of it is the generation and the twelve
+# hundred day turns, and the three restores are cheap beside them.
+set_tests_properties(Run.SaveDeath PROPERTIES COST 3400)
+
 # 16.07's store writes real files. It is given a directory of its own under the
 # build tree and the include path to the host-side implementation, which lives
 # in Tools/Store because WHERE a save goes is not the simulation's business.
