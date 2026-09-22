@@ -270,11 +270,13 @@ VAELEN_TEST(Checkpoint, TheRunTravelsWithTheWorldAndTheComparisonMustBeTheSource
 	O.Years = 10u;
 	O.Play = true;
 	O.Stream = true;
-	// LIVELY, AND THE TAKING IS CHECKED NOW. Without this flag the world
-	// offers nobody, so the unchecked TakeUp that stood here returned 0 for
-	// as long as this test existed: it ran on an unplayed world while its own
-	// setup said it was played. Measured at 16.11 - (32, 10+10, lively=0)
-	// offers 0, and still 0 after ten day turns; with Lively it offers one.
+	// LIVELY, AND THE TAKING IS CHECKED NOW. At THIS size - 32 - a world
+	// without the flag offers nobody, so the unchecked TakeUp that stood here
+	// returned 0 for as long as this test existed: it ran on an unplayed world
+	// while its own setup said it was played. Measured at 16.11 - (32, 10+10,
+	// lively=0) offers 0, and still 0 after ten day turns; with Lively it
+	// offers one. A world of 128 offers somebody either way (16.12), which is
+	// why the size is named here rather than the flag being called a law.
 	O.Lively = true;
 
 	Aelvor Source(O);
@@ -453,11 +455,13 @@ VAELEN_TEST(Checkpoint, AdoptTakesUpAWorldItNeverGenerated)
 	O.Years = 10u;
 	O.Play = true;
 	O.Stream = true;
-	// LIVELY, AND THE TAKING IS CHECKED NOW. Without this flag the world
-	// offers nobody, so the unchecked TakeUp that stood here returned 0 for
-	// as long as this test existed: it ran on an unplayed world while its own
-	// setup said it was played. Measured at 16.11 - (32, 10+10, lively=0)
-	// offers 0, and still 0 after ten day turns; with Lively it offers one.
+	// LIVELY, AND THE TAKING IS CHECKED NOW. At THIS size - 32 - a world
+	// without the flag offers nobody, so the unchecked TakeUp that stood here
+	// returned 0 for as long as this test existed: it ran on an unplayed world
+	// while its own setup said it was played. Measured at 16.11 - (32, 10+10,
+	// lively=0) offers 0, and still 0 after ten day turns; with Lively it
+	// offers one. A world of 128 offers somebody either way (16.12), which is
+	// why the size is named here rather than the flag being called a law.
 	O.Lively = true;
 
 	Aelvor Source(O);
@@ -915,11 +919,18 @@ VAELEN_TEST(Checkpoint, ProvenanceReplaysFromTheFileAlone)
 	// they do, the file is self-sufficient: it says what world it is of, and
 	// how that world came to be what it is.
 	//
-	// LIVELY IS WHAT MAKES ANYBODY PLAYABLE, and it took a measurement to find
-	// out: across sizes 32 and 64 and histories of 10, 30 and 60 years,
-	// TakeUp returns 0 in EVERY case without it and a person in most cases with
-	// it. Two versions of this test asserted a taking at 6+6 and 10+10 without
-	// Lively and were told plainly that the world offers nobody.
+	// AT THIS SIZE, LIVELY IS WHAT MAKES ANYBODY PLAYABLE, and it took a
+	// measurement to find out: across sizes 32 and 64, at histories of 10, 30
+	// and 60 years, TakeUp returns 0 without it every time. Two versions of
+	// this test asserted a taking at 6+6 and 10+10 without Lively and were
+	// told plainly that the world offers nobody.
+	//
+	// THE SIZE QUALIFIER IS NOT DECORATION. 16.12's matrix put a 128 cell
+	// beside these and found that a world that big offers somebody WITHOUT
+	// Lively - 15, 11 and 12 at three histories. So Lively is sufficient
+	// everywhere tried and necessary only at 32 and 64, and the flat law this
+	// comment first stated was wrong one task after it was written. See
+	// Tests/Run/SaveMatrix.h for the table.
 	//
 	// It is worth saying that several older tests call TakeUp without Lively
 	// and without checking the result, so they have been taking up nobody all

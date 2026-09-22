@@ -84,6 +84,14 @@ set_tests_properties(Run.Door PROPERTIES COST 3000)
 # picked up last.
 set_tests_properties(Run.Checkpoint PROPERTIES COST 3500)
 
+# 16.12's matrix and its control. Measured on this machine: the matrix walks
+# eighteen cells in 23 s, and the control walks the same eighteen twice over -
+# once withholding the run and once carrying it, so that the divergence it
+# reports can be attributed - in 74 s. They are declared so the longer one
+# starts before the short entries rather than being picked up last.
+set_tests_properties(Run.SaveWithheld PROPERTIES COST 2800)
+set_tests_properties(Run.SaveContinue PROPERTIES COST 900)
+
 # 16.07's store writes real files. It is given a directory of its own under the
 # build tree and the include path to the host-side implementation, which lives
 # in Tools/Store because WHERE a save goes is not the simulation's business.
