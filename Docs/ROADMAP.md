@@ -5444,6 +5444,31 @@ So the digest costs **a fifth of the old path's bytes and a quarter of its worst
 Every clause is runnable on this machine, and each names the command that decides
 it. Any one missing and Phase 16 stays open.
 
+**THE GATE'S OWN STATE, READ CLAUSE BY CLAUSE ON 2026-09-22 — AND IT IS NOT MET.**
+
+I reported Phase 16 as "closed but for 16.14" in several session reports. That was wrong, and comparing the entries the gate NAMES against the entries that exist is what showed it: six of the names had no test behind them. The fourteen tasks are built and ten-of-ten green on CI; the GATE is a different question and it is still open.
+
+| clause | state |
+|---|---|
+| (d) 18-cell matrix | met — `Run.SaveContinue` |
+| (e) the control fires | met in substance, **renamed** `Run.SaveWithheld` (one ctest entry per `Test_*.cpp`; a filtered duplicate would re-run the matrix on all eight legs) |
+| (f) `Run.SaveDeath` | met |
+| (g) `--savefuzz` | met at 3–4 points, **never run at `--points 64 --seed 1`** as the clause writes it |
+| **(h) `Run.AdoptCostsNoGeneration`** | **BUILT 2026-09-22, see below** |
+| (i) refusals name themselves | met in substance inside `Run.Checkpoint` and `Sim.Snapshot`, under other entry names |
+| **(j) corpus and forge** | **NOT BUILT — deferred by decision** to the commit that bumps the save format to v4, because the current version IS 3 and forging a v3 forges the identity |
+| **(k) second-process load, `DiskFull`** | **PARTLY**: `Run.Store` covers the atomic write and the full-disk refusal; `Atlas.SaveThenLoadFromDisk` — a second PROCESS loading and running ten days — does not exist |
+| (l) provenance replays | met — `Checkpoint.ProvenanceReplaysFromTheFileAlone` |
+| (m) container round trip | met inside `Run.Checkpoint`, including the 180-offset sweep |
+
+**CLAUSE (h) IS NOW BUILT.** `Run.AdoptCostsNoGeneration`: a 256 checkpoint adopted into a world that was only CONSTRUCTED. Measured — Begin 4 569 ms, Adopt 794 ms, container 51.6 MiB, peak 223 MiB, `Generations() == 0`, and the adopted world reaches the saved digest. Its substance existed inside `Run.Checkpoint`'s 128 cell, but at 128, under another name, and **without the playability half**: that a day turns, that a look changes what is watched, and that the world still offers somebody to play after the carried life is put down. A world that restores to the right digest and cannot be lived in has restored a picture.
+
+**AND ITS FIRST DELIBERATE FAILURE DID NOT FAIL.** Pointing the look at region 0 — a host looking NOWHERE — was meant to break the `Watching()` guard and did not: looking nowhere is itself a change. That is a fact about the world rather than about the test, and it is recorded in the test. The experiment that does fire is removing the look entirely, which was then run. The other guard was checked by asserting `Generations() == 1` where it is 0, which fired.
+
+Nothing here asserts on a stopwatch; the milliseconds are printed (ADR-0109).
+
+
+
 **THE 300+120 CELL, MEASURED 2026-09-22 — and it could not be run at all before 16.13.**
 
 AELVOR 128 with three hundred years of pre-history and a hundred and twenty lived, full `{Play, Stream, Lively, Colony}` wiring, generated once and adopted once:

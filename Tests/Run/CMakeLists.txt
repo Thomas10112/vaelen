@@ -98,6 +98,11 @@ set_tests_properties(Run.SaveContinue PROPERTIES COST 900)
 # hundred day turns, and the three restores are cheap beside them.
 set_tests_properties(Run.SaveDeath PROPERTIES COST 3400)
 
+# The Phase 16 gate's clause (h), which existed unbuilt while the phase was
+# being reported as closed. Measured at 256/20+10: Begin 4.7 s, container
+# 51.7 MiB, Adopt 712 ms, peak 223 MiB.
+set_tests_properties(Run.AdoptCostsNoGeneration PROPERTIES COST 1200)
+
 # 16.07's store writes real files. It is given a directory of its own under the
 # build tree and the include path to the host-side implementation, which lives
 # in Tools/Store because WHERE a save goes is not the simulation's business.
