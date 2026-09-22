@@ -73,9 +73,20 @@ namespace Vaelen
 	/// project hashed with anything block-structured, this class could not have
 	/// existed without changing every frozen digest in the repository.
 	///
-	/// It allocates nothing and it never fails: there is no buffer to run out
-	/// of. A caller that wants to know whether the image could be WRITTEN must
-	/// still ask `SaveSnapshot`.
+	/// THIS CLASS allocates nothing and never fails: there is no buffer to run
+	/// out of. A caller that wants to know whether the image could be WRITTEN
+	/// must still ask `SaveSnapshot`.
+	///
+	/// THAT IS NOT THE SAME AS SAYING `ComputeStateDigest` ALLOCATES NOTHING,
+	/// and an earlier version of this comment said exactly that. It does not:
+	/// `SerializeBody` copies the whole event log into a temporary vector on
+	/// its way past (`EventLog::WriteTo`), and the log is about three quarters
+	/// of an image. What this class removes is the SECOND copy - the image
+	/// itself - not every copy. The peak figures in ROADMAP 16.13 are a
+	/// measured difference between two paths and stand; the absolute claim did
+	/// not, and folding the digest three times could not have caught it,
+	/// because a transient that is freed each time never moves a high-water
+	/// mark that is already past it.
 	class VAELEN_SIM_API HashingWriter final : public IArchive
 	{
 	public:

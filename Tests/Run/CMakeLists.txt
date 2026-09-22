@@ -280,6 +280,7 @@ add_test(NAME Run.SaveFuzz
           -DSTREAM=${PROJECT_SOURCE_DIR}/Tests/Run/Streams/aelvor128-played-2026-09-21.stream
           -DPOINTS=4 -DSEED=7
           "-DWANT=savefuzz: 0 of 4 save point(s) bad, 0 parted"
+          "-DEXPECT=609253a29361ec5f"
           -P ${CMAKE_CURRENT_LIST_DIR}/SaveFuzz.cmake)
 
 # CONTROL ONE. Restore every save point WITHOUT its RUN section and continue:
@@ -292,6 +293,7 @@ add_test(NAME Run.SaveFuzz.WithheldRun
           -DSTREAM=${PROJECT_SOURCE_DIR}/Tests/Run/Streams/aelvor128-played-2026-09-21.stream
           -DPOINTS=4 -DSEED=7 -DMORE=--withhold-run
           "-DWANT=savefuzz: PASS withholding the run is what parts the walk, and not before the first look"
+          "-DEXPECT=609253a29361ec5f"
           -P ${CMAKE_CURRENT_LIST_DIR}/SaveFuzz.cmake)
 
 # CONTROL TWO. One byte of a 22 MB container flipped, and the reader must
@@ -302,6 +304,7 @@ add_test(NAME Run.SaveFuzz.Corrupt
           -DSTREAM=${PROJECT_SOURCE_DIR}/Tests/Run/Streams/aelvor128-played-2026-09-21.stream
           -DPOINTS=2 -DSEED=7 "-DMORE=--corrupt-byte;5000000"
           "-DWANT=savefuzz: PASS a flipped byte is refused, not loaded"
+          "-DEXPECT=609253a29361ec5f"
           -P ${CMAKE_CURRENT_LIST_DIR}/SaveFuzz.cmake)
 
 set_tests_properties(Run.SaveFuzz Run.SaveFuzz.WithheldRun Run.SaveFuzz.Corrupt PROPERTIES TIMEOUT 1800)
@@ -326,5 +329,6 @@ add_test(NAME Run.SaveFuzz.Death
           -DPOINTS=3 -DSEED=63
           "-DMORE=--lively;--from-age;85;--to-age;120"
           "-DWANT=savefuzz: 0 of 3 save point(s) bad, 0 parted"
+          "-DEXPECT=18aec14e39a68a8c"
           -P ${CMAKE_CURRENT_LIST_DIR}/SaveFuzz.cmake)
 set_tests_properties(Run.SaveFuzz.Death PROPERTIES TIMEOUT 1800 COST 3600)

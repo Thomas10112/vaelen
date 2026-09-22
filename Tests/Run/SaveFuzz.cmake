@@ -11,7 +11,8 @@
 # Expected in: ATLAS, STREAM, MORE (the flags under test) and WANT (a line the
 # run must print).
 execute_process(
-  COMMAND ${ATLAS} --savefuzz ${STREAM} --points ${POINTS} --seed ${SEED} --stream --want-bound 0 ${MORE}
+  COMMAND ${ATLAS} --savefuzz ${STREAM} --points ${POINTS} --seed ${SEED} --stream --want-bound 0
+          --expect-state ${EXPECT} ${MORE}
   RESULT_VARIABLE Ran
   OUTPUT_VARIABLE Said
   ERROR_VARIABLE Wrote)
@@ -19,6 +20,14 @@ execute_process(
 string(REPLACE "\r" "" Said "${Said}")
 string(REPLACE "\r" "" Wrote "${Wrote}")
 set(All "${Said}${Wrote}")
+
+# The pinned uninterrupted digest is what makes this a check against the RECORD
+# rather than a check of the tool against itself. Sixteen hex digits or it is
+# not a digest.
+string(LENGTH "${EXPECT}" ExpectLen)
+if(NOT ExpectLen EQUAL 16)
+  message(FATAL_ERROR "EXPECT is ${ExpectLen} characters and cannot be a state digest: '${EXPECT}'")
+endif()
 
 string(LENGTH "${WANT}" WantLen)
 if(WantLen LESS 20)

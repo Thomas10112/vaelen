@@ -515,6 +515,19 @@ namespace
 		/// that misses a clause.
 		std::string DeathWalk;
 		uint32 DeathDays = 1200u;
+		/// 16.12(b) fix: the state digest the uninterrupted walk MUST reach.
+		///
+		/// Straight.Wrong catches a wiring that makes the world offer different
+		/// PEOPLE, but not one that changes what the world CONTAINS while the
+		/// person indices happen to survive - which is exactly what dropping
+		/// --lively does. Measured: the death walk without it replays with
+		/// 0 wrong and lands on a973fafaa72d6be5 instead of 18aec14e39a68a8c,
+		/// in containers of 2 MB instead of 208 MB.
+		///
+		/// A .stream file carries no digest, so the only external reference is
+		/// one the caller pins - the same way Replay.Lived pins four of them.
+		/// Without it this tool can only agree with itself.
+		std::string ExpectState;
 		/// TOLD, NOT READ, exactly as Options::Stream is. Player::StreamHeader
 		/// carries Seed, Size, PreHistory, Years and a version and NO wiring
 		/// bits, so a walk recorded in a lively world and replayed without this
@@ -681,6 +694,10 @@ namespace
 			{
 				Out.CorruptByte = static_cast<long>(Value);
 				++I;
+			}
+			else if (std::strcmp(Arg, "--expect-state") == 0 && HasValue)
+			{
+				Out.ExpectState = Argv[++I];
 			}
 			else if (std::strcmp(Arg, "--lively") == 0)
 			{
@@ -1440,6 +1457,7 @@ namespace
 	{
 		const std::vector<uint32>* Wanted = nullptr;
 		std::vector<FuzzPoint>* Points = nullptr;
+		uint32* Refused = nullptr;
 		uint64 Prev = 0;
 	};
 
@@ -1463,9 +1481,18 @@ namespace
 			P.Day = Day;
 			P.Tick = W.Now();
 			P.Before = C.Prev;
-			if (Vaelen::Run::BuildCheckpoint(W, P.Bytes) == Vaelen::Run::CheckpointResult::Ok)
+			const Vaelen::Run::CheckpointResult R = Vaelen::Run::BuildCheckpoint(W, P.Bytes);
+			if (R == Vaelen::Run::CheckpointResult::Ok)
 			{
 				C.Points->push_back(std::move(P));
+			}
+			else
+			{
+				// Said out loud rather than dropped: a point that vanishes
+				// silently is a point nothing downstream can count.
+				std::fprintf(stderr, "savefuzz: day %u REFUSED its container, %s\n", Day,
+							 Vaelen::Run::CheckpointResultToString(R));
+				++*C.Refused;
 			}
 		}
 		// After it is used, never before: this is tomorrow's yesterday.
@@ -1595,9 +1622,11 @@ namespace
 		Host.ToAge = Opt.ToAge;
 
 		std::vector<FuzzPoint> Points;
+		uint32 CouldNotBuild = 0;
 		FuzzCatch Catch;
 		Catch.Wanted = &Wanted;
 		Catch.Points = &Points;
+		Catch.Refused = &CouldNotBuild;
 		Vaelen::Run::DayWatch Watching;
 		Watching.Begun = &FuzzBegun;
 		Watching.After = &FuzzAfterDay;
@@ -1608,9 +1637,48 @@ namespace
 			std::fprintf(stderr, "savefuzz: the walk was refused by its own replay\n");
 			return 1;
 		}
+		// THE BASELINE HAS TO BE THE RECORDED WALK, AND THIS CHECK WAS MISSING.
+		//
+		// Refused covers only a precondition - not begun, no Play, or a header
+		// SameWorld rejects. It is NOT set when the replay reaches different
+		// PEOPLE, which is Wrong/WrongTakings, and that is exactly what a wrong
+		// host wiring produces. The baseline, every container and every resumed
+		// run are all built from the same RO, so a wrong RO is wrong
+		// identically everywhere and every save point still "lands": the tool
+		// was a self-consistency check that could not notice it had been handed
+		// the wrong world.
+		//
+		// Measured: the death walk replayed WITHOUT --lively reported
+		// "0 of 3 save point(s) bad" and exited 0, on containers of 2 MB rather
+		// than 208 MB and a state of a973fafaa72d6be5 rather than
+		// 18aec14e39a68a8c. Tests/Run/Streams/README.md said those flags
+		// mattered; the tool enforced not one of them.
+		if (Straight.Wrong != 0u || Straight.Left != 0u)
+		{
+			std::fprintf(stderr,
+						 "savefuzz: THE WALK DOES NOT REPLAY IN THIS WORLD - %u wrong (%u of them takings), %u "
+						 "record(s) never reached. The wiring given on the command line is not the one it was "
+						 "recorded with, and a .stream file cannot carry it.\n",
+						 Straight.Wrong, Straight.WrongTakings, Straight.Left);
+			return 1;
+		}
 		std::printf("savefuzz: %s, %zu day turns, %zu save point(s) from seed %llx, wiring stream=%d\n",
 					Opt.SaveFuzz.c_str(), S.Days.size(), Points.size(), static_cast<unsigned long long>(Opt.Seed),
 					Opt.Stream ? 1 : 0);
+		if (!Opt.ExpectState.empty())
+		{
+			char Got[32];
+			std::snprintf(Got, sizeof Got, "%016llx", static_cast<unsigned long long>(Straight.State));
+			if (Opt.ExpectState != Got)
+			{
+				std::fprintf(stderr,
+							 "savefuzz: THE UNINTERRUPTED WALK REACHED %s, NOT %s. The world built from this "
+							 "command line is not the one the walk was recorded in.\n",
+							 Got, Opt.ExpectState.c_str());
+				return 1;
+			}
+			std::printf("savefuzz: the uninterrupted walk reaches %s, as pinned\n", Got);
+		}
 		std::printf("savefuzz: uninterrupted: state %016llx, log %016llx, life %016llx\n",
 					static_cast<unsigned long long>(Straight.State), static_cast<unsigned long long>(Straight.Log),
 					static_cast<unsigned long long>(Straight.Life));
@@ -1746,12 +1814,20 @@ namespace
 				std::printf("savefuzz: FAIL withholding the run changed nothing, so this run measures nothing\n");
 				return 1;
 			}
-			// AND IT HAS TO PART FOR THE RIGHT REASON. The run state is built
-			// by LOOKING - Detail, Near and Watched are what a look fills in -
-			// so a world denied its run cannot differ before the walk's first
-			// look. A mismatch earlier than that is not the run being missed;
-			// it is the restore itself being broken, and it would sail through
-			// a check that only counted mismatches.
+			// THIS GUARD CANNOT FIRE, AND SAYING SO IS THE POINT.
+			//
+			// FirstTick is a save point's P.Tick, set at DayWatch::After, i.e.
+			// AFTER a day turn. Both checked-in walks look on their very first
+			// day - the death walk's first record of all is a look at tick
+			// 777600 - so FirstLook is always at or before the first save
+			// point's tick and FirstTick < FirstLook is false for every walk
+			// this repository has. It was written to catch a restore broken
+			// from tick zero, and it would not catch one.
+			//
+			// It is kept, and kept honest: the comparison is right, the walks
+			// are simply never shaped to trip it. What actually guards that
+			// case now is --expect-state above, which pins the uninterrupted
+			// walk's digest and fails before any of this is reached.
 			if (FirstLook != 0ull && FirstTick < FirstLook)
 			{
 				std::printf("savefuzz: FAIL the first mismatch is at tick %llu, BEFORE the walk's first look "
@@ -1764,6 +1840,19 @@ namespace
 			return 0;
 		}
 
+		// NO POINTS, OR A POINT THAT COULD NOT BE BUILT, IS A FAILURE.
+		// FuzzAfterDay used to drop a container it could not build, so a build
+		// that cannot save at all collected nothing, counted nothing bad and
+		// returned 0 - the fuzzer reporting success for the one outcome it
+		// exists to catch.
+		if (Points.empty() || CouldNotBuild != 0u)
+		{
+			std::fprintf(stderr,
+						 "savefuzz: %zu save point(s) built and %u REFUSED their container, so this run did not "
+						 "measure what it was asked to\n",
+						 Points.size(), CouldNotBuild);
+			return 1;
+		}
 		std::printf("savefuzz: %u of %zu save point(s) bad, %u parted (first on day %ld)\n", Bad, Points.size(), Parted,
 					FirstParted);
 		return Bad == 0u ? 0 : 1;
@@ -1799,6 +1888,10 @@ namespace
 		// Declared by the caller and printed below, because whoever replays
 		// this walk has to be told the same thing: the file cannot carry it.
 		RO.Lively = Opt.Lively;
+		// --colony was accepted and silently ignored here while --savefuzz and
+		// --replay both honoured it. A type declared in a different position is
+		// a different world, so that was a world-identity bit taken and dropped.
+		RO.Colony = Opt.Colony;
 		Vaelen::Run::Aelvor A(RO);
 		if (!A.Begin())
 		{
@@ -1873,9 +1966,14 @@ namespace
 					"%ld, %u death(s), %zu takings, %zu day turns, %zu bytes\n",
 					RO.Size, RO.PreHistory, RO.Years, Opt.FromAge, Opt.ToAge, RO.Lively ? 1 : 0, First, DiedOn, Deaths,
 					D.Stream().Takings.size(), D.Stream().Days.size(), Text.size());
-		std::printf("deathwalk: REPLAY IT WITH --stream --lively --from-age %u --to-age %u --want-bound %u; the "
-					"file carries none of that\n",
-					Opt.FromAge, Opt.ToAge, Opt.WantBound);
+		// EVERY FLAG SUBSTITUTED, none baked in. The first version hardcoded
+		// --lively into this format string while honouring Opt.Lively when
+		// recording, so a walk written WITHOUT it printed a recipe that builds
+		// a different world - the precise defect this line exists to prevent,
+		// committed inside the line itself.
+		std::printf("deathwalk: REPLAY IT WITH --stream%s%s --from-age %u --to-age %u --want-bound %u; the file "
+					"carries none of that\n",
+					RO.Lively ? " --lively" : "", RO.Colony ? " --colony" : "", Opt.FromAge, Opt.ToAge, Opt.WantBound);
 		return 0;
 	}
 

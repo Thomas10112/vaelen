@@ -5420,7 +5420,18 @@ The middle row is the test. The last is the case `Door.h` names — a played per
 | folded (16.13) | **923 ms** | 638.8 MiB | `8f3b0524f000c9ef` |
 | imaged (before) | 2488 ms | 1009.1 MiB | `8f3b0524f000c9ef` |
 
-Same answer, **2.7× the speed, 370 MiB less peak** — and the comparison is against the old body reproduced line for line, not against a description of it. The first fold does raise peak by 210 MiB over the post-`Begin` figure, which looked like the new path allocating after all; folding a second and a third time adds 0.1 MiB, so that rise is the world's own pages becoming resident as they are read. The digest allocates nothing, and it took a second instrument to be entitled to say so.
+Same answer, **2.7× the speed, 370 MiB less peak** — and the comparison is against the old body reproduced line for line, not against a description of it.
+
+**AND THEN I GOT THE EXPLANATION WRONG, AND AN ADVERSARIAL REVIEW CAUGHT IT.** The first fold raises peak RSS by 210 MiB over the post-`Begin` figure. I folded a second and a third time, saw +0.1 MiB, and concluded the rise was the world's own pages becoming resident — and wrote "the digest allocates nothing, and it took a second instrument to be entitled to say so". **That instrument could not fail.** Peak RSS is a high-water mark, so a transient allocated and freed inside each fold produces exactly the signature I observed: fold one sets the mark, folds two and three cannot raise it. The residency story was worse than unproven, it was impossible — those pages were written by `Begin` in the same process and never freed, so re-reading them cannot raise peak RSS at all.
+
+**COUNTED AT THE SOURCE**, through a global `operator new` tally on the same wiring at 64/20+10:
+
+| | total requested | worst outstanding |
+|---|---|---|
+| `ComputeStateDigest` | **40.3 MiB** | **29.6 MiB** |
+| `SaveSnapshot` | 199.5 MiB | 118.5 MiB |
+
+So the digest costs **a fifth of the old path's bytes and a quarter of its worst moment** — a real win, and not the zero I claimed. `HashingWriter` itself allocates nothing; `SerializeBody` still copies the event log on its way past (`EventLog::WriteTo`), and the log is about three quarters of any image with a history. The 210 MiB was that copy, and the arithmetic said so all along: three quarters of this cell's 276 MB image is ~207 MB against an observed 210 MiB.
 
 `Snapshot.TheDigestIsTheTrailerAndNoImageIsBuiltToFindIt` asserts the equality over 27 world shapes (three seeds × three populations × three tick counts) rather than trusting the frozen tests to notice, and separately checks that five uneven chunks fold to what one call over the same bytes returns. All 52 entries under `Sim.`, `Run.Checkpoint`, `Run.Golden`, `Golden`, `Replay.` and `Atlas.` — every frozen-digest gate this project has — stayed green, `cc8fa838eb0e4929` included.
 

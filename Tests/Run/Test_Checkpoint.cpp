@@ -595,8 +595,20 @@ VAELEN_TEST(Checkpoint, TheGateCellAtOneTwentyEight)
 	//
 	// So the shorter history is not a weaker test of ADOPT - it exercises every
 	// line of the same path - it is the longest history that can be COMPARED on
-	// an ordinary machine. That limit belongs to ComputeStateDigest and not to
+	// an ordinary machine. That limit belonged to ComputeStateDigest and not to
 	// anything this phase built.
+	//
+	// 16.13 LIFTED MOST OF THAT LIMIT, and the paragraph above is left standing
+	// because it is what the test was built against. ComputeStateDigest no
+	// longer serialises the world: it folds the bytes through a HashingWriter.
+	// Counted through operator new on this cell's wiring at 64/20+10, the
+	// digest requests 40.3 MiB against SaveSnapshot's 199.5 MiB, and peaks at
+	// 29.6 MiB against 118.5 MiB - a quarter of the old cost, not none of it,
+	// because SerializeBody still copies the event log on its way past. The
+	// 300+120 cell has since been run end to end in two processes through a
+	// file (ROADMAP, Phase 16 gate). This entry stays at 60+30 because a CI
+	// runner should not be asked for twelve gigabytes, which is a different
+	// reason from the one above and is worth not confusing with it.
 	Options O;
 	O.Size = 128u;
 	O.PreHistory = 60u;
@@ -946,7 +958,22 @@ VAELEN_TEST(Checkpoint, ProvenanceReplaysFromTheFileAlone)
 
 	Aelvor Source(Played);
 	VT_REQUIRE(Source.Begin());
+	// NOT THE DEFAULTS, AND THAT WAS A DEFECT IN THIS TEST. Both sides used to
+	// be default-constructed 16/40/1/1, so the round-trip assertion below
+	// passed even if ReadStreamSection never touched CarriedRules at all - if
+	// the four GetU32 calls were deleted, or read at the wrong offsets, or the
+	// section were never written. An instrument that cannot fail is worse than
+	// none (ADR-0149), and this one was mine.
+	// A WIDER window than the default 16-40, not a narrower one: every field
+	// differs from the default so the round-trip assertions can fail, and the
+	// window is a SUPERSET so the world still offers somebody. The first
+	// attempt used 21-37 and the world offered nobody - a test that cannot
+	// fail, replaced by one that could not run.
 	Player::StartRules Rules;
+	Rules.FromAge = 15u;
+	Rules.ToAge = 45u;
+	Rules.WantBound = 0u;
+	Rules.PreferOre = 0u;
 	Door Recording(Source, Rules);
 	VT_CHECK_MSG(Recording.TakeUp() != 0u, "the world offers somebody to play");
 	VT_REQUIRE(Recording.Stream().Takings.size() == 1u);
@@ -978,8 +1005,21 @@ VAELEN_TEST(Checkpoint, ProvenanceReplaysFromTheFileAlone)
 				 Carried.Days.size(), Recording.Stream().Days.size());
 	VT_CHECK_MSG(Carried.Looks.size() == Recording.Stream().Looks.size(), "and every look");
 	VT_CHECK_MSG(Carried.Takings.size() == Recording.Stream().Takings.size(), "and every taking");
-	VT_CHECK_MSG(CarriedRules.WantBound == Rules.WantBound && CarriedRules.FromAge == Rules.FromAge,
-				 "and the host's rules, which are not in the tape and are not an input");
+	// ALL FOUR FIELDS, each named in its own message. PreferOre in particular
+	// had no coverage anywhere in the tree: it is 1 in every other save test,
+	// so transposing it with WantBound, or dropping it from the section, would
+	// have passed everything.
+	VT_CHECK_MSG(CarriedRules.FromAge == Rules.FromAge, "FromAge travelled: %u, recorded %u", CarriedRules.FromAge,
+				 Rules.FromAge);
+	VT_CHECK_MSG(CarriedRules.ToAge == Rules.ToAge, "ToAge travelled: %u, recorded %u", CarriedRules.ToAge,
+				 Rules.ToAge);
+	VT_CHECK_MSG(CarriedRules.WantBound == Rules.WantBound, "WantBound travelled: %u, recorded %u",
+				 CarriedRules.WantBound, Rules.WantBound);
+	VT_CHECK_MSG(CarriedRules.PreferOre == Rules.PreferOre, "PreferOre travelled: %u, recorded %u",
+				 CarriedRules.PreferOre, Rules.PreferOre);
+	VT_CHECK_MSG(CarriedRules.FromAge != Player::StartRules{}.FromAge ||
+					 CarriedRules.PreferOre != Player::StartRules{}.PreferOre,
+				 "and they are NOT the defaults, so the four checks above can actually fail");
 
 	// ROUTE ONE: adopt the state.
 	Aelvor Adopted(Played);

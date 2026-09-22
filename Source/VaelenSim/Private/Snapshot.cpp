@@ -677,7 +677,9 @@ namespace Vaelen
 			return 0;
 		}
 		// The trailer is HashBytes over exactly these bytes, and this IS that
-		// value - see HashingWriter. Nothing was allocated to find it.
+		// value - see HashingWriter. No IMAGE was built to find it; the event
+		// log is still copied once on the way past, inside SerializeBody, which
+		// an earlier version of this comment wrongly claimed away.
 		return Ar.Digest();
 	}
 } // namespace Vaelen
