@@ -5456,7 +5456,7 @@ I reported Phase 16 as "closed but for 16.14" in several session reports. That w
 | **(g) `--savefuzz`** | **MET 2026-09-22** — `Run.SaveFuzz.SixtyFour`, sixty-four seeded points at seed 1: 0 bad, 0 parted, 87 s. Every point re-saves byte-identically, re-adopts, refuses a second adopt, and its remainder lands on `609253a29361ec5f` |
 | **(h) `Run.AdoptCostsNoGeneration`** | **BUILT 2026-09-22, see below** |
 | (i) refusals name themselves | met in substance inside `Run.Checkpoint` and `Sim.Snapshot`, under other entry names |
-| **(j) corpus and forge** | **NOT BUILT — deferred by decision** to the commit that bumps the save format to v4, because the current version IS 3 and forging a v3 forges the identity |
+| **(j) corpus and forge** | **HALF MET, and I first recorded this wrongly.** `Golden.V3RoundTrips` EXISTS and passes — it lives in `Test_Golden.cpp`, so under the ctest entry `Run.Golden`, over three checked-in v3 snapshots (`bare-16`, `full-16`, `full-32`). The CI excludes only `Shuffled`, so it ran on all ten green legs: gcc and clang under Linux in debug and release, macOS, **and MSVC**. That is precisely the cross-compiler measurement the clause says it wants. What is NOT built is the migration half — `Save.CorpusMigrates` and `Migration.ForgeReproducesTheRealV3Golden` — deferred to the v4 bump, because the current version IS 3 and forging a v3 forges the identity |
 | **(k) second-process load, `DiskFull`** | **MET 2026-09-22** — `Run.Store` covers the atomic write and the full-disk refusal; `Atlas.SaveThenLoadFromDisk` now covers the other half |
 | (l) provenance replays | met — `Checkpoint.ProvenanceReplaysFromTheFileAlone` |
 | (m) container round trip | met inside `Run.Checkpoint`, including the 180-offset sweep |
@@ -5471,7 +5471,9 @@ Nothing here asserts on a stopwatch; the milliseconds are printed (ADR-0109).
 
 **AND ONE OF ITS DELIBERATE FAILURES WAS VOID.** Truncating the container before running the driver proved nothing: the driver SAVES to that path before loading it, so the short file was overwritten and the run passed. That is the second time today an experiment failed to fail and told me about the experiment rather than the guard — the first being a look at region 0, which changes `Watching()` after all. The comparison does bite: ten days in one process reach `9eea0e868b841058` and five in the other reach `c17e659b51a4bbbf`. A wrong wiring is refused by name (`LivelyDiffers`) and a missing file is refused before anything is compared.
 
-**WHAT REMAINS BETWEEN PHASE 16 AND ITS GATE:** clause (j) alone — the golden corpus and the migration forge — deferred by decision to the commit that bumps the save format to v4, because the current version IS 3 and forging a v3 forges the identity. Plus 16.14, which needs the owner's Windows machine.
+**WHAT REMAINS BETWEEN PHASE 16 AND ITS GATE:** the MIGRATION half of clause (j) — `Save.CorpusMigrates` and the forge — deferred to the v4 bump. Plus 16.14, which needs the owner's Windows machine.
+
+**AND THE AUDIT ITSELF NEEDED CORRECTING, IN THE OTHER DIRECTION.** The first pass of this table recorded (j) as "NOT BUILT", by reading a list of ctest ENTRY names and not finding `Golden.V3RoundTrips` among them. It is not an entry; it is a TEST, inside `Test_Golden.cpp`, under the entry `Run.Golden` — the same file-to-entry mapping that renamed the control in clause (e). An audit that is wrong in the pessimistic direction is as wrong as one that is wrong in the generous direction, and the same method fixed both: compare what the gate NAMES against what actually runs, then look inside the entry rather than at its label.
 
 
 
