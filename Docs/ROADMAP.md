@@ -6636,3 +6636,55 @@ counts literals; `<18.0N head>` is the commit that closes that task, written int
   grep; 18.01 builds the instrument that makes such a claim fail on purpose, with the ADR-0131 commit as its known answer.
 - ADR-0151 to ADR-0154 are written in `Docs/DECISIONS.md` as PROPOSED, each applied by the task that names it.
 
+### 18.01 AS BUILT, 2026-09-24
+
+`Tools/frozen_census.py`, 106 files named one by one in its table, and the
+census at the phase's start:
+
+```
+[frozen-census] 514 sites in 106 files: WORLD 170, GEN 14, HASH 244, CONST 15, SEED 11, SYNTHETIC 8, RECORD 52
+[frozen-census] by kind: WORLD/state 92, WORLD/log 23, WORLD/digest 17, WORLD/life 10, WORLD/section 10,
+                WORLD/trailer 9, WORLD/panel 7, WORLD/frame 1, WORLD/ground 1; GEN/state 14; HASH/digest 228,
+                HASH/state 10, HASH/seed 6; RECORD/note 33, RECORD/section 10, RECORD/trailer 6, RECORD/digest 3;
+                CONST/digest 13, CONST/note 2; SEED/seed 11; SYNTHETIC/digest 5, /frame 2, /ground 1
+```
+
+514 and not the panel's 414 because the panel counted `0x` tokens in code only;
+the census also reads the 43 bare tokens of the two test CMakeLists and the
+drivers, the 33 rows of the three READMEs, and the tool's own three examples -
+and it agrees with `grep -Po` token for token on every one of the 106 files
+(the reconciliation was run before this was written: 0 disagreements).
+
+THE KNOWN ANSWER. `--diff be9df8d^ be9df8d`, the ADR-0131 re-freeze:
+
+```
+[frozen-census] be9df8d^..be9df8d: 55 removed, 50 added, in 19 file(s)
+[frozen-census]   WORLD -55/+50: digest -7/+6, log -14/+14, state -34/+30
+[frozen-census]   unmoved: GEN, HASH, CONST, SEED, SYNTHETIC, RECORD
+```
+
+The panel's figure exactly, and pinned in the self-test - from a checked-in
+fixture of that commit's literal lines (`Tools/CensusFixtures/adr-0131.diff`,
+124 lines), because the CI clones at depth 1 and cannot show `be9df8d`; where
+the history IS present the fixture is regenerated from git and must be
+byte-identical, and it is. The blind `\b` regex over the same lines reports 0,
+and that arm is kept permanently.
+
+PHASE 17, RE-READ BY THE INSTRUMENT: `--diff 6ee00b6 8c0a4e4` prints 0 removed
+and 167 added in 7 files - WORLD +16 (the corpus's ten section digests and six
+trailers), HASH +120 (the event-type table and the FNV constants), SEED +10,
+CONST +5, RECORD +16 - GEN and SYNTHETIC unmoved. Clause (i) held. And today's
+three commits after the close: `--diff 8c0a4e4 HEAD`, 0 removed, 3 added, all
+HASH (the digest of no bytes, twice in the harness test and once in the harness).
+
+THE CONTROLS, ELEVEN, EVERY ONE FAILED ON PURPOSE OR SHOWN ABLE TO: the pin
+moved to 54 fails one control by name; the code regex made blind (`\b0x...\b`)
+fails six at once - the planted refusal, the known answer (-0/+0 in 0 files),
+the raw count, the fixture's regeneration, the struck-out file and the HASH
+mutation - which is the shape of an instrument that cannot see: green on a
+healthy tree and wrong about everything the moment it is asked a question.
+
+`Kernel.FrozenCensus` and `Kernel.FrozenCensusSelfTest` beside `Kernel.WorldWiring`;
+`Tools/verify_fast.sh` runs `--check` as its eighth check, so a literal in a file
+the table does not name is refused before a push. Gate clause (a) is met by the
+self-test; clause (c)'s baseline is the census above.

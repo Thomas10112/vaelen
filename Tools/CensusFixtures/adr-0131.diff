@@ -1,0 +1,124 @@
+diff --git a/Tests/Colony/Test_ColonyGate.cpp b/Tests/Colony/Test_ColonyGate.cpp
+-#define VAELEN_PLAYERGATE_FROZEN_HALF 0xcbabf49184794e61ull
+-#define VAELEN_PLAYERGATE_FROZEN_END 0x458fd55fec8bfeb6ull
+-#define VAELEN_PLAYERGATE_LOG 0x83ffbf6305c229a1ull
++#define VAELEN_PLAYERGATE_FROZEN_HALF 0x13ed18cbe1ab95a3ull
++#define VAELEN_PLAYERGATE_FROZEN_END 0x43786be94ea6011aull
++#define VAELEN_PLAYERGATE_LOG 0xed52a98caebc7d65ull
+-#define VAELEN_COLONYGATE_FROZEN_HALF 0x5ce64eda88e7e073ull
+-#define VAELEN_COLONYGATE_FROZEN_END 0x28cd6c1ebac92181ull
+-#define VAELEN_COLONYGATE_LOG 0x47c19fcdd72a8ee8ull
++#define VAELEN_COLONYGATE_FROZEN_END 0x915df627394d53c5ull
++#define VAELEN_COLONYGATE_LOG 0x205401cf6075e326ull
+diff --git a/Tests/Economy/Test_EconomyGate.cpp b/Tests/Economy/Test_EconomyGate.cpp
+-#define VAELEN_ECOGATE_FROZEN_256_250 0x7023dab1da711d30ull
+-#define VAELEN_ECOGATE_FROZEN_256_500 0x0679de8554e476acull
+-#define VAELEN_ECOGATE_LOG_256_500 0xffd0cf1c020217a1ull
+-#define VAELEN_ECOGATE_TEXT_256_500 0xabbefc9e969a128full
++#define VAELEN_ECOGATE_FROZEN_256_250 0x610cc292326a1d09ull
++#define VAELEN_ECOGATE_FROZEN_256_500 0x55272111f83e581eull
++#define VAELEN_ECOGATE_LOG_256_500 0x705904ddce2feba5ull
++#define VAELEN_ECOGATE_TEXT_256_500 0x4f7073d392b27428ull
+diff --git a/Tests/Economy/Test_Grains.cpp b/Tests/Economy/Test_Grains.cpp
+-#define VAELEN_GRAINS_LIVING_64 0xbdb8fa25bcced57dull
++#define VAELEN_GRAINS_LIVING_64 0x477efde8a0ccb23dull
+diff --git a/Tests/Economy/Test_Ledger.cpp b/Tests/Economy/Test_Ledger.cpp
+-#define VAELEN_GRAINS_LIVING_64 0xbdb8fa25bcced57dull
++#define VAELEN_GRAINS_LIVING_64 0x477efde8a0ccb23dull
+diff --git a/Tests/Gameplay/Test_GameplayGate.cpp b/Tests/Gameplay/Test_GameplayGate.cpp
+-#define VAELEN_PLAYERGATE_FROZEN_HALF 0xcbabf49184794e61ull
+-#define VAELEN_PLAYERGATE_FROZEN_END 0x458fd55fec8bfeb6ull
+-#define VAELEN_PLAYERGATE_LOG 0x83ffbf6305c229a1ull
++#define VAELEN_PLAYERGATE_FROZEN_HALF 0x13ed18cbe1ab95a3ull
++#define VAELEN_PLAYERGATE_FROZEN_END 0x43786be94ea6011aull
++#define VAELEN_PLAYERGATE_LOG 0xed52a98caebc7d65ull
+-#define VAELEN_COLONYGATE_FROZEN_HALF 0x5ce64eda88e7e073ull
+-#define VAELEN_COLONYGATE_FROZEN_END 0x28cd6c1ebac92181ull
+-#define VAELEN_COLONYGATE_LOG 0x47c19fcdd72a8ee8ull
++#define VAELEN_COLONYGATE_FROZEN_END 0x915df627394d53c5ull
++#define VAELEN_COLONYGATE_LOG 0x205401cf6075e326ull
+-#define VAELEN_GAMEPLAYGATE_FROZEN_HALF 0xd768c1c156bb08f2ull
+-#define VAELEN_GAMEPLAYGATE_FROZEN_END 0x7f9a7e18ab5813fbull
+-#define VAELEN_GAMEPLAYGATE_LOG 0x5b7b047ac3126368ull
++#define VAELEN_GAMEPLAYGATE_FROZEN_HALF 0x13a6f9c64557e49dull
++#define VAELEN_GAMEPLAYGATE_LOG 0x9480e2f82cdd4554ull
+diff --git a/Tests/Infrastructure/Test_InfrastructureGate.cpp b/Tests/Infrastructure/Test_InfrastructureGate.cpp
+-#define VAELEN_WORKSGATE_FROZEN_256_250 0x44afb686db76f791ull
+-#define VAELEN_WORKSGATE_FROZEN_256_500 0x4efbefd0e45cf20cull
+-#define VAELEN_WORKSGATE_LOG_256_500 0x52647cbd0ac2c26aull
+-#define VAELEN_WORKSGATE_TEXT_256_500 0x4fdf3eb5cd85c1bcull
++#define VAELEN_WORKSGATE_FROZEN_256_250 0x387298b713101486ull
++#define VAELEN_WORKSGATE_FROZEN_256_500 0x30364f6263a1ac03ull
++#define VAELEN_WORKSGATE_LOG_256_500 0x39bbb70abea06aeeull
++#define VAELEN_WORKSGATE_TEXT_256_500 0x556652079cab141dull
+diff --git a/Tests/Infrastructure/Test_WorksHistory.cpp b/Tests/Infrastructure/Test_WorksHistory.cpp
+-#define VAELEN_ANNALS_TEXT_128 0xb43f79e23e518716ull
++#define VAELEN_ANNALS_TEXT_128 0x89d555fefbb3ebf2ull
+diff --git a/Tests/Military/Test_MilitaryGate.cpp b/Tests/Military/Test_MilitaryGate.cpp
+-#define VAELEN_MILGATE_FROZEN_256_250 0xc8db2e3f33a880d4ull
+-#define VAELEN_MILGATE_FROZEN_256_500 0xcc2dc8ad6f58f456ull
+-#define VAELEN_MILGATE_LOG_256_500 0x76eb06ca9cbdec1dull
+-#define VAELEN_MILGATE_TEXT_256_500 0x6f854e151a62bec5ull
++#define VAELEN_MILGATE_FROZEN_256_250 0x6e5a9a15d6d7793aull
++#define VAELEN_MILGATE_FROZEN_256_500 0xb3e21969dd740ff4ull
++#define VAELEN_MILGATE_LOG_256_500 0x893d86b6f56a8e98ull
++#define VAELEN_MILGATE_TEXT_256_500 0xdc3018a056e36f6eull
+diff --git a/Tests/Military/Test_MilitaryHistory.cpp b/Tests/Military/Test_MilitaryHistory.cpp
+-#define VAELEN_ANNALS_TEXT_128 0x88eee3886fdd6d57ull
++#define VAELEN_ANNALS_TEXT_128 0x89d555fefbb3ebf2ull
+diff --git a/Tests/Player/Test_PlayerGate.cpp b/Tests/Player/Test_PlayerGate.cpp
+-#define VAELEN_PLAYERGATE_FROZEN_HALF 0xcbabf49184794e61ull
+-#define VAELEN_PLAYERGATE_FROZEN_END 0x458fd55fec8bfeb6ull
+-#define VAELEN_PLAYERGATE_LOG 0x83ffbf6305c229a1ull
++#define VAELEN_PLAYERGATE_FROZEN_HALF 0x13ed18cbe1ab95a3ull
++#define VAELEN_PLAYERGATE_FROZEN_END 0x43786be94ea6011aull
++#define VAELEN_PLAYERGATE_LOG 0xed52a98caebc7d65ull
+diff --git a/Tests/Politics/Test_PoliticsGate.cpp b/Tests/Politics/Test_PoliticsGate.cpp
+-#define VAELEN_POLGATE_FROZEN_256_250 0xa0e51f10cd133138ull
+-#define VAELEN_POLGATE_FROZEN_256_500 0xc51af20d3ba6aee6ull
+-#define VAELEN_POLGATE_LOG_256_500 0x100d9220a46ededaull
+-#define VAELEN_POLGATE_TEXT_256_500 0x9637e3753f9d2675ull
++#define VAELEN_POLGATE_FROZEN_256_250 0x3878725ecc13f316ull
++#define VAELEN_POLGATE_LOG_256_500 0x53fe6223f5104dcdull
++#define VAELEN_POLGATE_TEXT_256_500 0x263bffc99b55e098ull
+diff --git a/Tests/Population/Test_PopulationGate.cpp b/Tests/Population/Test_PopulationGate.cpp
+-#define VAELEN_POPGATE_FROZEN_256_250 0xfa5be8eb020c970full
+-#define VAELEN_POPGATE_FROZEN_256_500 0xa916dafda879a758ull
++#define VAELEN_POPGATE_FROZEN_256_250 0x3baadf987cb88bf6ull
++#define VAELEN_POPGATE_FROZEN_256_500 0x787134179545cf82ull
+-#define VAELEN_POPGATE_LOG_256_500 0xba7af3a8312954d8ull
++#define VAELEN_POPGATE_LOG_256_500 0x6879cbc821f51af3ull
+diff --git a/Tests/Sim/Test_Disasters.cpp b/Tests/Sim/Test_Disasters.cpp
+-#define VAELEN_DISASTER_FROZEN_128 0x073bf8b246734ad8ull
++#define VAELEN_DISASTER_FROZEN_128 0xf2ab9a804fca3cf0ull
+diff --git a/Tests/Sim/Test_HistoryGate.cpp b/Tests/Sim/Test_HistoryGate.cpp
+-#define VAELEN_GATE_FROZEN_256_1000 0x3ee019d12e58c774ull
+-#define VAELEN_GATE_FROZEN_256_1500 0xa39530dc59e041e0ull
+-#define VAELEN_GATE_FROZEN_256_2000 0x2ce95360ad09dda9ull
+-#define VAELEN_GATE_LOG_256_2000 0x1b884d94518bfe79ull
++#define VAELEN_GATE_FROZEN_256_1000 0x4e265540f82a6468ull
++#define VAELEN_GATE_FROZEN_256_1500 0xaccb59e1e688b085ull
++#define VAELEN_GATE_FROZEN_256_2000 0x177e28092a87c158ull
++#define VAELEN_GATE_LOG_256_2000 0x3aa536466a7fce87ull
+diff --git a/Tests/Sim/Test_PreHistory.cpp b/Tests/Sim/Test_PreHistory.cpp
+-#define VAELEN_PREHISTORY_FROZEN_256_500 0x445cf9df1b63ba34ull
+-#define VAELEN_PREHISTORY_LOG_256_500 0xe494dd9db829f5efull
++#define VAELEN_PREHISTORY_FROZEN_256_500 0x15049226227c72e4ull
++#define VAELEN_PREHISTORY_LOG_256_500 0x489b1c4eb94a24e6ull
+diff --git a/Tests/Sim/Test_Religion.cpp b/Tests/Sim/Test_Religion.cpp
+-#define VAELEN_RELIGION_FROZEN_128 0x169e51de300cea9full
++#define VAELEN_RELIGION_FROZEN_128 0xac0989f0948e277eull
+diff --git a/Tests/Society/Test_Bondage.cpp b/Tests/Society/Test_Bondage.cpp
+-#define VAELEN_BONDAGE_FROZEN_128 0xa1a92018c62bc034ull
++#define VAELEN_BONDAGE_FROZEN_128 0x17ee3b7169cfc352ull
+diff --git a/Tests/Society/Test_SocietyGate.cpp b/Tests/Society/Test_SocietyGate.cpp
+-#define VAELEN_SOCGATE_FROZEN_256_250 0xe4790c633283e21eull
+-#define VAELEN_SOCGATE_FROZEN_256_500 0x852c82db4615e713ull
+-#define VAELEN_SOCGATE_LOG_256_500 0xd7b7173341039dc8ull
+-#define VAELEN_SOCGATE_TEXT_256_500 0xe719182682fdfd8eull
++#define VAELEN_SOCGATE_FROZEN_256_250 0x669eff7bab0e1b40ull
++#define VAELEN_SOCGATE_FROZEN_256_500 0xa825d9cce4c12573ull
++#define VAELEN_SOCGATE_LOG_256_500 0xd5dd1d65150361a9ull
+diff --git a/Tests/View/Test_ViewGate.cpp b/Tests/View/Test_ViewGate.cpp
+-#define VAELEN_VIEWGATE_FROZEN_STATE 0x97eb395f076dae61ull
++#define VAELEN_VIEWGATE_FROZEN_STATE 0x5bc8478689958433ull

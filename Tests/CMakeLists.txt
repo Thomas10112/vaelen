@@ -35,6 +35,17 @@ if(Python3_Interpreter_FOUND)
   # four source files and needs no compiler of its own.
   add_test(NAME Kernel.WorldWiring
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_world_wiring.py)
+  # 18.01: the classified census of every frozen sixteen-hex literal. Phase
+  # 17's clause (i) grep, `\b[0-9a-f]{16}\b`, printed 0 over the ADR-0131
+  # re-freeze that removed 55 `0x...ull` literals - a suffix leaves no word
+  # boundary - so "no frozen digest moved" had never been measured by anything
+  # that could see one move. --check refuses a literal in a file the table does
+  # not name; --self-test has that commit as its known answer, from a fixture,
+  # because this CI clones at depth 1 and cannot show be9df8d itself.
+  add_test(NAME Kernel.FrozenCensus
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/frozen_census.py --check)
+  add_test(NAME Kernel.FrozenCensusSelfTest
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/frozen_census.py --self-test)
   # 14.07: what the UI may include, and what it may never name. The UI cannot
   # be built by any leg of this CI, and under UnrealBuildTool every kernel
   # include path is transitive into it (VaelenView.Build.cs:29), so this text
