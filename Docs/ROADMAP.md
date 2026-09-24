@@ -6333,6 +6333,37 @@ question they raise is "is that all?", to which the answer is now `Root`.
 | (k) | `ctest -R '^Sim\.HistoryText$|^View\.Chronicle$'` — the why says how it ended: four planted chains (whole, cut, longer than allowed, caused by a person) each named by `History::Why` and each end's sentence printed by the text export; and over a real world the chronicle's why is what the census predicts — two lines, ending at a root. |
 | (j) | `Tools/run_gates.sh linux-clang-debug` prints `GATES-DONE 0 failing`, and `Tools/verify_fast.sh` is clean. |
 
+### The Phase 17 gate, read clause by clause on 2026-09-24
+
+Nine tasks built in one session, 17.01 to 17.09, each with its controls run
+and its deliberate failures fired. The gate is a different question, and it is
+read the way Phase 16's was: the entry the clause NAMES against the entry that
+EXISTS and what it printed.
+
+| clause | state |
+|---|---|
+| (a) `Run.Containers` | **met** — three containers read with no world generated, every recorded number checked against the bytes; `Atlas.ContainersRegenerate` byte-identical |
+| (b) `Kernel.EventTypes` | **met** — generator re-run and diffed on every leg; `Atlas --causes` prints names and refuses any `?<hex>` row |
+| (c) `Run.StoreColdProcess` | **met** — a store that wrote nothing lists three; the pre-fix arm lists zero in the same run; the second **process** is `Atlas.InspectDir.ColdProcess` |
+| (d) `Sim.CauseWalk` | **met** — six ends, both sides of the kind check, the cut-on-the-limit case, and today's `CauseChain` unable to tell a root from a cut |
+| (e) `Sim.Causality` | **met** — the planted graph exact, the cleared-edge arm at 0, and the figures dated in this file: 30.94% and three edges at AELVOR 128, 1.31% and one edge in the corpus |
+| (f) `Atlas.Inspect*` | **met** — three containers pinned whole, an image refused by name, a 4 KiB truncation refused whole, the cold directory listed |
+| (g) `Core.Harness` | **met** — the vacuous round trip passing under `VT_CHECK` and failing under `VT_CHECK_ROUNDTRIP` in one run; four digest refusals |
+| (h) `Run.RefusalsAreTheCachesSafety` | **met, with a finding** — nine doors guarded by name; the tenth found OPEN at the kernel door and pinned as a kept arm that fails the day it closes |
+| (i) no frozen digest moved | **met** — `git diff 6ee00b6..HEAD -- Tests/ Source/ Tools/ Docs/ROADMAP.md \| grep -E '^-.*\b[0-9a-f]{16}\b'` prints **nothing**, over nine tasks |
+| (k) `Sim.HistoryText`, `View.Chronicle` | **met** — four ends named and worded; the real world's chronicle two lines deep, ending at a root |
+| (j) `run_gates.sh linux-clang-debug` | **RUNNING** as this is written; `verify_fast` clean at every commit |
+
+Beside the gate: the CI is ten of ten green on `65b60d4` (run 274), which carries
+17.01 to 17.04 and the fix for the two test defects the CI itself found; the
+five commits after it are pushed and their run is in flight.
+
+What the phase leaves open, all named in the notes above: the kernel door of
+defect 5 (a re-freeze, to share the commit with Phase 18's climate); the nine
+empty-against-itself matrix cells that `VT_CHECK_DIGEST_EQ` now makes visible
+(their own commit); 16.14 and every engine-side task, which are the owner's
+machine; and the owner's six questions, two of them sharper than they were.
+
 ### What is NOT in Phase 17, and why
 
 - **Filling the `Cause` edge across the publish sites.** 27–30 of 132 publishers pass one; the rest create roots. Giving the others causes is correct work and it is a DATA change through fifteen closed phases that moves `EventLog::Digest`, the image, `ComputeStateDigest` and every frozen literal. All three judges said independently that it cannot share a commit with the corpus that is meant to pin the format. It needs a phase boundary or a dedicated commit whose only content is the re-freeze.
