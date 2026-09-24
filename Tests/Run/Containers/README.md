@@ -36,8 +36,10 @@ The **image trailer** is the last eight bytes of the STATE section: what
 `ComputeStateDigest` returns, and what every frozen digest in this repository
 is. It is **not** the STATE row's section digest in the tables below, which is a
 different number over the same bytes. Both are recorded, deliberately, so that a
-reader which swapped them cannot pass — that swap is a live defect in
-`Tools/Store/StdioCheckpointStore.h` and task 17.03 is the fix.
+reader which swapped them cannot pass — that swap was a live defect in
+`Tools/Store/StdioCheckpointStore.h`, **fixed in 17.03**, and measuring it there
+showed the two are different numbers on every container: `e0614906cb8a5676`
+where `ComputeStateDigest` returns `0f6fa26b35d09a70`.
 
 `bare-16.container`'s trailer is `d17d7fd9a6f09ea6`, which is
 `bare-16.snapshot`'s state digest in the golden README, and its STATE section is

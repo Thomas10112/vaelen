@@ -99,7 +99,8 @@ VAELEN_TEST(Store, AtomicAndComplete)
 		VT_REQUIRE(F != nullptr);
 		std::fwrite(Image.data(), 1, Keep, F);
 		std::fclose(F);
-		Store.Remember("cut");
+		// 17.03 removed `Remember`: the store reads the directory, so a file
+		// written behind its back is listed because it is THERE.
 
 		std::vector<uint8> Short;
 		VT_CHECK_MSG(Store.Read("cut", Short) == StoreResult::Ok,

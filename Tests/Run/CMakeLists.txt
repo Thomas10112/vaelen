@@ -137,6 +137,9 @@ set_tests_properties(Run.SaveFuzz.SixtyFour PROPERTIES TIMEOUT 1800 COST 3000)
 # in Tools/Store because WHERE a save goes is not the simulation's business.
 target_include_directories(VaelenRunTests PRIVATE ${PROJECT_SOURCE_DIR}/Tools/Store)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/store)
+# 17.03's cold listing gets a directory of its own, so that Run.Store's files
+# cannot be counted by it and a stale run cannot make it pass.
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/store/cold)
 target_compile_definitions(VaelenRunTests PRIVATE VAELEN_STORE_DIR="${CMAKE_CURRENT_BINARY_DIR}/store")
 
 # VAELEN - Phase 15 task 15.10, HEADLESS HALF.

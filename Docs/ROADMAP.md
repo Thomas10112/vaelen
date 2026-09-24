@@ -5890,13 +5890,65 @@ agrees with the running world about nothing - makes the generated text differ
 AND, when that header is actually built, makes `Run.EventTypes` report **129
 failures**, every row of the table among them.
 
+### 17.03 AS BUILT, 2026-09-24
+
+Both defects fixed, and **making the test fail on purpose reversed which of
+them matters.**
+
+`List()` reads the DIRECTORY (`<filesystem>`, `error_code` overloads
+throughout, never the throwing ones, because this tree builds `-fno-exceptions`),
+sorted so two hosts agree on order, skipping anything `IsUsableCheckpointName`
+refuses - which also skips a `.writing` temporary left by an interrupted write.
+`StdioCheckpointStore` is no longer `final`, `Written` and `Remember` are
+**deleted**, and `StoreEntry` gained `SectionCount` so a caller can see a save's
+shape - above all whether it carries its own tape - without opening it twice.
+
+**THE DIGEST WAS WRONG ALWAYS, NOT ONLY FOR AN UNUSUAL LAYOUT.** I wrote in the
+plan, and repeated in 17.01's README, that `Sections.front().Digest` was "right
+today because STATE happens to be section 0". Measured: on an ORDINARY
+container the old code reports `e0614906cb8a5676` where `ComputeStateDigest`
+returns `0f6fa26b35d09a70`. The section digest and the image trailer are
+different numbers over the same bytes, on every container, whatever the order.
+So position was the SECOND fault - ADR-0150's "safe by accident", which had not
+started mattering yet - and the first was reporting a number no other
+instrument in this repository means by a save's digest. A host comparing a
+listed digest against a logged one was told two identical saves were different
+worlds, and it was told that always. All three places that carried my wrong
+account are corrected in the same commit.
+
+**AND THE SECOND CONTROL FOUND SOMETHING ABOUT THE FORMAT.** The gate asks for
+a container in which STATE is not first. Rotating the table ROWS is refused
+`BadSectionTable` - correctly: `ReadCheckpoint` requires ascending offsets, no
+overlap, and every payload byte claimed. A legal container with STATE second
+therefore needs the PAYLOADS moved with the rows, which the test now does, then
+recomputes the trailer. The result reads `Ok`, its first section is RUN, its
+STATE bytes are `memcmp`-identical to the original's - and the fixed store
+reports the same trailer while the pre-fix one reports RUN's section digest.
+
+`Run.StoreColdProcess`, two cases, 0.10 s:
+
+- a store that wrote NOTHING lists three containers another object wrote, with
+  the right bytes, tick, container version, section count and trailer - the
+  trailer checked against `ComputeStateDigest` over the world that was saved,
+  never against another listing;
+- **the pre-fix listing is kept**, as `AWrittenOnlyStore`, deriving from the
+  real store so it differs from it in the defect and in nothing else. It lists
+  ZERO of the same three files in the same run, and then lists the one file it
+  writes itself - so the arm is about coldness and not about the class being
+  broken outright.
+
+**TWO DELIBERATE FAILURES AGAINST THE FIXED CODE, BOTH OF WHICH FIRED.**
+Putting `Sections.front().Digest` back: `alpha: listed e0614906cb8a5676,
+ComputeStateDigest 0f6fa26b35d09a70`. Making `List` return early before it reads
+the directory: `a cold store listed 0 of 3`.
+
 ### The Phase 17 gate
 
 | clause | the command that decides it |
 |---|---|
 | (a) | `ctest -R '^Run\.Containers$'` — the three containers read without a world being generated, every recorded number checked against the bytes, and each regenerating byte-identically from its recorded command. |
 | (b) | `ctest -R '^Kernel\.EventTypes$'` — the generator re-run and diffed; and `Tools/Atlas --causes` over the corpus prints type NAMES, not hashes. |
-| (c) | `ctest -R '^Run\.Store\.ColdProcess$'` — a second process lists a directory it never wrote to, and the same test against today's `List` reports zero. |
+| (c) | `ctest -R '^Run\.StoreColdProcess$'` — a store that wrote nothing lists a directory somebody else filled, with the right ticks, digests and section counts; the pre-fix listing, kept in the same file, reports zero over the same three files in the same run. The second-**process** half rides on 17.06's `--inspect-dir`, which is the tool that does it. |
 | (d) | `ctest -R '^Sim\.CauseWalk$'` — seven ends, and the kept pre-fix arm showing today's `CauseChain` cannot tell a root from a missing link. |
 | (e) | `ctest -R '^Sim\.Causality$'` — the planted census exact, and the cleared-edge arm reporting depth 0. The real figures are in this ROADMAP and dated. |
 | (f) | `ctest -R '^Atlas\.Inspect$'` — every pinned line, and both refusals. |

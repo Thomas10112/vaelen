@@ -19,7 +19,66 @@ PHASE       : 17 — DEBUG TOOLS, opened 2026-09-24
                v4 bump and 16.14 needs the owner's Windows machine. Docs/ROADMAP.md
                section 22 has the clause-by-clause read.
                15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
-TASK        : 17.02 — DONE 2026-09-24. The event-type name table, generated from the
+TASK        : 17.03 — DONE 2026-09-24. The store reads a directory, and reports the
+              digest it says it reports. Both defects were mine, from 16.07.
+
+              THE FIRST: List() iterated a private vector that only Write() and
+              Remember() ever filled, so a host started fresh and pointed at a folder
+              full of saves was told it was empty — which defeats the one thing a save
+              browser is for. Run.Store passed the whole time because it wrote and listed
+              in ONE process with ONE object: an instrument blind to the only dimension
+              that matters. List() reads the DIRECTORY now (<filesystem>, error_code
+              overloads throughout, never the throwing ones, because this tree builds
+              -fno-exceptions), sorted so two hosts agree on order, skipping anything
+              IsUsableCheckpointName refuses — which also skips a .writing temporary left
+              by an interrupted write. Written and Remember are DELETED: a cache of names
+              can now only disagree with the disk, and worse than a store that lists
+              nothing is a store that lists something that is not there.
+
+              THE SECOND, AND MAKING THE TEST FAIL ON PURPOSE REVERSED WHICH FAULT
+              MATTERS. The entry's digest was Sections.front().Digest, reported after the
+              result of Find(State, Length) had been called and thrown away. I wrote in
+              the plan, and repeated it in 17.01's README, that this was "right today
+              because STATE happens to be section 0". MEASURED: on an ORDINARY container
+              the old code reports e0614906cb8a5676 where ComputeStateDigest returns
+              0f6fa26b35d09a70. The section digest and the image trailer are different
+              numbers over the same bytes, on every container, whatever the order. So
+              position was the SECOND fault — ADR-0150's safe-by-accident, which had not
+              started mattering yet — and the first was reporting a number no other
+              instrument in this repository means by a save's digest. A host comparing a
+              listed digest against a logged one was told two identical saves were
+              different worlds, and it was told that ALWAYS. All three places carrying my
+              wrong account are corrected in the same commit.
+
+              StoreEntry also gained SectionCount, so a caller can see a save's SHAPE —
+              above all whether it carries its own input tape — without opening it twice.
+
+              AND THE SECOND CONTROL FOUND SOMETHING ABOUT THE FORMAT. The gate asks for
+              a container in which STATE is not first. Rotating the table ROWS is refused
+              BadSectionTable, correctly: ReadCheckpoint requires ascending offsets, no
+              overlap, and every payload byte claimed. A legal container with STATE second
+              needs the PAYLOADS moved with the rows, which the test now does before
+              recomputing the trailer. It reads Ok, its first section is RUN, its STATE
+              bytes are memcmp-identical to the original's — and the fixed store reports
+              the same trailer while the pre-fix one reports RUN's section digest.
+
+              Run.StoreColdProcess, two cases, 0.10 s. THE PRE-FIX LISTING IS KEPT, as
+              AWrittenOnlyStore, deriving from the real store so it differs from it in the
+              defect and in nothing else (StdioCheckpointStore is no longer final for
+              exactly this). It lists ZERO of the same three files in the same run, then
+              lists the one file it writes itself — so the arm is about coldness and not
+              about the class being broken outright.
+
+              TWO DELIBERATE FAILURES AGAINST THE FIXED CODE, BOTH FIRED. Sections.front()
+              put back: "alpha: listed e0614906cb8a5676, ComputeStateDigest
+              0f6fa26b35d09a70". List returning before it reads the directory: "a cold
+              store listed 0 of 3".
+
+              THE SECOND-PROCESS HALF of the gate clause rides on 17.06's --inspect-dir,
+              which is the tool that does it. The defect itself is per-INSTANCE, so a
+              second object over the same directory is the evidence that distinguishes it.
+
+TASK (17.02): 17.02 — DONE 2026-09-24. The event-type name table, generated from the
               115 declarations and checked against the kernel's own hash.
 
               AN EVENT CARRIES A HASH AND NOTHING ELSE about its identity: Event.h stores
