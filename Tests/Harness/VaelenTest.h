@@ -290,6 +290,14 @@ namespace VaelenTest
 		/// Tests/Sim pins that the two agree.
 		inline constexpr unsigned long long EmptyLogDigest = 0x5641454c454e2d45ull;
 
+		/// `HashConstants::Fnv1a64Offset`, repeated here for the same reason:
+		/// FNV-1a over NO bytes is its offset basis, so this is what an empty
+		/// story, an empty buffer or an empty string hashes to - the value the
+		/// nine cells of 16.12's matrix that carried nobody compared against
+		/// itself (each side `HashBytes` of an empty life). Tests/Core pins
+		/// that the literal is the kernel's.
+		inline constexpr unsigned long long EmptyBytesDigest = 0xcbf29ce484222325ull;
+
 		/// Two digests are EVIDENCE only when neither is the value a digest
 		/// has before anything was digested. 0 is what an unset field holds;
 		/// EmptyLogDigest is what an empty log reports - and nine of the
@@ -313,6 +321,15 @@ namespace VaelenTest
 				std::snprintf(Detail, sizeof(Detail),
 							  "VACUOUS: %016llx against %016llx - EventLog::EmptyDigest is what an EMPTY log "
 							  "reports, so this compares nothing against itself",
+							  A, B);
+				Ctx.ReportFailure(File, Line, What, Detail);
+				return false;
+			}
+			if (A == EmptyBytesDigest || B == EmptyBytesDigest)
+			{
+				std::snprintf(Detail, sizeof(Detail),
+							  "VACUOUS: %016llx against %016llx - the FNV-1a offset basis is the digest of NO "
+							  "bytes: an empty story, buffer or string, which is not evidence of anything",
 							  A, B);
 				Ctx.ReportFailure(File, Line, What, Detail);
 				return false;

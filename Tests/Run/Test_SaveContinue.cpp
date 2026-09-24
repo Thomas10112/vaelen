@@ -16,6 +16,7 @@
 // actually ended up.
 //
 // STATUS: PROTOTYPE (Phase 16) - ctest Run.SaveContinue
+#include "Vaelen/Core/Hash.h"
 #include "Vaelen/Run/Aelvor.h"
 #include "Vaelen/Run/Checkpoint.h"
 #include "Vaelen/Run/Door.h"
@@ -28,8 +29,19 @@
 using namespace Vaelen;
 using namespace Vaelen::Run;
 
+namespace
+{
+	/// The digest of NO story: what `Where::Life` reads as when nobody is
+	/// played, on both sides of every cell that carries nobody. Comparing it
+	/// against itself was green for nine cells until 17.07 built a witness
+	/// that refuses it; those cells now say what they are, and are counted.
+	constexpr Hash64 EmptyStory = HashBytes(nullptr, 0);
+	static_assert(EmptyStory == ::VaelenTest::Detail::EmptyBytesDigest, "the harness refuses this very value");
+} // namespace
+
 VAELEN_TEST(SaveContinue, EveryDayIsASavePointAcrossTheMatrix)
 {
+	uint32 EmptyCells = 0;
 	for (const Wiring& W : Wirings)
 	{
 		for (uint32 Size : Sizes)
@@ -107,10 +119,45 @@ VAELEN_TEST(SaveContinue, EveryDayIsASavePointAcrossTheMatrix)
 				VT_CHECK_MSG(Landed.Log == Truth.Log, "%s at %u saved on day %u: log %016llx, straight run %016llx",
 							 W.Name, Size, From, static_cast<unsigned long long>(Landed.Log),
 							 static_cast<unsigned long long>(Truth.Log));
-				VT_CHECK_MSG(Landed.Life == Truth.Life, "%s at %u saved on day %u: life %016llx, straight run %016llx",
-							 W.Name, Size, From, static_cast<unsigned long long>(Landed.Life),
-							 static_cast<unsigned long long>(Truth.Life));
+				if (PlaysAt(W, Size))
+				{
+					// A played life is a story, and a story is not the empty
+					// string: without this line a cell whose life export broke
+					// to "" on both sides would be green, and 17.07 measured
+					// that nine cells were exactly that.
+					VT_CHECK_MSG(Truth.Life != EmptyStory, "%s at %u: a played life reads as no story at all", W.Name,
+								 Size);
+					VT_CHECK_MSG(Landed.Life == Truth.Life,
+								 "%s at %u saved on day %u: life %016llx, straight run %016llx", W.Name, Size, From,
+								 static_cast<unsigned long long>(Landed.Life),
+								 static_cast<unsigned long long>(Truth.Life));
+				}
+				else
+				{
+					// NOBODY IS PLAYED HERE, and comparing the two lives
+					// measures nothing: the cell asserts what it IS instead,
+					// and the count below pins how many there are. Two kinds,
+					// found by asserting the wrong one first: the plain wiring
+					// has no Play and its Life() is the EMPTY story; the stream
+					// wiring at 64 has Play and the world offers nobody, so
+					// ExportLife writes the story of "nobody" - a constant
+					// text, the same on both sides of every save, which is
+					// exactly as vacuous and not the empty string.
+					VT_CHECK_MSG(Source.Played() == 0u && Restored.Played() == 0u,
+								 "%s at %u saved on day %u: this cell is pinned to nobody and somebody is played (%u "
+								 "straight, %u restored)",
+								 W.Name, Size, From, static_cast<unsigned>(Source.Played()),
+								 static_cast<unsigned>(Restored.Played()));
+					VT_CHECK_MSG(W.Play ? Truth.Life != EmptyStory : Truth.Life == EmptyStory,
+								 "%s at %u: a wiring %s Play should export %s (life %016llx)", W.Name, Size,
+								 W.Play ? "with" : "without", W.Play ? "the story of nobody" : "no story",
+								 static_cast<unsigned long long>(Truth.Life));
+					++EmptyCells;
+				}
 			}
 		}
 	}
+	// Nine of eighteen: the number 17.07 found. A tenth means a played cell
+	// stopped playing; an eighth means a cell that carries nobody claims to.
+	VT_CHECK_MSG(EmptyCells == 9u, "%u of the eighteen cells carry nobody, pinned at 9", EmptyCells);
 }

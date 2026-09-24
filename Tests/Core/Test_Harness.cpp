@@ -3,6 +3,8 @@
 // STATUS: VALIDATED (Phase 00)
 #include "VaelenTest.h"
 
+#include "Vaelen/Core/Hash.h"
+
 #include <cstring>
 #include <limits>
 #include <type_traits>
@@ -165,7 +167,15 @@ namespace
 		VT_CHECK_DIGEST_EQ(0ull, 0ull);									  // fails: unset against unset
 		VT_CHECK_DIGEST_EQ(0x609253a29361ec5full, 0ull);				  // fails: one side unset
 		VT_CHECK_DIGEST_EQ(0x5641454c454e2d45ull, 0x5641454c454e2d45ull); // fails: an empty log against itself
+		VT_CHECK_DIGEST_EQ(0xcbf29ce484222325ull, 0xcbf29ce484222325ull); // fails: no bytes against no bytes
 	}
+
+	// The harness carries the kernel's two "nothing" values as literals; here
+	// is where they are held to the kernel.
+	static_assert(::VaelenTest::Detail::EmptyBytesDigest == Vaelen::HashConstants::Fnv1a64Offset,
+				  "the harness's digest of no bytes must be the kernel's FNV-1a offset basis");
+	static_assert(::VaelenTest::Detail::EmptyBytesDigest == Vaelen::HashBytes(nullptr, 0),
+				  "the harness's digest of no bytes must be what HashBytes answers for none");
 } // namespace
 
 VAELEN_TEST(Harness, VacuityIsSeen)
@@ -212,9 +222,9 @@ VAELEN_TEST(Harness, DigestsThatCompareNothingAreRefused)
 	::VaelenTest::Context Scratch;
 	Scratch.Silent = true;
 	TheDigestChecks(Scratch);
-	VT_CHECK_EQ(Scratch.Checks, 5);
-	// One genuine pass, four refusals: two of them would have been GREEN under
-	// VT_CHECK_EQ, which is why nine cells of a matrix once compared an empty
-	// life against itself.
-	VT_CHECK_EQ(Scratch.Failures, 4);
+	VT_CHECK_EQ(Scratch.Checks, 6);
+	// One genuine pass, five refusals: three of them would have been GREEN
+	// under VT_CHECK_EQ, and the last is the one nine cells of a matrix once
+	// passed on - an empty life, hashed, against the same empty life, hashed.
+	VT_CHECK_EQ(Scratch.Failures, 5);
 }
