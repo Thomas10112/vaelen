@@ -10,8 +10,12 @@ add_executable(VaelenRunTests
 target_include_directories(VaelenRunTests PRIVATE ${PROJECT_SOURCE_DIR}/Tests/Harness)
 # 16.01: where the golden corpus lives, handed in rather than guessed from the
 # working directory, because the CI presets run ctest from the build tree.
+# 17.01: and where the CONTAINER corpus lives, which is a different format
+# from the one above and the distinction is the point - Run.Containers hands a
+# .snapshot to ReadCheckpoint on purpose and requires BadMagic.
 target_compile_definitions(VaelenRunTests PRIVATE
-  VAELEN_GOLDEN_DIR="${PROJECT_SOURCE_DIR}/Tests/Run/Golden")
+  VAELEN_GOLDEN_DIR="${PROJECT_SOURCE_DIR}/Tests/Run/Golden"
+  VAELEN_CONTAINER_DIR="${PROJECT_SOURCE_DIR}/Tests/Run/Containers")
 target_link_libraries(VaelenRunTests PRIVATE Vaelen::Run Vaelen::View Vaelen::Gameplay Vaelen::Player Vaelen::Colony Vaelen::Infrastructure Vaelen::Military Vaelen::Politics Vaelen::Economy Vaelen::Society Vaelen::Population Vaelen::Sim Vaelen::Core Threads::Threads)
 
 set(VAELEN_RUN_TEST_NAMES "")
@@ -362,3 +366,21 @@ add_test(NAME Run.SaveFuzz.Death
           "-DEXPECT=18aec14e39a68a8c"
           -P ${CMAKE_CURRENT_LIST_DIR}/SaveFuzz.cmake)
 set_tests_properties(Run.SaveFuzz.Death PROPERTIES TIMEOUT 1800 COST 3600)
+
+# 17.01's CONTROL: the corpus regenerates byte for byte from the command its
+# README records.
+#
+# Run.Containers reads the three files and checks every recorded number against
+# the bytes - and it would go on passing if today's build had quietly stopped
+# being able to WRITE them. This runs `--containers` into a scratch directory
+# and compares byte for byte, which is the only thing that says the recorded
+# command is still the command that produces these files. It generates three
+# worlds and Run.Containers generates none, which is why they are two entries
+# and not one.
+add_test(NAME Atlas.ContainersRegenerate
+  COMMAND ${CMAKE_COMMAND}
+          -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DCORPUS=${PROJECT_SOURCE_DIR}/Tests/Run/Containers
+          -DSCRATCH=${CMAKE_CURRENT_BINARY_DIR}/containers-regenerated
+          -P ${CMAKE_CURRENT_LIST_DIR}/Containers.cmake)
+set_tests_properties(Atlas.ContainersRegenerate PROPERTIES TIMEOUT 1800 COST 700)

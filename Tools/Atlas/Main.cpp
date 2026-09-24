@@ -482,6 +482,8 @@ namespace
 		std::string Gate;
 		/// 16.01: write the golden corpus to this directory.
 		std::string Golden;
+		/// 17.01: write the container corpus to this directory.
+		std::string Containers;
 		/// The four digests the host printed, as `state %016llx, log %016llx,
 		/// life %016llx, panel %016llx` - the tail of the line
 		/// Vaelen.Stream.Write logs. Given, the gate JUDGES clause (b)'s other
@@ -609,6 +611,7 @@ namespace
 					 "  --stand FILE    write a stand-in stream: thirty days played by nobody (14.10)\n"
 					 "  --walk FILE     write a stand-in WALK: looks, takings and the streaming cadence (15.10)\n"
 					 "  --golden DIR    write the golden save corpus of 16.01 to this directory\n"
+					 "  --containers DIR  write the container corpus of 17.01 to this directory\n"
 					 "  --gate FILE     replay a walk and report the six clauses of the 15.10 gate\n"
 					 "  --expect \"...\"  with --gate: the four digests the host printed, judged rather than "
 					 "printed\n");
@@ -749,6 +752,10 @@ namespace
 			else if (std::strcmp(Arg, "--golden") == 0 && HasValue)
 			{
 				Out.Golden = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--containers") == 0 && HasValue)
+			{
+				Out.Containers = Argv[++I];
 			}
 			else if (std::strcmp(Arg, "--want-bound") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
 			{
@@ -2204,6 +2211,267 @@ namespace
 		return 0;
 	}
 
+	// ------------------------------------------------------------------
+	// 17.01: THE CONTAINER CORPUS.
+	//
+	// Phase 16 built VAELENCP and closed without a single one checked in.
+	// `Tests/Run/Golden/` holds `.snapshot` IMAGES, which is the inner format
+	// and a different thing: a reader handed one says BadMagic. So every tool
+	// Phase 17 plans - the inspector, the store's cold listing, the census -
+	// was written against files that do not exist.
+	//
+	// THREE CONTAINERS, chosen so that the SHAPE differs and not only the
+	// contents, because a corpus where every file has the same section table
+	// cannot catch a reader that assumes one:
+	//   bare-16     three sections, from a world with no play wiring at all
+	//   played-16   FOUR sections - the four-argument build carries the tape
+	//   full-32     three sections from a world that WAS played, saved through
+	//               the two-argument form. A container with no STREAM section
+	//               is not the same as a world that was never played, and the
+	//               corpus has to be able to tell a reader so.
+	//
+	// AND THE RECORD IS READ BACK, not asserted. Every number the README
+	// carries comes out of `ReadCheckpoint` over the bytes that were just
+	// written, so what is recorded is what a reader SEES rather than what the
+	// writer meant. The two differing is exactly the class of defect 17.03
+	// found in the store.
+	struct Container
+	{
+		const char* Name;
+		const char* What;
+		uint32 Size;
+		uint32 PreHistory;
+		uint32 Years;
+		bool Play;	 ///< the play wiring, so a person can be taken up
+		bool Played; ///< a Door walks it before the save
+		bool Tape;	 ///< the four-argument build, so a STREAM section exists
+	};
+
+	constexpr Container Containers[] = {
+		{"bare-16.container", "no play wiring at all: three sections, and nobody was ever offered", 16, 10, 1, false,
+		 false, false},
+		{"played-16.container", "walked six days and carrying its own tape: four sections", 16, 10, 1, true, true,
+		 true},
+		{"full-32.container", "walked six days and saved WITHOUT its tape: three sections, and the difference from the"
+							  " one above is the whole point",
+		 32, 10, 1, true, true, false},
+	};
+
+	const char* KindName(uint16 Kind) noexcept
+	{
+		switch (static_cast<Vaelen::Run::SectionKind>(Kind))
+		{
+			case Vaelen::Run::SectionKind::State: return "STATE";
+			case Vaelen::Run::SectionKind::Run: return "RUN";
+			case Vaelen::Run::SectionKind::Host: return "HOST";
+			case Vaelen::Run::SectionKind::Stream: return "STREAM";
+			default: return "?";
+		}
+	}
+
+	/// The image's own trailer: the last eight bytes of the STATE section,
+	/// which is what `ComputeStateDigest` returns and what every frozen digest
+	/// in this repository is. NOT the section digest beside it in the table,
+	/// which is a different number over the same bytes - confusing the two is
+	/// defect 17.03.
+	bool TrailerOf(const Vaelen::Run::CheckpointView& View, Vaelen::Hash64& Out) noexcept
+	{
+		uint64 Length = 0;
+		const uint8* State = View.Find(Vaelen::Run::SectionKind::State, Length);
+		if (State == nullptr || Length < sizeof(uint64))
+		{
+			return false;
+		}
+		uint64 Value = 0;
+		for (usize I = 0; I < sizeof(uint64); ++I)
+		{
+			Value |= static_cast<uint64>(State[Length - sizeof(uint64) + I]) << (8u * I);
+		}
+		Out = Value;
+		return true;
+	}
+
+	int RunContainers(const Options& Opt)
+	{
+		std::string Where = Opt.Containers;
+		if (!Where.empty() && Where.back() != '/')
+		{
+			Where += '/';
+		}
+		std::string Rows;
+		std::string Tables;
+		for (const Container& C : Containers)
+		{
+			Vaelen::Run::Options RO;
+			RO.Size = C.Size;
+			RO.PreHistory = C.PreHistory;
+			RO.Years = C.Years;
+			if (C.Play)
+			{
+				RO.Play = true;
+				RO.Stream = true;
+				RO.Lively = true;
+				RO.Colony = true;
+			}
+			Vaelen::Run::Aelvor A(RO);
+			if (!A.Begin())
+			{
+				std::fprintf(stderr, "containers: %s would not generate at %u\n", C.Name, C.Size);
+				return 1;
+			}
+
+			// THE RULES ARE ALL FOUR NON-DEFAULT, deliberately, and two reasons
+			// meet here.
+			//
+			// The first is measured, and it is a fact about a young world
+			// rather than about the rules. Sweeping the window at 16 and at 32
+			// tiles, ten years of pre-history and one of history:
+			//
+			//   bound 1, any window at all ...... nobody
+			//   bound 0, ages 0-10 .............. person 1
+			//   bound 0, ages 12-120 ............ nobody
+			//
+			// NOBODY IN A TEN-YEAR WORLD IS TWELVE. Everyone alive was born
+			// inside it, and nobody in it is bound to anything yet. So
+			// `StartRules{}`, which asks for a bound life aged 16 to 40, is
+			// offered nobody - which is why `full-16.snapshot` next door was
+			// never played, and why this corpus could not have a played
+			// container until the window was opened. The window is 0-45 and
+			// not 0-11 on purpose: a superset outlives the day these ages
+			// move, and pinning the boundary would make the corpus a test of
+			// demography.
+			//
+			// The second is 17.07's: a round trip that compares two
+			// default-constructed structs passes even when the reader wrote
+			// nothing, and this phase committed exactly that assertion. A
+			// corpus whose STREAM section carries `StartRules{}` would hand
+			// every later test the same vacuous comparison. These four values
+			// are in the README, and a reader that drops the section cannot
+			// agree with them.
+			//
+			// The walk itself is the SAME for both played containers, so that
+			// played-16 and full-32 differ only in map size and in whether the
+			// tape travels.
+			Player::StartRules Rules;
+			Rules.FromAge = 0u;
+			Rules.ToAge = 45u;
+			Rules.WantBound = 0u;
+			Rules.PreferOre = 0u;
+			Player::InputStream Tape;
+			if (C.Played)
+			{
+				Vaelen::Run::Door D(A, Rules);
+				if (D.TakeUp() == 0)
+				{
+					std::fprintf(stderr, "containers: %s offered nobody to take up\n", C.Name);
+					return 1;
+				}
+				for (uint32 Day = 0; Day < 6u; ++Day)
+				{
+					Vaelen::Run::Attention At;
+					At.Region = 1u + (Day % 5u);
+					At.Reach = 1u;
+					D.Look(At);
+					D.Day();
+				}
+				Tape = D.Stream();
+			}
+
+			std::vector<uint8> Bytes;
+			const Vaelen::Run::CheckpointResult Built =
+				C.Tape ? Vaelen::Run::BuildCheckpoint(A, Tape, Rules, Bytes) : Vaelen::Run::BuildCheckpoint(A, Bytes);
+			if (Built != Vaelen::Run::CheckpointResult::Ok)
+			{
+				std::fprintf(stderr, "containers: %s was refused - %s\n", C.Name,
+							 Vaelen::Run::CheckpointResultToString(Built));
+				return 1;
+			}
+
+			const std::string Path = Where + C.Name;
+			std::FILE* File = std::fopen(Path.c_str(), "wb");
+			if (File == nullptr)
+			{
+				std::fprintf(stderr, "containers: cannot write %s\n", Path.c_str());
+				return 1;
+			}
+			const usize Wrote = std::fwrite(Bytes.data(), 1, Bytes.size(), File);
+			const bool Closed = std::fclose(File) == 0;
+			if (Wrote != Bytes.size() || !Closed)
+			{
+				std::fprintf(stderr, "containers: could not write all of %s\n", Path.c_str());
+				return 1;
+			}
+
+			// READ BACK, and every recorded number comes from the view.
+			Vaelen::Run::CheckpointView View;
+			const Vaelen::Run::CheckpointRefusal Read = Vaelen::Run::ReadCheckpoint(Bytes.data(), Bytes.size(), View);
+			if (Read.Result != Vaelen::Run::CheckpointResult::Ok)
+			{
+				std::fprintf(stderr, "containers: %s did not read back - %s\n", C.Name,
+							 Vaelen::Run::CheckpointResultToString(Read.Result));
+				return 1;
+			}
+			Vaelen::Hash64 Trailer = 0;
+			if (!TrailerOf(View, Trailer))
+			{
+				std::fprintf(stderr, "containers: %s has no STATE section to take a trailer from\n", C.Name);
+				return 1;
+			}
+			// The corpus is worth nothing if the trailer it records is not the
+			// digest the rest of the repository means by one.
+			const Vaelen::Hash64 Live = Vaelen::ComputeStateDigest(A.Instance());
+			if (Trailer != Live)
+			{
+				std::fprintf(stderr, "containers: %s trailer %016llx is not ComputeStateDigest %016llx\n", C.Name,
+							 static_cast<unsigned long long>(Trailer), static_cast<unsigned long long>(Live));
+				return 1;
+			}
+
+			char Row[640];
+			std::snprintf(Row, sizeof(Row),
+						  "| `%s` | %u | %u | %u | %s | %u | %u | %llu | %llu | %llu | %zu | `%016llx` |\n", C.Name,
+						  C.Size, C.PreHistory, C.Years, C.Play ? "Play+Stream+Lively+Colony" : "none", View.Version,
+						  View.InnerFormat, static_cast<unsigned long long>(View.Tick),
+						  static_cast<unsigned long long>(View.LogEvents),
+						  static_cast<unsigned long long>(View.LogBytes), Bytes.size(),
+						  static_cast<unsigned long long>(Trailer));
+			Rows += Row;
+
+			// 640 and CHECKED, because the first cut of this printed a table
+			// header sliced in half at `|---|---|--` and the corpus looked
+			// fine: the files were right and only the record was truncated,
+			// which is the same class of defect as a README that agrees with
+			// nothing. snprintf returns what it WOULD have written.
+			char Head[640];
+			const int Want =
+				std::snprintf(Head, sizeof(Head), "\n### `%s`\n\n%s\n\nSeed `%016llx`, flags `%08x`, %zu sections.\n\n"
+												  "| kind | offset | length | section digest |\n|---|---|---|---|\n",
+							  C.Name, C.What, static_cast<unsigned long long>(View.Seed), View.Flags,
+							  View.Sections.size());
+			if (Want < 0 || static_cast<usize>(Want) >= sizeof(Head))
+			{
+				std::fprintf(stderr, "containers: %s - the record does not fit in %zu bytes\n", C.Name, sizeof(Head));
+				return 1;
+			}
+			Tables += Head;
+			for (const Vaelen::Run::SectionEntry& E : View.Sections)
+			{
+				char Line[256];
+				std::snprintf(Line, sizeof(Line), "| %s (%u) | %llu | %llu | `%016llx` |\n", KindName(E.Kind), E.Kind,
+							  static_cast<unsigned long long>(E.Offset), static_cast<unsigned long long>(E.Length),
+							  static_cast<unsigned long long>(E.Digest));
+				Tables += Line;
+			}
+
+			std::printf("container %-20s %8zu bytes, %zu sections, tick %llu, trailer %016llx - %s\n", C.Name,
+						Bytes.size(), View.Sections.size(), static_cast<unsigned long long>(View.Tick),
+						static_cast<unsigned long long>(Trailer), C.What);
+		}
+		std::printf("containers: %zu written to %s\n", sizeof(Containers) / sizeof(Containers[0]), Where.c_str());
+		std::printf("%s%s", Rows.c_str(), Tables.c_str());
+		return 0;
+	}
+
 	int RunStand(const Options& Opt)
 	{
 		Vaelen::Run::Options RO;
@@ -2666,6 +2934,10 @@ namespace
 		if (!Opt.Golden.empty())
 		{
 			return RunGolden(Opt);
+		}
+		if (!Opt.Containers.empty())
+		{
+			return RunContainers(Opt);
 		}
 		if (!Opt.Gate.empty())
 		{

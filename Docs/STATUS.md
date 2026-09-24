@@ -1,6 +1,6 @@
 # VAELEN — Build status
 
-STATUS: VALIDATED for the state it reports, checked on 2026-09-18 against the sources on
+STATUS: VALIDATED for the state it reports, checked on 2026-09-24 against the sources on
 branch `claude/vaelen-master-prompt-aw7zqj`. This is the living status
 document: it is refreshed at the end of every task (section "How to refresh"). The
 per-phase breakdowns below are the record of each phase as it closed and are not
@@ -13,9 +13,76 @@ rewritten afterwards; this block is the only part that tracks today.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 16 — SAVE/PERSISTENCE, opened 2026-09-21
-              (15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
-TASK        : 16.02 — DONE 2026-09-21. SaveSnapshot can fail, and says so.
+PHASE       : 17 — DEBUG TOOLS, opened 2026-09-24
+              (16 SAVE/PERSISTENCE: fourteen tasks built and ten-of-ten green on CI,
+               its GATE still open — clause (j)'s migration half is deferred to the
+               v4 bump and 16.14 needs the owner's Windows machine. Docs/ROADMAP.md
+               section 22 has the clause-by-clause read.
+               15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
+TASK        : 17.01 — DONE 2026-09-24. A real container corpus, before anything reads one.
+
+              PHASE 16 BUILT VAELENCP AND CLOSED WITHOUT ONE CHECKED IN. Tests/Run/Golden
+              holds .snapshot IMAGES — the inner format, magic VAELEN\0\0\0, version 3 —
+              and a reader handed one says BadMagic. So every instrument Phase 17 plans
+              (the inspector, the store's cold listing, the census) was specified against
+              files that did not exist, and three of the four planning angles wrote gate
+              clauses over them.
+
+              Tests/Run/Containers/ now holds three v2 containers whose SHAPE differs and
+              not only their contents, because a corpus where every file has the same
+              section table cannot catch a reader that assumes one: bare-16 (three
+              sections, no play wiring, 77685 bytes), played-16 (FOUR, with STREAM, 80862)
+              and full-32 (three — played, but saved without its tape, 182719). The README
+              records every header field, every section row and the image TRAILER, which
+              is the last eight bytes of the STATE section and is what ComputeStateDigest
+              returns — as distinct from the STATE row's section digest beside it, a
+              different number over the same bytes. Both are recorded because confusing
+              them is a live defect in Tools/Store/StdioCheckpointStore.h and 17.03 is the
+              fix.
+
+              bare-16's trailer is d17d7fd9a6f09ea6, which is the golden bare-16.snapshot's
+              state digest, and its STATE section is 77478 bytes, that file's exact size.
+              The container carries the image VERBATIM and that is now checkable by memcmp
+              rather than by argument.
+
+              AND THE CORPUS COULD NOT HAVE A PLAYED CONTAINER AT ALL until something was
+              measured. TakeUp was offered nobody at 16, 24 or 32 tiles. Sweeping the
+              rules at ten years of pre-history: WantBound 1 offers nobody under any age
+              window; WantBound 0 offers person 1 at ages 0-10 and nobody at 12-120.
+              NOBODY IN A TEN-YEAR WORLD IS TWELVE, and nobody in it is bound to anything —
+              everyone alive was born inside it. StartRules{}, a bound life aged 16 to 40,
+              is offered nobody, which is also why full-16.snapshot next door was never
+              played. The two played containers carry {0, 45, 0, 0}: all four fields
+              non-default, which guards 17.07's vacuous-assertion defect a task early, by
+              the corpus rather than by a macro.
+
+              TWO ENTRIES MAKING OPPOSITE CLAIMS. Run.Containers generates NO WORLD — there
+              is no Aelvor in the file — and has five cases: the record against the bytes;
+              the STREAM rules against the defaults and then against their values; every
+              recorded field bent in turn with the comparison required to name it; edited
+              bytes refused (section count 3/5/0/64, a flipped payload byte, a truncation)
+              with the untouched bytes still reading in the same run; and a .snapshot
+              handed to ReadCheckpoint required to say BadMagic. Atlas.ContainersRegenerate
+              generates three worlds and requires byte equality, because Run.Containers
+              would go on passing on the day this build lost the ability to WRITE one.
+
+              THREE DELIBERATE FAILURES, ALL OF WHICH FIRED (ADR-0149). Flipping byte 40000
+              of bare-16: the regeneration entry says "no longer regenerates" and
+              Run.Containers names the refusal. Deleting one field's comparison from
+              FirstDisagreement: "bending log bytes was not seen at all". The first run
+              also found a real defect in the recorder — a 256-byte snprintf had sliced a
+              table header in half at |---|---|-- while the FILES were correct, so only
+              the record was truncated. The buffer is 640 now and its return value is
+              checked, because a README that agrees with nothing is the same class of
+              defect as a store that reports a digest by position.
+
+              Run.Containers 0.01 s, Atlas.ContainersRegenerate 0.17 s, corpus 341 kB.
+
+              AND THIS BLOCK HAD BEEN LEFT AT 16.02 while Phase 16 ran to 16.13. That is a
+              gap in this document and not in the work: the thirteen tasks are in
+              Docs/ROADMAP.md section 22 with their as-built notes and their measurements.
+              They are not backfilled here, because a status block reconstructed after the
+              fact from a roadmap is a status block nobody checked.
 
               It returned void. A failing body went into a [[maybe_unused]] and was
               reported by VAELEN_CHECKF, which Assert.h compiles to ((void)0) under
@@ -49,6 +116,10 @@ TASK        : 16.02 — DONE 2026-09-21. SaveSnapshot can fail, and says so.
               75 per cent the target world is left a CHIMERA after LoadSnapshot has
               honestly refused — neither the world it was nor the world in the image.
               16.03 is the task for it.
+
+TASK (16.02): 16.02 — DONE 2026-09-21. SaveSnapshot can fail, and says so. Its full
+              narrative is the block this one displaced; Docs/ROADMAP.md section 22 keeps
+              the measurements.
 
 TASK (16.01): 16.01 — DONE 2026-09-21. The golden corpus and the gate list, both of
               them one-way doors, which is why they are the phase's first commit.

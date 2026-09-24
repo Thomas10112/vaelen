@@ -5772,6 +5772,62 @@ reached the beginning of the world or fell off the end of a log.
 | 17.08 | **Guard now, fix if asked: the `DiplomacySystem` cache.** No change to the cache. Instead a test asserting that EVERY route into a world still refuses a differently-generated one BY NAME — `Adopt`'s seven `*Differs` results and `LoadSnapshot`'s `SeedMismatch` and `WorldShapeDiffers` — with the failure text naming `DiplomacySystem`'s region-count cache as the thing that breaks if a refusal is loosened. | `Run.RefusalsAreTheCachesSafety`: each route, each refusal, by name. CONTROL: delete one refusal in a scratch build and require the test to fail naming that route — a guard that cannot say WHICH door opened is not a guard. | ADR-0150 records that `DiplomacySystem` rebuilds its region graph only when the region COUNT changes and is safe "only by accident", because 16.10 refuses a differently-generated world. That safety is a consequence of checks elsewhere, so it should fail loudly the day somebody loosens one. Converts an unanswerable owner question into a test rather than waiting on the answer. |
 | 17.09 | **The deep why, if the census says there is one.** `ExplainDepth` raised past two steps in `ExportWhyWithLife`, reading 17.04's walk so a chain that ends says how. **Conditional on 17.05**: if the census confirms a maximum depth of one edge, this task becomes a ROADMAP note recording that the Phase 14 deferral was a data debt and not a tooling debt, and the depth stays where it is. | `View.Chronicle` extended with a planted deep chain; the why must print every step and name its end. CONTROL: the same test over a REAL world must print what the census predicts — if the census says depth 1 and the why prints three steps, one of the two instruments is lying. | Phase 14 deferred "a why deeper than two steps" to Phase 17 (`Chronicle.h`, ROADMAP). The measurement says there may be nothing to walk to. Writing this row as conditional is the honest form: the work is either real or it is a note, and 17.05 decides which. |
 
+### 17.01 AS BUILT, 2026-09-24
+
+`Tests/Run/Containers/` holds three VAELENCP v2 containers, a README recording
+every header field, every section row and the image trailer, and two ctest
+entries. `Tools/Atlas --containers DIR` writes them and **reads its own output
+back through `ReadCheckpoint` before recording a single figure**, refusing if
+the trailer it finds is not `ComputeStateDigest`.
+
+| file | sections | bytes | tick | log events | image trailer |
+|---|---|---|---|---|---|
+| `bare-16.container` | 3 | 77685 | 95040 | 129 | `d17d7fd9a6f09ea6` |
+| `played-16.container` | **4**, with STREAM | 80862 | 95184 | 148 | `64d11b40b612581c` |
+| `full-32.container` | 3, played but saved without its tape | 182719 | 95184 | 577 | `2ec516c4d275ab6f` |
+
+`bare-16.container`'s trailer is the golden `bare-16.snapshot`'s state digest
+and its STATE section is that file's exact size, 77478 bytes. The container
+carries the image VERBATIM, and that is now checkable by `memcmp`.
+
+**AND THE CORPUS COULD NOT HAVE A PLAYED CONTAINER AT ALL until something was
+measured.** `Door::TakeUp` was offered nobody at 16, 24 or 32 tiles. Sweeping
+the rules at ten years of pre-history: `WantBound 1` offers nobody under any
+age window; `WantBound 0` offers person 1 at ages 0-10 and nobody at 12-120.
+**Nobody in a ten-year world is twelve, and nobody in it is bound to anything** -
+everyone alive was born inside it. So `StartRules{}`, a bound life aged 16 to
+40, is offered nobody, which is also why `full-16.snapshot` next door was never
+played. The two played containers carry `{0, 45, 0, 0}`: all four fields
+non-default, which is 17.07's defect guarded a task early, by the corpus rather
+than by a macro.
+
+Two entries, making opposite claims:
+
+- `Run.Containers` - **generates no world at all**; there is no `Aelvor` in the
+  file. Five cases: the record against the bytes; the STREAM rules against the
+  defaults *and then* against their values; every recorded field bent in turn
+  with the comparison required to name it; edited bytes refused (section count
+  3/5/0/64, a flipped payload byte, a truncation) with the untouched bytes
+  still reading in the same run; and a `.snapshot` handed to `ReadCheckpoint`
+  required to say `BadMagic`.
+- `Atlas.ContainersRegenerate` - generates three worlds and requires byte
+  equality with the checked-in files, because `Run.Containers` would go on
+  passing on the day this build lost the ability to WRITE one.
+
+**THREE DELIBERATE FAILURES, ALL OF WHICH FIRED** (ADR-0149). Flipping byte
+40000 of `bare-16.container`: the regeneration entry says
+`bare-16.container no longer regenerates`, and `Run.Containers` names the
+refusal. Deleting one field's comparison from `FirstDisagreement`:
+`PerturbationsAreSeen` says `bending log bytes was not seen at all`. The first
+run of it also found a real defect in the recorder - a 256-byte `snprintf` had
+sliced a table header in half at `|---|---|--` while the FILES were correct, so
+only the record was truncated; the buffer is 640 now and the return value is
+checked, because a README that agrees with nothing is the same class of defect
+as a store that reports a digest by position.
+
+Costs on this machine: `Run.Containers` 0.01 s, `Atlas.ContainersRegenerate`
+0.17 s. The corpus is 341 kB.
+
 ### The Phase 17 gate
 
 | clause | the command that decides it |
