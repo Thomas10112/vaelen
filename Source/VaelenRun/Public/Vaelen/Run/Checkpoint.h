@@ -89,8 +89,11 @@ namespace Vaelen::Run
 		/// Declared here, filled by 16.05.
 		Run = 2,
 		/// The `Options` the saving host DECLARED - size, pre-history, years,
-		/// seed and the four wiring flags. 16.10, and it cost no container
-		/// version because the table is variable-length.
+		/// seed and the wiring flags. 16.10, and it cost no container version
+		/// because the table is variable-length. FIVE flags since 18.02, one
+		/// byte each: a 24-byte HOST written before then reads as
+		/// Climate = false, a 25-byte one as written, any other length is
+		/// refused as no HOST section at all.
 		Host = 3,
 		/// The recorded input stream, when a save is asked to carry its own
 		/// tape. 16.07, and it is one of the questions still open for the owner.

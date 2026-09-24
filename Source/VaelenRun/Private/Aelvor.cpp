@@ -603,6 +603,9 @@ namespace Vaelen::Run
 		S.HasFame = Given_.Lively;
 		S.Fame = K->W.Fame;
 		S.HasLife = Given_.Play;
+		// 18.02: false whatever Given_.Climate says, until 18.04 gives the view
+		// something to read; 18.10 makes it Given_.Climate.
+		S.HasClimate = false;
 		S.Hour = K->W.Hour;
 		S.Order = K->W.Order;
 		S.Regard = K->W.Regard;
@@ -866,6 +869,8 @@ namespace Vaelen::Run
 			return "LivelyDiffers";
 		case AdoptResult::StreamDiffers:
 			return "StreamDiffers";
+		case AdoptResult::ClimateDiffers:
+			return "ClimateDiffers";
 		}
 		return "Unknown";
 	}
@@ -943,6 +948,13 @@ namespace Vaelen::Run
 		if (Declared.Stream != Given_.Stream)
 		{
 			return AdoptResult::StreamDiffers;
+		}
+		// 18.02: refused by name BEFORE the climate exists, so that the day it
+		// does, a host without one cannot adopt a world with one and find out
+		// as LayoutDiffers - a fault of the state, not of the world.
+		if (Declared.Climate != Given_.Climate)
+		{
+			return AdoptResult::ClimateDiffers;
 		}
 
 		uint64 StateLength = 0;

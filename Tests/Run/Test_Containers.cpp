@@ -71,7 +71,7 @@ namespace
 	// READER sees, not what the writer intended.
 	constexpr Container Corpus[] = {
 		{"bare-16.container",
-		 77685,
+		 77686,
 		 2,
 		 0,
 		 3,
@@ -83,9 +83,46 @@ namespace
 		 3,
 		 {{1, 146, 77478, 0xeae7b629c9d0924eull},
 		  {2, 77624, 29, 0xbfd0910bf8f1c63full},
-		  {3, 77653, 24, 0x1d6aaf94354e0409ull},
+		  {3, 77653, 25, 0x4a4c61d69390db4bull},
 		  {0, 0, 0, 0}}},
 		{"played-16.container",
+		 80863,
+		 2,
+		 0,
+		 3,
+		 0x000041454c564f52ull,
+		 95184,
+		 148,
+		 16592,
+		 0x64d11b40b612581cull,
+		 4,
+		 {{1, 176, 80420, 0x389defae6a977e74ull},
+		  {2, 80596, 37, 0xbefe7c22e544cdd4ull},
+		  {3, 80633, 25, 0xd4f215b4679211f7ull},
+		  {4, 80658, 197, 0xa65b8a037dcc3b7aull}}},
+		{"full-32.container",
+		 182720,
+		 2,
+		 0,
+		 3,
+		 0x000041454c564f52ull,
+		 95184,
+		 577,
+		 64640,
+		 0x2ec516c4d275ab6full,
+		 3,
+		 {{1, 146, 182498, 0x3e0cd92228e56387ull},
+		  {2, 182644, 43, 0x40ed8c3bbb2a1640ull},
+		  {3, 182687, 25, 0x0df7628587f8e927ull},
+		  {0, 0, 0, 0}}},
+		// 18.02: THE FIRST OLDER-FORMAT INSTANCE IN THE TREE. This is
+		// played-16.container as it was written before 18.02 added the fifth
+		// HOST byte, kept byte for byte and NEVER regenerated: its HOST
+		// section is 24 bytes, and a reader that reads it as Climate = false
+		// is the 24/25 rule Run.Checkpoint pins. Same world, same trailer as
+		// the row above; one byte shorter, and every offset after the HOST
+		// section one less.
+		{"host24-16.container",
 		 80862,
 		 2,
 		 0,
@@ -100,22 +137,17 @@ namespace
 		  {2, 80596, 37, 0xbefe7c22e544cdd4ull},
 		  {3, 80633, 24, 0x8616198be3fd64adull},
 		  {4, 80657, 197, 0xa65b8a037dcc3b7aull}}},
-		{"full-32.container",
-		 182719,
-		 2,
-		 0,
-		 3,
-		 0x000041454c564f52ull,
-		 95184,
-		 577,
-		 64640,
-		 0x2ec516c4d275ab6full,
-		 3,
-		 {{1, 146, 182498, 0x3e0cd92228e56387ull},
-		  {2, 182644, 43, 0x40ed8c3bbb2a1640ull},
-		  {3, 182687, 24, 0xa3c54b1ee8c5b8bdull},
-		  {0, 0, 0, 0}}},
 	};
+
+	// 18.02 MOVED BYTES AND NO WORLD. The fifth HOST byte changed three
+	// section digests and three file sizes, and it must have changed no image:
+	// the three trailers are the values they had before it, named here so that
+	// a regeneration which moved one is caught by this line and not only by
+	// the table above quietly re-pinned.
+	static_assert(Corpus[0].Trailer == 0xd17d7fd9a6f09ea6ull, "bare-16's image moved through the HOST byte");
+	static_assert(Corpus[1].Trailer == 0x64d11b40b612581cull, "played-16's image moved through the HOST byte");
+	static_assert(Corpus[2].Trailer == 0x2ec516c4d275ab6full, "full-32's image moved through the HOST byte");
+	static_assert(Corpus[3].Trailer == Corpus[1].Trailer, "the kept older container is not the world of played-16");
 
 	bool ReadWhole(const std::string& Path, std::vector<uint8>& Out)
 	{

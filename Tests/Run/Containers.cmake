@@ -59,4 +59,16 @@ if(Real STREQUAL Other)
   message(FATAL_ERROR "the comparison agrees about two files that differ - it is measuring nothing")
 endif()
 
-message(STATUS "containers: 3 of 3 regenerate byte for byte from the recorded command")
+# 18.02: the kept older-format container is NOT regenerated, and it must not be
+# what the tool writes today - if the two ever agree, the fifth HOST byte is
+# gone and this driver would go on saying "3 of 3" over a corpus with no older
+# instance in it.
+if(NOT EXISTS "${CORPUS}/host24-16.container")
+  message(FATAL_ERROR "the checked-in corpus has no host24-16.container (18.02's kept older-format instance)")
+endif()
+file(SHA256 "${CORPUS}/host24-16.container" Kept)
+file(SHA256 "${SCRATCH}/played-16.container" Today)
+if(Kept STREQUAL Today)
+  message(FATAL_ERROR "host24-16.container is byte-identical to today's played-16.container: the HOST section no longer grew in 18.02")
+endif()
+message(STATUS "containers: 3 of 3 regenerate byte for byte from the recorded command, and the kept older one differs from today's")

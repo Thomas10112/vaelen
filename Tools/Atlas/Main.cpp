@@ -479,6 +479,7 @@ namespace
 		/// reading it. Replaying a walk without it is replaying it into a world
 		/// that pays attention on a different schedule, and the digests say so.
 		bool Stream = false;
+		bool Climate = false; ///< 18.02: told, not read, exactly like --stream
 		/// 15.10's gate: a walk recorded elsewhere, replayed here and asked the
 		/// six clauses of the phase gate. The streaming cadence is forced on
 		/// for it - RunGate says why.
@@ -691,6 +692,10 @@ namespace
 			else if (std::strcmp(Arg, "--stream") == 0)
 			{
 				Out.Stream = true;
+			}
+			else if (std::strcmp(Arg, "--climate") == 0)
+			{
+				Out.Climate = true;
 			}
 			else if (std::strcmp(Arg, "--stand") == 0 && HasValue)
 			{
@@ -910,6 +915,7 @@ namespace
 		RO.Seed = Opt.Seed;
 		RO.Play = true;
 		RO.Stream = true; // the whole point: the daily cadence and the warden
+		RO.Climate = Opt.Climate;
 		Vaelen::Run::Aelvor A(RO);
 		if (!A.Begin())
 		{
@@ -1245,6 +1251,7 @@ namespace
 		RO.Seed = S.Header.Seed;
 		RO.Play = true;
 		RO.Stream = true; // see the note above: forced, not asked
+		RO.Climate = Opt.Climate;
 		Vaelen::Run::Aelvor A(RO);
 		if (!A.Begin())
 		{
@@ -1673,6 +1680,7 @@ namespace
 		RO.Colony = Opt.Colony;
 		RO.Play = true;
 		RO.Stream = Opt.Stream;
+		RO.Climate = Opt.Climate;
 		RO.Lively = Opt.Lively;
 
 		const std::vector<uint32> Wanted = WhichDays(Opt.Seed, Opt.Points, static_cast<uint32>(S.Days.size()));
@@ -1957,6 +1965,7 @@ namespace
 		RO.Seed = Opt.Seed;
 		RO.Play = true;
 		RO.Stream = true;
+		RO.Climate = Opt.Climate;
 		// Declared by the caller and printed below, because whoever replays
 		// this walk has to be told the same thing: the file cannot carry it.
 		RO.Lively = Opt.Lively;
@@ -2075,6 +2084,7 @@ namespace
 		RO.Colony = Opt.Colony;
 		RO.Play = true;
 		RO.Stream = Opt.Stream;
+		RO.Climate = Opt.Climate;
 		RO.Lively = Opt.Lively;
 		Vaelen::Run::Aelvor A(RO);
 		if (!A.Begin())
@@ -2159,6 +2169,7 @@ namespace
 		RO.Colony = Opt.Colony;
 		RO.Play = true;
 		RO.Stream = Opt.Stream;
+		RO.Climate = Opt.Climate;
 		RO.Lively = Opt.Lively;
 		// CONSTRUCTED, NOT BEGUN: this process never generates the world.
 		Vaelen::Run::Aelvor A(RO);
@@ -2201,6 +2212,7 @@ namespace
 			{
 				RO.Play = true;
 				RO.Stream = true;
+				RO.Climate = Opt.Climate;
 				RO.Lively = true;
 				RO.Colony = true;
 			}
@@ -2349,6 +2361,7 @@ namespace
 			{
 				RO.Play = true;
 				RO.Stream = true;
+				RO.Climate = Opt.Climate;
 				RO.Lively = true;
 				RO.Colony = true;
 			}
@@ -2646,6 +2659,7 @@ namespace
 		RO.Colony = Opt.Colony;
 		RO.Play = true;
 		RO.Stream = Opt.Stream;
+		RO.Climate = Opt.Climate;
 		RO.Lively = Opt.Lively;
 		Vaelen::Run::Aelvor A(RO);
 		if (!A.Begin())
@@ -2766,11 +2780,11 @@ namespace
 		Vaelen::Run::Options Host;
 		if (Vaelen::Run::ReadHostSection(View, Host))
 		{
-			std::printf("inspect: host %u tiles, %u+%u years, seed %016llx, wiring:%s%s%s%s%s\n", Host.Size,
+			std::printf("inspect: host %u tiles, %u+%u years, seed %016llx, wiring:%s%s%s%s%s%s\n", Host.Size,
 						Host.PreHistory, Host.Years, static_cast<unsigned long long>(Host.Seed),
 						Host.Play ? " Play" : "", Host.Stream ? " Stream" : "", Host.Lively ? " Lively" : "",
-						Host.Colony ? " Colony" : "",
-						(Host.Play || Host.Stream || Host.Lively || Host.Colony) ? "" : " none");
+						Host.Colony ? " Colony" : "", Host.Climate ? " Climate" : "",
+						(Host.Play || Host.Stream || Host.Lively || Host.Colony || Host.Climate) ? "" : " none");
 		}
 		else
 		{
@@ -3112,6 +3126,7 @@ namespace
 		RO.Colony = Opt.Colony;
 		RO.Play = true;
 		RO.Stream = Opt.Stream; // told, not read: see Options::Stream
+		RO.Climate = Opt.Climate;
 		if (!Opt.Replay.empty())
 		{
 			std::string Text;

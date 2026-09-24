@@ -32,7 +32,25 @@ PHASE       : 17 — DEBUG TOOLS, CLOSED 2026-09-24: all eleven clauses of its g
                yet: it is written here and parsed against the shim before that
                sitting. Section 22 has the clause-by-clause read.
                15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
-TASK        : 18.01 — DONE 2026-09-24. The instrument, before anything moves.
+TASK        : 18.02 — DONE 2026-09-24. The switch that switches nothing yet.
+
+              Options::Climate = false, a fifth HOST byte appended (24 bytes reads as
+              Climate false, 25 as written, anything else is no HOST section),
+              AdoptResult::ClimateDiffers the ninth refusal by name, --climate told to
+              Atlas at every site --stream is, ViewSources::HasClimate false from every
+              source, the inspector saying Climate. The corpus regenerated: +1 byte each,
+              HOST 25 with new section digests, the three image trailers UNMOVED and
+              static_asserted by name. played-16 as it was is kept as host24-16.container
+              - the first older-format instance in the tree, a fourth corpus row, its own
+              inspect entry, and required to differ from today's played-16. Run.Checkpoint
+              pins the 24/25/26 reading rule on the bytes alone, the refusal with the
+              host untouched, and the CONTROL inverted from Stream's: two worlds identical
+              but for the flag are the same world for ten days under VT_CHECK_DIGEST_EQ,
+              because nothing reads it yet. Failed on purpose: the byte written and never
+              read - six checks fire, the cold host taking the warm save among them.
+              Census over the commit: WORLD/section -3/+3 and RECORD rows, else 0.
+
+TASK (18.01): 18.01 — DONE 2026-09-24. The instrument, before anything moves.
 
               Tools/frozen_census.py: every sixteen-hex literal classified from a table
               of 106 files named one by one (WORLD 170, GEN 14, HASH 244, CONST 15, SEED

@@ -98,6 +98,11 @@ namespace Vaelen::View
 		bool HasGoods = false;
 		Economy::MarketTypes Markets;
 		Society::OrganizationTypes Organizations;
+		/// 18.02: whether the world has a climate to read. False from every
+		/// source until 18.04 gives the leaves something to carry and 18.10
+		/// makes it the run's own flag; a take with it false is byte for byte
+		/// the take of the world before Phase 18.
+		bool HasClimate = false;
 	};
 
 	/// Takes the frame. Const world in, numbers out: the signature is the

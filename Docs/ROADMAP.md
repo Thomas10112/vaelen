@@ -6688,3 +6688,78 @@ healthy tree and wrong about everything the moment it is asked a question.
 `Tools/verify_fast.sh` runs `--check` as its eighth check, so a literal in a file
 the table does not name is refused before a push. Gate clause (a) is met by the
 self-test; clause (c)'s baseline is the census above.
+
+### 18.02 AS BUILT, 2026-09-24
+
+`Options::Climate = false` after `Stream`, with Stream's own reasoning reused:
+a flag that changes the world and is not in the save is the defect (ADR-0150),
+so the flag is in the save BEFORE the world it will change exists. `PutOptions`
+appends a fifth byte (never inserts: Checkpoint.cpp's own rule), `GetOptions`
+reads 24 bytes as `Climate = false` and 25 as written and refuses any other
+length, `AdoptResult::ClimateDiffers` is the ninth refusal by name, `--climate`
+is told to Atlas at all ten sites that tell it `--stream`, `--inspect` prints
+`Climate` in the wiring, `ViewSources::HasClimate` exists and every source
+leaves it false, and the engine's headless check line adds `--climate` when
+the host was given it.
+
+THE CORPUS MOVED BY ONE BYTE EACH AND NO WORLD MOVED. `VaelenAtlas --containers`
+regenerated: 77686, 80863 and 182720 bytes (each +1), HOST 25 bytes with new
+section digests `4a4c61d69390db4b`, `d4f215b4679211f7`, `0df7628587f8e927`,
+the STREAM offset one further on, and the three image trailers exactly as they
+were - `d17d7fd9a6f09ea6`, `64d11b40b612581c`, `2ec516c4d275ab6f` - now
+`static_assert`ed in the corpus table by name, so a regeneration that moved one
+is caught by that line and not by a table quietly re-pinned.
+
+THE FIRST OLDER-FORMAT INSTANCE IN THE TREE: `played-16.container` as it was
+before the byte, kept as `host24-16.container`, never regenerated, a fourth
+row of the corpus table (HOST 24 bytes, `8616198be3fd64ad`, every offset after
+it one less, the same trailer), inspected by `Atlas.Inspect.host24-16` to the
+same header and trailer as `played-16`, and required by
+`Atlas.ContainersRegenerate` to DIFFER from the `played-16` the tool writes
+today - the day they agree, the fifth byte is gone.
+
+`Run.Checkpoint.TheClimateIsInTheHostSection`: a container of a climate world
+carries a 25-byte HOST whose fifth byte reads back; a host that did not ask for
+a climate is refused `ClimateDiffers` by name and left un-begun with its empty
+world untouched; the host it is of takes it up; the reading rule on the bytes
+alone through a hand-built view - 24 reads as the four flags and Climate false,
+25 as written, 26 and 23 as no HOST section; and THE CONTROL, ADR-0149 rule 2,
+inverted from Stream's: two worlds identical but for the flag, ten day turns,
+are THE SAME WORLD under `VT_CHECK_DIGEST_EQ` on state and log, because nothing
+reads the flag yet - the day something does, that arm turns, and 18.10 rewrites
+it into Stream's "must part". `TheHostsDeclaredWorldIsCheckedAgainstTheSave`
+gains the ninth mismatch: 9 of 9 by name, five flags carried.
+
+FAILED ON PURPOSE: `GetOptions` writing the byte and never reading it - the
+plan's own control, ADR-0150's silent row reproduced. SIX checks fire, all in
+the new case: the fifth byte does not read back, the cold host answers `Ok`
+where `ClimateDiffers` was wanted and is left BEGUN with its digest moved (the
+half-restore the refusal exists to prevent, seen), the host the save is of is
+refused, and the 25-byte reading rule fails. The ninth mismatch in the older
+case still passes under that defect - a host asking for a climate offered a
+climate-less save is refused either way - which is exactly why the new case
+exists: the silent direction is the cold host taking a warm save.
+
+26 of 26 touched entries green on gcc debug (SaveContinue, SaveFuzz, Migrate,
+the stores, the refusals, the inspector, the corpus), the corpus entries on
+gcc release; verify_fast clean, eight checks.
+
+THE CENSUS OVER THE COMMIT, `frozen_census.py --diff HEAD~1 HEAD`, and it is
+not the "WORLD 3, all SECTION" the plan predicted - it is that plus what the
+task added, and the instrument says which is which:
+
+```
+[frozen-census] HEAD~1..HEAD: 4 removed, 22 added, in 3 file(s)
+[frozen-census]   WORLD -2/+11: section -2/+6, trailer -0/+5
+[frozen-census]   SEED -0/+4: seed -0/+4
+[frozen-census]   RECORD -2/+7: section -2/+6, trailer -0/+1
+[frozen-census]   unmoved: GEN, HASH, CONST, SYNTHETIC
+```
+
+Two HOST digests removed and not three, because the third - played-16's old
+`8616198be3fd64ad` - SURVIVES in the kept older container's row; the six
+sections added are the three new HOST digests and the kept row's three that
+now stand twice; the five trailers are the three `static_assert`s and the kept
+row's; the seeds are the kept row's and its README and inspect entries. No
+trailer removed, no state, no log, no GEN, no HASH: the byte moved sections and
+nothing else, and the census is what says so rather than the commit message.

@@ -402,6 +402,10 @@ namespace
 		{
 			Out += TEXT(" --lively");
 		}
+		if (Given.Climate)
+		{
+			Out += TEXT(" --climate");
+		}
 		return Out;
 	}
 } // namespace

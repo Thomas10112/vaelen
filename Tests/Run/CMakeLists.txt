@@ -428,6 +428,16 @@ add_test(NAME Atlas.Inspect.played-16
           "-DWANT_TRAILER=inspect: image trailer 64d11b40b612581c (this is the state digest every other tool means)"
           "-DWANT_LAST=inspect: stream 6 day(s), 0 command(s), 1 taking(s), 6 look(s); header 16 tiles 10+1 seed 000041454c564f52 v1; rules ages 0-45 bound 0 ore 0"
           -P ${InspectDrv})
+# 18.02: the kept 24-byte-HOST container reads through the same inspector,
+# with the same header and trailer as played-16 - the world did not move, the
+# section did.
+add_test(NAME Atlas.Inspect.host24-16
+  COMMAND ${CMAKE_COMMAND} -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DFILE=${PROJECT_SOURCE_DIR}/Tests/Run/Containers/host24-16.container
+          "-DWANT_HEADER=inspect: container v2, image v3, flags 00000000, seed 000041454c564f52, tick 95184, 148 events, 16592 log bytes"
+          "-DWANT_TRAILER=inspect: image trailer 64d11b40b612581c (this is the state digest every other tool means)"
+          "-DWANT_LAST=inspect: stream 6 day(s), 0 command(s), 1 taking(s), 6 look(s); header 16 tiles 10+1 seed 000041454c564f52 v1; rules ages 0-45 bound 0 ore 0"
+          -P ${InspectDrv})
 add_test(NAME Atlas.Inspect.full-32
   COMMAND ${CMAKE_COMMAND} -DATLAS=$<TARGET_FILE:VaelenAtlas>
           -DFILE=${PROJECT_SOURCE_DIR}/Tests/Run/Containers/full-32.container
