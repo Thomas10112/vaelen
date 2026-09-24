@@ -19,7 +19,44 @@ PHASE       : 17 — DEBUG TOOLS, opened 2026-09-24
                v4 bump and 16.14 needs the owner's Windows machine. Docs/ROADMAP.md
                section 22 has the clause-by-clause read.
                15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
-TASK        : 17.05 — DONE 2026-09-24. The census, and it concluded the phase is about
+TASK        : 17.06 — DONE 2026-09-24. The inspector: a container described from its
+              bytes, and a directory listed by a process that wrote nothing.
+
+              Atlas --inspect FILE prints the header, every section with kind, offset,
+              length, share and digest, the image TRAILER named as "the state digest
+              every other tool means", the HOST wiring, the RUN state's shape and the
+              STREAM's counts, header and rules — WITHOUT CONSTRUCTING AN AELVOR.
+              ReadHostSection, ReadRunSection and ReadStreamSection need no world, and
+              that is the claim: a 2 GB save described in the time it takes to read it.
+              Until this, nothing in the tree read a container from disk except a test.
+
+              Atlas --inspect-dir DIR is 17.03's second-process half.
+              Atlas.InspectDir.ColdProcess: two writer processes at seeds 1 and 2, a
+              third that lists both with the trailers their writers printed ON THE SAME
+              LINE AS THEIR NAMES, so a listing right by name and wrong by position
+              cannot pass. The first expectation said four sections; --save-to carries no
+              tape, so three. The tool was right and the expectation wrong.
+
+              AND THE FIRST RUN OVER THE CORPUS DIRECTORY FOUND SOMETHING: README.md was
+              listed as a checkpoint with tick 0, version 0 and sixteen zeros for a digest
+              — a row that looks like data and is not. The store is right to hand it back;
+              a browser is wrong to show it as a save. ContainerVersion is 0 exactly when
+              ReadCheckpoint refused, so the tool prints "not a container" and counts
+              "3 checkpoint(s) and 1 other file(s)".
+
+              TWO REFUSALS, both about what is NOT printed. An image is refused BY NAME —
+              "BadMagic (it is a save IMAGE, the inner format, not a VAELENCP container
+              around one)". A container cut at 4 KiB, whose header is readable and whose
+              table points past the end, is refused WHOLE: "Corrupt, 4096 bytes on disk;
+              section 0 is where it stopped describing them", and not one header or table
+              line printed.
+
+              THREE DELIBERATE FAILURES, ALL FIRED. Header printed before the refusal:
+              "a refused file was described in part". A pinned trailer bent by one hex
+              digit: "WANT_TRAILER not printed". One byte of a listed file flipped:
+              "1 checkpoint(s) and 1 other file(s)", shown as "not a container".
+
+TASK (17.05): 17.05 — DONE 2026-09-24. The census, and it concluded the phase is about
               something else — just not the something the plan expected.
 
               THE PANEL MEASURED 7 CAUSES IN 535 EVENTS (1.31%) with a deepest chain of

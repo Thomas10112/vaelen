@@ -6096,16 +6096,70 @@ cause was 99, which FOLLOWS it, and both instruments called it
 `NotBeforeEffect` - correctly, and in agreement. A dangling link must precede
 and be absent.
 
+### 17.06 AS BUILT, 2026-09-24
+
+`Atlas --inspect FILE` describes a container from its bytes and from nothing
+else: header, every section with kind, offset, length, share and section
+digest, the image TRAILER named as "the state digest every other tool means",
+the HOST wiring, the RUN state's shape, and the STREAM's record counts, header
+and rules - **without constructing an Aelvor**, let alone generating or
+adopting one. `ReadHostSection`, `ReadRunSection` and `ReadStreamSection` need
+no world, and that is the whole claim: a 2 GB save is described in the time it
+takes to read it. The roadmap's own words at the close of Phase 16 were "this
+phase stops there"; nothing in the tree read a container from disk except a
+test, until this.
+
+`Atlas --inspect-dir DIR` lists a directory through the host-side store from a
+process that wrote nothing - **17.03's second-process half**, and
+`Atlas.InspectDir.ColdProcess` is two writer processes at seeds 1 and 2, then a
+third that lists both with the trailers their writers printed, on the same line
+as their names, so a listing with the names right and the digests by position
+cannot pass. The first expectation said four sections; `--save-to` uses the
+two-argument build and carries no tape, so three. The tool was right.
+
+**AND THE FIRST RUN OVER THE CORPUS DIRECTORY FOUND SOMETHING.** `README.md`
+was listed as a checkpoint: tick 0, version 0, a digest of sixteen zeros - a row
+that looks like data and is not. The store is right to hand it back (it lists
+what is there, and judging bytes is not its job); a browser is wrong to show it
+as a save. `ContainerVersion` is 0 exactly when `ReadCheckpoint` refused and no
+container this build writes has version 0, so the tool now prints
+`| README.md | 7476 | - | not a container | - | - |` and counts
+`3 checkpoint(s) and 1 other file(s)`.
+
+Two refusals, as the gate asks, and both are about what is NOT printed:
+
+- an IMAGE - the inner format, what `Tests/Run/Golden` holds - is refused with
+  `BadMagic (it is a save IMAGE, the inner format, not a VAELENCP container
+  around one)`, because a reader that only said BadMagic would leave a person
+  wondering which of two magics they had;
+- a container cut at 4 KiB, which has a readable header and a table that
+  points past the end, is refused WHOLE: `Corrupt`, `4096 bytes on disk;
+  section 0 is where it stopped describing them`, and not one line of the
+  header or the table printed.
+
+Seven entries: `Atlas.Inspect.{bare-16,played-16,full-32}` (header, trailer and
+last line pinned whole, 0.01 s each), `Atlas.Inspect.RefusesAnImage`,
+`Atlas.Inspect.RefusesATruncation` (the copy is cut by the one tool every leg
+has and its size is checked before the inspector sees it),
+`Atlas.InspectDir.ColdProcess` (0.24 s), and the directory judgement above is
+exercised by the same driver.
+
+**THREE DELIBERATE FAILURES, ALL OF WHICH FIRED.** Printing the header BEFORE
+the refusal: `a refused file was described in part`. A pinned trailer bent by
+one hex digit: `WANT_TRAILER not printed`. One byte of `second` flipped in the
+listed directory: `1 checkpoint(s) and 1 other file(s)`, with `second` shown as
+`not a container` rather than with a wrong digest.
+
 ### The Phase 17 gate
 
 | clause | the command that decides it |
 |---|---|
 | (a) | `ctest -R '^Run\.Containers$'` — the three containers read without a world being generated, every recorded number checked against the bytes, and each regenerating byte-identically from its recorded command. |
 | (b) | `ctest -R '^Kernel\.EventTypes$'` — the generator re-run and diffed; and `Tools/Atlas --causes` over the corpus prints type NAMES, not hashes. |
-| (c) | `ctest -R '^Run\.StoreColdProcess$'` — a store that wrote nothing lists a directory somebody else filled, with the right ticks, digests and section counts; the pre-fix listing, kept in the same file, reports zero over the same three files in the same run. The second-**process** half rides on 17.06's `--inspect-dir`, which is the tool that does it. |
+| (c) | `ctest -R '^Run\.StoreColdProcess$'` — a store that wrote nothing lists a directory somebody else filled, with the right ticks, digests and section counts; the pre-fix listing, kept in the same file, reports zero over the same three files in the same run. The second-**process** half is `Atlas.InspectDir.ColdProcess` (17.06): two writer processes, one cold reader through the store, both trailers on their names. |
 | (d) | `ctest -R '^Sim\.CauseWalk$'` — seven ends, and the kept pre-fix arm showing today's `CauseChain` cannot tell a root from a missing link. |
 | (e) | `ctest -R '^Sim\.Causality$'` — the planted census exact, and the cleared-edge arm reporting depth 0. The real figures are in this ROADMAP and dated. |
-| (f) | `ctest -R '^Atlas\.Inspect$'` — every pinned line, and both refusals. |
+| (f) | `ctest -R '^Atlas\.Inspect'` — the three corpus containers with their header, trailer and last line pinned whole; an image refused BY NAME; a 4 KiB truncation refused whole and not described in part; and the cold directory listing. |
 | (g) | `ctest -R '^Harness\.VacuityIsSeen$'` — the same assertion failing under the witness macro and passing under the plain one, in one run. |
 | (h) | `ctest -R '^Run\.RefusalsAreTheCachesSafety$'` — every route, every refusal, by name. |
 | (i) | Not one frozen digest moved: `git diff <phase start>..HEAD -- Tests/ Source/ Tools/ Docs/ROADMAP.md \| grep -E '^-.*\b[0-9a-f]{16}\b'` prints nothing. **This is the clause the dropped tasks would have broken**, and it is why they were dropped. |

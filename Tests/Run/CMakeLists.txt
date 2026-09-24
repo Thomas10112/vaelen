@@ -406,3 +406,53 @@ foreach(Pair
             -P ${CMAKE_CURRENT_LIST_DIR}/Causes.cmake)
   set_tests_properties(Atlas.Causes.${Name} PROPERTIES TIMEOUT 600)
 endforeach()
+
+# 17.06: the inspector, over the corpus, with the two refusals the gate asks
+# for and the second-process listing 17.03 deferred to it.
+#
+# Nothing here generates a world except the two writers of the cold-directory
+# entry, and those are separate processes whose output the listing process is
+# judged against.
+set(InspectDrv ${CMAKE_CURRENT_LIST_DIR}/Inspect.cmake)
+add_test(NAME Atlas.Inspect.bare-16
+  COMMAND ${CMAKE_COMMAND} -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DFILE=${PROJECT_SOURCE_DIR}/Tests/Run/Containers/bare-16.container
+          "-DWANT_HEADER=inspect: container v2, image v3, flags 00000000, seed 000041454c564f52, tick 95040, 129 events, 14464 log bytes"
+          "-DWANT_TRAILER=inspect: image trailer d17d7fd9a6f09ea6 (this is the state digest every other tool means)"
+          "-DWANT_LAST=inspect: no STREAM section - this save does not carry its own tape"
+          -P ${InspectDrv})
+add_test(NAME Atlas.Inspect.played-16
+  COMMAND ${CMAKE_COMMAND} -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DFILE=${PROJECT_SOURCE_DIR}/Tests/Run/Containers/played-16.container
+          "-DWANT_HEADER=inspect: container v2, image v3, flags 00000000, seed 000041454c564f52, tick 95184, 148 events, 16592 log bytes"
+          "-DWANT_TRAILER=inspect: image trailer 64d11b40b612581c (this is the state digest every other tool means)"
+          "-DWANT_LAST=inspect: stream 6 day(s), 0 command(s), 1 taking(s), 6 look(s); header 16 tiles 10+1 seed 000041454c564f52 v1; rules ages 0-45 bound 0 ore 0"
+          -P ${InspectDrv})
+add_test(NAME Atlas.Inspect.full-32
+  COMMAND ${CMAKE_COMMAND} -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DFILE=${PROJECT_SOURCE_DIR}/Tests/Run/Containers/full-32.container
+          "-DWANT_HEADER=inspect: container v2, image v3, flags 00000000, seed 000041454c564f52, tick 95184, 577 events, 64640 log bytes"
+          "-DWANT_TRAILER=inspect: image trailer 2ec516c4d275ab6f (this is the state digest every other tool means)"
+          "-DWANT_LAST=inspect: run begun, detail 6, dug 6, eyes on region 1 reach 1 most 0, 3 near, 4 watched"
+          -P ${InspectDrv})
+# The mistake the whole phase turns on, made on purpose: the inner format
+# handed to the container reader must be refused BY NAME.
+add_test(NAME Atlas.Inspect.RefusesAnImage
+  COMMAND ${CMAKE_COMMAND} -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DFILE=${PROJECT_SOURCE_DIR}/Tests/Run/Golden/bare-16.snapshot
+          -DREFUSE=image -P ${InspectDrv})
+# A container cut at 4 KiB has a readable header and a table that points past
+# the end; it must be refused WHOLE, not described in part.
+add_test(NAME Atlas.Inspect.RefusesATruncation
+  COMMAND ${CMAKE_COMMAND} -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DFILE=${PROJECT_SOURCE_DIR}/Tests/Run/Containers/played-16.container
+          -DREFUSE=truncated -DSCRATCH=${CMAKE_CURRENT_BINARY_DIR}
+          -P ${InspectDrv})
+# 17.03's second-process half: two writers, one cold reader.
+add_test(NAME Atlas.InspectDir.ColdProcess
+  COMMAND ${CMAKE_COMMAND} -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DDIR=${CMAKE_CURRENT_BINARY_DIR}/inspect-dir
+          -P ${CMAKE_CURRENT_LIST_DIR}/InspectDir.cmake)
+set_tests_properties(Atlas.Inspect.bare-16 Atlas.Inspect.played-16 Atlas.Inspect.full-32
+                     Atlas.Inspect.RefusesAnImage Atlas.Inspect.RefusesATruncation PROPERTIES TIMEOUT 600)
+set_tests_properties(Atlas.InspectDir.ColdProcess PROPERTIES TIMEOUT 1800 COST 500)

@@ -36,6 +36,7 @@
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Population/Traits.h"
 #include "Vaelen/Run/Aelvor.h"
+#include "StdioCheckpointStore.h"
 #include "Vaelen/Run/Checkpoint.h"
 #include "Vaelen/Run/Door.h"
 #include "Vaelen/Core/Version.h"
@@ -494,6 +495,11 @@ namespace
 		/// 17.05: the same census over a world GENERATED from --size and the
 		/// rest, for the figure over a fresh AELVOR the roadmap records.
 		bool Census = false;
+		/// 17.06: describe a container WITHOUT generating or adopting a world.
+		std::string Inspect;
+		/// 17.06: list a directory of containers through the host-side store,
+		/// from a process that wrote none of them.
+		std::string InspectDir;
 		/// The four digests the host printed, as `state %016llx, log %016llx,
 		/// life %016llx, panel %016llx` - the tail of the line
 		/// Vaelen.Stream.Write logs. Given, the gate JUDGES clause (b)'s other
@@ -624,6 +630,9 @@ namespace
 					 "  --containers DIR  write the container corpus of 17.01 to this directory\n"
 					 "  --causes FILE   17.05: the cause census over a container, per event type\n"
 					 "  --census        the same over a world generated from --size and the rest\n"
+					 "  --inspect FILE  17.06: header, sections, host wiring, run shape and stream of a\n"
+					 "                  container, without generating a world\n"
+					 "  --inspect-dir DIR  list every container in a directory through the store\n"
 					 "  --gate FILE     replay a walk and report the six clauses of the 15.10 gate\n"
 					 "  --expect \"...\"  with --gate: the four digests the host printed, judged rather than "
 					 "printed\n");
@@ -776,6 +785,14 @@ namespace
 			else if (std::strcmp(Arg, "--census") == 0)
 			{
 				Out.Census = true;
+			}
+			else if (std::strcmp(Arg, "--inspect") == 0 && HasValue)
+			{
+				Out.Inspect = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--inspect-dir") == 0 && HasValue)
+			{
+				Out.InspectDir = Argv[++I];
 			}
 			else if (std::strcmp(Arg, "--want-bound") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
 			{
@@ -2647,6 +2664,204 @@ namespace
 		return PrintCensus(A.Instance(), What);
 	}
 
+	// ------------------------------------------------------------------
+	// 17.06: THE INSPECTOR. What a container says about itself, read from
+	// its bytes and from nothing else.
+	//
+	// The roadmap's own words at the close of Phase 16: "16.04's section table
+	// and manifest are what makes listing saves without generating a world
+	// possible; this phase stops there." `--save --sections` generates a world
+	// FIRST and never opens a file, so until now nothing in the tree read a
+	// container from disk except a test. This does, and it is the first thing
+	// a person would reach for when a save misbehaves.
+	//
+	// NO WORLD IS CONSTRUCTED, let alone generated or adopted. `ReadHostSection`
+	// decodes Options, `ReadRunSection` decodes a RunState and
+	// `ReadStreamSection` decodes a tape, and none of the three needs an
+	// Aelvor. That is the whole claim, and it is why a 2 GB save can be
+	// described in the time it takes to read it.
+	bool ReadWholeFile(const std::string& Path, std::vector<Vaelen::uint8>& Out, const char* Who)
+	{
+		std::FILE* F = std::fopen(Path.c_str(), "rb");
+		if (F == nullptr)
+		{
+			std::fprintf(stderr, "%s: cannot read %s\n", Who, Path.c_str());
+			return false;
+		}
+		std::fseek(F, 0, SEEK_END);
+		const long Len = std::ftell(F);
+		std::fseek(F, 0, SEEK_SET);
+		Out.assign(static_cast<usize>(Len > 0 ? Len : 0), 0u);
+		const usize Got = Out.empty() ? 0u : std::fread(Out.data(), 1, Out.size(), F);
+		std::fclose(F);
+		if (Out.empty() || Got != Out.size())
+		{
+			std::fprintf(stderr, "%s: short read of %s\n", Who, Path.c_str());
+			return false;
+		}
+		return true;
+	}
+
+	int RunInspect(const Options& Opt)
+	{
+		std::vector<Vaelen::uint8> Bytes;
+		if (!ReadWholeFile(Opt.Inspect, Bytes, "inspect"))
+		{
+			return 1;
+		}
+
+		Vaelen::Run::CheckpointView View;
+		const Vaelen::Run::CheckpointRefusal Read = Vaelen::Run::ReadCheckpoint(Bytes.data(), Bytes.size(), View);
+		if (Read.Result != Vaelen::Run::CheckpointResult::Ok)
+		{
+			// REFUSED WHOLE, never described in part. A truncated container
+			// has a readable header and a table that points past the end, and
+			// printing the header would look like a description of a save.
+			//
+			// And the one mistake this whole phase turns on gets its own
+			// sentence: an IMAGE - the inner format, what Tests/Run/Golden
+			// holds - begins "VAELEN" too, and a reader that only said BadMagic
+			// would leave a person wondering which of two magics they had.
+			const bool LooksLikeAnImage = Bytes.size() >= 8u && std::memcmp(Bytes.data(), "VAELEN", 6) == 0 &&
+										  std::memcmp(Bytes.data(), Vaelen::Run::CheckpointMagic, 8) != 0;
+			std::fprintf(stderr, "inspect: %s is not a container this build reads - %s%s\n", Opt.Inspect.c_str(),
+						 Vaelen::Run::CheckpointResultToString(Read.Result),
+						 LooksLikeAnImage ? " (it is a save IMAGE, the inner format, not a VAELENCP container "
+											"around one)"
+										  : "");
+			if (Read.Result == Vaelen::Run::CheckpointResult::BadSectionTable ||
+				Read.Result == Vaelen::Run::CheckpointResult::Truncated ||
+				Read.Result == Vaelen::Run::CheckpointResult::Corrupt)
+			{
+				std::fprintf(stderr, "inspect: %zu bytes on disk; section %u is where it stopped describing them\n",
+							 Bytes.size(), Read.Section);
+			}
+			return 1;
+		}
+
+		std::printf("inspect: %s, %zu bytes\n", Opt.Inspect.c_str(), Bytes.size());
+		std::printf("inspect: container v%u, image v%u, flags %08x, seed %016llx, tick %llu, %llu events, %llu log "
+					"bytes\n",
+					View.Version, View.InnerFormat, View.Flags, static_cast<unsigned long long>(View.Seed),
+					static_cast<unsigned long long>(View.Tick), static_cast<unsigned long long>(View.LogEvents),
+					static_cast<unsigned long long>(View.LogBytes));
+
+		std::printf("inspect: %zu section(s)\n", View.Sections.size());
+		std::printf("| kind | offset | length | share | section digest |\n|---|---|---|---|---|\n");
+		for (const Vaelen::Run::SectionEntry& E : View.Sections)
+		{
+			std::printf("| %s (%u) | %llu | %llu | %.1f%% | %016llx |\n", KindName(E.Kind), E.Kind,
+						static_cast<unsigned long long>(E.Offset), static_cast<unsigned long long>(E.Length),
+						100.0 * static_cast<double>(E.Length) / static_cast<double>(Bytes.size()),
+						static_cast<unsigned long long>(E.Digest));
+		}
+
+		Vaelen::Hash64 Trailer = 0;
+		if (TrailerOf(View, Trailer))
+		{
+			std::printf("inspect: image trailer %016llx (this is the state digest every other tool means)\n",
+						static_cast<unsigned long long>(Trailer));
+		}
+		else
+		{
+			std::printf("inspect: no STATE section, so no image trailer\n");
+		}
+
+		Vaelen::Run::Options Host;
+		if (Vaelen::Run::ReadHostSection(View, Host))
+		{
+			std::printf("inspect: host %u tiles, %u+%u years, seed %016llx, wiring:%s%s%s%s%s\n", Host.Size,
+						Host.PreHistory, Host.Years, static_cast<unsigned long long>(Host.Seed),
+						Host.Play ? " Play" : "", Host.Stream ? " Stream" : "", Host.Lively ? " Lively" : "",
+						Host.Colony ? " Colony" : "",
+						(Host.Play || Host.Stream || Host.Lively || Host.Colony) ? "" : " none");
+		}
+		else
+		{
+			std::printf("inspect: no HOST section - the wiring this was saved under is not recorded\n");
+		}
+
+		Vaelen::Run::Aelvor::RunState Run;
+		if (Vaelen::Run::ReadRunSection(View, Run))
+		{
+			std::printf("inspect: run %s, detail %u, dug %u, eyes on region %u reach %u most %u, %zu near, %zu "
+						"watched\n",
+						Run.Begun ? "begun" : "not begun", Run.Detail, Run.Dug, Run.Eyes.Region, Run.Eyes.Reach,
+						Run.Eyes.Most, Run.Near.size(), Run.Watched.size());
+		}
+		else
+		{
+			std::printf("inspect: no RUN section - a world restored from this parts company at the first look\n");
+		}
+
+		uint64 StreamLength = 0;
+		if (View.Find(Vaelen::Run::SectionKind::Stream, StreamLength) == nullptr)
+		{
+			std::printf("inspect: no STREAM section - this save does not carry its own tape\n");
+		}
+		else
+		{
+			Player::InputStream Tape;
+			Player::StartRules Rules;
+			if (Vaelen::Run::ReadStreamSection(View, Tape, Rules))
+			{
+				std::printf("inspect: stream %zu day(s), %zu command(s), %zu taking(s), %zu look(s); header %u tiles "
+							"%u+%u seed %016llx v%u; rules ages %u-%u bound %u ore %u\n",
+							Tape.Days.size(), Tape.Commands.size(), Tape.Takings.size(), Tape.Looks.size(),
+							Tape.Header.Size, Tape.Header.PreHistory, Tape.Header.Years,
+							static_cast<unsigned long long>(Tape.Header.Seed), Tape.Header.Version, Rules.FromAge,
+							Rules.ToAge, Rules.WantBound, Rules.PreferOre);
+			}
+			else
+			{
+				std::printf("inspect: a STREAM section of %llu bytes that this build cannot decode\n",
+							static_cast<unsigned long long>(StreamLength));
+			}
+		}
+		return 0;
+	}
+
+	int RunInspectDir(const Options& Opt)
+	{
+		// THROUGH THE STORE, and from a process that wrote nothing: this is
+		// 17.03's second-process half. Run.StoreColdProcess proves a second
+		// OBJECT lists what another wrote; this proves a second PROCESS does,
+		// which is the thing a save browser actually is.
+		VaelenHost::StdioCheckpointStore Store(Opt.InspectDir);
+		const std::vector<Vaelen::Run::StoreEntry> Entries = Store.List();
+
+		// THE STORE LISTS WHAT IS THERE; THE TOOL SAYS WHAT IT IS. Pointed at
+		// the corpus directory, the first version of this printed README.md as
+		// a checkpoint with tick 0, version 0 and a digest of sixteen zeros -
+		// a row that looks like data and is not. The store is right to hand
+		// the file back (it is not its job to judge bytes, Run.Store says so);
+		// a browser is wrong to show it as a save. `ContainerVersion` is 0
+		// exactly when `ReadCheckpoint` refused, and no container this build
+		// writes has version 0.
+		usize Checkpoints = 0;
+		usize Others = 0;
+		for (const Vaelen::Run::StoreEntry& E : Entries)
+		{
+			(E.ContainerVersion == 0u ? Others : Checkpoints) += 1u;
+		}
+		std::printf("inspect-dir: %zu checkpoint(s) and %zu other file(s) in %s\n", Checkpoints, Others,
+					Opt.InspectDir.c_str());
+		std::printf("| name | bytes | tick | container v | sections | image trailer |\n|---|---|---|---|---|---|\n");
+		for (const Vaelen::Run::StoreEntry& E : Entries)
+		{
+			if (E.ContainerVersion == 0u)
+			{
+				std::printf("| %s | %llu | - | not a container | - | - |\n", E.Name.c_str(),
+							static_cast<unsigned long long>(E.Bytes));
+				continue;
+			}
+			std::printf("| %s | %llu | %llu | %u | %u | %016llx |\n", E.Name.c_str(),
+						static_cast<unsigned long long>(E.Bytes), static_cast<unsigned long long>(E.Tick),
+						E.ContainerVersion, E.SectionCount, static_cast<unsigned long long>(E.Digest));
+		}
+		return 0;
+	}
+
 	int RunStand(const Options& Opt)
 	{
 		Vaelen::Run::Options RO;
@@ -3121,6 +3336,14 @@ namespace
 		if (Opt.Census)
 		{
 			return RunCensus(Opt);
+		}
+		if (!Opt.Inspect.empty())
+		{
+			return RunInspect(Opt);
+		}
+		if (!Opt.InspectDir.empty())
+		{
+			return RunInspectDir(Opt);
 		}
 		if (!Opt.Gate.empty())
 		{
