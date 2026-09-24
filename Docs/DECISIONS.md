@@ -10505,3 +10505,75 @@ Refusing on `Options::Stream` is only worth anything if the flag changes the
 world. Two worlds identical but for it, played the same way, part company within
 **ten day turns** — asserted in
 `Checkpoint.TheHostsDeclaredWorldIsCheckedAgainstTheSave` rather than assumed.
+
+---
+
+## ADR-0151 — The current temperature is a function, not a layer, and a region's year is a closed form
+
+**Status:** PROPOSED 2026-09-24 by the Phase 18 panel (`Docs/ROADMAP.md` section 25); applied by task 18.03, which changes this line.
+
+### Context
+
+The Temperature layer is an annual mean that already holds the latitude band, the lapse and the noise (WorldGen.cpp:521-529); SeasonalOffset exists with amplitude 4 + 16|lat| and no production caller (WorldGen.cpp:413-424); nothing outside WorldGen reads the layer. A per-tile seasonal layer would cost 131072 bytes per season at 128 and 524288 at 256, be serialised into every image (WorldMap.cpp:84-114), and its NAME would move WorldMap::LayoutDigest (:29-38), the image header (Snapshot.cpp:435) and every state digest (:657-684) before a single consumer existed — a refusal of every save with the option off.
+
+### Decision
+
+TemperatureOn(Mean, Latitude, DayOfYear) is a pure function: the mean layer plus a triangle wave whose four season midpoints are SeasonalOffset's values; TileTemperatureOn reads the layer and LatitudeOfRow. A region's year (frost days, cold sum, growing days, coldest, warmest) is ShapeYear's arithmetic series at RegionInfo::CentroidTile plus a YearVariation that is a Noise::LatticeHash of (seed, year, region), never an RNG draw. One RegionYear function serves Production, Winter and the view, so two systems cannot disagree about the same region. The kernel keeps no per-tile and no per-region climate state.
+
+### Consequences
+
+O(regions) a year with one Fix64 Div each, O(1) per tile per day for the display; no layer, no component, no format change for the temperature itself; Phase 19's per-tile figure is a view leaf (ClimateView, 4 bytes a tile, once a day), never a kernel layer; the closed forms are pinned against the 360-term daily sums within one day and one degree-day, with the discrete sums as the frozen values (pole 315/5513, row 32 of 128 65/137/221) because the continuous form's hand figures were wrong once already.
+
+---
+
+## ADR-0152 — A winter has a calendar, not an omen: why the hard winter is not a DisasterKind, and what it weighs on
+
+**Status:** PROPOSED 2026-09-24 by the Phase 18 panel (`Docs/ROADMAP.md` section 25); applied by task 18.06, which changes this line.
+
+### Context
+
+DisasterKind::Count sizes DisasterState::PerKind (static_assert 32 + 24·MaxPending at Disasters.h:92), RegionHazard::Risk (:69) and both rule arrays (:107, :112); the registry LayoutDigest folds every type's size (ComponentType.cpp:65-74); the omen loop draws per kind (Disasters.cpp:354-362). A fifth kind therefore moves every state digest and every RNG sequence with the option OFF. Physically a winter comes every year at the same rows, harder some years; a disaster is an omen then a strike.
+
+### Decision
+
+Not a DisasterKind. Economy::WinterSystem, yearly at SimLod::World, judges the winter just lain from the closed form's cold sum (severity 0..3 by degree-day bands) and foresees the coming one from the same function: fuel is the timber the region already burns, scaled by cold and taken through Lose() so the ledger closes; a hard winter loses {50, 120, 250}‰ of the common and house grain with the WinterEvent as cause; coarse regions lose {0, 2, 8, 20}‰ per culture through the Kill helper made public, never in a detailed region; detailed persons are chilled by exposure = (1000 − fuel covered) × (1000 − settlement shelter − cloth cover); the colony and the played person take it a day at a time by ShareOfDay. Two events, WinterForeseen (no draw: the year is deterministic) and Winter, each worded by the chronicle.
+
+### Consequences
+
+The winter is displayed as a forecast and as a blow, the ledger stays closed (Economy.Ledger's Dark == 0 is a clause), the chronicle has a warning and a sentence with a count, and no draw anywhere in it — the same seed and year give the same winter, so replay and partial re-simulation agree. Coarse deaths stay under GrowthPerMille so no region empties from winter alone; the pre-history's survival is a measured clause (Run.Climate), not an assumption. An omen-style drawn winter, if the owner wants one, is a later task with its own re-freeze.
+
+---
+
+## ADR-0153 — Zero means warm: warmth is a chill in its own component, declared only in a climate world
+
+**Status:** PROPOSED 2026-09-24 by the Phase 18 panel (`Docs/ROADMAP.md` section 25); applied by task 18.05, which changes this line.
+
+### Context
+
+PersonNeeds is a Phase 04 VALIDATED 8-byte struct with an unused uint32 Reserved hashed by the pool (Needs.h:36-44); ADR-0090 point 4 refused writing Phase 11 state into DepositInfo's reserved words because it makes an earlier phase's digest a function of a later one, and point 2 says a type is declared by the module that needs it and observed by the one below. A component field joins the state digest of every world that declares the module the moment it is non-zero (Needs.h:66-75).
+
+### Decision
+
+PersonWarmth {Chill, ColdYears, Clad, Reserved…} is its own 8-byte component, declared by WarmthTypes only when the climate is asked for, after Polity and before Colony in all four wirings, observed by NeedSystem through ObserveWinter as RegionRation is. The field is CHILL (0 = warm) so a world's default bytes are the zeros it had. DeathCause::Cold = 4 joins the one death path; Population declares the Winter event types and Economy publishes them.
+
+### Consequences
+
+Every pre-phase digest is kept still by construction (nothing declared) rather than by promise (keep a byte zero); a climate world's type layout differs from a climate-less one, which Adopt names ClimateDiffers by the HOST byte before the kernel would say LayoutDiffers; Colony/Play/Lively ids shift by one in climate worlds, which is why the actors flip in the same commit as Aelvor and Atlas; Clad is reserved for cloth by name so the next feed has a home without a second carve.
+
+---
+
+## ADR-0154 — The re-freeze: a classified census with a known answer, the switch first, one flip commit with its footprint predicted, and the blind grep retired
+
+**Status:** PROPOSED 2026-09-24 by the Phase 18 panel (`Docs/ROADMAP.md` section 25); applied by task 18.01, 18.02 and 18.10, which changes this line.
+
+### Context
+
+Phase 17's clause (i) `grep -E '^-.*\b[0-9a-f]{16}\b'` prints 0 over the ADR-0131 commit that removed 55 and added 50 `0x…ull` literals in 19 test files, because 391 of the tree's 414 sixteen-hex sites carry the `ull` suffix, which has no word boundary after the digits. ADR-0131 had to recover its 28/18 split after the fact because two changes shared be9df8d. Section 24 said Phase 18 'moves every frozen digest' and that the defect-5 door should share its commit.
+
+### Decision
+
+Tools/frozen_census.py classifies every site (WORLD by kind, GEN, HASH, SEED, SYNTHETIC, RECORD) and diffs revisions by class; its self-test reports be9df8d as 55/50 tokens in 19 files and keeps the blind regex as a pre-fix arm reporting 0. The switch (Options::Climate, a fifth HOST byte with a 24/25-byte rule, ClimateDiffers) lands FIRST as its own counted commit; eight tasks then move nothing, proved by the census at each; the tenth door closes at the reader for free, alone; ONE commit flips the default, wires all four, re-freezes every WORLD literal with counted values, regenerates the containers by their recorded command, leaves the goldens as images of the pre-winter era, replays the recorded months with --no-climate, and carries a prediction table written before the run that the census checks after.
+
+### Consequences
+
+'No digest moved' and 'exactly these moved' become claims an instrument can fail; the ground digest, the 14 generation digests, the 83 hash constants and the climate world's log-digest pins are the negatives that prove the flip touched the simulation and not the map; extents in the layout digest are decoupled from the climate and left to the owner; Phase 17's clause (i) is amended in the ROADMAP to name the census, and every later phase's gate uses it.

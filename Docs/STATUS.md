@@ -19,7 +19,12 @@ PHASE       : 17 — DEBUG TOOLS, CLOSED 2026-09-24: all eleven clauses of its g
               in 5122 s on 5032246; clause (i): no frozen digest moved over nine tasks.
               CI run 276 on 5032246: nine of ten legs green, the clang-debug leg still
               testing when this was written (run 274 on 65b60d4 was ten of ten).
-              NEXT: Phase 18 CLIMATE & SEASONS — its judge-panel plan is running.
+              NEXT: Phase 18 CLIMATE & SEASONS, PLANNED 2026-09-24 — ten tasks and a
+              twelve-clause gate in Docs/ROADMAP.md section 25, ADR-0151 to ADR-0154
+              proposed. The panel found clause (i) of Phase 17's gate measured with a
+              grep blind to `0x…ull` literals (0 over the ADR-0131 re-freeze that
+              removed 55); re-measured suffix-aware, Phase 17 removed 0 and added 138,
+              so the clause holds and section 23 says how. 18.01 is the instrument.
               (16 SAVE/PERSISTENCE: fourteen tasks built, its GATE still open —
                clause (j)'s migration half deferred to the v4 bump; and 16.14, whose
                sitting is the owner's Windows machine AND whose engine half —
