@@ -353,7 +353,15 @@ VAELEN_TEST(StoreColdProcess, TheDigestIsTheTrailerAndNotWhicheverSectionIsFirst
 	VT_CHECK(Store.Write("swapped", Swapped.data(), Swapped.size()) == StoreResult::Ok);
 
 	StdioCheckpointStore Cold(Somewhere());
-	const StoreEntry* Entry = Named(Cold.List(), "swapped");
+	// BOUND TO A NAME, and the first version of this line was not. It read
+	// `Named(Cold.List(), "swapped")` - a pointer INTO a temporary vector that
+	// dies at the end of the expression. gcc's allocator left the freed bytes
+	// in place and the test passed on Linux; AppleClang read 0000000000000000
+	// and MSVC read dddddddddddddddd, its freed-memory fill. The CI found it
+	// on two platforms at once, which is what ten legs are for; the test
+	// above this one had it right, and this one copied the pattern wrong.
+	const std::vector<StoreEntry> Listed = Cold.List();
+	const StoreEntry* Entry = Named(Listed, "swapped");
 	VT_CHECK_MSG(Entry != nullptr, "the reordered container was not listed at all");
 	if (Entry != nullptr)
 	{

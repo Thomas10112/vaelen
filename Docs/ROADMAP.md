@@ -5942,6 +5942,35 @@ Putting `Sections.front().Digest` back: `alpha: listed e0614906cb8a5676,
 ComputeStateDigest 0f6fa26b35d09a70`. Making `List` return early before it reads
 the directory: `a cold store listed 0 of 3`.
 
+**AND THE CI FOUND TWO DEFECTS IN THE TESTS THEMSELVES, ON `4340938`, THAT
+NO LINUX DEBUG BUILD COULD SEE.** Four of ten legs red.
+
+The serious one: `Named(Cold.List(), "swapped")` - a pointer INTO a temporary
+vector that dies at the end of the expression, in the second case of
+`Run.StoreColdProcess`. The first case had bound the vector to a name; the
+second copied the pattern wrong. gcc's allocator left the freed bytes in place
+and the test passed on every Linux leg and on this machine; AppleClang read
+`0000000000000000` and MSVC read `dddddddddddddddd`, its freed-memory fill. A
+test that passes on one platform because of what its allocator happens to leave
+behind is the exact shape of defect this phase keeps finding elsewhere, and this
+one was mine and a day old. **AddressSanitizer sees it deterministically**:
+`heap-use-after-free ... READ of size 8 ... Test_StoreColdProcess.cpp:360` on
+the pre-fix file, and the fixed file runs clean under ASan, 49 checks. That
+probe is now the local instrument for this class - `scratchpad/asan_*`, one
+translation unit compiled `-fsanitize=address` against the debug libraries.
+
+The other: gcc at `-O2` with `-Wnull-dereference` refuses `Bent[SectionCountAt]
+= Count` on a copy of a non-empty vector, and `-Werror` made both gcc release
+legs fail to BUILD `Test_Containers.cpp`. A debug build cannot see it because
+the analysis only runs with optimisation. The index goes through a pointer
+checked non-null now, and a gcc `RelWithDebInfo` tree matching the CI preset is
+configured beside the debug one so the compile check can be run under the same
+flags before a push rather than after.
+
+Neither defect was in the store. Both were in the instruments that judge it,
+and both were found by the only thing that runs the instruments on four
+compilers - which is the argument for ten legs, made by ten legs.
+
 ### 17.04 AS BUILT, 2026-09-24
 
 `Vaelen/Sim/Causality.h` declares `WalkEnd` and `CauseWalk`;

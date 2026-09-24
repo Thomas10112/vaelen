@@ -383,7 +383,12 @@ VAELEN_TEST(Containers, EditedBytesAreRefused)
 	for (uint8 Count : {uint8{3}, uint8{5}, uint8{0}, uint8{64}})
 	{
 		std::vector<uint8> Bent = Original;
-		Bent[SectionCountAt] = Count;
+		// Through a checked pointer rather than operator[]: gcc at -O2 with
+		// -Wnull-dereference cannot see that a copy of a non-empty vector has
+		// storage, and -Werror made the release legs refuse to build this.
+		uint8* const Bytes = Bent.data();
+		VT_REQUIRE(Bytes != nullptr && Bent.size() > SectionCountAt);
+		Bytes[SectionCountAt] = Count;
 		CheckpointView View;
 		const CheckpointRefusal Read = ReadCheckpoint(Bent.data(), Bent.size(), View);
 		VT_CHECK_MSG(Read.Result != CheckpointResult::Ok, "it was read as Ok, not refused (%s)",

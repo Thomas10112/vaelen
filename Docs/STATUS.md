@@ -138,6 +138,21 @@ TASK (17.03): 17.03 — DONE 2026-09-24. The store reads a directory, and report
               which is the tool that does it. The defect itself is per-INSTANCE, so a
               second object over the same directory is the evidence that distinguishes it.
 
+              AND THE CI FOUND TWO DEFECTS IN THE TESTS THEMSELVES on 4340938 — four of
+              ten legs red — that no Linux debug build could see. The serious one: a
+              pointer INTO a temporary vector, `Named(Cold.List(), "swapped")`, read after
+              the vector died. gcc's allocator left the bytes in place and every Linux leg
+              passed; AppleClang read 0000000000000000 and MSVC read dddddddddddddddd, its
+              freed-memory fill. AddressSanitizer sees it deterministically —
+              heap-use-after-free at Test_StoreColdProcess.cpp:360 on the pre-fix file,
+              clean on the fixed one — and that probe is now the local instrument for this
+              class. The other: gcc -O2 -Wnull-dereference refuses a vector index on a
+              copy, and -Werror made both gcc release legs fail to BUILD; a RelWithDebInfo
+              tree matching the CI preset is configured beside the debug one so this can
+              be seen before a push. Neither defect was in the store; both were in the
+              instruments that judge it, and both were found by the only thing that runs
+              them on four compilers.
+
 TASK (17.02): 17.02 — DONE 2026-09-24. The event-type name table, generated from the
               115 declarations and checked against the kernel's own hash.
 
