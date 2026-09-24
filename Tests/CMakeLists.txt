@@ -45,8 +45,25 @@ if(Python3_Interpreter_FOUND)
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_ui_fence.py --root ${PROJECT_SOURCE_DIR})
   add_test(NAME Kernel.UiFenceSelfTest
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_ui_fence.py --self-test --root ${PROJECT_SOURCE_DIR})
+  # 17.02: the event-type name table. An Event carries a Hash64 and nothing
+  # else about its identity, and until this phase nothing in the tree could
+  # turn one back into a word - so every census, inspector and causal walk
+  # Phase 17 plans would print sixteen hex digits at a person. The table is
+  # GENERATED from the 115 MakeEventType declarations across nine modules,
+  # because a compile-time one would need every module's headers in a single
+  # translation unit and VaelenSim may not know VaelenMilitary exists.
+  #
+  # This entry re-runs the generator and diffs. It is the only thing that
+  # notices a type added, renamed or deleted; Run.EventTypes checks the table
+  # against the kernel's own HashString and against real declaration sites,
+  # which is a different claim and a different entry.
+  add_test(NAME Kernel.EventTypes
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/gen_event_names.py --check)
+  add_test(NAME Kernel.EventTypesSelfTest
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/gen_event_names.py --self-test)
   set_tests_properties(Kernel.Purity Kernel.PuritySelfTest Kernel.WorldWiring Kernel.UiFence
-                       Kernel.UiFenceSelfTest PROPERTIES TIMEOUT 120)
+                       Kernel.UiFenceSelfTest Kernel.EventTypes Kernel.EventTypesSelfTest
+                       PROPERTIES TIMEOUT 120)
 elseif(VAELEN_REQUIRE_PURITY_CHECK)
   message(FATAL_ERROR "Python 3 is required for the Kernel.Purity test. Install it or configure with -DVAELEN_REQUIRE_PURITY_CHECK=OFF (the purity check is then NOT run).")
 else()

@@ -5763,7 +5763,7 @@ reached the beginning of the world or fell off the end of a log.
 | Task | Deliverable | Test (with its control) | Why |
 |---|---|---|---|
 | 17.01 | **A real container corpus, before anything reads one.** Three checked-in VAELENCP v2 containers under `Tests/Run/Containers/` — a bare world, a played one with a STREAM section, and one saved through the two-argument form so it has THREE sections and no stream — each beside a README recording every header field, every section kind, offset, length and digest, the state digest read from the image TRAILER, and the exact `Tools/Atlas` command that regenerates it. | `Run.Containers` reads all three without generating a world and checks every recorded number against the file. CONTROL: regenerate each from its recorded command and require byte equality; and a container whose recorded section count is edited by one must be REFUSED, so the README is checked against the bytes rather than admired beside them. | There is no VAELENCP container anywhere in the tree — `Tests/Run/Golden/` holds `.snapshot` IMAGES, which is a different format. Every clause below is written against nothing until this exists, and the format is about to move. All three judges put it first. |
-| 17.02 | **The event-type name table.** A generated, checked-in `Vaelen/Sim/EventTypeNames.h` mapping every `TypeHash` to its declared name, produced by `Tools/gen_event_names.py` over the 116 `MakeEventType` declarations in kernel headers, plus `NameOfEventType(Hash64) -> const char*` returning a stable `"?<hex>"` for an unknown hash. `constexpr` data, no allocation, no `<fstream>` in the kernel. | `Kernel.EventTypes` re-runs the generator and diffs against the checked-in file. CONTROL: stub the table so one module's types are missing and require every consumer to print `?<hex>` rather than crash or print an empty string; and a type renamed in a header must make the diff fail. | `grep -rn 'EventTypeName\|NameOfEvent\|TypeName(' Source/ Tools/ Tests/` returns **nothing**. An `Event` carries an FNV-1a hash of its type name and nothing anywhere can turn it back into a word, so every census, inspector and causal walk below prints numbers a person cannot read. Grafted from the "weight" angle; all three judges called it unconditional. |
+| 17.02 | **The event-type name table.** A generated, checked-in `Vaelen/Sim/EventTypeNames.h` mapping every `TypeHash` to its declared name, produced by `Tools/gen_event_names.py` over the 115 `MakeEventType` declarations in kernel headers (**115, not the 116 the plan said** — the 116th `MakeEventType` is the template's own definition in `Event.h`, which has no name to read), plus `NameOfEventType(Hash64) -> const char*` returning a stable `"?<hex>"` for an unknown hash. `constexpr` data, no allocation, no `<fstream>` in the kernel. | `Kernel.EventTypes` re-runs the generator and diffs against the checked-in file. CONTROL: stub the table so one module's types are missing and require every consumer to print `?<hex>` rather than crash or print an empty string; and a type renamed in a header must make the diff fail. | `grep -rn 'EventTypeName\|NameOfEvent\|TypeName(' Source/ Tools/ Tests/` returns **nothing**. An `Event` carries an FNV-1a hash of its type name and nothing anywhere can turn it back into a word, so every census, inspector and causal walk below prints numbers a person cannot read. Grafted from the "weight" angle; all three judges called it unconditional. |
 | 17.03 | **The store reads a directory, and reports the digest it means.** `StdioCheckpointStore::List()` enumerates the DIRECTORY rather than the private `Written` vector; `StoreEntry::Digest` becomes the image trailer digest read through `View.Find(SectionKind::State, Length)`, whose result is used rather than discarded; and `StoreEntry` gains the section count so a caller can see the shape without opening the file again. | `Run.Store.ColdProcess`: one process writes three checkpoints, a SECOND process constructs a store over the same directory and must list all three with the right ticks and digests. CONTROL, and the judges singled it out: run the identical test against today's `List` and require it to FAIL, reporting zero entries — the defect stays visible after the fix. Second control: reorder the section table so STATE is not first and require the reported digest to be unchanged. | Two defects in 16.07, both mine. `List()` iterates `Written`, filled only by `Write()` in the same process (`StdioCheckpointStore.h:119-128, 192`), so a cold host pointed at a directory of saves lists none — which defeats exactly what this phase is for. And `:143-147` calls `Find(State)`, **discards the result**, and reports `Sections.front().Digest` by POSITION: right today only because STATE happens to be section 0, the ADR-0150 "safe by accident" pattern, and it is the section digest rather than the trailer every frozen digest in this repository is. `Run.Store` passes because it writes and lists in one process. |
 | 17.04 | **A walk that says how it ended.** `WalkEnd {Root, NoSuchEvent, CauseMissing, CauseNotAnEvent, CauseNotBeforeEffect, DepthExhausted, BudgetExhausted}` and `CauseWalk(const EventLog&, PersistentId, std::vector<const Event*>&, WalkLimits{Depth, Nodes}) -> WalkEnd` in `Vaelen/Sim/Causality.h`. `History::CauseChain` stays, reimplemented as a wrapper that discards the end, so its five existing callers do not churn. | `Sim.CauseWalk`: seven hand-built logs, one per `WalkEnd`, each asserting the end AND the partial chain. CONTROL, kept permanently: today's `CauseChain` pointed at the `CauseMissing` log and at the `Root` log must return the SAME thing — the indistinguishability is the defect, and a test that only shows the new function working cannot show it. | `History.cpp:198-211` `break`s identically when `Cause` is invalid (a genuine root) and when `FindEvent` returns `nullptr` (a link that is gone). Verified by two judges. A tool that walks backwards and stops cannot say whether it reached the beginning of the world or fell off the end of a log. Grafted whole from the "causal" angle, which the judges called the best-argued defect in the panel. |
 | 17.05 | **The census, and it is allowed to conclude the phase is about something else.** `CauseCensus {Events, WithCause, RootCauses, Dangling, NotAnEvent, MaxDepth, MedianDepth, MaxFanOut}` over an `EventLog`, `TakeCauseCensus`, and `Tools/Atlas --causes` printing it per event type using 17.02's names. Run over the 17.01 corpus and over a fresh AELVOR 128, and the figures WRITTEN INTO THIS ROADMAP. | `Sim.Causality`: a planted log with a chain of depth 7, a fan-out of 5, one dangling cause and one `Cause` of `IdKind::Entity` must report exactly 7, 5, 1 and 1. CONTROL: the same log with every `Cause` cleared must report `MaxDepth 0, MaxFanOut 0` — if the depth survives the edges being removed it was never reading them. Second control: an empty log reports every field 0, not "no problems found". | The panel measured 7 causes in 535 events (1.31%) with a deepest chain of ONE EDGE, and three of four angles had planned a walker, an index and a renderer over that. A census that can be re-run is how this stays true rather than becoming folklore — and my own brace-aware count of the publishers that pass a cause (30) disagrees with the winning angle's (27) and another's (34), with two sites my parser still cannot read. |
@@ -5827,6 +5827,68 @@ as a store that reports a digest by position.
 
 Costs on this machine: `Run.Containers` 0.01 s, `Atlas.ContainersRegenerate`
 0.17 s. The corpus is 341 kB.
+
+### 17.02 AS BUILT, 2026-09-24
+
+`Source/VaelenSim/Public/Vaelen/Sim/EventTypeNames.h` is generated by
+`Tools/gen_event_names.py` from the **115** `MakeEventType` call sites across
+nine modules - 115 distinct names, no duplicates, no hash collisions, all
+checked by the generator before it writes a byte.
+
+**THE COUNT IN THE PLAN WAS WRONG BY ONE AND IN MY OWN HANDWRITING.** `grep -c
+MakeEventType` returns 116; one of them is the template's own definition in
+`Event.h`, which has no name to read. The generator's regex is written to match
+a string LITERAL and its self-test requires it NOT to match that definition, so
+the off-by-one cannot come back.
+
+**WHY GENERATED AND NOT CONSTEXPR.** A compile-time table built from the
+`EventType<T>` constants needs every module's headers in one translation unit -
+Colony, Military, Politics, Economy, Society, Population, Sim - and VaelenSim
+may not know VaelenMilitary exists. The generated header knows hashes and
+string literals and depends on nothing but `CoreTypes.h`, `Hash.h` and
+`<cstdio>`, which purity allows.
+
+`NameOfEventType(Hash64, char (&)[18])` is a binary search over a hash-sorted
+table. **An unknown hash is answered with `?<16 hex digits>` in the CALLER's
+buffer** - not an empty string, not a static, not a crash. A log written by a
+build carrying a type this one lacks is a thing a save format exists to make
+possible, and the three wrong answers are a crash, a blank row that looks like a
+bug in the census, and a plausible name belonging to something else.
+
+Four entries, and they make different claims:
+
+- `Kernel.EventTypes` re-runs the generator and diffs. The ONLY thing that
+  notices a type added, renamed or deleted.
+- `Kernel.EventTypesSelfTest` runs the generator's own four controls, including
+  that the regex does not match the template definition and that the empty
+  string hashes to the FNV-1a offset basis - the one value the arithmetic
+  cannot get right by accident.
+- `Run.EventTypes` (five cases, 0.01 s) re-hashes **every one of the 115 names
+  with the KERNEL's own `HashString`**, checks the table is strictly sorted,
+  finds every row by its own hash, samples one real declaration from each of
+  seven modules, and requires an unknown hash to answer `?<hex>` while a known
+  one still answers its name **in the same run**.
+- The last case pins that the lookup uses the caller's buffer and nothing else:
+  two unknown hashes into two buffers must both still read, and a KNOWN hash
+  must not touch the buffer at all.
+
+**THE ROWS CARRY NO `// path:line` COMMENT, and that is a decision made after
+seeing the alternative.** The first cut put the declaration site on every row;
+clang-format then wanted to align a hundred and fifteen trailing comments into
+one column whose position is set by the longest line in the block, so adding a
+single long event name would reformat the entire table and the diff would stop
+being readable. The site is one grep away - `grep -rn '"OreLifted"' Source/` -
+and the header says so where a reader will look for it.
+
+**FOUR DELIBERATE FAILURES, ALL OF WHICH FIRED.** Renaming `ArmyRetreated` to
+`ArmyWithdrew` in `Battle.h`: the check reports `+ ArmyWithdrew` and
+`- ArmyRetreated` by name, because a diff of a 115-row table is unreadable and
+the answer is almost always one name. Adding a type: `116 declarations found`,
+`+ ProbeOnlyForTheControl`. Hashing with a trailing NUL - the classic way to
+build a table that is self-consistent, compiles, round-trips against itself and
+agrees with the running world about nothing - makes the generated text differ
+AND, when that header is actually built, makes `Run.EventTypes` report **129
+failures**, every row of the table among them.
 
 ### The Phase 17 gate
 
