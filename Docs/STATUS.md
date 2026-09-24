@@ -19,7 +19,47 @@ PHASE       : 17 — DEBUG TOOLS, opened 2026-09-24
                v4 bump and 16.14 needs the owner's Windows machine. Docs/ROADMAP.md
                section 22 has the clause-by-clause read.
                15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
-TASK        : 17.07 — DONE 2026-09-24. A harness that can see a vacuous assertion.
+TASK        : 17.08 — DONE 2026-09-24. The cache that is safe by accident, its nine
+              doors guarded, and a tenth found OPEN on the first run.
+
+              No change to DiplomacySystem's cache, as the row said: guard now, fix if
+              asked. Run.RefusalsAreTheCachesSafety, three cases, 0.74 s.
+
+              THE PREMISE MEASURED. Six 32-tile worlds at seeds 1-6 have 12, 13, 12, 13,
+              13 and 10 regions and differ pairwise by digest: FOUR PAIRS share a count
+              and are different worlds — each a stale graph the cache's key
+              (Diplomacy.cpp:72, the region COUNT) cannot see. Two in three seeds.
+
+              NINE DOORS SHUT, each failure text naming the door AND the cache: Adopt's
+              WrongSeed and seven *Differs, and the kernel's SeedMismatch through
+              LoadSnapshot on a BEGUN world. The control first — the matching world is
+              accepted at both doors — and every refused host still un-begun.
+
+              THE TENTH DOOR IS OPEN. A begun 16-tile world of the same seed takes a
+              32-tile image and LoadSnapshot answers Ok, because WorldMap::LayoutDigest
+              folds layer names and element sizes and NO EXTENTS — Phase 16's defect 5,
+              still pinned by Golden.TheLayoutDigestCannotTellTwoMapSizesApart; 16.08 did
+              not touch it. After the load the map is 32 wide and the Aelvor declares 16:
+              ADR-0150's chimera, measured. In production the door is reached only
+              through Adopt, which refuses the size by the HOST section first.
+
+              NOT CLOSED HERE because the layout digest is written INTO the image
+              (Snapshot.cpp:435): folding the extents moves every frozen digest — clause
+              (i). It is a re-freeze like ADR-0131. So the third case pins the door OPEN
+              and FAILS THE DAY IT CLOSES, so whoever closes it finds this file, the golden
+              test and ADR-0150 together. The counts were 3 against 15 this time, so the
+              graph would have been rebuilt — "this time" is the operative phrase.
+
+              THE GATE'S CONTROL, RUN: YearsDiffers disabled in a scratch build — "the
+              YearsDiffers door is OPEN: Adopt answered Ok where YearsDiffers was
+              required - DiplomacySystem's region graph (Diplomacy.cpp:72) ...". Named
+              door, named cache.
+
+              Owner's question 4, sharper again: the kernel door already loads a
+              differently-sized world of the same seed, and closing it costs a re-freeze
+              — Phase 18's climate re-freeze is coming, and they should share the commit.
+
+TASK (17.07): 17.07 — DONE 2026-09-24. A harness that can see a vacuous assertion.
 
               VT_CHECK_ROUNDTRIP(Written, Read) records a failure when the WRITTEN value
               is byte-equal to T{} BEFORE it compares anything, because a reader that

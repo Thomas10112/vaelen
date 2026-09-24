@@ -6196,6 +6196,65 @@ review finding, and converting them is a change to what that matrix claims; it
 gets its own commit with its own measurement rather than riding on the macro
 that makes it visible.
 
+### 17.08 AS BUILT, 2026-09-24 — and the first run found a door open
+
+`Run.RefusalsAreTheCachesSafety`, three cases, 0.74 s. No change to the cache,
+as the row said: guard now, fix if asked.
+
+**THE PREMISE, MEASURED RATHER THAN QUOTED.** Six 32-tile worlds at seeds 1 to
+6 have **12, 13, 12, 13, 13 and 10 regions** and differ pairwise by state
+digest: **four pairs share a region count and are different worlds.** Each such
+pair is a stale graph that `DiplomacySystem`'s key - the region COUNT,
+`Diplomacy.cpp:72` - cannot see. The danger ADR-0150 described is not
+hypothetical at 32 tiles; it is two in three seeds.
+
+**NINE DOORS SHUT, EACH NAMING THE CACHE IN ITS FAILURE TEXT.** `Adopt`'s
+`WrongSeed` and seven `*Differs` - the seed listed beside the Options fields
+because it is the OTHER way to get a different map with the same count - and
+the kernel's `SeedMismatch` through `LoadSnapshot` on a BEGUN world, which is
+the door a host would reach if it bypassed `Adopt`. The control first: the
+matching world is accepted at both doors, so a test that refused everything
+could not pass. Every refused host is checked to be still un-begun and
+un-generated.
+
+**THE TENTH DOOR IS OPEN.** Handed a 32-tile image, a begun 16-tile world of
+the same seed answers `Ok` from `LoadSnapshot` - because `WorldMap::LayoutDigest`
+folds layer names and element sizes and **no extents**. That is Phase 16's
+defect 5, still pinned by `Golden.TheLayoutDigestCannotTellTwoMapSizesApart`;
+16.08 named the six causes apart and did not put the map's size into the digest.
+After the load the map is 32 wide and the Aelvor still declares 16 - ADR-0150's
+chimera, measured: a walk recorded then names a world that does not exist. In
+production the door is reached only through `Adopt`, which refuses the size by
+the HOST section before `LoadSnapshot` sees a byte; the only other caller is
+`Atlas --withhold-run`, a test tool.
+
+**WHY IT IS NOT CLOSED HERE.** The layout digest is written INTO the image
+(`Snapshot.cpp:435`), so folding the extents changes every image's bytes, every
+trailer and every frozen state digest in the repository - gate clause (i). It
+is a re-freeze like ADR-0131 and lands as its own commit or with the v4 bump.
+So the third case, `TheTenthDoorIsOpenAndPinnedHere`, asserts the `Ok`, the
+32-wide map, the 16 declaration and the image's region count, prints whether
+the graph went stale across that load (this time the counts were 3 against 15,
+so it would have been rebuilt - "this time" is the operative phrase), and
+**fails the day the door closes**, so that whoever folds the extents finds this
+file, the golden test and ADR-0150 together and rewrites all three in the
+re-freeze commit. The same shape the golden test has had since 16.01.
+
+The plan wrote "ten refusals"; nine are guarded and the tenth is pinned. Gate
+clause (h) now says so.
+
+**THE CONTROL THE GATE ASKS FOR, RUN.** Disabling the `YearsDiffers` refusal in
+`Aelvor::Adopt` in a scratch build: `the YearsDiffers door is OPEN: Adopt
+answered Ok where YearsDiffers was required - DiplomacySystem's region graph
+(Diplomacy.cpp:72) is rebuilt only when the region COUNT changes, and this
+refusal is one of the ten that keep a same-count different map out of it
+(ADR-0150)`. Named door, named cache.
+
+**Owner's question 4 is sharper again**: it was "should a save ever load into
+a differently-generated world"; it is now "the kernel door already does, for
+the same seed at a different size, and closing it costs a re-freeze - with
+Phase 18's climate re-freeze coming, they should share the commit".
+
 ### The Phase 17 gate
 
 | clause | the command that decides it |
@@ -6207,7 +6266,7 @@ that makes it visible.
 | (e) | `ctest -R '^Sim\.Causality$'` — the planted census exact, and the cleared-edge arm reporting depth 0. The real figures are in this ROADMAP and dated. |
 | (f) | `ctest -R '^Atlas\.Inspect'` — the three corpus containers with their header, trailer and last line pinned whole; an image refused BY NAME; a 4 KiB truncation refused whole and not described in part; and the cold directory listing. |
 | (g) | `ctest -R '^Core\.Harness$'` — `VacuityIsSeen`: the same assertion failing under the witness macro and passing under the plain one, in one run; and `DigestsThatCompareNothingAreRefused`. The harness self-tests live in one file, so one entry. |
-| (h) | `ctest -R '^Run\.RefusalsAreTheCachesSafety$'` — every route, every refusal, by name. |
+| (h) | `ctest -R '^Run\.RefusalsAreTheCachesSafety$'` — nine guarded doors, each refusal by name with the cache named in its failure text; the tenth (`WorldShapeDiffers` for a different SIZE) found OPEN at the kernel door and pinned as a kept arm that fails the day it closes, because closing it re-freezes every digest. |
 | (i) | Not one frozen digest moved: `git diff <phase start>..HEAD -- Tests/ Source/ Tools/ Docs/ROADMAP.md \| grep -E '^-.*\b[0-9a-f]{16}\b'` prints nothing. **This is the clause the dropped tasks would have broken**, and it is why they were dropped. |
 | (j) | `Tools/run_gates.sh linux-clang-debug` prints `GATES-DONE 0 failing`, and `Tools/verify_fast.sh` is clean. |
 
