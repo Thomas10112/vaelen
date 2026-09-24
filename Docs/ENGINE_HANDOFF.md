@@ -25,18 +25,11 @@ block, and the sections below Phase 14 stay the record they are.
   gate list — the only two entries that came off another computer.
 - **Phase 16 (SAVE/PERSISTENCE): fourteen tasks built headless, its gate still
   open on two things.** One is headless (the migration half of clause (j),
-  deferred to the v4 format bump). The other is yours, and it is MORE than a
-  sitting: **16.14's engine half does not exist yet.** There is no `Vaelen.Save`,
-  no `Vaelen.Load` and no `ICheckpointStore` over `IFileManager` anywhere in
-  `Source/VaelenGame` — `grep -rn 'Vaelen\.Save\|CheckpointStore' Source/VaelenGame`
-  prints nothing on 2026-09-24. That C++ is written on the headless side first and
-  parsed against `Tools/EngineShim`, like every engine-side file since 14.07 (the
-  shim has only `FFileHelper::SaveStringToFile` / `LoadFileToString` today and
-  grows a byte-array pair for it). Do not write it on the engine machine. When it
-  lands, this file gets a Phase 16 section saying what to type and which lines to
-  bring back; `Run.Gate.Saved` in the plan (`Docs/ROADMAP.md` row 16.14) is what
-  those lines will be checked against. Until then there is nothing for this
-  machine to do for Phase 16.
+  deferred to the v4 format bump). The other is yours: **16.14's engine half
+  is WRITTEN and PARSED (2026-09-24), not built and not run.** It did not
+  exist when the Phase 17 close read the tree, and it was written on the
+  headless side first, like every engine-side file since 14.07. Its sitting
+  has its own section below: what to type, and the lines to bring back.
 - **Phase 17 (DEBUG TOOLS) is CLOSED, 2026-09-24**, all eleven clauses, and it
   had no engine task. One thing it changed that the engine COPIES:
   `View::ChronicleView` (`Vaelen/View/Chronicle.h`) holds four why lines instead
@@ -219,6 +212,46 @@ day 8 because of it.)
 `Vaelen.Play` needs a game instance: it is a `UGameInstanceSubsystem`, so it
 runs under PIE or `-game`, and answers `no game instance` from an editor
 commandlet.
+
+## PHASE 16 - the sitting of 16.14: what to type, and what to bring back
+
+The engine half is written and parsed (2026-09-24), not built and not run.
+`Source/VaelenGame/Private/VaelenCheckpointStore.h` and `.cpp` carry
+`STATUS: UNVERIFIED (engine)` until this sitting, and so do the additions to
+`VaelenWorldSubsystem` (`Save`, `Load`, `Saves`) and `VaelenPlayCommands`
+(`Vaelen.Save`, `Vaelen.Load`, `Vaelen.Saves`). The standing rule holds: a
+compile error in those files is reported, not repaired - and an error inside
+`Source/VaelenRun` or below is reported and NOT repaired, whatever it says.
+Three engine calls were parsed and never run, and are the likeliest to need
+a report: `IFileManager::Move` with Replace, `FindFiles` over a directory
+(the store strips paths to leaves either way), and `FFileHelper`'s
+`SaveArrayToFile` / `LoadFileToArray`.
+
+1. Build the editor as for 14.08. The console should list three new commands:
+   `Vaelen.Save`, `Vaelen.Load`, `Vaelen.Saves`.
+2. Under `-game` (a game instance is needed, as for `Vaelen.Play`):
+   `Vaelen.Play 128 120 1`, a few `Vaelen.Day`, one or two `Vaelen.Do`, then
+   `Vaelen.Save first`. Bring back the TWO lines it prints:
+   ```
+   LogVaelenPlay: saved first: state <16 hex>, log <16 hex>, life <16 hex>, panel <16 hex>; year Y day D, played P, daily cadence; <path>
+   LogVaelenPlay: check it headless: VaelenAtlas --load-from "<path>" --size 128 --years 120 --prehistory 300 --then-days 0 --stream
+   ```
+3. A few more `Vaelen.Day`, then `Vaelen.Stream.Write`; bring its lines too.
+4. CLOSE THE EDITOR. Reopen under `-game` again and, WITHOUT `Vaelen.Play`:
+   `Vaelen.Saves` (bring the listing), then `Vaelen.Load first`. Bring back
+   its `loaded first:` line - its state digest must be the one `saved`
+   printed - and the `day(s) on the tape` line after it.
+5. `Vaelen.Day` the same number of times as in step 3, `Vaelen.Stream.Write`,
+   and bring back that line and BOTH files: `Saved/Vaelen/first` (the
+   container) and the stream it wrote.
+6. If anything refuses, bring the exact line: every refusal names its reason
+   (the store's, the container's, or `Adopt`'s), and the line is the report.
+
+What the headless side does with it: runs the `check it headless` command and
+requires `adopted at` the same state; adds `Run.Gate.Saved` over the container
+exactly as `Run.Gate.Lived` was added over the walk of 2026-09-21; replays the
+container's own STREAM section and requires the digests of step 5; and turns
+the four `UNVERIFIED (engine)` lines to VALIDATED with the date.
 
 ## What the kernel half already hands you
 

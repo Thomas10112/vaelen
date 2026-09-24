@@ -111,9 +111,21 @@ namespace Vaelen::Run
 		virtual StoreResult Forget(const char* Name) = 0;
 	};
 
+	/// The suffix EVERY store of this interface writes under while a checkpoint
+	/// is being written: `<name>.writing`, in the same directory, moved into
+	/// place only when whole (Tools/Store/StdioCheckpointStore.h and the
+	/// engine's Source/VaelenGame/Private/VaelenCheckpointStore.cpp). Named
+	/// HERE so that `IsUsableCheckpointName` can refuse it, which is what keeps
+	/// a temporary an interrupted write left behind out of every listing. The
+	/// stdio store's comment said the name rule already did that; it did not,
+	/// and 16.14 found so while writing the second store (a listing reported
+	/// such a leftover as a save of tick 0).
+	inline constexpr const char* WritingSuffix = ".writing";
+
 	/// A name this interface will accept: not empty, no separator, no parent
-	/// directory, and nothing a shell or a filesystem would read as a path.
-	/// Checked HERE so that every implementation refuses the same names, rather
-	/// than each one inventing its own idea of what is safe.
+	/// directory, nothing a shell or a filesystem would read as a path, and
+	/// not the name of a write in progress (`WritingSuffix`). Checked HERE so
+	/// that every implementation refuses the same names, rather than each one
+	/// inventing its own idea of what is safe.
 	VAELEN_RUN_API bool IsUsableCheckpointName(const char* Name) noexcept;
 } // namespace Vaelen::Run

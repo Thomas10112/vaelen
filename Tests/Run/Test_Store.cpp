@@ -66,6 +66,13 @@ VAELEN_TEST(Store, NamesThatWouldLeaveTheStoreAreRefused)
 	VT_CHECK_MSG(!IsUsableCheckpointName(".hidden"), "a leading dot");
 	VT_CHECK_MSG(!IsUsableCheckpointName("bell\x07here"), "a control character");
 	VT_CHECK_MSG(!IsUsableCheckpointName("star*"), "shell punctuation");
+	// 16.14: A WRITE IN PROGRESS. Every store writes under `<name>.writing`
+	// and moves it into place when whole (Run::WritingSuffix); the rule
+	// refuses the suffix so an interrupted write's leftover is in no listing
+	// and no save can hide behind a name the next write would replace.
+	VT_CHECK_MSG(!IsUsableCheckpointName("day-400.writing"), "an interrupted write's temporary");
+	VT_CHECK_MSG(IsUsableCheckpointName("writing-desk"), "a name that merely contains the word");
+	VT_CHECK_MSG(IsUsableCheckpointName("still.writing.on"), "the suffix anywhere but the end");
 
 	StdioCheckpointStore Store(Somewhere());
 	std::vector<uint8> Out;

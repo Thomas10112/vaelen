@@ -172,6 +172,28 @@ public:
 	/// in Out either way.
 	bool WriteStream(FString& Out);
 
+	/// 16.14: the world, its run and its tape as ONE container under
+	/// Saved/Vaelen/<name>, through a store that cannot destroy the last good
+	/// save of that name (a write goes to `<name>.writing` and is moved into
+	/// place whole). True with the path in Out and, in OutCheck, the headless
+	/// command that must come back to the same state digest; false with the
+	/// reason in Out - no world, a name the store refuses
+	/// (Run::IsUsableCheckpointName), the container or the write refused, each
+	/// by its own name.
+	bool Save(const FString& Name, FString& Out, FString& OutCheck);
+	/// 16.14: takes a saved world up INTO A FRESH HOST, never over a begun one
+	/// (one world per host, as Begin says; Run::Aelvor::Adopt refuses it too,
+	/// as AlreadyBegun). The world is built from the container's own HOST
+	/// section, not from anything typed, then adopted; the tape the save
+	/// carries is handed back to the door, which goes on recording into it.
+	/// On any refusal nothing is held afterwards, as before the call, and Out
+	/// says why: the store's, the container's or Adopt's reason, by name.
+	bool Load(const FString& Name, FString& Out, FString& OutCheck);
+	/// 16.14: one line per save under Saved/Vaelen, for the console and for a
+	/// chooser: name, bytes, tick, container version, sections, state digest.
+	/// Empty when the folder is not there yet. Returns how many.
+	int32 Saves(TArray<FString>& Out);
+
 private:
 	// TPimplPtr and NOT TUniquePtr, and this is not a preference.
 	//

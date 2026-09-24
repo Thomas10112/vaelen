@@ -319,6 +319,95 @@ namespace
 		UE_LOG(LogVaelenPlay, Log, TEXT("LogVaelenPlay: %s"), *Path);
 	}
 
+	/// 16.14: the line a save or a load is compared by. The four digests are
+	/// printed as Vaelen.Stream.Write prints them, so the two lines compare by
+	/// eye; the year, the day and the played person are what a headless
+	/// --load-from prints back beside its "adopted at".
+	void Marks(UVaelenWorldSubsystem* World, const TCHAR* Verb, const FString& Name, const FString& Where)
+	{
+		const UVaelenWorldSubsystem::FDigests Digests = World->Digests();
+		const Vaelen::View::LifeView& Life = World->Life();
+		UE_LOG(LogVaelenPlay, Log,
+			   TEXT("LogVaelenPlay: %s %s: state %016llx, log %016llx, life %016llx, panel %016llx; year %u day %u, "
+					"played %u, %s cadence; %s"),
+			   Verb, *Name, static_cast<unsigned long long>(Digests.State),
+			   static_cast<unsigned long long>(Digests.Log), static_cast<unsigned long long>(Digests.Life),
+			   static_cast<unsigned long long>(Digests.Panel), static_cast<unsigned>(Life.Year),
+			   static_cast<unsigned>(Life.Day), static_cast<unsigned>(Life.Person),
+			   World->Streaming() ? TEXT("daily") : TEXT("yearly"), *Where);
+	}
+
+	/// 16.14: the world, its run and its tape as one container, then the
+	/// command that checks it. Copied from the log and run beside the file,
+	/// that command must print "adopted at" the state this line printed.
+	void Save(const TArray<FString>& Args, UWorld* World_)
+	{
+		UVaelenWorldSubsystem* World = Held(World_);
+		if (World == nullptr)
+		{
+			return;
+		}
+		if (Args.Num() < 1 || Args[0].IsEmpty())
+		{
+			UE_LOG(LogVaelenPlay, Warning, TEXT("LogVaelenPlay: Vaelen.Save <name>"));
+			return;
+		}
+		FString Where;
+		FString Check;
+		if (!World->Save(Args[0], Where, Check))
+		{
+			UE_LOG(LogVaelenPlay, Warning, TEXT("LogVaelenPlay: not saved: %s"), *Where);
+			return;
+		}
+		Marks(World, TEXT("saved"), Args[0], Where);
+		UE_LOG(LogVaelenPlay, Log, TEXT("LogVaelenPlay: check it headless: %s"), *Check);
+	}
+
+	/// 16.14: a saved world taken up into THIS host, which must hold none
+	/// yet: the way to load after playing is to reopen. The line it prints
+	/// must carry the state digest the save line printed.
+	void Load(const TArray<FString>& Args, UWorld* World_)
+	{
+		UVaelenWorldSubsystem* World = Held(World_);
+		if (World == nullptr)
+		{
+			return;
+		}
+		if (Args.Num() < 1 || Args[0].IsEmpty())
+		{
+			UE_LOG(LogVaelenPlay, Warning, TEXT("LogVaelenPlay: Vaelen.Load <name>"));
+			return;
+		}
+		FString Where;
+		FString Check;
+		if (!World->Load(Args[0], Where, Check))
+		{
+			UE_LOG(LogVaelenPlay, Warning, TEXT("LogVaelenPlay: not loaded: %s"), *Where);
+			return;
+		}
+		Marks(World, TEXT("loaded"), Args[0], Where);
+		UE_LOG(LogVaelenPlay, Log, TEXT("LogVaelenPlay: %u day(s) on the tape it came with; check it headless: %s"),
+			   static_cast<unsigned>(World->Stream().Days.size()), *Check);
+	}
+
+	/// 16.14: what Saved/Vaelen holds, one line per save.
+	void Saves(const TArray<FString>& Args, UWorld* World_)
+	{
+		(void)Args;
+		UVaelenWorldSubsystem* World = Held(World_);
+		if (World == nullptr)
+		{
+			return;
+		}
+		TArray<FString> Lines;
+		const int32 Count = World->Saves(Lines);
+		UE_LOG(LogVaelenPlay, Log, TEXT("LogVaelenPlay: %d save(s) under Saved/Vaelen"), Count);
+		for (int32 Index = 0; Index < Lines.Num(); ++Index)
+		{
+			UE_LOG(LogVaelenPlay, Log, TEXT("LogVaelenPlay:   %s"), *Lines[Index]);
+		}
+	}
+
 	FAutoConsoleCommandWithWorldAndArgs GPlay(TEXT("Vaelen.Play"),
 											  TEXT("Begin AELVOR and take somebody up. Vaelen.Play [size] [years] "
 												   "[daily cadence: 0 or 1]"),
@@ -346,4 +435,15 @@ namespace
 	FAutoConsoleCommandWithWorldAndArgs GWrite(TEXT("Vaelen.Stream.Write"),
 											   TEXT("Write the stream and print what a replay must come to"),
 											   FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&WriteStream));
+
+	FAutoConsoleCommandWithWorldAndArgs
+		GSave(TEXT("Vaelen.Save"), TEXT("The world, its run and its tape as one container. Vaelen.Save <name>"),
+			  FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Save));
+
+	FAutoConsoleCommandWithWorldAndArgs GLoad(TEXT("Vaelen.Load"),
+											  TEXT("Take a saved world up into a fresh host. Vaelen.Load <name>"),
+											  FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Load));
+
+	FAutoConsoleCommandWithWorldAndArgs GSaves(TEXT("Vaelen.Saves"), TEXT("List the saves under Saved/Vaelen"),
+											   FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Saves));
 } // namespace

@@ -386,3 +386,59 @@ VAELEN_TEST(StoreColdProcess, TheDigestIsTheTrailerAndNotWhicheverSectionIsFirst
 
 	Sweep(Cold);
 }
+
+VAELEN_TEST(StoreColdProcess, AnInterruptedWriteIsListedByNobody)
+{
+	// 16.14, found while writing the engine's store: the stdio store's List
+	// said `.writing` temporaries "are skipped by the same rule" as stray
+	// files, and the rule (Run::IsUsableCheckpointName) knew nothing of the
+	// suffix. A write interrupted between fwrite and rename left a file the
+	// next listing reported as a save of tick 0. The suffix is the interface's
+	// now (Run::WritingSuffix) and the rule refuses it.
+	VT_REQUIRE(MakeTheDirectory());
+	StdioCheckpointStore Store(Somewhere());
+	Sweep(Store);
+	// Sweep forgets what is LISTED, and a leftover is exactly what is not.
+	const std::string Leftover = Somewhere() + "whole" + WritingSuffix;
+	const std::string Stray = Somewhere() + "stray";
+	std::remove(Leftover.c_str());
+	std::remove(Stray.c_str());
+
+	const Made Whole = AContainer(16u, 2u);
+	VT_REQUIRE(Store.Write("whole", Whole.Bytes.data(), Whole.Bytes.size()) == StoreResult::Ok);
+	// The leftover: the same bytes cut short, under the name a write in
+	// progress has - what fwrite leaves when the process dies before rename.
+	{
+		std::FILE* F = std::fopen(Leftover.c_str(), "wb");
+		VT_REQUIRE(F != nullptr);
+		std::fwrite(Whole.Bytes.data(), 1, Whole.Bytes.size() / 2u, F);
+		std::fclose(F);
+	}
+	const std::vector<StoreEntry> Listed = Store.List();
+	VT_CHECK_MSG(Listed.size() == 1u, "one save and one leftover: %zu listed, wanted 1", Listed.size());
+	VT_CHECK(Named(Listed, "whole") != nullptr);
+	VT_CHECK_MSG(Named(Listed, (std::string("whole") + WritingSuffix).c_str()) == nullptr,
+				 "the leftover of an interrupted write was listed as a save");
+	// Nor can a store be ASKED to write under such a name: the next write of
+	// "whole" would replace it without a word.
+	VT_CHECK(Store.Write("whole.writing", Whole.Bytes.data(), 1u) == StoreResult::BadName);
+
+	// THE CONTROL: the same half file under an ordinary name IS listed - as
+	// what it is, a non-container with ContainerVersion 0 - so the skip above
+	// is the rule's doing and not the bytes'.
+	{
+		std::FILE* F = std::fopen(Stray.c_str(), "wb");
+		VT_REQUIRE(F != nullptr);
+		std::fwrite(Whole.Bytes.data(), 1, Whole.Bytes.size() / 2u, F);
+		std::fclose(F);
+	}
+	const std::vector<StoreEntry> WithStray = Store.List();
+	const StoreEntry* Odd = Named(WithStray, "stray");
+	VT_CHECK_MSG(Odd != nullptr && Odd->ContainerVersion == 0u,
+				 "the control: a half file under a plain name must be listed, with no container version");
+	VT_CHECK_MSG(WithStray.size() == 2u, "%zu listed with the stray, wanted 2", WithStray.size());
+
+	std::remove(Leftover.c_str());
+	Store.Forget("stray");
+	Store.Forget("whole");
+}

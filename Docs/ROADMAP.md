@@ -5566,6 +5566,63 @@ Adopt is **13.5× faster than generating the same world**, and `Generations() ==
   divergence found, or a null result with the horizons and wirings it was
   searched over — is written into DECISIONS whichever way it came out.
 
+### 16.14, the engine half: WRITTEN and PARSED 2026-09-24; the sitting is still the owner's
+
+Found at the Phase 17 close by reading the tree: the row above asks for
+`Vaelen.Save`, `Vaelen.Load` and a store over `IFileManager`, and none of the
+three existed anywhere - `grep -rn 'Vaelen\.Save\|CheckpointStore' Source/VaelenGame`
+printed nothing. Written here the way every engine-side file since 14.07 is
+written, and parsed against `Tools/EngineShim`, which grew what the parse
+needed: `FFileHelper::SaveArrayToFile` / `LoadFileToArray` (bytes, where the
+shim had only strings), `FPaths::GetCleanFilename`, and a `HAL/FileManager.h`
+carrying the six verbs the store calls, with the engine's defaults.
+
+- `Source/VaelenGame/Private/VaelenCheckpointStore.{h,cpp}`: `Run::ICheckpointStore`
+  over the engine's file manager, the twin of the stdio store and the same
+  shape on purpose - `<name>.writing` in the same directory, moved into place
+  whole (`IFileManager::Move` with Replace); a listing that reads the directory
+  and reports the image trailer; a read that swaps in only a whole file.
+- `UVaelenWorldSubsystem::Save / Load / Saves`, and `Vaelen.Save <name>`,
+  `Vaelen.Load <name>`, `Vaelen.Saves`. Save builds the three-argument
+  container (the tape travels, 16.11) and prints the four digests the way
+  `Vaelen.Stream.Write` prints them, then the exact `VaelenAtlas --load-from`
+  command that must come back to the same state - the options spelled out
+  from what the host was given, because Atlas takes them on its command line
+  and Adopt refuses a host that declares them differently. Load builds the
+  host from the container's own HOST section, adopts into a FRESH Aelvor and
+  never over a begun one, hands the tape back to the door, retakes the ground
+  and the five views. Every refusal names its reason: the store's, the
+  container's or `Adopt`'s.
+- Three shim-test mutations, one per file, each caught: 16 of 16.
+
+TWO THINGS THE WRITING FOUND, both fixed in the kernel with their tests, and
+neither moving a digest:
+
+1. **The trailer had three readers.** `StdioCheckpointStore::TrailerOf`,
+   Atlas's `TrailerOf` and the corpus test's own, each eight bytes read its
+   own way, and the engine store would have been a fourth - the number 17.03
+   found reported wrong. `Run::ImageTrailer` (`Checkpoint.h`) is the one
+   reader now; the store and Atlas call it, and `Run.Containers` keeps its own
+   as the INDEPENDENT one and requires the two to agree on every file of the
+   corpus. The test's comment had said "until something in production needs
+   to"; now something does.
+2. **`.writing` leftovers were listed as saves.** The stdio store's `List` said
+   temporaries "are skipped by the same rule" as stray files, and
+   `IsUsableCheckpointName` knew nothing of the suffix: a write interrupted
+   between `fwrite` and `rename` left a file the next listing reported as a
+   save of tick 0. `Run::WritingSuffix` is the interface's now and the rule
+   refuses it, so both stores skip such a file and neither can be asked to
+   write under that name. `Run.Store` has the names; `Run.StoreColdProcess`
+   plants the leftover and requires it listed by nobody, with the control that
+   the same half file under a plain name IS listed (container version 0) - so
+   the skip is the rule's and not the bytes'.
+
+STATUS of the engine files: `UNVERIFIED (engine)` - parsed, not built, not
+run. What the sitting types and brings back is in `Docs/ENGINE_HANDOFF.md`;
+`Run.Gate.Saved` is added the day a checkpoint written by the engine is
+carried here, exactly as `Run.Gate.Lived` was added over the walk of
+2026-09-21.
+
 ### Out of scope for Phase 16, and where it belongs
 
 - **Log truncation.** All four plans measured the same thing — the log is 83.6%

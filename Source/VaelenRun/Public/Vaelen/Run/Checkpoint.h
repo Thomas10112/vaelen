@@ -265,4 +265,20 @@ namespace Vaelen::Run
 	/// anything to a world - that is 16.06's `Adopt`, which is the only caller
 	/// entitled to decide what a section means.
 	VAELEN_RUN_API CheckpointRefusal ReadCheckpoint(const uint8* Bytes, usize Size, CheckpointView& Out);
+
+	/// THE IMAGE'S OWN TRAILER: the last eight bytes of the STATE section,
+	/// little-endian - what `ComputeStateDigest` returns and what every frozen
+	/// digest in this repository is. NOT the STATE row's section digest, which
+	/// is a different number over the same bytes (17.03 measured
+	/// e0614906cb8a5676 against 0f6fa26b35d09a70 on one ordinary container).
+	///
+	/// 0 when there is no STATE section or it is too short to hold one - the
+	/// same answer a default field gives, and not mistakable for a digest.
+	///
+	/// In the kernel since 16.14, because that task's engine-side store needs
+	/// the same eight bytes read the same way as the host-side one, and the
+	/// store's first version got this number wrong by reading it its own way.
+	/// One reader; Tests/Run/Test_Containers.cpp keeps an independent one and
+	/// requires the two to agree on every file of the corpus.
+	VAELEN_RUN_API uint64 ImageTrailer(const CheckpointView& View) noexcept;
 } // namespace Vaelen::Run

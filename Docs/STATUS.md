@@ -27,7 +27,33 @@ PHASE       : 17 — DEBUG TOOLS, CLOSED 2026-09-24: all eleven clauses of its g
                yet: it is written here and parsed against the shim before that
                sitting. Section 22 has the clause-by-clause read.
                15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
-TASK        : Phase 17 gate — READ 2026-09-24, eleven of eleven. Last built: 17.09.
+TASK        : 16.14 (engine half) — WRITTEN and PARSED 2026-09-24, UNVERIFIED (engine).
+
+              Found at the Phase 17 close by reading the tree: no Vaelen.Save, no
+              Vaelen.Load, no store over IFileManager existed anywhere. Written here
+              and parsed against the shim, which grew FFileHelper's byte pair,
+              FPaths::GetCleanFilename and HAL/FileManager.h (six verbs, the engine's
+              defaults): FVaelenCheckpointStore (the stdio store's twin - <name>.writing
+              moved into place whole, a listing that reads the directory), the
+              subsystem's Save/Load/Saves, three console commands, three shim
+              mutations (16 of 16 caught). Save prints the four digests the way
+              Stream.Write does and then the exact VaelenAtlas --load-from command
+              that must come back to the same state; Load builds the host from the
+              container's HOST section, adopts into a FRESH Aelvor, hands the tape
+              back to the door. Docs/ENGINE_HANDOFF.md has the sitting, step by step.
+
+              TWO KERNEL FINDINGS, fixed with tests and no digest moved: the image
+              trailer had THREE readers (store, Atlas, corpus test) and the engine
+              store would have been a fourth - Run::ImageTrailer is the one now and
+              Run.Containers keeps its own as the independent reader and requires
+              agreement on every file; and `.writing` leftovers of an interrupted
+              write were LISTED AS SAVES (tick 0) because the stdio store's comment
+              claimed a rule the name rule did not keep - Run::WritingSuffix is the
+              interface's now, IsUsableCheckpointName refuses it, Run.Store and
+              Run.StoreColdProcess pin it with the half-file-under-a-plain-name
+              control.
+
+TASK (17.gate): Phase 17 gate — READ 2026-09-24, eleven of eleven. Last built: 17.09.
 
 TASK (17.09): 17.09 — DONE 2026-09-24. The why says how it ended.
 

@@ -78,7 +78,7 @@ namespace VaelenHost
 				return Run::StoreResult::CannotWrite;
 			}
 			const std::string Final = Directory + Name;
-			const std::string Temp = Final + ".writing";
+			const std::string Temp = Final + Run::WritingSuffix;
 
 			std::FILE* F = std::fopen(Temp.c_str(), "wb");
 			if (F == nullptr)
@@ -141,6 +141,11 @@ namespace VaelenHost
 			return Run::StoreResult::Ok;
 		}
 
+		/// Since 16.14 the reading itself is `Run::ImageTrailer`, in the kernel,
+		/// so that the engine-side store of that task could not read it a THIRD
+		/// way; this is kept as the name the tests call. What follows is the
+		/// record of why one reader matters.
+		///
 		/// 17.03: THE IMAGE'S OWN TRAILER, and the reason this is a function.
 		///
 		/// What stood here was `View.Sections.front().Digest`, reported after
@@ -164,21 +169,7 @@ namespace VaelenHost
 		/// 0 when there is no STATE section or it is too short to hold one,
 		/// which is the same answer the field's default gives and is not
 		/// mistakable for a digest.
-		static uint64 TrailerOf(const Run::CheckpointView& View) noexcept
-		{
-			uint64 Length = 0;
-			const uint8* State = View.Find(Run::SectionKind::State, Length);
-			if (State == nullptr || Length < sizeof(uint64))
-			{
-				return 0;
-			}
-			uint64 Value = 0;
-			for (usize Index = 0; Index < sizeof(uint64); ++Index)
-			{
-				Value |= static_cast<uint64>(State[Length - sizeof(uint64) + Index]) << (8u * Index);
-			}
-			return Value;
-		}
+		static uint64 TrailerOf(const Run::CheckpointView& View) noexcept { return Run::ImageTrailer(View); }
 
 		std::vector<Run::StoreEntry> List() override
 		{
@@ -213,7 +204,10 @@ namespace VaelenHost
 				// The name rule is the store's, so a stray file somebody
 				// dropped in the folder is skipped rather than reported as a
 				// save - and `.writing` temporaries from an interrupted write
-				// are skipped by the same rule.
+				// are skipped by the same rule. TRUE SINCE 16.14, which gave
+				// the rule `Run::WritingSuffix`; before that this sentence was
+				// a claim the rule did not keep, and such a leftover was
+				// listed as a save of tick 0.
 				if (!Run::IsUsableCheckpointName(Name.c_str()))
 				{
 					continue;

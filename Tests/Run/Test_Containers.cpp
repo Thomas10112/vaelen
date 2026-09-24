@@ -133,10 +133,13 @@ namespace
 		return Read == Out.size();
 	}
 
-	/// The image's own trailer, read out of the STATE section. Kept here rather
-	/// than in the kernel because it is a fact about a LAYOUT - the last eight
-	/// bytes of what SaveSnapshot writes - and a test is the right place to
-	/// know it until something in production needs to.
+	/// The image's own trailer, read out of the STATE section. This was kept
+	/// here rather than in the kernel "until something in production needs
+	/// to"; 16.14's engine store did, and `Run::ImageTrailer` is the kernel's
+	/// reader now. This one STAYS, as the independent reader: a corpus test
+	/// that read the trailer through the function under test would be
+	/// checking that function against itself, and the case below requires the
+	/// two to agree on every file.
 	bool TrailerOf(const CheckpointView& View, uint64& Out) noexcept
 	{
 		uint64 Length = 0;
@@ -255,6 +258,9 @@ VAELEN_TEST(Containers, TheCorpusReadsWithoutAWorld)
 
 		uint64 Trailer = 0;
 		VT_CHECK_MSG(TrailerOf(View, Trailer), "%s: the STATE section is too short to hold a trailer", C.Name);
+		VT_CHECK_MSG(ImageTrailer(View) == Trailer,
+					 "%s: the kernel's ImageTrailer (%016llx) disagrees with this file's own reader (%016llx)", C.Name,
+					 static_cast<unsigned long long>(ImageTrailer(View)), static_cast<unsigned long long>(Trailer));
 
 		const char* Wrong = FirstDisagreement(C, View, Bytes.size(), Trailer);
 		VT_CHECK_MSG(Wrong == nullptr, "%s disagrees about its %s", C.Name, Wrong == nullptr ? "nothing" : Wrong);

@@ -24,9 +24,14 @@
 
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "VaelenCheckpointStore.h"
 #include "Vaelen/Run/Aelvor.h"
+#include "Vaelen/Run/Checkpoint.h"
 #include "Vaelen/Run/Door.h"
 #include "Vaelen/View/Take.h"
+
+#include <string>
+#include <vector>
 
 /// Everything the subsystem owns. One world, one door, one graph cache, and
 /// the five views a host reads - retaken when something moved and never on a
@@ -363,4 +368,171 @@ bool UVaelenWorldSubsystem::WriteStream(FString& Out)
 	Out = FPaths::Combine(Out, Name);
 	const std::string Text = Vaelen::Player::EncodeStream(Held->Door->Stream());
 	return FFileHelper::SaveStringToFile(FString(ANSI_TO_TCHAR(Text.c_str())), *Out);
+}
+
+namespace
+{
+	/// Saved/Vaelen, beside the streams Vaelen.Stream.Write puts there.
+	FString SaveFolder()
+	{
+		return FPaths::Combine(FPaths::ProjectSavedDir(), FString(TEXT("Vaelen")));
+	}
+
+	/// The headless command that checks a save. Tools/Atlas --load-from takes
+	/// the world's options on ITS command line, and Adopt refuses a host that
+	/// declares them differently (16.10) - so they are spelled out here from
+	/// what this host was given, and nobody has to remember them at the
+	/// keyboard. It must print "adopted at" the state digest the save line
+	/// printed.
+	FString HeadlessCheck(const Vaelen::Run::Options& Given, const FString& Path)
+	{
+		FString Out =
+			FString::Printf(TEXT("VaelenAtlas --load-from \"%s\" --size %u --years %u --prehistory %u --then-days 0"),
+							*Path, static_cast<unsigned>(Given.Size), static_cast<unsigned>(Given.Years),
+							static_cast<unsigned>(Given.PreHistory));
+		if (Given.Stream)
+		{
+			Out += TEXT(" --stream");
+		}
+		if (Given.Colony)
+		{
+			Out += TEXT(" --colony");
+		}
+		if (Given.Lively)
+		{
+			Out += TEXT(" --lively");
+		}
+		return Out;
+	}
+} // namespace
+
+bool UVaelenWorldSubsystem::Save(const FString& Name, FString& Out, FString& OutCheck)
+{
+	Out.Reset();
+	OutCheck.Reset();
+	if (!Held || !Held->World || !Held->Door || !Held->World->Begun())
+	{
+		Out = TEXT("no world is begun");
+		return false;
+	}
+	const std::string Plain(TCHAR_TO_UTF8(*Name));
+	if (!Vaelen::Run::IsUsableCheckpointName(Plain.c_str()))
+	{
+		Out = TEXT("not a name the store takes: not empty, no separator, no parent directory, not '.writing'");
+		return false;
+	}
+	// The three-argument build: the tape travels with the world (16.11), so
+	// a restored session goes on recording into the walk it came with.
+	std::vector<Vaelen::uint8> Bytes;
+	const Vaelen::Run::CheckpointResult Built =
+		Vaelen::Run::BuildCheckpoint(*Held->World, Held->Door->Stream(), Held->Door->Rules(), Bytes);
+	if (Built != Vaelen::Run::CheckpointResult::Ok)
+	{
+		Out = FString::Printf(TEXT("the container was refused: %s"),
+							  ANSI_TO_TCHAR(Vaelen::Run::CheckpointResultToString(Built)));
+		return false;
+	}
+	FVaelenCheckpointStore Store(SaveFolder());
+	const Vaelen::Run::StoreResult Wrote = Store.Write(Plain.c_str(), Bytes.data(), Bytes.size());
+	if (Wrote != Vaelen::Run::StoreResult::Ok)
+	{
+		Out = FString::Printf(TEXT("the store refused: %s"), ANSI_TO_TCHAR(Vaelen::Run::StoreResultToString(Wrote)));
+		return false;
+	}
+	Out = FPaths::Combine(Store.Where(), Name);
+	OutCheck = HeadlessCheck(Held->World->Given(), Out);
+	return true;
+}
+
+bool UVaelenWorldSubsystem::Load(const FString& Name, FString& Out, FString& OutCheck)
+{
+	Out.Reset();
+	OutCheck.Reset();
+	if (!Held)
+	{
+		Out = TEXT("no host");
+		return false;
+	}
+	if (Held->World)
+	{
+		// One world per host, as Begin says - and Adopt says the same for its
+		// own reason (AlreadyBegun): a half-restore over a live world is
+		// worse than a refusal.
+		Out = TEXT("a world is already begun: reopen, and load into a fresh host");
+		return false;
+	}
+	const std::string Plain(TCHAR_TO_UTF8(*Name));
+	FVaelenCheckpointStore Store(SaveFolder());
+	std::vector<Vaelen::uint8> Bytes;
+	const Vaelen::Run::StoreResult Got = Store.Read(Plain.c_str(), Bytes);
+	if (Got != Vaelen::Run::StoreResult::Ok)
+	{
+		Out = FString::Printf(TEXT("%s: %s"), *Name, ANSI_TO_TCHAR(Vaelen::Run::StoreResultToString(Got)));
+		return false;
+	}
+	Vaelen::Run::CheckpointView View;
+	const Vaelen::Run::CheckpointRefusal Refusal = Vaelen::Run::ReadCheckpoint(Bytes.data(), Bytes.size(), View);
+	if (Refusal.Result != Vaelen::Run::CheckpointResult::Ok)
+	{
+		Out = FString::Printf(TEXT("not a container this build reads: %s"),
+							  ANSI_TO_TCHAR(Vaelen::Run::CheckpointResultToString(Refusal.Result)));
+		return false;
+	}
+	// The HOST section says what world this is, and the host is built from
+	// it and not from anything typed - which is where this differs from
+	// Tools/Atlas --load-from, which takes the options on its command line.
+	Vaelen::Run::Options Declared;
+	if (!Vaelen::Run::ReadHostSection(View, Declared))
+	{
+		Out = TEXT("the container has no HOST section this build reads");
+		return false;
+	}
+	// CONSTRUCTED, NOT BEGUN: the wiring is the constructor's, and the
+	// generation is in the bytes. On a refusal Fresh dies here and nothing
+	// is held, exactly as before the call.
+	TUniquePtr<Vaelen::Run::Aelvor> Fresh = MakeUnique<Vaelen::Run::Aelvor>(Declared);
+	const Vaelen::Run::Aelvor::AdoptResult Adopted = Fresh->Adopt(Bytes.data(), Bytes.size());
+	if (Adopted != Vaelen::Run::Aelvor::AdoptResult::Ok)
+	{
+		Out = FString::Printf(TEXT("REFUSED, %s"), ANSI_TO_TCHAR(Vaelen::Run::Aelvor::AdoptResultToString(Adopted)));
+		return false;
+	}
+	// The tape, when the save carries one (16.11): the door takes it back and
+	// goes on recording into it. A save without one gets a fresh door with
+	// the rules Begin uses, and the walk from here begins in the middle of a
+	// life - which Door.h says is unreplayable, and is why saves carry theirs.
+	Vaelen::Player::InputStream Tape;
+	Vaelen::Player::StartRules Rules;
+	const bool Taped = Vaelen::Run::ReadStreamSection(View, Tape, Rules);
+	if (!Taped)
+	{
+		Rules = Vaelen::Player::StartRules{};
+		Rules.WantBound = 0;
+	}
+	Held->World = MoveTemp(Fresh);
+	Held->Streaming = Declared.Stream;
+	Held->Door = Taped ? MakeUnique<Vaelen::Run::Door>(*Held->World, Rules, Tape)
+					   : MakeUnique<Vaelen::Run::Door>(*Held->World, Rules);
+	Held->Watched = false;
+	// The ground once, and the five views, exactly as Begin ends.
+	Vaelen::View::TakeMapView(Held->World->Instance(), Held->World->Sources(), Held->Ground);
+	Held->TakeAll();
+	Out = FPaths::Combine(Store.Where(), Name);
+	OutCheck = HeadlessCheck(Declared, Out);
+	return true;
+}
+
+int32 UVaelenWorldSubsystem::Saves(TArray<FString>& Out)
+{
+	Out.Reset();
+	FVaelenCheckpointStore Store(SaveFolder());
+	for (const Vaelen::Run::StoreEntry& Entry : Store.List())
+	{
+		Out.Add(
+			FString::Printf(TEXT("%s: %llu bytes, tick %llu, container v%u, %u section(s), state %016llx"),
+							ANSI_TO_TCHAR(Entry.Name.c_str()), static_cast<unsigned long long>(Entry.Bytes),
+							static_cast<unsigned long long>(Entry.Tick), static_cast<unsigned>(Entry.ContainerVersion),
+							static_cast<unsigned>(Entry.SectionCount), static_cast<unsigned long long>(Entry.Digest)));
+	}
+	return Out.Num();
 }

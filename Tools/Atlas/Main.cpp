@@ -2319,18 +2319,14 @@ namespace
 	/// defect 17.03.
 	bool TrailerOf(const Vaelen::Run::CheckpointView& View, Vaelen::Hash64& Out) noexcept
 	{
+		// The reading is the kernel's since 16.14 (Run::ImageTrailer); this
+		// keeps the "is there one" answer the callers here want.
 		uint64 Length = 0;
-		const uint8* State = View.Find(Vaelen::Run::SectionKind::State, Length);
-		if (State == nullptr || Length < sizeof(uint64))
+		if (View.Find(Vaelen::Run::SectionKind::State, Length) == nullptr || Length < sizeof(uint64))
 		{
 			return false;
 		}
-		uint64 Value = 0;
-		for (usize I = 0; I < sizeof(uint64); ++I)
-		{
-			Value |= static_cast<uint64>(State[Length - sizeof(uint64) + I]) << (8u * I);
-		}
-		Out = Value;
+		Out = Vaelen::Run::ImageTrailer(View);
 		return true;
 	}
 

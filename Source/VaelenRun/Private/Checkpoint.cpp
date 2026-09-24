@@ -671,4 +671,20 @@ namespace Vaelen::Run
 		Out.Base = Bytes;
 		return Refusal;
 	}
+
+	uint64 ImageTrailer(const CheckpointView& View) noexcept
+	{
+		uint64 Length = 0;
+		const uint8* State = View.Find(SectionKind::State, Length);
+		if (State == nullptr || Length < sizeof(uint64))
+		{
+			return 0;
+		}
+		uint64 Value = 0;
+		for (usize Index = 0; Index < sizeof(uint64); ++Index)
+		{
+			Value |= static_cast<uint64>(State[Length - sizeof(uint64) + Index]) << (8u * Index);
+		}
+		return Value;
+	}
 } // namespace Vaelen::Run
