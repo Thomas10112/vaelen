@@ -2,6 +2,7 @@
 // Eras, chronicle and history queries.
 //
 // STATUS: VALIDATED (Phase 03) - covered by Tests/Sim/Test_History.cpp
+#include "Vaelen/Sim/Causality.h"
 #include "Vaelen/Sim/History.h"
 #include "Vaelen/Core/Assert.h"
 #include "Vaelen/Sim/World.h"
@@ -197,17 +198,16 @@ namespace Vaelen::History
 
 	void CauseChain(const EventLog& Log, PersistentId Id, std::vector<const Event*>& Out, uint32 MaxDepth)
 	{
-		Out.clear();
-		const Event* Current = FindEvent(Log, Id);
-		while (Current != nullptr && Out.size() < MaxDepth)
-		{
-			Out.push_back(Current);
-			if (!Current->Cause.IsValid() || Current->Cause.Value >= Current->Id.Value)
-			{
-				break; // root cause, or a link that cannot precede its effect
-			}
-			Current = FindEvent(Log, Current->Cause);
-		}
+		// 17.04: THE WALK MOVED, THE SIGNATURE DID NOT. What stood here reached
+		// four different ends through one `break` and a fifth by falling out of
+		// the loop, so a caller could not tell the beginning of the world from
+		// a log that had been cut. `CauseWalk` in Causality.h says which; this
+		// stays, discarding the answer, so that its two callers - the chronicle
+		// text in HistoryText.cpp and `Atlas --why` - do not churn in the same
+		// commit as the thing being fixed.
+		WalkLimits Limits;
+		Limits.Depth = MaxDepth;
+		(void)CauseWalk(Log, Id, Out, Limits);
 	}
 
 	void EventsInEra(const World& W, const HistoryTypes& Types, uint32 EraIndex, std::vector<const Event*>& Out)

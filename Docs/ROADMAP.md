@@ -5765,7 +5765,7 @@ reached the beginning of the world or fell off the end of a log.
 | 17.01 | **A real container corpus, before anything reads one.** Three checked-in VAELENCP v2 containers under `Tests/Run/Containers/` — a bare world, a played one with a STREAM section, and one saved through the two-argument form so it has THREE sections and no stream — each beside a README recording every header field, every section kind, offset, length and digest, the state digest read from the image TRAILER, and the exact `Tools/Atlas` command that regenerates it. | `Run.Containers` reads all three without generating a world and checks every recorded number against the file. CONTROL: regenerate each from its recorded command and require byte equality; and a container whose recorded section count is edited by one must be REFUSED, so the README is checked against the bytes rather than admired beside them. | There is no VAELENCP container anywhere in the tree — `Tests/Run/Golden/` holds `.snapshot` IMAGES, which is a different format. Every clause below is written against nothing until this exists, and the format is about to move. All three judges put it first. |
 | 17.02 | **The event-type name table.** A generated, checked-in `Vaelen/Sim/EventTypeNames.h` mapping every `TypeHash` to its declared name, produced by `Tools/gen_event_names.py` over the 115 `MakeEventType` declarations in kernel headers (**115, not the 116 the plan said** — the 116th `MakeEventType` is the template's own definition in `Event.h`, which has no name to read), plus `NameOfEventType(Hash64) -> const char*` returning a stable `"?<hex>"` for an unknown hash. `constexpr` data, no allocation, no `<fstream>` in the kernel. | `Kernel.EventTypes` re-runs the generator and diffs against the checked-in file. CONTROL: stub the table so one module's types are missing and require every consumer to print `?<hex>` rather than crash or print an empty string; and a type renamed in a header must make the diff fail. | `grep -rn 'EventTypeName\|NameOfEvent\|TypeName(' Source/ Tools/ Tests/` returns **nothing**. An `Event` carries an FNV-1a hash of its type name and nothing anywhere can turn it back into a word, so every census, inspector and causal walk below prints numbers a person cannot read. Grafted from the "weight" angle; all three judges called it unconditional. |
 | 17.03 | **The store reads a directory, and reports the digest it means.** `StdioCheckpointStore::List()` enumerates the DIRECTORY rather than the private `Written` vector; `StoreEntry::Digest` becomes the image trailer digest read through `View.Find(SectionKind::State, Length)`, whose result is used rather than discarded; and `StoreEntry` gains the section count so a caller can see the shape without opening the file again. | `Run.Store.ColdProcess`: one process writes three checkpoints, a SECOND process constructs a store over the same directory and must list all three with the right ticks and digests. CONTROL, and the judges singled it out: run the identical test against today's `List` and require it to FAIL, reporting zero entries — the defect stays visible after the fix. Second control: reorder the section table so STATE is not first and require the reported digest to be unchanged. | Two defects in 16.07, both mine. `List()` iterates `Written`, filled only by `Write()` in the same process (`StdioCheckpointStore.h:119-128, 192`), so a cold host pointed at a directory of saves lists none — which defeats exactly what this phase is for. And `:143-147` calls `Find(State)`, **discards the result**, and reports `Sections.front().Digest` by POSITION: right today only because STATE happens to be section 0, the ADR-0150 "safe by accident" pattern, and it is the section digest rather than the trailer every frozen digest in this repository is. `Run.Store` passes because it writes and lists in one process. |
-| 17.04 | **A walk that says how it ended.** `WalkEnd {Root, NoSuchEvent, CauseMissing, CauseNotAnEvent, CauseNotBeforeEffect, DepthExhausted, BudgetExhausted}` and `CauseWalk(const EventLog&, PersistentId, std::vector<const Event*>&, WalkLimits{Depth, Nodes}) -> WalkEnd` in `Vaelen/Sim/Causality.h`. `History::CauseChain` stays, reimplemented as a wrapper that discards the end, so its five existing callers do not churn. | `Sim.CauseWalk`: seven hand-built logs, one per `WalkEnd`, each asserting the end AND the partial chain. CONTROL, kept permanently: today's `CauseChain` pointed at the `CauseMissing` log and at the `Root` log must return the SAME thing — the indistinguishability is the defect, and a test that only shows the new function working cannot show it. | `History.cpp:198-211` `break`s identically when `Cause` is invalid (a genuine root) and when `FindEvent` returns `nullptr` (a link that is gone). Verified by two judges. A tool that walks backwards and stops cannot say whether it reached the beginning of the world or fell off the end of a log. Grafted whole from the "causal" angle, which the judges called the best-argued defect in the panel. |
+| 17.04 | **A walk that says how it ended.** `WalkEnd {Root, NoSuchEvent, CauseMissing, CauseNotAnEvent, CauseNotBeforeEffect, DepthExhausted, BudgetExhausted}` and `CauseWalk(const EventLog&, PersistentId, std::vector<const Event*>&, WalkLimits{Depth, Nodes}) -> WalkEnd` in `Vaelen/Sim/Causality.h`. `History::CauseChain` stays, reimplemented as a wrapper that discards the end, so its **two** callers do not churn (`HistoryText.cpp:267` and `Atlas --why`; the plan said five). | `Sim.CauseWalk`: hand-built logs, one per `WalkEnd`, each asserting the end AND the partial chain. CONTROL, kept permanently: today's `CauseChain` pointed at the `CauseMissing` log and at the `Root` log must return the SAME thing — the indistinguishability is the defect, and a test that only shows the new function working cannot show it. | `History.cpp:198-211` `break`s identically when `Cause` is invalid (a genuine root) and when `FindEvent` returns `nullptr` (a link that is gone). Verified by two judges. A tool that walks backwards and stops cannot say whether it reached the beginning of the world or fell off the end of a log. Grafted whole from the "causal" angle, which the judges called the best-argued defect in the panel. |
 | 17.05 | **The census, and it is allowed to conclude the phase is about something else.** `CauseCensus {Events, WithCause, RootCauses, Dangling, NotAnEvent, MaxDepth, MedianDepth, MaxFanOut}` over an `EventLog`, `TakeCauseCensus`, and `Tools/Atlas --causes` printing it per event type using 17.02's names. Run over the 17.01 corpus and over a fresh AELVOR 128, and the figures WRITTEN INTO THIS ROADMAP. | `Sim.Causality`: a planted log with a chain of depth 7, a fan-out of 5, one dangling cause and one `Cause` of `IdKind::Entity` must report exactly 7, 5, 1 and 1. CONTROL: the same log with every `Cause` cleared must report `MaxDepth 0, MaxFanOut 0` — if the depth survives the edges being removed it was never reading them. Second control: an empty log reports every field 0, not "no problems found". | The panel measured 7 causes in 535 events (1.31%) with a deepest chain of ONE EDGE, and three of four angles had planned a walker, an index and a renderer over that. A census that can be re-run is how this stays true rather than becoming folklore — and my own brace-aware count of the publishers that pass a cause (30) disagrees with the winning angle's (27) and another's (34), with two sites my parser still cannot read. |
 | 17.06 | **The inspector.** `Tools/Atlas --inspect <container>`: header, every section with kind name, length, share and digest, the HOST wiring, the RUN state's shape, whether a STREAM section is present and how many records it holds — **without generating a world**. `--inspect-dir <dir>` lists a directory through `ICheckpointStore` with tick, size, container version and trailer digest. | `Atlas.Inspect` over all three 17.01 containers, pinning the printed lines. CONTROL: `--inspect` must refuse a `.snapshot` image with a message naming the format it found, and must refuse a container truncated at 4 KiB rather than printing a partial table as if it were whole. | ROADMAP's own words: "16.04's section table and manifest are what makes listing saves without generating a world possible; this phase stops there." `Atlas --save --sections` generates a world first and never opens a file, so nothing in the tree reads a container from disk except a test. |
 | 17.07 | **A test harness that can see a vacuous assertion.** `VT_CHECK_ROUNDTRIP(Written, Read)` records a failure when the WRITTEN value is byte-equal to `T{}` before it compares anything, and `VT_CHECK_DIGEST_EQ(A, B)` refuses `0` and `EventLog::EmptyDigest` as operands. | `Harness.VacuityIsSeen`, with BOTH ARMS IN ONE RUN: the reconstructed default-vs-default `StartRules` assertion must FAIL under `VT_CHECK_ROUNDTRIP` and PASS under plain `VT_CHECK`, in the same test, so the defect stays visible after the fix. CONTROL: a genuine non-default round trip must pass under both. | This session committed exactly that defect — a `StartRules` round-trip comparing two default-constructed structs, which passed even though `ReadStreamSection` could have written nothing — and it was found by a reviewer, not by the suite. One judge called the two-arms-in-one-run shape the single best control-design idea in the panel. Grafted from the "discipline" angle. |
@@ -5941,6 +5941,66 @@ reports the same trailer while the pre-fix one reports RUN's section digest.
 Putting `Sections.front().Digest` back: `alpha: listed e0614906cb8a5676,
 ComputeStateDigest 0f6fa26b35d09a70`. Making `List` return early before it reads
 the directory: `a cold store listed 0 of 3`.
+
+### 17.04 AS BUILT, 2026-09-24
+
+`Vaelen/Sim/Causality.h` declares `WalkEnd` and `CauseWalk`;
+`History::CauseChain` stays, reimplemented as a wrapper that discards the end,
+so its **two** callers do not churn - `HistoryText.cpp:267` and `Atlas --why`.
+The plan said five; there are two.
+
+**SIX ENDS, NOT SEVEN, AND THE SEVENTH WAS DROPPED ON PURPOSE.** The plan wrote
+`WalkLimits{Depth, Nodes}` with a `BudgetExhausted` beside it. A backwards walk
+is LINEAR - one node per step - so a node budget and a depth limit can never
+disagree, and a state no input can reach is a state no test can reach either.
+Two limits that always agree look thorough and measure one thing. There is also
+no cycle to guard against: `CauseNotBeforeEffect` makes every step strictly
+decrease the id, so the walk terminates whatever the data says.
+
+The six: `Root`, `NoSuchEvent`, `CauseMissing`, `CauseNotAnEvent`,
+`CauseNotBeforeEffect`, `DepthExhausted`. `History.cpp:198-211` reached four of
+them through ONE `break` and the fifth by falling out of the loop condition.
+
+**TWO ORDERING DECISIONS, AND EACH IS PINNED BY A CASE THAT CAN SEE IT.**
+
+The kind check comes BEFORE the ordering check. `IdKind` is the high byte of
+`PersistentId::Value`, so an Entity cause (kind 1) compares BELOW an Event
+effect (kind 2) and sails past the ordering guard, while a Person cause (kind
+23) compares above it and would be reported as an ordering fault. Both are the
+same mistake. Swapping the two checks makes the Person case report
+`CauseNotBeforeEffect`, and the test says so.
+
+The link is resolved BEFORE the depth is checked - **and this row exists because
+an experiment did not fail.** Moving the depth check ahead of the resolution was
+meant to break the boundary case and did not: for a WHOLE chain the two orders
+are identical, so the test was measuring nothing about the ordering. They differ
+in exactly one place, when the budget runs out on the step that would have found
+the link missing, and both facts are then true at once. THE DATA FAULT WINS:
+`CauseMissing` says the log is broken, `DepthExhausted` says the caller asked
+for less than there was, and a person shown the second when the first is true
+goes and raises the limit and learns nothing. A case for it was added, and the
+same experiment then reported `a cut on the limit must report the cut, not the
+limit: DepthExhausted`.
+
+That is the third time this session an experiment has told me about the
+instrument rather than about the guard, and the third time the fix was to make
+the instrument able to see.
+
+Three entries in one file, `Sim.CauseWalk`, 0.00 s:
+
+- eight cases, one per end plus both sides of `CauseNotAnEvent`, the depth
+  boundary at exactly the chain's length, a depth of zero, and the cut-on-the-
+  limit case above;
+- **`TodaysChainCannotTellARootFromACut`, kept permanently**: the OLD function
+  over a whole chain and a cut one must give the SAME answer - that
+  indistinguishability IS the defect - while `CauseWalk` over the same two logs
+  says `Root` and `CauseMissing`, in the same run;
+- `TheWrapperStillAnswersItsTwoCallers`: six depths, the wrapper and the walk
+  compared event by event, so 17.04 cannot have changed behaviour while
+  claiming to add a return value.
+
+The logs are hand-built. A real world's log is 98.7% roots, so five of the six
+ends would never occur and the test would be a test of AELVOR's demography.
 
 ### The Phase 17 gate
 

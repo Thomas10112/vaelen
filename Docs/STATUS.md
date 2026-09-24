@@ -19,7 +19,67 @@ PHASE       : 17 — DEBUG TOOLS, opened 2026-09-24
                v4 bump and 16.14 needs the owner's Windows machine. Docs/ROADMAP.md
                section 22 has the clause-by-clause read.
                15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
-TASK        : 17.03 — DONE 2026-09-24. The store reads a directory, and reports the
+TASK        : 17.04 — DONE 2026-09-24. A causal walk that says how it ended, and an
+              experiment that told me about the test instead.
+
+              History::CauseChain walks the cause edge backwards and hands back a vector.
+              It has SIX ways to stop and the caller can tell them apart in none of them:
+              History.cpp:198-211 reached four through ONE break and the fifth by falling
+              out of the loop. A tool that walks backwards and stops cannot say whether it
+              reached the BEGINNING OF THE WORLD or FELL OFF THE END OF A LOG — and this
+              is the phase whose job is telling a person why something happened.
+
+              Vaelen/Sim/Causality.h declares WalkEnd { Root, NoSuchEvent, CauseMissing,
+              CauseNotAnEvent, CauseNotBeforeEffect, DepthExhausted } and CauseWalk.
+              CauseChain stays, reimplemented as a wrapper that discards the end, so its
+              TWO callers do not churn — HistoryText.cpp:267 and Atlas --why. The plan
+              said five.
+
+              SIX ENDS AND NOT SEVEN, dropped on purpose. The plan wrote
+              WalkLimits{Depth, Nodes} with a BudgetExhausted beside it. A backwards walk
+              is LINEAR, one node per step, so the two limits can never disagree — and a
+              state no input can reach is a state no test can reach either. No cycle guard
+              is needed either: CauseNotBeforeEffect makes every step strictly decrease
+              the id.
+
+              TWO ORDERING DECISIONS, EACH PINNED BY A CASE THAT CAN SEE IT. The kind
+              check comes BEFORE the ordering check, because IdKind is the high byte of
+              the id: an Entity cause (kind 1) compares BELOW an Event effect (kind 2) and
+              sails past the ordering guard, while a Person cause (kind 23) compares above
+              and would be called an ordering fault. Both are the same mistake. Swapping
+              them makes the Person case report CauseNotBeforeEffect, and the test says so.
+
+              AND THE SECOND EXPERIMENT DID NOT FAIL, which is why the second decision has
+              a row of its own. Moving the depth check ahead of the link resolution was
+              meant to break the boundary case; for a WHOLE chain the two orders are
+              identical, so the test was measuring nothing about the ordering. They differ
+              in exactly one place — when the budget runs out on the step that would have
+              found the link missing — and both facts are then true at once. THE DATA
+              FAULT WINS: CauseMissing says the log is broken, DepthExhausted says the
+              caller asked for less than there was, and a person shown the second when the
+              first is true raises the limit and learns nothing. A case for it was added
+              and the same experiment then reported "a cut on the limit must report the
+              cut, not the limit: DepthExhausted".
+
+              That is the THIRD time this session an experiment has told me about the
+              instrument rather than the guard, and the third time the fix was to make the
+              instrument able to see.
+
+              Sim.CauseWalk, three entries, 0.00 s: eight cases (one per end, both sides
+              of CauseNotAnEvent, the depth boundary at exactly the chain's length, a
+              depth of zero, and the cut-on-the-limit case); the PRE-FIX ARM KEPT
+              PERMANENTLY — today's CauseChain over a whole chain and a cut one must give
+              the SAME answer, that indistinguishability IS the defect, while CauseWalk
+              over the same two logs says Root and CauseMissing in the same run; and six
+              depths comparing the wrapper against the walk event by event, so 17.04
+              cannot have changed behaviour while claiming to add a return value.
+
+              The logs are hand-built. A real world's log is 98.7% roots, so five of the
+              six ends would never occur and the test would be a test of demography.
+
+              36/36 green under Sim., Sim.Shuffled included.
+
+TASK (17.03): 17.03 — DONE 2026-09-24. The store reads a directory, and reports the
               digest it says it reports. Both defects were mine, from 16.07.
 
               THE FIRST: List() iterated a private vector that only Write() and
