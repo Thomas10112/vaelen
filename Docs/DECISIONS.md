@@ -10510,7 +10510,16 @@ world. Two worlds identical but for it, played the same way, part company within
 
 ## ADR-0151 — The current temperature is a function, not a layer, and a region's year is a closed form
 
-**Status:** PROPOSED 2026-09-24 by the Phase 18 panel (`Docs/ROADMAP.md` section 25); applied by task 18.03, which changes this line.
+**Status:** **APPLIED 2026-09-24** (task 18.03), with one deviation: `ShapeYear` is
+the 360-day sum itself, not an arithmetic series. The sum is the definition,
+360 additions per region per year cost nothing (robust > performant), and the
+panel's hand figures for the closed form had been wrong once already; the
+pinned figures in `Tests/Sim/Test_Climate.cpp` are the sums, computed in Fix64
+and floored to the degree-day (the panel's 5513 reads 5512 there, rounded
+against floored). `Vaelen/Sim/Climate.h`: `SeasonalAmplitude`, `DayOffset`,
+`TemperatureOn`, `TileTemperatureOn`, `ShapeYear`, `YearVariation`,
+`RegionYear`, `ShapeRegionYears`, `ClimateRules`. No layer, no component, no
+draw; the 02.04 generation digests unchanged and asserted so.
 
 ### Context
 

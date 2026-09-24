@@ -27,6 +27,7 @@ set(VAELEN_SIM_PUBLIC_HEADERS
   Public/Vaelen/Sim/WorldGenPipeline.h
   Public/Vaelen/Sim/History.h
   Public/Vaelen/Sim/Causality.h
+  Public/Vaelen/Sim/Climate.h
   Public/Vaelen/Sim/EventTypeNames.h
   Public/Vaelen/Sim/Population.h
   Public/Vaelen/Sim/Naming.h
@@ -54,6 +55,7 @@ set(VAELEN_SIM_SOURCES
   Private/WorldGenPipeline.cpp
   Private/History.cpp
   Private/Causality.cpp
+  Private/Climate.cpp
   Private/Population.cpp
   Private/Naming.cpp
   Private/Religion.cpp

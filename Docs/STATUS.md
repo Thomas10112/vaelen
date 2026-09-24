@@ -32,7 +32,22 @@ PHASE       : 17 — DEBUG TOOLS, CLOSED 2026-09-24: all eleven clauses of its g
                yet: it is written here and parsed against the shim before that
                sitting. Section 22 has the clause-by-clause read.
                15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
-TASK        : 18.02 — DONE 2026-09-24. The switch that switches nothing yet.
+TASK        : 18.03 — DONE 2026-09-24. The temperature is a function; the year is a shape.
+
+              Vaelen/Sim/Climate.h: SeasonalAmplitude, DayOffset (a triangle wave equal
+              to SeasonalOffset at the four midpoints, exact on the raw), TemperatureOn,
+              TileTemperatureOn, ShapeYear (the 360-day sum: frost days, growing days,
+              cold sum, coldest, warmest - the sum, not the panel's arithmetic series;
+              ADR-0151 APPLIED with that deviation), YearVariation (a lattice hash, never
+              a draw), RegionYear / ShapeRegionYears at the centroid with the world's own
+              calendar, ClimateRules (a rule, no digest). No layer, no component, no
+              state. The panel's figures pinned as computed: pole 315/1/5512, row 32 of
+              128 65/221/136, equator 0/360/0, tundra 203/97/1751, grassland 59/225/111;
+              AELVOR 256 on day 315 freezes every Ice/Tundra tile and no Tropical/
+              Savanna/Desert one, and the 02.04 digests did not move. Failed on purpose:
+              the winter sign flipped, the tile ignoring the day. 11 of 11, 171 checks.
+
+TASK (18.02): 18.02 — DONE 2026-09-24. The switch that switches nothing yet.
 
               Options::Climate = false, a fifth HOST byte appended (24 bytes reads as
               Climate false, 25 as written, anything else is no HOST section),

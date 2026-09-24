@@ -6763,3 +6763,51 @@ now stand twice; the five trailers are the three `static_assert`s and the kept
 row's; the seeds are the kept row's and its README and inspect entries. No
 trailer removed, no state, no log, no GEN, no HASH: the byte moved sections and
 nothing else, and the census is what says so rather than the commit message.
+
+### 18.03 AS BUILT, 2026-09-24
+
+`Vaelen/Sim/Climate.h` and `Climate.cpp` in VaelenSim, listed in its CMake:
+no layer, no component, no state, no draw. `SeasonalAmplitude` (4 + 16|lat|,
+SeasonalOffset's), `DayOffset` (the triangle wave, 0 at mid-spring, +A at
+mid-summer, 0, −A, linear between - EXACT ON THE RAW VALUE at the four season
+midpoints, since each quarter ends in A·q/q), `TemperatureOn`,
+`TileTemperatureOn` (the layer, the row, the day; 0 off the map),
+`ShapeYear` (frost days, growing days, cold sum, coldest, warmest),
+`YearVariation` (a lattice hash of seed, year and region, scaled; never the
+generator), `RegionYear` and `ShapeRegionYears` (the centroid tile's year,
+the world's own calendar, one pass over the region pool), `ClimateRules`
+(a rule, in no digest).
+
+THE ONE DEVIATION FROM THE ROW, recorded in ADR-0151's status: the year is the
+360-day sum and not an arithmetic series - the sum is the definition, costs
+nothing, and the panel's closed-form hand figures had been wrong once.
+
+THE PINS ARE THE PANEL'S FIGURES, computed independently in Python from the
+same wave before the test was written and then in Fix64 by the test: the pole
+315 frost / 1 growing / 5512 degree-days (the panel's 5513 was rounded, this
+is floored), row 32 of 128 65 / 221 / 136, the equator 0 / 360 / 0, tundra at
+|lat| 0.7 203 / 97 / 1751, grassland at |lat| 0.489 59 / 225 / 111; the pole's
+extremes −35 and +5 exactly; the saturations (mean +100: no frost, 360
+growing, no cold; mean −100: 360 frost, cold sum 36000 EXACTLY because the
+offsets of a year sum to zero, which is asserted for five latitudes); a
+zero-day year shapes to nothing. Over AELVOR 256 on day 315 every Ice and
+Tundra tile is below freezing and no Tropical, Savanna or Desert tile is,
+summer and winter differ on every one of the 65536 tiles, more tiles freeze
+than are ice or tundra, and the 02.04 temperature and biome digests are
+unchanged. Over a 64-tile pipeline world every region's year agrees between
+the one-pass and the single call, two years of one region differ by the
+variation and by nothing else (amplitude 0 makes them equal), region 0 and a
+region past the count are all-zero, and region 1's shape is recomputed by
+hand from the layer, the row and the hash.
+
+FAILED ON PURPOSE, twice: the winter half's sign flipped - 26 checks in three
+cases, the midpoint equality at season 3 for every latitude, the year's sum,
+every pinned shape, the saturations and the mid-winter freeze among them;
+the tile reading the mean and ignoring the day - "summer and winter differ on
+every tile" fails (the Ice/Tundra check does not, because their MEANS are
+below freezing already: the mean alone is the world before this task, and
+only the day tells them apart). 11 of 11 cases, 171 checks, on gcc debug and
+gcc release; verify_fast clean - after the census REFUSED the new file: the
+"CLIMATE" salt of `YearVariation` is a sixteen-hex literal in a file the table
+did not name, exactly the refusal 18.01 was built to make, and
+`Climate.cpp` is named HASH now.

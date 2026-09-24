@@ -179,6 +179,7 @@ TABLE = {
     "Source/VaelenSim/Public/Vaelen/Sim/EventBus.h": "HASH",
     "Source/VaelenSim/Public/Vaelen/Sim/EventTypeNames.h": "HASH",
     "Source/VaelenSim/Private/Naming.cpp": "HASH",
+    "Source/VaelenSim/Private/Climate.cpp": "HASH",  # 18.03: the "CLIMATE" salt of YearVariation
     "Source/VaelenPopulation/Private/Persons.cpp": "HASH",
     "Source/VaelenGameplay/Private/Maps.cpp": "HASH",
     "Source/VaelenGameplay/Private/Documents.cpp": "HASH",
