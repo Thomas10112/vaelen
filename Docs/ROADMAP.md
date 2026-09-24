@@ -5564,100 +5564,6 @@ Adopt is **13.5× faster than generating the same world**, and `Generations() ==
   divergence found, or a null result with the horizons and wirings it was
   searched over — is written into DECISIONS whichever way it came out.
 
-## 23. Phase 17 - DEBUG TOOLS: task breakdown
-
-Proposed by a four-angle judge panel on 2026-09-23 (causal graph / save inspector / what the log
-weighs / the instruments themselves), scored by three judges on separate lenses. **The inspector
-angle won unanimously**, and it won for one reason: it is the only angle that MEASURED the thing the
-other three planned around.
-
-### The measurement that decides the phase
-
-The three checked-in goldens were parsed directly - by the proposing agent, then independently by two
-judges, agreeing to the event:
-
-| corpus | events with a cause | deepest chain |
-|---|---|---|
-| `full-32.snapshot` | **7 of 535 (1.31%)** | **one edge** |
-| `full-16.snapshot` | 3 of 130 | one edge |
-| `bare-16.snapshot` | 3 of 129 | one edge |
-
-No cause points outside its own log. Brace-aware parsing of every `Publish` call site puts the
-publishers that pass a cause at **27-30 of 132** - the panel's own figures were 27, 34 and "a
-handful", and my count of 30 still leaves two sites my parser cannot read, which is itself the
-argument for a census task rather than a grep.
-
-**THE CAUSAL GRAPH IS 1.3% DENSE AND ONE EDGE DEEP.** Three of the four angles proposed building a
-walker, an index, a subgraph and a renderer over it. Phase 14's deferral - "a why deeper than two
-steps (Phase 17)" - turns out not to be a tooling debt at all: there is no third step to walk to.
-Filling the cause edges is a DATA change across fifteen closed phases, it moves `EventLog::Digest`,
-therefore the image, therefore `ComputeStateDigest`, therefore every frozen literal in this
-repository. All three judges independently said the same thing: that work must not share a commit
-with anything else, and it is not what opens this phase.
-
-### Three defects the panel found in Phase 16's own work, all reproduced here
-
-1. **`StdioCheckpointStore::List()` lists nothing in a cold process.** It enumerates `Written`, a
-   private `std::vector<std::string>` filled only by `Write()` in the same process
-   (`Tools/Store/StdioCheckpointStore.h:119-128, 192`). A host pointed at a directory full of saves
-   lists none of them - which defeats exactly what this phase is for. `Run.Store` passes because it
-   writes and lists in one process: an instrument blind to the one dimension that matters.
-2. **The store reports a digest by POSITION.** `StdioCheckpointStore.h:143-147` calls
-   `View.Find(SectionKind::State, Length)`, **discards the result**, and reports
-   `View.Sections.front().Digest`. It is right today only because STATE happens to be section 0 -
-   the ADR-0150 "safe by accident" pattern again - and it is the SECTION digest, not the image
-   trailer that `ComputeStateDigest` returns and that every frozen digest in this repository is.
-3. **There is no VAELENCP container anywhere in the tree.** `Tests/Run/Golden/` holds `.snapshot`
-   IMAGES. Several proposals wrote gate clauses against container files that do not exist.
-
-And one more, from the causal angle, verified by two judges: **`History.cpp:198-211` breaks
-identically for a genuine root cause and for a link that is gone**, so a walk cannot say whether it
-reached the beginning of the world or fell off the end of a log.
-
-### The shape the panel agreed on
-
-- **17.01 first, unconditionally: a real container corpus.** Three checked-in v2 VAELENCP containers
-  with a README recording every header field, every section kind, length and digest, the state digest
-  read from the image TRAILER, and the command that regenerates them. No such file exists and the
-  format is about to move; every inspector clause downstream is written against nothing until it does.
-- **An event-type name table**, grafted from the weight angle and endorsed by all three judges: 116
-  `MakeEventType` declarations in kernel headers and `EventTypeName|NameOfEvent|TypeName(` returns
-  nothing anywhere in `Source/`, `Tools/` or `Tests/`. Generated, checked in, with a CTest entry that
-  re-runs the generator and diffs. Every census and every inspector is unreadable without it.
-- **The store's three-part fix** with the control that runs the identical test against today's `List`
-  and requires it to FAIL.
-- **`WalkEnd` and the kept pre-fix arm**, grafted whole from the causal angle: a walk that says HOW it
-  ended, and a test that points today's `CauseChain` at a missing-link log and a root log and requires
-  the same wrong answer from both. The indistinguishability is the defect; a test that only shows the
-  new function working cannot show it.
-- **`VT_CHECK_ROUNDTRIP` and the two-arms-in-one-run control**, grafted from the discipline angle and
-  called by one judge the single best control-design idea in the panel: the reconstructed
-  default-vs-default `StartRules` assertion must FAIL under the witness macro and PASS under the plain
-  one, in the same run, so the defect stays visible after the fix. That defect was committed in this
-  very phase and is the reason the angle was commissioned.
-- **Guard now, fix if asked**, for the `DiplomacySystem` region-count cache: assert that every route
-  into a world still refuses a differently-generated one BY NAME, and make the test name the cache in
-  its own failure text. That turns an unanswerable owner question into a test that fires the day the
-  refusal is loosened.
-
-### What the panel unanimously dropped
-
-- **Filling `Cause` across the publish sites, in this phase.** Correct work, honestly priced by the
-  proposal that offered it, and it re-freezes every digest in the repository. It cannot land beside
-  the corpus that is supposed to pin the format.
-- **Log tiering and compaction.** A phase's work, not a task: there are **49 `Log().All()` call
-  sites**, not the five one angle assumed, and a dozen scan the whole log every tick. It buys
-  resident memory and not save size, and it is the one task that could move all ~178 frozen digest
-  literals without anyone intending it. It stays where DECISIONS put it, and Phase 18 opens with the
-  log question rather than inheriting it.
-
-### Still the owner's to answer, and now sharper
-
-The 1.31% measurement changes question 4. Whether a save should ever load into a differently-generated
-world was a question about `DiplomacySystem`'s cache; it is now also the question of whether the causal
-edge is ever going to be filled in, because both are one-way doors through every frozen digest. They
-should be answered together or not at all.
-
 ### Out of scope for Phase 16, and where it belongs
 
 - **Log truncation.** All four plans measured the same thing — the log is 83.6%
@@ -5775,3 +5681,121 @@ should be answered together or not at all.
 
 Next: 16.01, the goldens and the gate list, because both are one-way doors and
 neither can be recovered once another task has landed.
+
+## 23. Phase 17 - DEBUG TOOLS: task breakdown
+
+Proposed by a four-angle judge panel on 2026-09-23 (causal graph / save inspector / what the log
+weighs / the instruments themselves), scored by three judges on separate lenses. **The inspector
+angle won unanimously**, and it won for one reason: it is the only angle that MEASURED the thing the
+other three planned around.
+
+### The measurement that decides the phase
+
+The three checked-in goldens were parsed directly - by the proposing agent, then independently by two
+judges, agreeing to the event:
+
+| corpus | events with a cause | deepest chain |
+|---|---|---|
+| `full-32.snapshot` | **7 of 535 (1.31%)** | **one edge** |
+| `full-16.snapshot` | 3 of 130 | one edge |
+| `bare-16.snapshot` | 3 of 129 | one edge |
+
+No cause points outside its own log. Brace-aware parsing of every `Publish` call site puts the
+publishers that pass a cause at **27-30 of 132** - the panel's own figures were 27, 34 and "a
+handful", and my count of 30 still leaves two sites my parser cannot read, which is itself the
+argument for a census task rather than a grep.
+
+**THE CAUSAL GRAPH IS 1.3% DENSE AND ONE EDGE DEEP.** Three of the four angles proposed building a
+walker, an index, a subgraph and a renderer over it. Phase 14's deferral - "a why deeper than two
+steps (Phase 17)" - turns out not to be a tooling debt at all: there is no third step to walk to.
+Filling the cause edges is a DATA change across fifteen closed phases, it moves `EventLog::Digest`,
+therefore the image, therefore `ComputeStateDigest`, therefore every frozen literal in this
+repository. All three judges independently said the same thing: that work must not share a commit
+with anything else, and it is not what opens this phase.
+
+### Three defects the panel found in Phase 16's own work, all reproduced here
+
+1. **`StdioCheckpointStore::List()` lists nothing in a cold process.** It enumerates `Written`, a
+   private `std::vector<std::string>` filled only by `Write()` in the same process
+   (`Tools/Store/StdioCheckpointStore.h:119-128, 192`). A host pointed at a directory full of saves
+   lists none of them - which defeats exactly what this phase is for. `Run.Store` passes because it
+   writes and lists in one process: an instrument blind to the one dimension that matters.
+2. **The store reports a digest by POSITION.** `StdioCheckpointStore.h:143-147` calls
+   `View.Find(SectionKind::State, Length)`, **discards the result**, and reports
+   `View.Sections.front().Digest`. It is right today only because STATE happens to be section 0 -
+   the ADR-0150 "safe by accident" pattern again - and it is the SECTION digest, not the image
+   trailer that `ComputeStateDigest` returns and that every frozen digest in this repository is.
+3. **There is no VAELENCP container anywhere in the tree.** `Tests/Run/Golden/` holds `.snapshot`
+   IMAGES. Several proposals wrote gate clauses against container files that do not exist.
+
+And one more, from the causal angle, verified by two judges: **`History.cpp:198-211` breaks
+identically for a genuine root cause and for a link that is gone**, so a walk cannot say whether it
+reached the beginning of the world or fell off the end of a log.
+
+### The shape the panel agreed on
+
+- **17.01 first, unconditionally: a real container corpus.** Three checked-in v2 VAELENCP containers
+  with a README recording every header field, every section kind, length and digest, the state digest
+  read from the image TRAILER, and the command that regenerates them. No such file exists and the
+  format is about to move; every inspector clause downstream is written against nothing until it does.
+- **An event-type name table**, grafted from the weight angle and endorsed by all three judges: 116
+  `MakeEventType` declarations in kernel headers and `EventTypeName|NameOfEvent|TypeName(` returns
+  nothing anywhere in `Source/`, `Tools/` or `Tests/`. Generated, checked in, with a CTest entry that
+  re-runs the generator and diffs. Every census and every inspector is unreadable without it.
+- **The store's three-part fix** with the control that runs the identical test against today's `List`
+  and requires it to FAIL.
+- **`WalkEnd` and the kept pre-fix arm**, grafted whole from the causal angle: a walk that says HOW it
+  ended, and a test that points today's `CauseChain` at a missing-link log and a root log and requires
+  the same wrong answer from both. The indistinguishability is the defect; a test that only shows the
+  new function working cannot show it.
+- **`VT_CHECK_ROUNDTRIP` and the two-arms-in-one-run control**, grafted from the discipline angle and
+  called by one judge the single best control-design idea in the panel: the reconstructed
+  default-vs-default `StartRules` assertion must FAIL under the witness macro and PASS under the plain
+  one, in the same run, so the defect stays visible after the fix. That defect was committed in this
+  very phase and is the reason the angle was commissioned.
+- **Guard now, fix if asked**, for the `DiplomacySystem` region-count cache: assert that every route
+  into a world still refuses a differently-generated one BY NAME, and make the test name the cache in
+  its own failure text. That turns an unanswerable owner question into a test that fires the day the
+  refusal is loosened.
+
+### The breakdown
+
+| Task | Deliverable | Test (with its control) | Why |
+|---|---|---|---|
+| 17.01 | **A real container corpus, before anything reads one.** Three checked-in VAELENCP v2 containers under `Tests/Run/Containers/` — a bare world, a played one with a STREAM section, and one saved through the two-argument form so it has THREE sections and no stream — each beside a README recording every header field, every section kind, offset, length and digest, the state digest read from the image TRAILER, and the exact `Tools/Atlas` command that regenerates it. | `Run.Containers` reads all three without generating a world and checks every recorded number against the file. CONTROL: regenerate each from its recorded command and require byte equality; and a container whose recorded section count is edited by one must be REFUSED, so the README is checked against the bytes rather than admired beside them. | There is no VAELENCP container anywhere in the tree — `Tests/Run/Golden/` holds `.snapshot` IMAGES, which is a different format. Every clause below is written against nothing until this exists, and the format is about to move. All three judges put it first. |
+| 17.02 | **The event-type name table.** A generated, checked-in `Vaelen/Sim/EventTypeNames.h` mapping every `TypeHash` to its declared name, produced by `Tools/gen_event_names.py` over the 116 `MakeEventType` declarations in kernel headers, plus `NameOfEventType(Hash64) -> const char*` returning a stable `"?<hex>"` for an unknown hash. `constexpr` data, no allocation, no `<fstream>` in the kernel. | `Kernel.EventTypes` re-runs the generator and diffs against the checked-in file. CONTROL: stub the table so one module's types are missing and require every consumer to print `?<hex>` rather than crash or print an empty string; and a type renamed in a header must make the diff fail. | `grep -rn 'EventTypeName\|NameOfEvent\|TypeName(' Source/ Tools/ Tests/` returns **nothing**. An `Event` carries an FNV-1a hash of its type name and nothing anywhere can turn it back into a word, so every census, inspector and causal walk below prints numbers a person cannot read. Grafted from the "weight" angle; all three judges called it unconditional. |
+| 17.03 | **The store reads a directory, and reports the digest it means.** `StdioCheckpointStore::List()` enumerates the DIRECTORY rather than the private `Written` vector; `StoreEntry::Digest` becomes the image trailer digest read through `View.Find(SectionKind::State, Length)`, whose result is used rather than discarded; and `StoreEntry` gains the section count so a caller can see the shape without opening the file again. | `Run.Store.ColdProcess`: one process writes three checkpoints, a SECOND process constructs a store over the same directory and must list all three with the right ticks and digests. CONTROL, and the judges singled it out: run the identical test against today's `List` and require it to FAIL, reporting zero entries — the defect stays visible after the fix. Second control: reorder the section table so STATE is not first and require the reported digest to be unchanged. | Two defects in 16.07, both mine. `List()` iterates `Written`, filled only by `Write()` in the same process (`StdioCheckpointStore.h:119-128, 192`), so a cold host pointed at a directory of saves lists none — which defeats exactly what this phase is for. And `:143-147` calls `Find(State)`, **discards the result**, and reports `Sections.front().Digest` by POSITION: right today only because STATE happens to be section 0, the ADR-0150 "safe by accident" pattern, and it is the section digest rather than the trailer every frozen digest in this repository is. `Run.Store` passes because it writes and lists in one process. |
+| 17.04 | **A walk that says how it ended.** `WalkEnd {Root, NoSuchEvent, CauseMissing, CauseNotAnEvent, CauseNotBeforeEffect, DepthExhausted, BudgetExhausted}` and `CauseWalk(const EventLog&, PersistentId, std::vector<const Event*>&, WalkLimits{Depth, Nodes}) -> WalkEnd` in `Vaelen/Sim/Causality.h`. `History::CauseChain` stays, reimplemented as a wrapper that discards the end, so its five existing callers do not churn. | `Sim.CauseWalk`: seven hand-built logs, one per `WalkEnd`, each asserting the end AND the partial chain. CONTROL, kept permanently: today's `CauseChain` pointed at the `CauseMissing` log and at the `Root` log must return the SAME thing — the indistinguishability is the defect, and a test that only shows the new function working cannot show it. | `History.cpp:198-211` `break`s identically when `Cause` is invalid (a genuine root) and when `FindEvent` returns `nullptr` (a link that is gone). Verified by two judges. A tool that walks backwards and stops cannot say whether it reached the beginning of the world or fell off the end of a log. Grafted whole from the "causal" angle, which the judges called the best-argued defect in the panel. |
+| 17.05 | **The census, and it is allowed to conclude the phase is about something else.** `CauseCensus {Events, WithCause, RootCauses, Dangling, NotAnEvent, MaxDepth, MedianDepth, MaxFanOut}` over an `EventLog`, `TakeCauseCensus`, and `Tools/Atlas --causes` printing it per event type using 17.02's names. Run over the 17.01 corpus and over a fresh AELVOR 128, and the figures WRITTEN INTO THIS ROADMAP. | `Sim.Causality`: a planted log with a chain of depth 7, a fan-out of 5, one dangling cause and one `Cause` of `IdKind::Entity` must report exactly 7, 5, 1 and 1. CONTROL: the same log with every `Cause` cleared must report `MaxDepth 0, MaxFanOut 0` — if the depth survives the edges being removed it was never reading them. Second control: an empty log reports every field 0, not "no problems found". | The panel measured 7 causes in 535 events (1.31%) with a deepest chain of ONE EDGE, and three of four angles had planned a walker, an index and a renderer over that. A census that can be re-run is how this stays true rather than becoming folklore — and my own brace-aware count of the publishers that pass a cause (30) disagrees with the winning angle's (27) and another's (34), with two sites my parser still cannot read. |
+| 17.06 | **The inspector.** `Tools/Atlas --inspect <container>`: header, every section with kind name, length, share and digest, the HOST wiring, the RUN state's shape, whether a STREAM section is present and how many records it holds — **without generating a world**. `--inspect-dir <dir>` lists a directory through `ICheckpointStore` with tick, size, container version and trailer digest. | `Atlas.Inspect` over all three 17.01 containers, pinning the printed lines. CONTROL: `--inspect` must refuse a `.snapshot` image with a message naming the format it found, and must refuse a container truncated at 4 KiB rather than printing a partial table as if it were whole. | ROADMAP's own words: "16.04's section table and manifest are what makes listing saves without generating a world possible; this phase stops there." `Atlas --save --sections` generates a world first and never opens a file, so nothing in the tree reads a container from disk except a test. |
+| 17.07 | **A test harness that can see a vacuous assertion.** `VT_CHECK_ROUNDTRIP(Written, Read)` records a failure when the WRITTEN value is byte-equal to `T{}` before it compares anything, and `VT_CHECK_DIGEST_EQ(A, B)` refuses `0` and `EventLog::EmptyDigest` as operands. | `Harness.VacuityIsSeen`, with BOTH ARMS IN ONE RUN: the reconstructed default-vs-default `StartRules` assertion must FAIL under `VT_CHECK_ROUNDTRIP` and PASS under plain `VT_CHECK`, in the same test, so the defect stays visible after the fix. CONTROL: a genuine non-default round trip must pass under both. | This session committed exactly that defect — a `StartRules` round-trip comparing two default-constructed structs, which passed even though `ReadStreamSection` could have written nothing — and it was found by a reviewer, not by the suite. One judge called the two-arms-in-one-run shape the single best control-design idea in the panel. Grafted from the "discipline" angle. |
+| 17.08 | **Guard now, fix if asked: the `DiplomacySystem` cache.** No change to the cache. Instead a test asserting that EVERY route into a world still refuses a differently-generated one BY NAME — `Adopt`'s seven `*Differs` results and `LoadSnapshot`'s `SeedMismatch` and `WorldShapeDiffers` — with the failure text naming `DiplomacySystem`'s region-count cache as the thing that breaks if a refusal is loosened. | `Run.RefusalsAreTheCachesSafety`: each route, each refusal, by name. CONTROL: delete one refusal in a scratch build and require the test to fail naming that route — a guard that cannot say WHICH door opened is not a guard. | ADR-0150 records that `DiplomacySystem` rebuilds its region graph only when the region COUNT changes and is safe "only by accident", because 16.10 refuses a differently-generated world. That safety is a consequence of checks elsewhere, so it should fail loudly the day somebody loosens one. Converts an unanswerable owner question into a test rather than waiting on the answer. |
+| 17.09 | **The deep why, if the census says there is one.** `ExplainDepth` raised past two steps in `ExportWhyWithLife`, reading 17.04's walk so a chain that ends says how. **Conditional on 17.05**: if the census confirms a maximum depth of one edge, this task becomes a ROADMAP note recording that the Phase 14 deferral was a data debt and not a tooling debt, and the depth stays where it is. | `View.Chronicle` extended with a planted deep chain; the why must print every step and name its end. CONTROL: the same test over a REAL world must print what the census predicts — if the census says depth 1 and the why prints three steps, one of the two instruments is lying. | Phase 14 deferred "a why deeper than two steps" to Phase 17 (`Chronicle.h`, ROADMAP). The measurement says there may be nothing to walk to. Writing this row as conditional is the honest form: the work is either real or it is a note, and 17.05 decides which. |
+
+### The Phase 17 gate
+
+| clause | the command that decides it |
+|---|---|
+| (a) | `ctest -R '^Run\.Containers$'` — the three containers read without a world being generated, every recorded number checked against the bytes, and each regenerating byte-identically from its recorded command. |
+| (b) | `ctest -R '^Kernel\.EventTypes$'` — the generator re-run and diffed; and `Tools/Atlas --causes` over the corpus prints type NAMES, not hashes. |
+| (c) | `ctest -R '^Run\.Store\.ColdProcess$'` — a second process lists a directory it never wrote to, and the same test against today's `List` reports zero. |
+| (d) | `ctest -R '^Sim\.CauseWalk$'` — seven ends, and the kept pre-fix arm showing today's `CauseChain` cannot tell a root from a missing link. |
+| (e) | `ctest -R '^Sim\.Causality$'` — the planted census exact, and the cleared-edge arm reporting depth 0. The real figures are in this ROADMAP and dated. |
+| (f) | `ctest -R '^Atlas\.Inspect$'` — every pinned line, and both refusals. |
+| (g) | `ctest -R '^Harness\.VacuityIsSeen$'` — the same assertion failing under the witness macro and passing under the plain one, in one run. |
+| (h) | `ctest -R '^Run\.RefusalsAreTheCachesSafety$'` — every route, every refusal, by name. |
+| (i) | Not one frozen digest moved: `git diff <phase start>..HEAD -- Tests/ Source/ Tools/ Docs/ROADMAP.md \| grep -E '^-.*\b[0-9a-f]{16}\b'` prints nothing. **This is the clause the dropped tasks would have broken**, and it is why they were dropped. |
+| (j) | `Tools/run_gates.sh linux-clang-debug` prints `GATES-DONE 0 failing`, and `Tools/verify_fast.sh` is clean. |
+
+### What is NOT in Phase 17, and why
+
+- **Filling the `Cause` edge across the publish sites.** 27–30 of 132 publishers pass one; the rest create roots. Giving the others causes is correct work and it is a DATA change through fifteen closed phases that moves `EventLog::Digest`, the image, `ComputeStateDigest` and every frozen literal. All three judges said independently that it cannot share a commit with the corpus that is meant to pin the format. It needs a phase boundary or a dedicated commit whose only content is the re-freeze.
+- **Log tiering and compaction.** There are **49 `Log().All()` call sites**, not the five one angle assumed, and a dozen scan the whole log every tick. It buys resident memory rather than save size, and it is the one task that could move all ~178 frozen digest literals without anyone intending it. It stays where DECISIONS put it; Phase 18 opens with the log question rather than inheriting it.
+- **A save browser, thumbnails, named slots, autosave UI.** `--inspect` is the inspector side and stops there; the player-facing side is Phase 20 POLISH, as Phase 16 already recorded.
+
+### Still the owner's to answer, and now sharper
+
+The 1.31% measurement changes question 4. Whether a save should ever load into a differently-generated
+world was a question about `DiplomacySystem`'s cache; it is now also the question of whether the causal
+edge is ever going to be filled in, because both are one-way doors through every frozen digest. They
+should be answered together or not at all.
