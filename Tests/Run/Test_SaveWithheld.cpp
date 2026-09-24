@@ -17,6 +17,15 @@
 // change. A control that only required divergence would pass just as happily
 // if restoring were broken outright.
 //
+// THE AGREEING HALF USED TO AGREE ABOUT NOTHING. Every Stream=false cell was
+// the "plain" wiring, which has Options::Play false, so its life digest was
+// HashBytes(nullptr, 0) compared with itself - six cells asserting that an
+// empty string equals an empty string. The "lively, no stream" row added
+// closing the Phase 16 review is the other half of the rule: Play and Lively
+// without Stream, a chronicle written across the very days being restored,
+// and still required to agree when the run is withheld. That is now a claim
+// with something in it. See SaveMatrix.h.
+//
 // THE RESTORE HERE IS Begin() + LoadSnapshot, NOT Adopt, because Adopt applies
 // the run: it is the one path that can withhold it. That makes this the
 // deliberate failure Run.SaveContinue is owed (ADR-0149) - the matrix has been
@@ -38,10 +47,14 @@ VAELEN_TEST(SaveWithheld, TheRunSectionIsWhatTheStreamCellsNeed)
 {
 	uint32 Parted = 0;
 	uint32 Agreed = 0;
+	uint32 Moving = 0;
+	uint32 Fixed = 0;
+	uint32 None = 0;
 	for (const Wiring& W : Wirings)
 	{
-		for (uint32 Size : Sizes)
+		for (usize S = 0; S < SizeCount; ++S)
 		{
+			const uint32 Size = Sizes[S];
 			const Options O = OptionsFor(W, Size);
 
 			Aelvor Source(O);
@@ -50,17 +63,22 @@ VAELEN_TEST(SaveWithheld, TheRunSectionIsWhatTheStreamCellsNeed)
 			Door Recording(Source, Rules);
 			if (W.Play)
 			{
-				VT_REQUIRE(Recording.TakeUp() == WhoPlaysAt(W, Size));
+				VT_REQUIRE(Recording.TakeUp() == W.Who[S]);
 			}
 
 			std::vector<std::vector<uint8>> Saves;
 			std::vector<uint32> SavedAt;
+			Where AtFirstSave;
 			for (uint32 Day = 0; Day < Horizon; ++Day)
 			{
 				for (uint32 Point : SavePoints)
 				{
 					if (Day == Point)
 					{
+						if (Saves.empty())
+						{
+							AtFirstSave = WhereItIs(Source);
+						}
 						std::vector<uint8> Bytes;
 						VT_REQUIRE(BuildCheckpoint(Source, Recording.Stream(), Recording.Rules(), Bytes) ==
 								   CheckpointResult::Ok);
@@ -72,6 +90,19 @@ VAELEN_TEST(SaveWithheld, TheRunSectionIsWhatTheStreamCellsNeed)
 				Recording.Day();
 			}
 			const Where Truth = WhereItIs(Source);
+
+			// The identical weighing the matrix does, because "the identical
+			// matrix" has to mean the coverage too: a control walking cells
+			// whose life arm has gone vacuous is controlling less than the
+			// test it answers for, and would never say so.
+			const LifeArm Measured = ArmOf(AtFirstSave, Truth);
+			VT_CHECK_MSG(Measured == W.Life[S],
+						 "%s at %u: the life arm measures %s and this cell is pinned to %s (%zu bytes at the first "
+						 "save, %zu at the horizon)",
+						 W.Name, Size, ArmName(Measured), ArmName(W.Life[S]), AtFirstSave.LifeBytes, Truth.LifeBytes);
+			Moving += Measured == LifeArm::Moving ? 1u : 0u;
+			Fixed += Measured == LifeArm::Fixed ? 1u : 0u;
+			None += Measured == LifeArm::None ? 1u : 0u;
 
 			for (usize k = 0; k < Saves.size(); ++k)
 			{
@@ -166,9 +197,16 @@ VAELEN_TEST(SaveWithheld, TheRunSectionIsWhatTheStreamCellsNeed)
 	}
 
 	// AND THE TALLY, so that a matrix which silently stopped covering both
-	// sides cannot pass. Twelve Stream cells must part and six plain ones must
-	// agree; a run of eighteen that is all one or all the other is a matrix
-	// that lost a wiring, not a world that changed its mind.
+	// sides cannot pass. Twelve Stream cells must part and twelve non-Stream
+	// ones must agree; a run of twenty-four that is all one or all the other
+	// is a matrix that lost a wiring, not a world that changed its mind.
 	VT_CHECK_MSG(Parted == 12u, "twelve Stream cells parted without their run, got %u", Parted);
-	VT_CHECK_MSG(Agreed == 6u, "six plain cells were untouched by withholding it, got %u", Agreed);
+	VT_CHECK_MSG(Agreed == 12u, "twelve non-Stream cells were untouched by withholding it, got %u", Agreed);
+
+	// The same coverage the matrix states, stated by the control. Six of the
+	// twelve agreeing cells now carry a moving chronicle; before the Phase 16
+	// review closed, none of them did.
+	VT_CHECK_MSG(Moving == 4u, "four worlds carry a moving chronicle, got %u", Moving);
+	VT_CHECK_MSG(Fixed == 2u, "two carry one that never moves after TakeUp, got %u", Fixed);
+	VT_CHECK_MSG(None == 2u, "two carry none at all, got %u", None);
 }
