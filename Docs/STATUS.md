@@ -19,7 +19,34 @@ PHASE       : 17 — DEBUG TOOLS, opened 2026-09-24
                v4 bump and 16.14 needs the owner's Windows machine. Docs/ROADMAP.md
                section 22 has the clause-by-clause read.
                15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
-TASK        : 17.06 — DONE 2026-09-24. The inspector: a container described from its
+TASK        : 17.07 — DONE 2026-09-24. A harness that can see a vacuous assertion.
+
+              VT_CHECK_ROUNDTRIP(Written, Read) records a failure when the WRITTEN value
+              is byte-equal to T{} BEFORE it compares anything, because a reader that
+              wrote nothing would then pass; the type must be trivially copyable with
+              unique object representations or it is refused at compile time.
+              VT_CHECK_DIGEST_EQ(A, B) refuses 0 and EventLog::EmptyDigest as operands —
+              the harness sits below VaelenSim, so it carries the value as a literal and
+              Tests/Sim/Test_EventLog.cpp holds the two together with a static_assert.
+
+              Core.Harness, two new cases. VacuityIsSeen, BOTH ARMS IN ONE RUN: the
+              assertion Phase 16 committed — two default-constructed StartRules compared —
+              PASSES under VT_CHECK (the defect, kept visible) and FAILS under
+              VT_CHECK_ROUNDTRIP in the same test; a genuine round trip passes under both,
+              so the witness is not simply a macro that fails; a lossy round trip fails
+              for the loss. DigestsThatCompareNothingAreRefused: five checks, one pass and
+              four refusals, two of which would have been green under VT_CHECK_EQ — which
+              is how nine matrix cells once compared an empty life against itself.
+
+              TWO DELIBERATE FAILURES, BOTH FIRED: the vacuity check disabled — "the
+              witness let the vacuous round trip through (0 failures)"; the empty-log
+              refusal disabled — Failures 3 against 4.
+
+              NOT done here, on purpose: converting existing tests. The nine
+              empty-against-itself cells of Run.SaveContinue are the open review finding
+              and get their own commit with their own measurement.
+
+TASK (17.06): 17.06 — DONE 2026-09-24. The inspector: a container described from its
               bytes, and a directory listed by a process that wrote nothing.
 
               Atlas --inspect FILE prints the header, every section with kind, offset,

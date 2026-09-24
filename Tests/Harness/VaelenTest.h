@@ -242,6 +242,89 @@ namespace VaelenTest
 			Ctx.ReportFailure(File, Line, Expr, Detail);
 			return false;
 		}
+
+		// ── 17.07: assertions that can see their own vacuity ────────────────
+		//
+		// Phase 16 committed a round trip that compared two default-constructed
+		// StartRules - written and read - and passed while the reader could
+		// have written nothing into either. A reviewer found it; the suite did
+		// not, because VT_CHECK asks whether two values are equal and not
+		// whether the comparison could have come out any other way.
+
+		/// A round trip is EVIDENCE only when the written value could not have
+		/// been produced by a reader that did nothing. So the written value is
+		/// checked against T{} BEFORE it is compared with what was read back,
+		/// and a default-valued write is a recorded failure, not a pass.
+		///
+		/// Bytes are compared, which is what a round trip means for plain
+		/// data, and the type must have unique object representations - no
+		/// padding, no floating point - or byte equality would not be value
+		/// equality and the vacuity check could be fooled by padding.
+		template <typename T>
+		bool CheckRoundTrip(Context& Ctx, const char* File, int Line, const char* What, const T& Written, const T& Read)
+		{
+			static_assert(std::is_trivially_copyable_v<T>,
+						  "VT_CHECK_ROUNDTRIP compares bytes: the type must be trivially copyable");
+			static_assert(std::has_unique_object_representations_v<T>,
+						  "VT_CHECK_ROUNDTRIP compares bytes: a type with padding or floating point cannot be "
+						  "compared this way, and its vacuity cannot be judged from its bytes");
+			++Ctx.Checks;
+			const T Default{};
+			if (std::memcmp(&Written, &Default, sizeof(T)) == 0)
+			{
+				Ctx.ReportFailure(File, Line, What,
+								  "VACUOUS: the written value is byte-equal to T{}, so a reader that wrote nothing "
+								  "would pass this");
+				return false;
+			}
+			if (std::memcmp(&Written, &Read, sizeof(T)) != 0)
+			{
+				Ctx.ReportFailure(File, Line, What, "the value read back differs from the value written");
+				return false;
+			}
+			return true;
+		}
+
+		/// `EventLog::EmptyDigest` ("VAELEN-E"), repeated here as a literal
+		/// because the harness sits below VaelenSim and may not include it;
+		/// Tests/Sim pins that the two agree.
+		inline constexpr unsigned long long EmptyLogDigest = 0x5641454c454e2d45ull;
+
+		/// Two digests are EVIDENCE only when neither is the value a digest
+		/// has before anything was digested. 0 is what an unset field holds;
+		/// EmptyLogDigest is what an empty log reports - and nine of the
+		/// eighteen cells of 16.12's matrix compared an empty life digest
+		/// against itself and were green.
+		inline bool CheckDigestEqual(Context& Ctx, const char* File, int Line, const char* What, unsigned long long A,
+									 unsigned long long B)
+		{
+			++Ctx.Checks;
+			char Detail[192];
+			if (A == 0ull || B == 0ull)
+			{
+				std::snprintf(Detail, sizeof(Detail),
+							  "VACUOUS: %016llx against %016llx - a digest of 0 is the value an unset field holds", A,
+							  B);
+				Ctx.ReportFailure(File, Line, What, Detail);
+				return false;
+			}
+			if (A == EmptyLogDigest || B == EmptyLogDigest)
+			{
+				std::snprintf(Detail, sizeof(Detail),
+							  "VACUOUS: %016llx against %016llx - EventLog::EmptyDigest is what an EMPTY log "
+							  "reports, so this compares nothing against itself",
+							  A, B);
+				Ctx.ReportFailure(File, Line, What, Detail);
+				return false;
+			}
+			if (A != B)
+			{
+				std::snprintf(Detail, sizeof(Detail), "%016llx against %016llx", A, B);
+				Ctx.ReportFailure(File, Line, What, Detail);
+				return false;
+			}
+			return true;
+		}
 	} // namespace Detail
 } // namespace VaelenTest
 
@@ -313,6 +396,16 @@ namespace VaelenTest
 #define VT_CHECK_STREQ(Actual, Expected)                                                                               \
 	::VaelenTest::Detail::CheckStrEqual(Ctx, __FILE__, __LINE__, "VT_CHECK_STREQ(" #Actual ", " #Expected ")",         \
 										(Actual), (Expected))
+
+/// 17.07: a plain-data round trip that fails when the WRITTEN value is T{}.
+#define VT_CHECK_ROUNDTRIP(Written, Read)                                                                              \
+	::VaelenTest::Detail::CheckRoundTrip(Ctx, __FILE__, __LINE__, "VT_CHECK_ROUNDTRIP(" #Written ", " #Read ")",       \
+										 (Written), (Read))
+
+/// 17.07: two digests that must agree, and neither may be 0 or an empty log's.
+#define VT_CHECK_DIGEST_EQ(A, B)                                                                                       \
+	::VaelenTest::Detail::CheckDigestEqual(Ctx, __FILE__, __LINE__, "VT_CHECK_DIGEST_EQ(" #A ", " #B ")",              \
+										   static_cast<unsigned long long>(A), static_cast<unsigned long long>(B))
 
 #define VT_CHECK_NEAR(Actual, Expected, Tolerance)                                                                     \
 	::VaelenTest::Detail::CheckNear(Ctx, __FILE__, __LINE__, "VT_CHECK_NEAR(" #Actual ", " #Expected ")",              \

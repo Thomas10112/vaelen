@@ -6150,6 +6150,52 @@ one hex digit: `WANT_TRAILER not printed`. One byte of `second` flipped in the
 listed directory: `1 checkpoint(s) and 1 other file(s)`, with `second` shown as
 `not a container` rather than with a wrong digest.
 
+### 17.07 AS BUILT, 2026-09-24
+
+Two macros in `Tests/Harness/VaelenTest.h`, beside the eight that were there.
+
+`VT_CHECK_ROUNDTRIP(Written, Read)` compares bytes - which is what a round trip
+means for plain data - and **records a failure when the WRITTEN value is
+byte-equal to `T{}` before it compares anything**, because a reader that wrote
+nothing would then pass. The type must be trivially copyable and have unique
+object representations; a type with padding or floating point is refused at
+compile time, since byte equality would not be value equality and vacuity could
+not be judged from the bytes. `Player::StartRules` - four `uint32` - qualifies.
+
+`VT_CHECK_DIGEST_EQ(A, B)` refuses `0` (what an unset field holds) and
+`EventLog::EmptyDigest` (what an EMPTY log reports) as operands before it
+compares them. The harness sits below VaelenSim and cannot include
+`EventBus.h`, so it carries the value as a literal, and
+`Tests/Sim/Test_EventLog.cpp` holds the two together with a `static_assert`.
+
+`Core.Harness` gains two cases, and the harness self-tests live in one file so
+the gate clause names that one entry rather than the `Harness.VacuityIsSeen`
+the plan wrote:
+
+- **`VacuityIsSeen`, both arms in one run.** The assertion Phase 16 committed,
+  reconstructed - two default-constructed `StartRules`, "written" and "read",
+  compared - PASSES under `VT_CHECK` with one check and no failure: that is the
+  defect, and it stays visible here. The same assertion FAILS under
+  `VT_CHECK_ROUNDTRIP`, one check and one failure, in the same test. Then the
+  control: a genuine round trip (`{0, 45, 0, 0}`, the corpus's own rules)
+  passes under both, so the witness is not simply a macro that fails; and a
+  round trip that LOST a field fails for the loss, which is reached only because
+  the write was not vacuous.
+- **`DigestsThatCompareNothingAreRefused`**: five checks, one pass and four
+  refusals - two of which would have been GREEN under `VT_CHECK_EQ`, which is
+  how nine of eighteen matrix cells once compared an empty life digest against
+  itself.
+
+**TWO DELIBERATE FAILURES, BOTH OF WHICH FIRED.** Disabling the vacuity check
+in the witness: `the witness let the vacuous round trip through (0 failures)`.
+Disabling the empty-log refusal: `Scratch.Failures` 3 against 4.
+
+What is NOT done here, on purpose: rewriting existing tests to use the new
+macros. The nine empty-against-itself cells of `Run.SaveContinue` are the open
+review finding, and converting them is a change to what that matrix claims; it
+gets its own commit with its own measurement rather than riding on the macro
+that makes it visible.
+
 ### The Phase 17 gate
 
 | clause | the command that decides it |
@@ -6160,7 +6206,7 @@ listed directory: `1 checkpoint(s) and 1 other file(s)`, with `second` shown as
 | (d) | `ctest -R '^Sim\.CauseWalk$'` — seven ends, and the kept pre-fix arm showing today's `CauseChain` cannot tell a root from a missing link. |
 | (e) | `ctest -R '^Sim\.Causality$'` — the planted census exact, and the cleared-edge arm reporting depth 0. The real figures are in this ROADMAP and dated. |
 | (f) | `ctest -R '^Atlas\.Inspect'` — the three corpus containers with their header, trailer and last line pinned whole; an image refused BY NAME; a 4 KiB truncation refused whole and not described in part; and the cold directory listing. |
-| (g) | `ctest -R '^Harness\.VacuityIsSeen$'` — the same assertion failing under the witness macro and passing under the plain one, in one run. |
+| (g) | `ctest -R '^Core\.Harness$'` — `VacuityIsSeen`: the same assertion failing under the witness macro and passing under the plain one, in one run; and `DigestsThatCompareNothingAreRefused`. The harness self-tests live in one file, so one entry. |
 | (h) | `ctest -R '^Run\.RefusalsAreTheCachesSafety$'` — every route, every refusal, by name. |
 | (i) | Not one frozen digest moved: `git diff <phase start>..HEAD -- Tests/ Source/ Tools/ Docs/ROADMAP.md \| grep -E '^-.*\b[0-9a-f]{16}\b'` prints nothing. **This is the clause the dropped tasks would have broken**, and it is why they were dropped. |
 | (j) | `Tools/run_gates.sh linux-clang-debug` prints `GATES-DONE 0 failing`, and `Tools/verify_fast.sh` is clean. |

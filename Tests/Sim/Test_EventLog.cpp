@@ -34,6 +34,11 @@ VAELEN_TEST(EventLog, AppendOnlyWithRunningDigest)
 {
 	EventLog Log;
 	VT_CHECK_EQ(Log.Count(), uint64{0});
+	// 17.07: the harness refuses this value in VT_CHECK_DIGEST_EQ and carries
+	// it as a literal because it sits below VaelenSim; this is where the two
+	// are held together.
+	static_assert(::VaelenTest::Detail::EmptyLogDigest == EventLog::EmptyDigest,
+				  "the harness's copy of EventLog::EmptyDigest has drifted");
 	VT_CHECK_EQ(Log.Digest(), EventLog::EmptyDigest);
 	Log.Append(Make(1, 0, 10));
 	const Hash64 AfterOne = Log.Digest();
