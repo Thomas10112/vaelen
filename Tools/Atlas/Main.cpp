@@ -40,6 +40,8 @@
 #include "Vaelen/Run/Door.h"
 #include "Vaelen/Core/Version.h"
 #include "Vaelen/Sim/PreHistory.h"
+#include "Vaelen/Sim/Causality.h"
+#include "Vaelen/Sim/EventTypeNames.h"
 #include "Vaelen/Sim/Snapshot.h"
 #include "Vaelen/Sim/Deposits.h"
 #include "Vaelen/Sim/HistoryText.h"
@@ -484,6 +486,14 @@ namespace
 		std::string Golden;
 		/// 17.01: write the container corpus to this directory.
 		std::string Containers;
+		/// 17.05: the cause census over a container read from this file. The
+		/// world is adopted from the container's own HOST section, so nothing
+		/// about its wiring has to be spelled out on the command line and
+		/// nothing can be spelled out wrongly.
+		std::string Causes;
+		/// 17.05: the same census over a world GENERATED from --size and the
+		/// rest, for the figure over a fresh AELVOR the roadmap records.
+		bool Census = false;
 		/// The four digests the host printed, as `state %016llx, log %016llx,
 		/// life %016llx, panel %016llx` - the tail of the line
 		/// Vaelen.Stream.Write logs. Given, the gate JUDGES clause (b)'s other
@@ -612,6 +622,8 @@ namespace
 					 "  --walk FILE     write a stand-in WALK: looks, takings and the streaming cadence (15.10)\n"
 					 "  --golden DIR    write the golden save corpus of 16.01 to this directory\n"
 					 "  --containers DIR  write the container corpus of 17.01 to this directory\n"
+					 "  --causes FILE   17.05: the cause census over a container, per event type\n"
+					 "  --census        the same over a world generated from --size and the rest\n"
 					 "  --gate FILE     replay a walk and report the six clauses of the 15.10 gate\n"
 					 "  --expect \"...\"  with --gate: the four digests the host printed, judged rather than "
 					 "printed\n");
@@ -756,6 +768,14 @@ namespace
 			else if (std::strcmp(Arg, "--containers") == 0 && HasValue)
 			{
 				Out.Containers = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--causes") == 0 && HasValue)
+			{
+				Out.Causes = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--census") == 0)
+			{
+				Out.Census = true;
 			}
 			else if (std::strcmp(Arg, "--want-bound") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
 			{
@@ -2252,8 +2272,9 @@ namespace
 		 false, false},
 		{"played-16.container", "walked six days and carrying its own tape: four sections", 16, 10, 1, true, true,
 		 true},
-		{"full-32.container", "walked six days and saved WITHOUT its tape: three sections, and the difference from the"
-							  " one above is the whole point",
+		{"full-32.container",
+		 "walked six days and saved WITHOUT its tape: three sections, and the difference from the"
+		 " one above is the whole point",
 		 32, 10, 1, true, true, false},
 	};
 
@@ -2261,11 +2282,16 @@ namespace
 	{
 		switch (static_cast<Vaelen::Run::SectionKind>(Kind))
 		{
-			case Vaelen::Run::SectionKind::State: return "STATE";
-			case Vaelen::Run::SectionKind::Run: return "RUN";
-			case Vaelen::Run::SectionKind::Host: return "HOST";
-			case Vaelen::Run::SectionKind::Stream: return "STREAM";
-			default: return "?";
+		case Vaelen::Run::SectionKind::State:
+			return "STATE";
+		case Vaelen::Run::SectionKind::Run:
+			return "RUN";
+		case Vaelen::Run::SectionKind::Host:
+			return "HOST";
+		case Vaelen::Run::SectionKind::Stream:
+			return "STREAM";
+		default:
+			return "?";
 		}
 	}
 
@@ -2428,13 +2454,12 @@ namespace
 			}
 
 			char Row[640];
-			std::snprintf(Row, sizeof(Row),
-						  "| `%s` | %u | %u | %u | %s | %u | %u | %llu | %llu | %llu | %zu | `%016llx` |\n", C.Name,
-						  C.Size, C.PreHistory, C.Years, C.Play ? "Play+Stream+Lively+Colony" : "none", View.Version,
-						  View.InnerFormat, static_cast<unsigned long long>(View.Tick),
-						  static_cast<unsigned long long>(View.LogEvents),
-						  static_cast<unsigned long long>(View.LogBytes), Bytes.size(),
-						  static_cast<unsigned long long>(Trailer));
+			std::snprintf(
+				Row, sizeof(Row), "| `%s` | %u | %u | %u | %s | %u | %u | %llu | %llu | %llu | %zu | `%016llx` |\n",
+				C.Name, C.Size, C.PreHistory, C.Years, C.Play ? "Play+Stream+Lively+Colony" : "none", View.Version,
+				View.InnerFormat, static_cast<unsigned long long>(View.Tick),
+				static_cast<unsigned long long>(View.LogEvents), static_cast<unsigned long long>(View.LogBytes),
+				Bytes.size(), static_cast<unsigned long long>(Trailer));
 			Rows += Row;
 
 			// 640 and CHECKED, because the first cut of this printed a table
@@ -2443,11 +2468,11 @@ namespace
 			// which is the same class of defect as a README that agrees with
 			// nothing. snprintf returns what it WOULD have written.
 			char Head[640];
-			const int Want =
-				std::snprintf(Head, sizeof(Head), "\n### `%s`\n\n%s\n\nSeed `%016llx`, flags `%08x`, %zu sections.\n\n"
-												  "| kind | offset | length | section digest |\n|---|---|---|---|\n",
-							  C.Name, C.What, static_cast<unsigned long long>(View.Seed), View.Flags,
-							  View.Sections.size());
+			const int Want = std::snprintf(Head, sizeof(Head),
+										   "\n### `%s`\n\n%s\n\nSeed `%016llx`, flags `%08x`, %zu sections.\n\n"
+										   "| kind | offset | length | section digest |\n|---|---|---|---|\n",
+										   C.Name, C.What, static_cast<unsigned long long>(View.Seed), View.Flags,
+										   View.Sections.size());
 			if (Want < 0 || static_cast<usize>(Want) >= sizeof(Head))
 			{
 				std::fprintf(stderr, "containers: %s - the record does not fit in %zu bytes\n", C.Name, sizeof(Head));
@@ -2470,6 +2495,156 @@ namespace
 		std::printf("containers: %zu written to %s\n", sizeof(Containers) / sizeof(Containers[0]), Where.c_str());
 		std::printf("%s%s", Rows.c_str(), Tables.c_str());
 		return 0;
+	}
+
+	// ------------------------------------------------------------------
+	// 17.05: THE CAUSE CENSUS, printed for a person.
+	//
+	// The kernel's `TakeCauseCensus` counts the whole log; this adds the table
+	// per event TYPE, which is the form a person needs - "which publishers
+	// pass a cause and which do not" is a question about types - and it is
+	// the first consumer of 17.02's name table. Without that table every row
+	// here would be sixteen hex digits.
+	int PrintCensus(const Vaelen::World& W, const char* What)
+	{
+		const Vaelen::EventLog& Log = W.Log();
+		const Vaelen::History::CauseCensus C = Vaelen::History::TakeCauseCensus(Log);
+
+		std::printf("causes: %s\n", What);
+		std::printf("causes: %llu events, %llu with a cause (%.2f%%), %llu roots\n",
+					static_cast<unsigned long long>(C.Events), static_cast<unsigned long long>(C.WithCause),
+					C.Events == 0u ? 0.0 : 100.0 * static_cast<double>(C.WithCause) / static_cast<double>(C.Events),
+					static_cast<unsigned long long>(C.RootCauses));
+		std::printf("causes: deepest chain %u edge(s), median depth %u, widest fan-out %u", C.MaxDepth, C.MedianDepth,
+					C.MaxFanOut);
+		if (C.Busiest.IsValid())
+		{
+			std::printf(" (event %llu)", static_cast<unsigned long long>(C.Busiest.Serial()));
+		}
+		std::printf("\n");
+		std::printf("causes: faults - %llu dangling, %llu not an event, %llu not before their effect\n",
+					static_cast<unsigned long long>(C.Dangling), static_cast<unsigned long long>(C.NotAnEvent),
+					static_cast<unsigned long long>(C.NotBeforeEffect));
+
+		// PER TYPE. Sorted by hash so two runs print the same order, then the
+		// name looked up - and an unknown hash prints as `?<hex>` rather than
+		// as nothing, which is 17.02's whole promise.
+		struct Row
+		{
+			Vaelen::Hash64 Type = 0;
+			uint64 Events = 0;
+			uint64 WithCause = 0;
+		};
+		std::vector<Row> Rows;
+		for (const Vaelen::Event& E : Log.All())
+		{
+			Row* Found = nullptr;
+			for (Row& R : Rows)
+			{
+				if (R.Type == E.TypeHash)
+				{
+					Found = &R;
+					break;
+				}
+			}
+			if (Found == nullptr)
+			{
+				Rows.push_back(Row{E.TypeHash, 0u, 0u});
+				Found = &Rows.back();
+			}
+			++Found->Events;
+			if (E.Cause.IsValid())
+			{
+				++Found->WithCause;
+			}
+		}
+		std::sort(Rows.begin(), Rows.end(), [](const Row& A, const Row& B) { return A.Type < B.Type; });
+
+		std::printf("causes: %zu event type(s)\n", Rows.size());
+		std::printf("| type | events | with a cause | share |\n|---|---|---|---|\n");
+		for (const Row& R : Rows)
+		{
+			char Unknown[18];
+			std::printf("| %s | %llu | %llu | %.1f%% |\n", Vaelen::NameOfEventType(R.Type, Unknown),
+						static_cast<unsigned long long>(R.Events), static_cast<unsigned long long>(R.WithCause),
+						100.0 * static_cast<double>(R.WithCause) / static_cast<double>(R.Events));
+		}
+		return 0;
+	}
+
+	int RunCauses(const Options& Opt)
+	{
+		std::FILE* F = std::fopen(Opt.Causes.c_str(), "rb");
+		if (F == nullptr)
+		{
+			std::fprintf(stderr, "causes: cannot read %s\n", Opt.Causes.c_str());
+			return 1;
+		}
+		std::fseek(F, 0, SEEK_END);
+		const long Len = std::ftell(F);
+		std::fseek(F, 0, SEEK_SET);
+		std::vector<Vaelen::uint8> Bytes(static_cast<usize>(Len > 0 ? Len : 0));
+		const usize Got = Bytes.empty() ? 0u : std::fread(Bytes.data(), 1, Bytes.size(), F);
+		std::fclose(F);
+		if (Bytes.empty() || Got != Bytes.size())
+		{
+			std::fprintf(stderr, "causes: short read of %s\n", Opt.Causes.c_str());
+			return 1;
+		}
+
+		// THE WIRING COMES FROM THE FILE. A container carries the Options its
+		// host declared (16.10's HOST section), so the world it is adopted into
+		// is the world it was saved from, and a `--lively` forgotten on the
+		// command line cannot make this a census of a different world.
+		Vaelen::Run::CheckpointView View;
+		const Vaelen::Run::CheckpointRefusal Read = Vaelen::Run::ReadCheckpoint(Bytes.data(), Bytes.size(), View);
+		if (Read.Result != Vaelen::Run::CheckpointResult::Ok)
+		{
+			std::fprintf(stderr, "causes: %s is not a container this build reads - %s\n", Opt.Causes.c_str(),
+						 Vaelen::Run::CheckpointResultToString(Read.Result));
+			return 1;
+		}
+		Vaelen::Run::Options RO;
+		if (!Vaelen::Run::ReadHostSection(View, RO))
+		{
+			std::fprintf(stderr, "causes: %s has no HOST section, so its wiring is unknown\n", Opt.Causes.c_str());
+			return 1;
+		}
+		Vaelen::Run::Aelvor A(RO);
+		const Vaelen::Run::Aelvor::AdoptResult R = A.Adopt(Bytes.data(), Bytes.size());
+		if (R != Vaelen::Run::Aelvor::AdoptResult::Ok)
+		{
+			std::fprintf(stderr, "causes: REFUSED, %s\n", Vaelen::Run::Aelvor::AdoptResultToString(R));
+			return 1;
+		}
+		char What[512];
+		std::snprintf(What, sizeof(What), "%s (adopted, Generations %u, %u tiles, %u+%u years)", Opt.Causes.c_str(),
+					  A.Generations(), RO.Size, RO.PreHistory, RO.Years);
+		return PrintCensus(A.Instance(), What);
+	}
+
+	int RunCensus(const Options& Opt)
+	{
+		Vaelen::Run::Options RO;
+		RO.Size = Opt.Size;
+		RO.PreHistory = Opt.PreHistory;
+		RO.Years = Opt.Years;
+		RO.Seed = Opt.Seed;
+		RO.Colony = Opt.Colony;
+		RO.Play = true;
+		RO.Stream = Opt.Stream;
+		RO.Lively = Opt.Lively;
+		Vaelen::Run::Aelvor A(RO);
+		if (!A.Begin())
+		{
+			std::fprintf(stderr, "census: generation failed at %u\n", RO.Size);
+			return 1;
+		}
+		char What[256];
+		std::snprintf(What, sizeof(What), "a fresh world, %u tiles, %u+%u years, seed %016llx%s%s%s", RO.Size,
+					  RO.PreHistory, RO.Years, static_cast<unsigned long long>(RO.Seed), RO.Stream ? ", stream" : "",
+					  RO.Lively ? ", lively" : "", RO.Colony ? ", colony" : "");
+		return PrintCensus(A.Instance(), What);
 	}
 
 	int RunStand(const Options& Opt)
@@ -2938,6 +3113,14 @@ namespace
 		if (!Opt.Containers.empty())
 		{
 			return RunContainers(Opt);
+		}
+		if (!Opt.Causes.empty())
+		{
+			return RunCauses(Opt);
+		}
+		if (Opt.Census)
+		{
+			return RunCensus(Opt);
 		}
 		if (!Opt.Gate.empty())
 		{

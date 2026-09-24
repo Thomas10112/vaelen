@@ -829,7 +829,7 @@ link orders and would silently change type ids between builds.
 - Archetype storage (grouping entities by component set, as in Unreal Mass or flecs):
   rejected for simplicity in Phase 01; sparse sets are simpler, iteration by single
   component is optimal, and archetypes can be introduced behind the same `ComponentStore`
-  interface if the Phase 18 stress tests demand it.
+  interface if the stress tests (Phase 20 since the owner's decisions of 2026-09-24; 18 when this was written) demand it.
 - Type ids from a template instantiation counter or `__COUNTER__`: rejected for
   determinism (depends on translation-unit and link order).
 - Slot-ordered dense arrays (sorted insertion): rejected for performance; determinism

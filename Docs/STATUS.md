@@ -19,7 +19,62 @@ PHASE       : 17 — DEBUG TOOLS, opened 2026-09-24
                v4 bump and 16.14 needs the owner's Windows machine. Docs/ROADMAP.md
                section 22 has the clause-by-clause read.
                15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
-TASK        : 17.04 — DONE 2026-09-24. A causal walk that says how it ended, and an
+TASK        : 17.05 — DONE 2026-09-24. The census, and it concluded the phase is about
+              something else — just not the something the plan expected.
+
+              THE PANEL MEASURED 7 CAUSES IN 535 EVENTS (1.31%) with a deepest chain of
+              ONE EDGE, and three of its four angles designed a walker, an index and a
+              renderer over that. TakeCauseCensus over the 17.01 corpus reproduces those
+              figures by an independent instrument: 3/129, 3/148, 7/577, depth 1, fan-out
+              1. Then it ran over a FRESH AELVOR 128 at 300+120 years, 21 min 51 s:
+
+                16,842,422 events, 5,211,672 with a cause (30.94%), 11,630,750 roots
+                deepest chain 3 edges, median depth 0, widest fan-out 11 (event 4193697)
+                0 dangling, 0 not an event, 0 not before their effect, 53 event types
+
+              THE PANEL HAD MEASURED THE WRONG WORLDS. Three ten-year worlds whose economy
+              had barely started. The plan's "98.7% roots" was true of the corpus and
+              false of the world, and my own comments in Causality.h and two tests carried
+              it; corrected here. 17.09 is therefore CODE and not a note: there IS a third
+              step to walk to.
+
+              BUT THE TABLE PER TYPE SAYS WHERE THE GRAPH LIVES, and it is not where a
+              person would look. StockTaken 95.4% and StockAdded 98.8% with a cause —
+              5.2 million of the 5.21 million causes are the stock ledger. DisasterStruck,
+              RegionSettled, Condemned, Pardoned, ReligionFounded: 100%, in the hundreds.
+              And PersonDied, PersonBorn, PersonMarried, RulerSeated, HeirNamed,
+              FamilyFounded, MigrationWave: 0.0%, every one. A deeper why explains where
+              goods came from. It explains no death, no birth and no reign. The causal
+              graph is dense in the ECONOMY and empty in the HUMAN STORY, and that is the
+              measurement 17.09 and any later "fill the Cause edge" task must start from.
+
+              ALSO MEASURED, and nobody asked: PlayerActed is 9,147,427 of 16.8 million
+              events — 54% of the log — in a world nobody played. That is the Lively
+              wiring's persons acting through the command surface, and it is the single
+              largest thing in every save. HeardOf is another 2.3 million. Phase 18's log
+              question has its first figure.
+
+              Vaelen/Sim/Causality.h gained CauseCensus and TakeCauseCensus: one forward
+              pass for the depths, correct because causes precede effects and the log is
+              in id order — no recursion, no stack to blow on a chain a million long — and
+              a sort for the fan-out. Atlas --causes FILE adopts a container from its own
+              HOST section so the wiring cannot be spelled wrongly on the command line,
+              and prints the table per type through 17.02's names; --census generates.
+
+              Sim.Causality, four cases: the planted graph counted exactly (chain of
+              seven, fan-out of five, one dangling, one Person cause, one cause after its
+              effect — eighteen events, and the parts must add up to the whole); the SAME
+              eighteen with every cause cleared reporting depth 0 and fan-out 0 while the
+              planted one still reports 7 in the same run; an empty log all zeros and not
+              a verdict; and the census agreeing with 17.04's walk, which shares no code
+              with it. Atlas.Causes.{bare-16,played-16,full-32} pin the corpus lines whole
+              and refuse any `?<hex>` row.
+
+              AND THE FIRST PLANTING WAS WRONG, not the code: event 30's "dangling" cause
+              was 99, which FOLLOWS it, and both instruments called it NotBeforeEffect —
+              correctly, and in agreement. A dangling link must precede and be absent.
+
+TASK (17.04): 17.04 — DONE 2026-09-24. A causal walk that says how it ended, and an
               experiment that told me about the test instead.
 
               History::CauseChain walks the cause edge backwards and hands back a vector.

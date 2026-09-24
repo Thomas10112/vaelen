@@ -85,9 +85,11 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 15 | STREAMING & LOD | Engine streaming coupled to the simulation's grains: what is simulated at which detail away from the player. **The row said "simulation LOD 0-4" until 15.09 found that two different things were being called LOD.** `SimLod` (Sim/System.h) is a real five-rung ladder of how OFTEN a system runs - 1, 4, 24, 720, 8640 ticks - and 15.02 moved a system down it. A REGION has two grains and not five: person by person, or counts per culture. `RegionLod::Level` is written in one place, always the same value, and levels 0, 1 and 3 have never been reachable. | **CLOSED 2026-09-21** (15.01-15.10, section 21). The planning found five defects before a line was written; the review of 15.10 found 27 more, among them that the engine host recorded a world its own replay does not reach. The gate is met on a walk a person actually lived. |
 | 16 | SAVE/PERSISTENCE | **The row said "serialisation of the whole world state" until the planning measured it: that shipped in Phase 01 and works.** What is not saved is the RUN - `Run::Aelvor`'s own members - so a restored world continues identically until somebody LOOKS, and then parts company with the world it was copied from. The gap is about thirty bytes, one part in 700,000 of the image. So the phase is a save that can refuse, a load that cannot half-apply, a container around the untouched image, a verb by which a run adopts a world it did not generate, a file that cannot destroy the last good one, and a migration chain. | BROKEN DOWN (16.01-16.14, section 22; the planning found twelve defects first, among them that `SaveSnapshot` cannot fail and cannot say so in exactly the builds a player runs) |
 | 17 | DEBUG TOOLS | Inspectors, replay tooling, determinism diff, world statistics, headless console. | PLANNED |
-| 18 | STRESS TEST | Long-duration and large-world runs, performance budgets, determinism at scale. | PLANNED |
-| 19 | MODDING | Data-driven definitions, mod loading, stable ids and APIs for mods. | PLANNED |
-| 20 | POLISH | Balance, content, quality, release readiness. | PLANNED |
+| 18 | CLIMATE & SEASONS | **Owner's decision, 2026-09-24: "le froid, le chaud et tout doivent s'afficher."** Today a tile has an ANNUAL MEAN temperature that decides its biome at generation and is never read again; seasons exist in the clock and are consumed by nothing but generation and the snapshot; a person's only need is hunger. This phase gives the world a CURRENT temperature (tile × season), a warmth need beside hunger, a winter that weighs on stores and mortality, a harvest that depends on the climate, and the figures in the view leaves so the HUD can draw them. Kernel work: it moves every frozen digest and lands with its own re-freeze. Section 24. | PLANNED, placed BEFORE the stress test because the stress test must measure the world we mean to ship |
+| 19 | WORLD IN 3D | **Owner's decision, 2026-09-24: "un RPG médiéval en 3D, ZQSD, où l'on peut tout faire."** What exists is a MAP: regions, biomes, roads, a person and a colony drawn from the view leaves, a camera that moves region to region, at 100+ fps (Phase 13). This phase is a world one WALKS: terrain in volume from `TileGrid` and `Hydrology`, buildings from Infrastructure, persons from Population as characters, the played person moved at the keyboard, a shoulder camera, and the climate of Phase 18 visible. The procedural-mesh and controller C++ is written here and parsed against the shim; meshes, materials, animation and SEEING IT are the owner's machine, one session per task and not per phase. Section 24. | PLANNED |
+| 20 | STRESS TEST | Long-duration and large-world runs, performance budgets, determinism at scale — measured WITH Phases 18 and 19 in, not before them. 17.05 already handed it a figure: `PlayerActed` is 54% of a 16.8-million-event log in a world nobody played. | PLANNED (was 18) |
+| 21 | MODDING | Data-driven definitions, mod loading, stable ids and APIs for mods. | PLANNED (was 19) |
+| 22 | POLISH | Balance, content, quality, release readiness. | PLANNED (was 20) |
 
 Planned module names per phase are listed in `Docs/ARCHITECTURE.md` section 3.2.
 `IdKind` in `Ids.h` already reserves value ranges for Phases 01-12 (see ADR-0004).
@@ -5582,7 +5584,7 @@ Adopt is **13.5× faster than generating the same world**, and `Generations() ==
   numbers and the question. The SEARCH for a divergence, with the injected-event
   control that proves the search can see the log at all, is folded into 16.12's
   fuzzer as a reported measurement, not a shipped policy. The decision belongs to
-  **Phase 18 STRESS TEST**, which is where a 500-year AELVOR 256 — a 182 MB save
+  **Phase 20 STRESS TEST** (18 until the owner's decisions of 2026-09-24), which is where a 500-year AELVOR 256 — a 182 MB save
   that takes 52 s to generate — is exercised at all, and to a phase that OPENS
   with it rather than one that stumbles into it while shipping a save.
 - **Severing `ComputeStateDigest` from the image trailer, and any project-wide
@@ -5598,14 +5600,14 @@ Adopt is **13.5× faster than generating the same world**, and `Generations() ==
   member, `static constexpr bool NoPadding`, and there is no member enumeration
   anywhere to derive offsets or type tags from. A real fix needs a member-listing
   macro applied across ~55 component types and every map layer and the `Event`
-  payload set. That is its own job and belongs with **Phase 19 MODDING**'s stable
+  payload set. That is its own job and belongs with **Phase 21 MODDING**'s stable
   ids and APIs. Until then the hole stands and this phase says so: a same-size
   field reorder or retype is not caught by anything 16.08 adds.
 - **Loading a save into a world generated differently.** Explicitly refused by
   16.10. The `DiplomacySystem` region-count cache is recorded as the thing that
   breaks first if that refusal is ever loosened.
 - **A save browser, thumbnails, named slots, autosave UI.** `Phase 17 DEBUG
-  TOOLS` for the inspector side, `Phase 20 POLISH` for the player-facing side.
+  TOOLS` for the inspector side, `Phase 22 POLISH` for the player-facing side.
   16.04's section table and manifest are what makes listing saves without
   generating a world possible; this phase stops there.
 - **Compression.** If it comes, it comes as an optional section under 16.04's
@@ -5631,7 +5633,7 @@ Adopt is **13.5× faster than generating the same world**, and `Generations() ==
    fixing that cache a Phase 17 task rather than a recorded note.
 5. **What is an acceptable save size at the far end?** A 500-year AELVOR 256 is
    182 MB today and unbounded thereafter. Phase 16 ships that and calls it
-   correct. If it is not acceptable, Phase 18 needs to open with the log question
+   correct. If it is not acceptable, Phase 20 (the stress test) needs to open with the log question
    rather than inherit it.
 6. **Does the MSVC leg get the corpus?** Clause (j) says yes, and the leg exists
    (`kernel-ci.yml`, `windows-2022`, `ctest --preset windows-msvc-debug -E Shuffled`).
@@ -5770,7 +5772,7 @@ reached the beginning of the world or fell off the end of a log.
 | 17.06 | **The inspector.** `Tools/Atlas --inspect <container>`: header, every section with kind name, length, share and digest, the HOST wiring, the RUN state's shape, whether a STREAM section is present and how many records it holds — **without generating a world**. `--inspect-dir <dir>` lists a directory through `ICheckpointStore` with tick, size, container version and trailer digest. | `Atlas.Inspect` over all three 17.01 containers, pinning the printed lines. CONTROL: `--inspect` must refuse a `.snapshot` image with a message naming the format it found, and must refuse a container truncated at 4 KiB rather than printing a partial table as if it were whole. | ROADMAP's own words: "16.04's section table and manifest are what makes listing saves without generating a world possible; this phase stops there." `Atlas --save --sections` generates a world first and never opens a file, so nothing in the tree reads a container from disk except a test. |
 | 17.07 | **A test harness that can see a vacuous assertion.** `VT_CHECK_ROUNDTRIP(Written, Read)` records a failure when the WRITTEN value is byte-equal to `T{}` before it compares anything, and `VT_CHECK_DIGEST_EQ(A, B)` refuses `0` and `EventLog::EmptyDigest` as operands. | `Harness.VacuityIsSeen`, with BOTH ARMS IN ONE RUN: the reconstructed default-vs-default `StartRules` assertion must FAIL under `VT_CHECK_ROUNDTRIP` and PASS under plain `VT_CHECK`, in the same test, so the defect stays visible after the fix. CONTROL: a genuine non-default round trip must pass under both. | This session committed exactly that defect — a `StartRules` round-trip comparing two default-constructed structs, which passed even though `ReadStreamSection` could have written nothing — and it was found by a reviewer, not by the suite. One judge called the two-arms-in-one-run shape the single best control-design idea in the panel. Grafted from the "discipline" angle. |
 | 17.08 | **Guard now, fix if asked: the `DiplomacySystem` cache.** No change to the cache. Instead a test asserting that EVERY route into a world still refuses a differently-generated one BY NAME — `Adopt`'s seven `*Differs` results and `LoadSnapshot`'s `SeedMismatch` and `WorldShapeDiffers` — with the failure text naming `DiplomacySystem`'s region-count cache as the thing that breaks if a refusal is loosened. | `Run.RefusalsAreTheCachesSafety`: each route, each refusal, by name. CONTROL: delete one refusal in a scratch build and require the test to fail naming that route — a guard that cannot say WHICH door opened is not a guard. | ADR-0150 records that `DiplomacySystem` rebuilds its region graph only when the region COUNT changes and is safe "only by accident", because 16.10 refuses a differently-generated world. That safety is a consequence of checks elsewhere, so it should fail loudly the day somebody loosens one. Converts an unanswerable owner question into a test rather than waiting on the answer. |
-| 17.09 | **The deep why, if the census says there is one.** `ExplainDepth` raised past two steps in `ExportWhyWithLife`, reading 17.04's walk so a chain that ends says how. **Conditional on 17.05**: if the census confirms a maximum depth of one edge, this task becomes a ROADMAP note recording that the Phase 14 deferral was a data debt and not a tooling debt, and the depth stays where it is. | `View.Chronicle` extended with a planted deep chain; the why must print every step and name its end. CONTROL: the same test over a REAL world must print what the census predicts — if the census says depth 1 and the why prints three steps, one of the two instruments is lying. | Phase 14 deferred "a why deeper than two steps" to Phase 17 (`Chronicle.h`, ROADMAP). The measurement says there may be nothing to walk to. Writing this row as conditional is the honest form: the work is either real or it is a note, and 17.05 decides which. |
+| 17.09 | **The deep why — and the census said there is one, in the ledger.** *(Resolved 2026-09-24 by 17.05: depth 3 at AELVOR 128, so this row is CODE. But every cause is in the stock ledger and none in the human story, so the why it deepens explains goods and not people; section 23's 17.05 note has the table.)* `ExplainDepth` raised past two steps in `ExportWhyWithLife`, reading 17.04's walk so a chain that ends says how. **Conditional on 17.05**: if the census confirms a maximum depth of one edge, this task becomes a ROADMAP note recording that the Phase 14 deferral was a data debt and not a tooling debt, and the depth stays where it is. | `View.Chronicle` extended with a planted deep chain; the why must print every step and name its end. CONTROL: the same test over a REAL world must print what the census predicts — if the census says depth 1 and the why prints three steps, one of the two instruments is lying. | Phase 14 deferred "a why deeper than two steps" to Phase 17 (`Chronicle.h`, ROADMAP). The measurement says there may be nothing to walk to. Writing this row as conditional is the honest form: the work is either real or it is a note, and 17.05 decides which. |
 
 ### 17.01 AS BUILT, 2026-09-24
 
@@ -6031,6 +6033,69 @@ Three entries in one file, `Sim.CauseWalk`, 0.00 s:
 The logs are hand-built. A real world's log is 98.7% roots, so five of the six
 ends would never occur and the test would be a test of AELVOR's demography.
 
+### 17.05 AS BUILT, 2026-09-24 — and the panel had measured the wrong worlds
+
+`Vaelen/Sim/Causality.h` gained `CauseCensus` and `TakeCauseCensus`: one
+forward pass for the depths - correct because a cause precedes its effect and
+the log is in id order, so no recursion and no stack to blow on a chain a
+million events long - and one sort for the fan-out. `Atlas --causes FILE`
+adopts a container from its OWN HOST section, so the wiring cannot be spelled
+wrongly on the command line, and prints the table per type through 17.02's
+names; `--census` does the same over a generated world.
+
+**Over the 17.01 corpus it reproduces the panel's figures by an independent
+instrument**: 3 of 129, 3 of 148, 7 of 577 with a cause; deepest chain one
+edge; fan-out one. `Atlas.Causes.{bare-16,played-16,full-32}` pin those lines
+whole and refuse any `?<hex>` row.
+
+**Over a fresh AELVOR 128 at 300+120 years, full wiring, 21 min 51 s:**
+
+```
+16,842,422 events, 5,211,672 with a cause (30.94%), 11,630,750 roots
+deepest chain 3 edges, median depth 0, widest fan-out 11 (event 4193697)
+0 dangling, 0 not an event, 0 not before their effect, 53 event types
+```
+
+Three ten-year worlds whose economy had barely started are what the panel
+measured, and 1.31% and one edge were true of them. The plan's "98.7% roots"
+was carried into `Causality.h` and two tests in my own hand; corrected in this
+commit. **17.09 is code, not a note: there is a third step to walk to.**
+
+**But the table per type says where the graph lives, and it is not where a
+person would look.**
+
+| type | events | with a cause |
+|---|---|---|
+| `StockAdded` | 2,636,125 | **98.8%** |
+| `StockTaken` | 2,731,702 | **95.4%** |
+| `DisasterStruck`, `RegionSettled`, `Condemned`, `Pardoned`, `ReligionFounded` | 3 – 207 | **100%** |
+| `BondEntered` / `BondLeft` | 33 / 25 | 58% / 56% |
+| `PriceChanged` | 1,784 | 11.8% |
+| `PersonDied`, `PersonBorn`, `PersonMarried`, `RulerSeated`, `HeirNamed`, `FamilyFounded`, `MigrationWave`, `Named` | 116 – 2,692 | **0.0%, every one** |
+
+5.2 million of the 5.21 million causes are the stock ledger. A deeper `why`
+explains where goods came from; it explains no death, no birth and no reign.
+The causal graph is dense in the ECONOMY and empty in the HUMAN STORY, and that
+is the measurement 17.09 and any later "fill the Cause edge" task starts from -
+the owner's question 4 is now a question about which publishers, not whether.
+
+**Also measured, and nobody asked**: `PlayerActed` is 9,147,427 of 16.8 million
+events - 54% of the log - in a world nobody played. That is the Lively wiring's
+persons acting through the command surface, and it is the single largest thing
+in every save. `HeardOf` is another 2.3 million. Phase 20's log question has
+its first figure, and it is not the one Phase 16 expected.
+
+`Sim.Causality`, four cases: the planted graph counted exactly (a chain of seven
+edges, a fan-out of five, one dangling link, one Person cause, one cause after
+its effect - eighteen events, and the parts must add up to the whole); the SAME
+eighteen with every cause cleared reporting depth 0 and fan-out 0 while the
+planted one still reports 7 in the same run; an empty log all zeros and not a
+verdict; and the census agreeing with 17.04's walk, with which it shares no
+code. **The first planting was wrong, not the code**: event 30's "dangling"
+cause was 99, which FOLLOWS it, and both instruments called it
+`NotBeforeEffect` - correctly, and in agreement. A dangling link must precede
+and be absent.
+
 ### The Phase 17 gate
 
 | clause | the command that decides it |
@@ -6049,8 +6114,8 @@ ends would never occur and the test would be a test of AELVOR's demography.
 ### What is NOT in Phase 17, and why
 
 - **Filling the `Cause` edge across the publish sites.** 27–30 of 132 publishers pass one; the rest create roots. Giving the others causes is correct work and it is a DATA change through fifteen closed phases that moves `EventLog::Digest`, the image, `ComputeStateDigest` and every frozen literal. All three judges said independently that it cannot share a commit with the corpus that is meant to pin the format. It needs a phase boundary or a dedicated commit whose only content is the re-freeze.
-- **Log tiering and compaction.** There are **49 `Log().All()` call sites**, not the five one angle assumed, and a dozen scan the whole log every tick. It buys resident memory rather than save size, and it is the one task that could move all ~178 frozen digest literals without anyone intending it. It stays where DECISIONS put it; Phase 18 opens with the log question rather than inheriting it.
-- **A save browser, thumbnails, named slots, autosave UI.** `--inspect` is the inspector side and stops there; the player-facing side is Phase 20 POLISH, as Phase 16 already recorded.
+- **Log tiering and compaction.** There are **49 `Log().All()` call sites**, not the five one angle assumed, and a dozen scan the whole log every tick. It buys resident memory rather than save size, and it is the one task that could move all ~178 frozen digest literals without anyone intending it. It stays where DECISIONS put it; Phase 20, the stress test, opens with the log question rather than inheriting it.
+- **A save browser, thumbnails, named slots, autosave UI.** `--inspect` is the inspector side and stops there; the player-facing side is Phase 22 POLISH, as Phase 16 already recorded.
 
 ### Still the owner's to answer, and now sharper
 
@@ -6058,3 +6123,55 @@ The 1.31% measurement changes question 4. Whether a save should ever load into a
 world was a question about `DiplomacySystem`'s cache; it is now also the question of whether the causal
 edge is ever going to be filled in, because both are one-way doors through every frozen digest. They
 should be answered together or not at all.
+
+## 24. The owner's decisions of 2026-09-24: the climate, and a world one walks
+
+Two decisions, in the owner's words, both taken while Phase 17 was open:
+
+> « oui bah du coup le but c'est de faire de la 3D qu'on puisse ZQSD, enfin
+> tout faire quoi, comme un jeu RP médiéval par exemple »
+
+> « oui, froid chaud et tout doivent s'afficher »
+
+They are recorded here the day they were said, because a decision that lives
+in a conversation is a decision nobody can find.
+
+### What exists, measured before writing this
+
+- **Climate.** `WorldGen.h`: every tile has an ANNUAL MEAN `Temperature`
+  (30 °C at the equator, −15 °C at the poles, ±2 ° of noise), a moisture, a
+  sea distance, and a `Biome` classified from them. Nothing outside `WorldGen`
+  reads the temperature layer afterwards. `SimClock` has seasons; only
+  generation and the snapshot consume them. `Needs.h`: a person's only need is
+  hunger (`HungerLine`, `HungerDamage`, `HungerPerson`). No warmth, no shelter,
+  no fuel, no exposure, no cold death, no climate in the harvest.
+- **Presentation.** A map: regions, biomes, altitude, head counts, settlements,
+  roads, a person and a colony drawn from the view leaves, a camera moving
+  region to region, a HUD of eight keys, at 100+ fps at 256 tiles. Rendered by
+  the engine; not a world one stands in. No phase of the twenty named terrain
+  in volume, characters, buildings in volume or animation.
+
+### What was decided, and where it goes
+
+- **Phase 18 CLIMATE & SEASONS**, kernel work, done here: a current
+  temperature (tile × season), a warmth need beside hunger, a winter that
+  weighs on stores and mortality, a harvest that depends on the climate, and
+  the figures carried in the view leaves. It moves every frozen digest in the
+  repository, so it lands with its own re-freeze, like ADR-0131. It is placed
+  FIRST because a 3D world that displays the climate needs a climate to
+  display, and because the stress test must measure the world we mean to ship.
+- **Phase 19 WORLD IN 3D**, engine work, half here and half on the owner's
+  machine: terrain in volume from `TileGrid` and `Hydrology`, buildings from
+  Infrastructure, persons from Population as characters, the played person
+  moved with ZQSD, a shoulder camera, the climate visible. The procedural-mesh
+  and controller C++ is written here and parsed against `Tools/EngineShim`;
+  meshes, materials, animation blueprints and SEEING IT are the owner's
+  machine. **One session on that machine per task, not per phase**, under the
+  standing rule of `ENGINE_HANDOFF.md`: report, do not repair the kernel.
+- **Stress test, modding and polish become 20, 21 and 22.** Six references in
+  this file and one in DECISIONS.md named the old numbers with the phase name
+  beside them; all seven now name the new ones.
+
+Neither phase is broken down here. Each opens the way every phase since 14 has:
+a judge-panel plan, measured before a line is written, then the rows and the
+gate in section style. Phase 17 finishes first.

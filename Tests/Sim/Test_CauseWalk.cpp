@@ -15,9 +15,10 @@
 // only showed `CauseWalk` working could not show it, and in a year nobody would
 // reconstruct why this file exists.
 //
-// THE LOGS ARE HAND-BUILT, not generated. A world would give a log that is
-// 98.7% roots (the 17.05 census measures it), so five of the six ends would
-// never occur and the test would be a test of AELVOR's demography rather than
+// THE LOGS ARE HAND-BUILT, not generated. A world's log has no dangling
+// cause, no cause of the wrong kind and no cause after its effect - 17.05
+// counted zero of each in 16.8 million events - so three of the six ends would
+// never occur and the test would be a test of AELVOR's bookkeeping rather than
 // of the walk.
 //
 // STATUS: PROTOTYPE (Phase 17)

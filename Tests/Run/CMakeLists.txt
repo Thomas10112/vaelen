@@ -387,3 +387,22 @@ add_test(NAME Atlas.ContainersRegenerate
           -DSCRATCH=${CMAKE_CURRENT_BINARY_DIR}/containers-regenerated
           -P ${CMAKE_CURRENT_LIST_DIR}/Containers.cmake)
 set_tests_properties(Atlas.ContainersRegenerate PROPERTIES TIMEOUT 1800 COST 700)
+
+# 17.05: the cause census over the corpus, three entries, one per container.
+# The figures are the roadmap's, pinned whole; Docs/ROADMAP.md section 23
+# carries the same three lines and says what they mean for 17.09.
+foreach(Pair
+    "bare-16;causes: 129 events, 3 with a cause (2.33%), 126 roots"
+    "played-16;causes: 148 events, 3 with a cause (2.03%), 145 roots"
+    "full-32;causes: 577 events, 7 with a cause (1.21%), 570 roots")
+  list(GET Pair 0 Name)
+  list(GET Pair 1 Headline)
+  add_test(NAME Atlas.Causes.${Name}
+    COMMAND ${CMAKE_COMMAND}
+            -DATLAS=$<TARGET_FILE:VaelenAtlas>
+            -DFILE=${PROJECT_SOURCE_DIR}/Tests/Run/Containers/${Name}.container
+            "-DHEADLINE=${Headline}"
+            "-DDEPTH=causes: deepest chain 1 edge(s), median depth 0, widest fan-out 1 (event 1)"
+            -P ${CMAKE_CURRENT_LIST_DIR}/Causes.cmake)
+  set_tests_properties(Atlas.Causes.${Name} PROPERTIES TIMEOUT 600)
+endforeach()

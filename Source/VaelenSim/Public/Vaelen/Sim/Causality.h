@@ -44,8 +44,10 @@ namespace Vaelen::History
 	enum class WalkEnd : uint8
 	{
 		/// The chain reached an event that declares no cause. THE BEGINNING OF
-		/// A STORY: 98.7% of this world's events are here, because the cause
-		/// edge is filled at 30 of 132 publish sites.
+		/// A STORY - and where most stories begin: 69% of a fresh AELVOR 128's
+		/// events, and every birth, death, marriage and seating of a ruler in
+		/// it. 17.05 measured it; the 98.7% the plan quoted was three ten-year
+		/// worlds, not this one.
 		Root,
 		/// The id the walk was GIVEN is not in the log. Nothing was walked and
 		/// `Out` is empty - which the old function reported the same way it
@@ -79,7 +81,8 @@ namespace Vaelen::History
 	struct WalkLimits
 	{
 		/// How many events the walk may collect. 64 by default, which is about
-		/// nine times the deepest chain this tree has ever measured (one edge).
+		/// twenty times the deepest chain this tree has measured (three edges,
+		/// at AELVOR 128 over 420 years; 17.05).
 		uint32 Depth = 64;
 	};
 
@@ -91,4 +94,56 @@ namespace Vaelen::History
 	/// than the function this replaces.
 	VAELEN_SIM_API WalkEnd CauseWalk(const EventLog& Log, PersistentId Id, std::vector<const Event*>& Out,
 									 WalkLimits Limits = WalkLimits{});
+
+	// ── 17.05: the census ────────────────────────────────────────────────────
+	//
+	// WHAT IS ACTUALLY IN THE CAUSAL GRAPH, countable and re-runnable.
+	//
+	// The Phase 17 panel measured 7 causes in 535 events - 1.31% - with a
+	// deepest chain of ONE EDGE, and three of its four angles had planned a
+	// walker, an index and a renderer over that. A figure written once into a
+	// report becomes folklore; a figure a command re-prints stays true or stops
+	// being green. This is the command.
+	//
+	// It is also allowed to conclude that the phase is about something else:
+	// 17.09's deeper `why` is conditional on what this reports.
+
+	/// Every depth here is in EDGES, so an event with no cause has depth 0.
+	/// A "chain of depth 7" is eight events.
+	struct CauseCensus
+	{
+		/// Every event in the log.
+		uint64 Events = 0;
+		/// Events whose `Cause` is set at all, valid or not.
+		uint64 WithCause = 0;
+		/// Events whose `Cause` is unset - the beginning of a story, and the
+		/// overwhelming majority of this world.
+		uint64 RootCauses = 0;
+		/// A cause of kind Event that the log does not contain: a cut chain.
+		uint64 Dangling = 0;
+		/// A cause whose kind is not Event - a person, a region, an era.
+		uint64 NotAnEvent = 0;
+		/// A cause that does not precede its effect: a log disagreeing with
+		/// itself.
+		uint64 NotBeforeEffect = 0;
+		/// The longest chain, in edges.
+		uint32 MaxDepth = 0;
+		/// The median event's depth, in edges. Reported because a maximum alone
+		/// cannot tell one deep chain from a graph that is deep throughout.
+		uint32 MedianDepth = 0;
+		/// The most effects any single event has. 0 when nothing causes
+		/// anything.
+		uint32 MaxFanOut = 0;
+		/// The event with `MaxFanOut` effects, so a reader can go and look at
+		/// it. Invalid when `MaxFanOut` is 0.
+		PersistentId Busiest;
+	};
+
+	/// Counts the whole log in one pass, then a second for the fan-out.
+	///
+	/// EVERY FIELD IS 0 FOR AN EMPTY LOG, including `MaxDepth` and `MaxFanOut`
+	/// - which is the same answer as "a log with no causal edges at all", and
+	/// deliberately so: the census reports what is there and does not editorial-
+	/// ise. `Events` is what tells the two apart.
+	VAELEN_SIM_API CauseCensus TakeCauseCensus(const EventLog& Log);
 } // namespace Vaelen::History
