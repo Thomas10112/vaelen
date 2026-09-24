@@ -14,6 +14,37 @@ phase closes on it: the frame rate, clause (c) of 14.10, at the end of the
 Phase 14 section below. Phases 13's sections are kept as the record of how the
 last hand-off went.
 
+**Where this stands on 2026-09-24.** Phases 15, 16 and 17 happened after the
+paragraph above and none of them touched this file; that is corrected here in one
+block, and the sections below Phase 14 stay the record they are.
+
+- **Phase 15 (STREAMING & LOD) is CLOSED, 2026-09-21**, all six clauses. Its
+  engine half, 15.10, is built and was run on this machine: the world subsystem
+  hands the camera's region to `Run::Door::Look` when the day turns, and the walk
+  played here on 2026-09-21 is `Replay.Lived` and `Run.Gate.Lived` in the frozen
+  gate list — the only two entries that came off another computer.
+- **Phase 16 (SAVE/PERSISTENCE): fourteen tasks built headless, its gate still
+  open on two things.** One is headless (the migration half of clause (j),
+  deferred to the v4 format bump). The other is yours, and it is MORE than a
+  sitting: **16.14's engine half does not exist yet.** There is no `Vaelen.Save`,
+  no `Vaelen.Load` and no `ICheckpointStore` over `IFileManager` anywhere in
+  `Source/VaelenGame` — `grep -rn 'Vaelen\.Save\|CheckpointStore' Source/VaelenGame`
+  prints nothing on 2026-09-24. That C++ is written on the headless side first and
+  parsed against `Tools/EngineShim`, like every engine-side file since 14.07 (the
+  shim has only `FFileHelper::SaveStringToFile` / `LoadFileToString` today and
+  grows a byte-array pair for it). Do not write it on the engine machine. When it
+  lands, this file gets a Phase 16 section saying what to type and which lines to
+  bring back; `Run.Gate.Saved` in the plan (`Docs/ROADMAP.md` row 16.14) is what
+  those lines will be checked against. Until then there is nothing for this
+  machine to do for Phase 16.
+- **Phase 17 (DEBUG TOOLS) is CLOSED, 2026-09-24**, all eleven clauses, and it
+  had no engine task. One thing it changed that the engine COPIES:
+  `View::ChronicleView` (`Vaelen/View/Chronicle.h`) holds four why lines instead
+  of two and carries a `WhyEnd`, so its `sizeof` went from 7816 to 8144 bytes.
+  `UVaelenWorldSubsystem` keeps one by value, so the next UBT build recompiles
+  it and nothing else is asked of you; the HUD draws `View::Lines` and never
+  reads the struct.
+
 ## The standing rule, first, because it is the one that matters
 
 **Do not fix anything inside these directories:**
@@ -25,9 +56,10 @@ Source/VaelenInfrastructure  Source/VaelenColony  Source/VaelenPlayer
 Source/VaelenGameplay  Source/VaelenView  Source/VaelenRun
 ```
 
-They are validated by the headless CI: fourteen phase gates, six Linux presets, a
-Windows MSVC leg and a macOS AppleClang leg, 175 CTest entries. A fix applied on the engine machine
-is a fix nothing in that matrix has seen, and the frozen digests of eleven gates
+They are validated by the headless CI: seventeen frozen gates (`Tools/run_gates.sh`),
+six Linux presets, a Windows MSVC leg and a macOS AppleClang leg, 219 CTest entries
+(2026-09-24; it was fourteen, and 175, when this was first written). A fix applied on the engine machine
+is a fix nothing in that matrix has seen, and the frozen digests of seventeen gates
 are exactly the kind of thing a well-meant edit moves.
 
 **Report the errors. Do not repair them.** Paste the compiler output, name the

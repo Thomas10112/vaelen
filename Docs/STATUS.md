@@ -13,13 +13,23 @@ rewritten afterwards; this block is the only part that tracks today.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 17 — DEBUG TOOLS, opened 2026-09-24
-              (16 SAVE/PERSISTENCE: fourteen tasks built and ten-of-ten green on CI,
-               its GATE still open — clause (j)'s migration half is deferred to the
-               v4 bump and 16.14 needs the owner's Windows machine. Docs/ROADMAP.md
-               section 22 has the clause-by-clause read.
+PHASE       : 17 — DEBUG TOOLS, CLOSED 2026-09-24: all eleven clauses of its gate
+              met, read clause by clause in Docs/ROADMAP.md section 23. Clause (j):
+              Tools/run_gates.sh linux-clang-debug printed GATES-DONE 0 failing (of 17)
+              in 5122 s on 5032246; clause (i): no frozen digest moved over nine tasks.
+              CI run 276 on 5032246: nine of ten legs green, the clang-debug leg still
+              testing when this was written (run 274 on 65b60d4 was ten of ten).
+              NEXT: Phase 18 CLIMATE & SEASONS — its judge-panel plan is running.
+              (16 SAVE/PERSISTENCE: fourteen tasks built, its GATE still open —
+               clause (j)'s migration half deferred to the v4 bump; and 16.14, whose
+               sitting is the owner's Windows machine AND whose engine half —
+               Vaelen.Save/Load, a store over IFileManager — is not written anywhere
+               yet: it is written here and parsed against the shim before that
+               sitting. Section 22 has the clause-by-clause read.
                15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
-TASK        : 17.09 — DONE 2026-09-24. The why says how it ended.
+TASK        : Phase 17 gate — READ 2026-09-24, eleven of eleven. Last built: 17.09.
+
+TASK (17.09): 17.09 — DONE 2026-09-24. The why says how it ended.
 
               THE TWO-STEP LIMIT WAS NEVER IN THE KERNEL: History::Why walked to 64 and
               ExportWhyWithLife printed every step; the limit was ChronicleView::WhyLines

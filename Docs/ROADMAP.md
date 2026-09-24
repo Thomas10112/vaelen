@@ -84,7 +84,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 14 | UI | Interface and read-only views; command submission through the gameplay layer. | **CLOSED** 2026-09-16, all five clauses met - (e) certified by CI run 215 on 4137b08, ten jobs of ten green (14.01-14.10 - eighty-three days played at the keyboard in UE 5.6, replayed headlessly to the same four digests byte for byte, and the HUD measured at 0.52 ms of game thread over a scene that runs at about 122 fps; the breakdown is section 20) |
 | 15 | STREAMING & LOD | Engine streaming coupled to the simulation's grains: what is simulated at which detail away from the player. **The row said "simulation LOD 0-4" until 15.09 found that two different things were being called LOD.** `SimLod` (Sim/System.h) is a real five-rung ladder of how OFTEN a system runs - 1, 4, 24, 720, 8640 ticks - and 15.02 moved a system down it. A REGION has two grains and not five: person by person, or counts per culture. `RegionLod::Level` is written in one place, always the same value, and levels 0, 1 and 3 have never been reachable. | **CLOSED 2026-09-21** (15.01-15.10, section 21). The planning found five defects before a line was written; the review of 15.10 found 27 more, among them that the engine host recorded a world its own replay does not reach. The gate is met on a walk a person actually lived. |
 | 16 | SAVE/PERSISTENCE | **The row said "serialisation of the whole world state" until the planning measured it: that shipped in Phase 01 and works.** What is not saved is the RUN - `Run::Aelvor`'s own members - so a restored world continues identically until somebody LOOKS, and then parts company with the world it was copied from. The gap is about thirty bytes, one part in 700,000 of the image. So the phase is a save that can refuse, a load that cannot half-apply, a container around the untouched image, a verb by which a run adopts a world it did not generate, a file that cannot destroy the last good one, and a migration chain. | BROKEN DOWN (16.01-16.14, section 22; the planning found twelve defects first, among them that `SaveSnapshot` cannot fail and cannot say so in exactly the builds a player runs) |
-| 17 | DEBUG TOOLS | Inspectors, replay tooling, determinism diff, world statistics, headless console. | PLANNED |
+| 17 | DEBUG TOOLS | **The row said inspectors, replay tooling, a determinism diff, statistics and a console; the panel measured the causal graph at 1.3% dense and one edge deep and the phase became the instruments that could see that.** As built: a container corpus, the event-type name table, a store that reads a directory, a walk that says how it ended, the causal census, the inspector, a harness that sees a vacuous assertion, nine doors guarded and a tenth pinned open, and a why that names its end. Section 23. | CLOSED 2026-09-24, all eleven clauses; no frozen digest moved |
 | 18 | CLIMATE & SEASONS | **Owner's decision, 2026-09-24: "le froid, le chaud et tout doivent s'afficher."** Today a tile has an ANNUAL MEAN temperature that decides its biome at generation and is never read again; seasons exist in the clock and are consumed by nothing but generation and the snapshot; a person's only need is hunger. This phase gives the world a CURRENT temperature (tile × season), a warmth need beside hunger, a winter that weighs on stores and mortality, a harvest that depends on the climate, and the figures in the view leaves so the HUD can draw them. Kernel work: it moves every frozen digest and lands with its own re-freeze. Section 24. | PLANNED, placed BEFORE the stress test because the stress test must measure the world we mean to ship |
 | 19 | WORLD IN 3D | **Owner's decision, 2026-09-24: "un RPG médiéval en 3D, ZQSD, où l'on peut tout faire."** What exists is a MAP: regions, biomes, roads, a person and a colony drawn from the view leaves, a camera that moves region to region, at 100+ fps (Phase 13). This phase is a world one WALKS: terrain in volume from `TileGrid` and `Hydrology`, buildings from Infrastructure, persons from Population as characters, the played person moved at the keyboard, a shoulder camera, and the climate of Phase 18 visible. The procedural-mesh and controller C++ is written here and parsed against the shim; meshes, materials, animation and SEEING IT are the owner's machine, one session per task and not per phase. Section 24. | PLANNED |
 | 20 | STRESS TEST | Long-duration and large-world runs, performance budgets, determinism at scale — measured WITH Phases 18 and 19 in, not before them. 17.05 already handed it a figure: `PlayerActed` is 54% of a 16.8-million-event log in a world nobody played. | PLANNED (was 18) |
@@ -6352,17 +6352,28 @@ EXISTS and what it printed.
 | (h) `Run.RefusalsAreTheCachesSafety` | **met, with a finding** — nine doors guarded by name; the tenth found OPEN at the kernel door and pinned as a kept arm that fails the day it closes |
 | (i) no frozen digest moved | **met** — `git diff 6ee00b6..HEAD -- Tests/ Source/ Tools/ Docs/ROADMAP.md \| grep -E '^-.*\b[0-9a-f]{16}\b'` prints **nothing**, over nine tasks |
 | (k) `Sim.HistoryText`, `View.Chronicle` | **met** — four ends named and worded; the real world's chronicle two lines deep, ending at a root |
-| (j) `run_gates.sh linux-clang-debug` | **RUNNING** as this is written; `verify_fast` clean at every commit |
+| (j) `run_gates.sh linux-clang-debug` | **met** — `GATES-DONE 0 failing (of 17)` on `5032246`, 5122 s on a freshly configured `out/build/linux-clang-debug` (eighty-five minutes: the seventeen gates are the whole cost of this clause, and the reason it was read last); `verify_fast` clean at every commit |
 
 Beside the gate: the CI is ten of ten green on `65b60d4` (run 274), which carries
-17.01 to 17.04 and the fix for the two test defects the CI itself found; the
-five commits after it are pushed and their run is in flight.
+17.01 to 17.04 and the fix for the two test defects the CI itself found. Run 276
+on `5032246` — the same code as 17.05 to 17.09, plus this table — is nine of ten
+green as the close is written, the clang-debug leg still testing; its result goes
+into STATUS when it lands, and the close does not wait for a leg whose nine
+siblings, and the local run of the same preset, have already answered.
 
 What the phase leaves open, all named in the notes above: the kernel door of
 defect 5 (a re-freeze, to share the commit with Phase 18's climate); the nine
 empty-against-itself matrix cells that `VT_CHECK_DIGEST_EQ` now makes visible
 (their own commit); 16.14 and every engine-side task, which are the owner's
 machine; and the owner's six questions, two of them sharper than they were.
+
+**Phase 17 is CLOSED on 2026-09-24, all eleven clauses met.** 16.14 stays outside
+every gate, and reading the tree for the close found it is more than a sitting:
+its ENGINE HALF — `Vaelen.Save`, `Vaelen.Load`, a store over `IFileManager` — was
+never written, here or on the owner's machine (`grep -rn 'Vaelen\.Save\|CheckpointStore'
+Source/VaelenGame` prints nothing). That half is written here and parsed against
+`Tools/EngineShim`, like every engine-side file since 14.07, before the sitting is
+asked for; `Docs/ENGINE_HANDOFF.md` says so now, which it did not.
 
 ### What is NOT in Phase 17, and why
 
