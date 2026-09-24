@@ -6255,6 +6255,68 @@ a differently-generated world"; it is now "the kernel door already does, for
 the same seed at a different size, and closing it costs a re-freeze - with
 Phase 18's climate re-freeze coming, they should share the commit".
 
+### 17.09 AS BUILT, 2026-09-24 — the why says how it ended
+
+**The two-step limit was never in the kernel.** `History::Why` walked to 64 and
+`ExportWhyWithLife` printed every step; the limit was `ChronicleView::WhyLines
+= 2`, in the view leaf. So "the deep why" is three things, and none of them is
+a deeper walk:
+
+- **`History::Why` returns `WalkEnd`** (17.04's), through `CauseWalk`. Until
+  now `Root`, `CauseMissing` and `DepthExhausted` were all an empty tail, and a
+  person reading a why could not tell the beginning of the world from a hole in
+  the record. `History::WhyEndText(WalkEnd)` is the ONE place the sentence for
+  a non-root end lives - "" for `Root` and `NoSuchEvent`, a sentence each for
+  the other four, all different - and both text exports print it:
+  `ExportWhy` (kernel) and `ExportWhyWithLife` (player), the latter counting
+  it as a line because it returns lines.
+- **The view holds four lines, not two, and knows how its chain ended.**
+  `WhyLines` 2 → 4, `WhyTextBytes` 512 → 768, and `WhyEnd` (the `WalkEnd` as a
+  number, because a leaf may not include `Causality.h`) from the view's OWN
+  walk to its own depth, so a chain longer than the view holds says
+  `DepthExhausted` instead of trailing off. **Four and not eight, by two
+  measurements:** the deepest chain 17.05 found anywhere is three edges, four
+  lines; and the row says the leaf is 8 KiB - the first cut said eight lines
+  and 2048 bytes, was 9552 bytes, and the `static_assert` refused it. Four
+  lines at 192 bytes, the same per-line budget as the chronicle text (6144 for
+  32), is 8144. A `WhyReserved` keeps the `LineView`s 8-aligned; the
+  no-padding assert is what said so.
+- **Over a real world the chronicle prints what the census predicts.**
+  `View.Chronicle`: `the why is 2 line(s) deep on this world, ending at a
+  root`. The played person's why is structurally "the thing, because of what
+  they did", since a `PlayerActed` has no cause of its own (0.0% of 9.1
+  million at AELVOR 128). The old assertion `WhyCount == WhyLines` was a
+  coincidence of capacity and content, and two of them - in
+  `AWalkIsTwoLinesAndItsOwnWhy` as well - now read `== 2` with `WhyEnd == 0`.
+
+`Sim.HistoryText.WhySaysHowItEnded` plants chains into a small real world
+through `EventBus::Publish` with a cause: a whole chain of four (`Root`, four
+steps, no end sentence), the same chain walked with room for two
+(`DepthExhausted`, two steps), and one caused by a PERSON (`CauseNotAnEvent`,
+and the export ends with its sentence). `NoSuchEvent` with no steps.
+
+**A cut chain cannot be planted in a world, and the test says so instead of
+pretending.** The first version gave an event a cause one serial below the
+planted root and expected `CauseMissing`; that serial was a real event, and
+the case fell into an `else` branch and tested nothing - found when the
+deliberate failure (`Why` reporting `Root` whatever the walk said) fired on
+three checks and not four. A world's log has no holes: ids are monotonic and
+nothing is ever removed, so "a cause that precedes and is absent" exists only
+in a log that was truncated or compacted. The case now asserts that every
+serial below the planted root exists; `CauseMissing` is walked over a
+hand-built log in `Sim.CauseWalk`, and its sentence goes through the same tail
+code the person-caused case exercises. And the six
+sentences: two empty, four present and pairwise different - a renderer that
+showed the same words for a cut and a limit would be the defect this task
+removes, moved into the text.
+
+**What the roadmap row asked, answered.** The condition was "if the census
+confirms a maximum depth of one edge, this becomes a note". The census
+confirmed three edges in the ledger and zero in the human story, so this is
+code - and the code's honest shape is not a deeper walk but an END that is
+named, because the chains a person will actually see are two long and the
+question they raise is "is that all?", to which the answer is now `Root`.
+
 ### The Phase 17 gate
 
 | clause | the command that decides it |
@@ -6268,6 +6330,7 @@ Phase 18's climate re-freeze coming, they should share the commit".
 | (g) | `ctest -R '^Core\.Harness$'` — `VacuityIsSeen`: the same assertion failing under the witness macro and passing under the plain one, in one run; and `DigestsThatCompareNothingAreRefused`. The harness self-tests live in one file, so one entry. |
 | (h) | `ctest -R '^Run\.RefusalsAreTheCachesSafety$'` — nine guarded doors, each refusal by name with the cache named in its failure text; the tenth (`WorldShapeDiffers` for a different SIZE) found OPEN at the kernel door and pinned as a kept arm that fails the day it closes, because closing it re-freezes every digest. |
 | (i) | Not one frozen digest moved: `git diff <phase start>..HEAD -- Tests/ Source/ Tools/ Docs/ROADMAP.md \| grep -E '^-.*\b[0-9a-f]{16}\b'` prints nothing. **This is the clause the dropped tasks would have broken**, and it is why they were dropped. |
+| (k) | `ctest -R '^Sim\.HistoryText$|^View\.Chronicle$'` — the why says how it ended: four planted chains (whole, cut, longer than allowed, caused by a person) each named by `History::Why` and each end's sentence printed by the text export; and over a real world the chronicle's why is what the census predicts — two lines, ending at a root. |
 | (j) | `Tools/run_gates.sh linux-clang-debug` prints `GATES-DONE 0 failing`, and `Tools/verify_fast.sh` is clean. |
 
 ### What is NOT in Phase 17, and why

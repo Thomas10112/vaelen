@@ -329,7 +329,7 @@ namespace Vaelen::Player
 							 PersistentId Id, std::string& Out)
 	{
 		std::vector<History::WhyStep> Steps;
-		History::Why(W, Types, Id, Steps);
+		const History::WalkEnd End = History::Why(W, Types, Id, Steps);
 		const Population::PersonIndex Index = Population::BuildPersonIndex(W, Context.Persons);
 		uint32 Lines = 0;
 		std::string Line;
@@ -347,6 +347,17 @@ namespace Vaelen::Player
 				Line = "  because " + (Colon != std::string::npos ? Line.substr(Colon + 2) : Line);
 			}
 			Out += Line;
+			Out += '\n';
+			++Lines;
+		}
+		// 17.09: how the story ended, when it did not end at its beginning.
+		// Worded once, in History::WhyEndText, so the chronicle and this agree.
+		// Counted, because this function returns LINES and it is one.
+		const char* Tail = History::WhyEndText(End);
+		if (Lines > 0 && Tail[0] != '\0')
+		{
+			Out += "  ";
+			Out += Tail;
 			Out += '\n';
 			++Lines;
 		}

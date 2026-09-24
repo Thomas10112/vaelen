@@ -4,6 +4,7 @@
 // STATUS: VALIDATED (Phase 03)
 
 #include "Vaelen/Sim/Disasters.h"
+#include "Vaelen/Sim/Causality.h"
 #include "Vaelen/Sim/HistoryText.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/Religion.h"
@@ -316,4 +317,91 @@ VAELEN_TEST(HistoryText, TextIsDeterministicAcrossWorldsSnapshotsAndPlatforms)
 	std::string TextC;
 	ExportChronicle(C.Instance, C.Ages.Types(), TextC);
 	VT_CHECK(TextC != TextA);
+}
+
+VAELEN_TEST(HistoryText, WhySaysHowItEnded)
+{
+	// 17.09. Four chains planted into a small real world, and the why must
+	// name each end - and the two text exports must print the end's sentence,
+	// which lives in ONE place so this is a test of both.
+	Run W(AelvorSeed);
+	VT_REQUIRE(W.Ages.Generate(Run::Square(32), 10));
+	EventBus& Bus = W.Instance.Events();
+	const SimTick Now = W.Instance.Now();
+	const EraPayload Era{};
+
+	// A WHOLE chain of four: D <- C <- B <- A, and A is a root.
+	const PersistentId A = Bus.Publish(Now + 1, EraOpenedEvent, Era);
+	const PersistentId B = Bus.Publish(Now + 2, EraOpenedEvent, Era, PersistentId{}, A);
+	const PersistentId C = Bus.Publish(Now + 3, EraOpenedEvent, Era, PersistentId{}, B);
+	const PersistentId D = Bus.Publish(Now + 4, EraOpenedEvent, Era, PersistentId{}, C);
+	{
+		std::vector<WhyStep> Steps;
+		const WalkEnd End = Why(W.Instance, W.Ages.Types(), D, Steps);
+		VT_CHECK_MSG(End == WalkEnd::Root, "%s", WalkEndToString(End));
+		VT_CHECK_EQ(static_cast<uint32>(Steps.size()), 4u);
+		std::string Text;
+		VT_CHECK_EQ(ExportWhy(W.Instance, W.Ages.Types(), D, Text), 4u);
+		VT_CHECK_MSG(Text.find(WhyEndText(WalkEnd::CauseMissing)) == std::string::npos,
+					 "a whole chain must not say it was cut:\n%s", Text.c_str());
+		VT_CHECK_MSG(Text.find("further back") == std::string::npos, "nor that it ran out of room:\n%s", Text.c_str());
+	}
+
+	// A CUT CHAIN CANNOT BE PLANTED IN A WORLD, and that is worth asserting.
+	// The first version of this case gave F a cause one serial below A and
+	// expected CauseMissing; the serial below A was a real event, because a
+	// world's log has no holes - ids are monotonic and nothing is ever removed
+	// - and the case fell into an else branch and tested nothing. The hole
+	// only exists in a log that was truncated or compacted, which is why
+	// CauseMissing is walked over a hand-built log in Sim.CauseWalk and its
+	// sentence is printed through the same tail code the NotAnEvent case
+	// below exercises. Here: every serial below A exists.
+	{
+		uint32 Holes = 0;
+		for (uint64 Serial = 1; Serial < A.Serial(); ++Serial)
+		{
+			if (FindEvent(W.Instance.Log(), PersistentId::Make(IdKind::Event, Serial)) == nullptr)
+			{
+				++Holes;
+			}
+		}
+		VT_CHECK_MSG(Holes == 0u, "%u hole(s) below serial %llu in a world's log", Holes,
+					 static_cast<unsigned long long>(A.Serial()));
+	}
+
+	// A chain LONGER THAN THE CALLER ALLOWED: D again, with room for two.
+	{
+		std::vector<WhyStep> Steps;
+		const WalkEnd End = Why(W.Instance, W.Ages.Types(), D, Steps, 2u);
+		VT_CHECK_MSG(End == WalkEnd::DepthExhausted, "%s", WalkEndToString(End));
+		VT_CHECK_EQ(static_cast<uint32>(Steps.size()), 2u);
+	}
+
+	// A cause that is not an event: a PERSON caused G.
+	const PersistentId G =
+		Bus.Publish(Now + 6, EraOpenedEvent, Era, PersistentId{}, PersistentId::Make(IdKind::Person, 7));
+	{
+		std::vector<WhyStep> Steps;
+		const WalkEnd End = Why(W.Instance, W.Ages.Types(), G, Steps);
+		VT_CHECK_MSG(End == WalkEnd::CauseNotAnEvent, "%s", WalkEndToString(End));
+		std::string Text;
+		ExportWhy(W.Instance, W.Ages.Types(), G, Text);
+		VT_CHECK_MSG(Text.find(WhyEndText(WalkEnd::CauseNotAnEvent)) != std::string::npos, "%s", Text.c_str());
+	}
+
+	// And nothing: an id that is not there says NoSuchEvent with no steps.
+	{
+		std::vector<WhyStep> Steps;
+		VT_CHECK(Why(W.Instance, W.Ages.Types(), PersistentId{0xffffffffffffull}, Steps) == WalkEnd::NoSuchEvent);
+		VT_CHECK(Steps.empty());
+	}
+
+	// Root and NoSuchEvent have no sentence; every other end has one, and they
+	// differ - a renderer that showed the same words for a cut and a limit
+	// would be the defect this task removes, moved into the text.
+	VT_CHECK(WhyEndText(WalkEnd::Root)[0] == '\0');
+	VT_CHECK(WhyEndText(WalkEnd::NoSuchEvent)[0] == '\0');
+	VT_CHECK(WhyEndText(WalkEnd::CauseMissing)[0] != '\0');
+	VT_CHECK(std::string(WhyEndText(WalkEnd::CauseMissing)) != WhyEndText(WalkEnd::DepthExhausted));
+	VT_CHECK(std::string(WhyEndText(WalkEnd::CauseNotAnEvent)) != WhyEndText(WalkEnd::CauseNotBeforeEffect));
 }

@@ -19,7 +19,42 @@ PHASE       : 17 — DEBUG TOOLS, opened 2026-09-24
                v4 bump and 16.14 needs the owner's Windows machine. Docs/ROADMAP.md
                section 22 has the clause-by-clause read.
                15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
-TASK        : 17.08 — DONE 2026-09-24. The cache that is safe by accident, its nine
+TASK        : 17.09 — DONE 2026-09-24. The why says how it ended.
+
+              THE TWO-STEP LIMIT WAS NEVER IN THE KERNEL: History::Why walked to 64 and
+              ExportWhyWithLife printed every step; the limit was ChronicleView::WhyLines
+              = 2 in the view leaf. So the deep why is three things and none is a deeper
+              walk. History::Why returns WalkEnd through CauseWalk — until now Root,
+              CauseMissing and DepthExhausted were all an empty tail. WhyEndText is the
+              ONE place a non-root end's sentence lives, and both text exports print it.
+              The view holds FOUR lines (not two) and a WhyEnd field from its own walk, so
+              a longer chain says DepthExhausted instead of trailing off.
+
+              FOUR AND NOT EIGHT, by two measurements: the deepest chain 17.05 found
+              anywhere is three edges, and the row says the leaf is 8 KiB — the first cut
+              (eight lines, 2048 bytes) was 9552 and the static_assert refused it. Four
+              lines at 192 bytes, the chronicle text's own per-line budget, is 8144.
+
+              OVER A REAL WORLD THE CHRONICLE PRINTS WHAT THE CENSUS PREDICTS: "the why
+              is 2 line(s) deep on this world, ending at a root" — a PlayerActed has no
+              cause of its own. The old `WhyCount == WhyLines` was a coincidence of
+              capacity and content; it reads == 2 with WhyEnd == 0 now, in two tests.
+
+              Sim.HistoryText.WhySaysHowItEnded plants chains through EventBus::Publish
+              with a cause — whole, longer than allowed, caused by a person — and each is
+              named, each end's sentence printed, the six sentences two empty and four
+              pairwise different. A CUT CHAIN CANNOT BE PLANTED IN A WORLD: the first
+              version tried, the serial below the root was a real event, and the case
+              fell into an else branch — found when the deliberate failure fired on
+              three checks and not four. A world's log has no holes; the test asserts
+              that now, and CauseMissing stays with Sim.CauseWalk's hand-built log.
+
+              The row's condition, answered: the census said three edges in the ledger
+              and zero in the human story, so this is code — and its honest shape is an
+              END that is named, because the chains a person will actually see are two
+              long and the question they raise is "is that all?", answered Root.
+
+TASK (17.08): 17.08 — DONE 2026-09-24. The cache that is safe by accident, its nine
               doors guarded, and a tenth found OPEN on the first run.
 
               No change to DiplomacySystem's cache, as the row said: guard now, fix if

@@ -196,7 +196,11 @@ VAELEN_TEST(Chronicle, TheViewIsFlatAndItsPaddingIsNamed)
 	VT_CHECK(std::is_standard_layout<ChronicleView>::value);
 	VT_CHECK(std::is_trivially_copyable<LineView>::value);
 	VT_CHECK_EQ(sizeof(LineView), usize{32});
-	VT_CHECK_EQ(sizeof(ChronicleView), usize{7816});
+	// 17.09: 8144, from 7816 - four why lines at 192 bytes each instead of two
+	// at 256, plus WhyEnd and the uint32 that keeps the LineViews aligned. The
+	// first cut said eight lines and 2048 bytes; that is 9552 and the assert
+	// two lines down is why it is not.
+	VT_CHECK_EQ(sizeof(ChronicleView), usize{8144});
 	VT_CHECK(sizeof(ChronicleView) <= 8192);
 	ChronicleView A;
 	ChronicleView B;
@@ -374,8 +378,19 @@ VAELEN_TEST(Chronicle, EveryLineIsExportLifesAndAYearGrownEqualsAYearFresh)
 					 Timeline[Skip + i].c_str());
 	}
 	VT_CHECK_MSG(Grown.WhyOf != 0, "a year of giving and taking is followed by something");
-	VT_CHECK_MSG(Grown.WhyCount == WhyLines, "the thing and its cause: %u why lines", Grown.WhyCount);
-	VT_CHECK(Why.size() >= Grown.WhyCount);
+	// 17.09: the view holds the WHOLE why now - every line ExportLife's why
+	// has - and says how the chain ended. On a real world the played person's
+	// why is what the census predicts: "the thing, because of what they did",
+	// two lines, and possibly one more where a stock event sits between, since
+	// a PlayerActed has no cause of its own (0.0% at AELVOR 128). Never four.
+	VT_CHECK_MSG(Grown.WhyCount >= 2u && Grown.WhyCount <= WhyLines, "%u why lines", Grown.WhyCount);
+	VT_CHECK_MSG(Grown.WhyCount == Why.size(), "the view holds %u why lines, the life export has %zu", Grown.WhyCount,
+				 Why.size());
+	VT_CHECK_MSG(Grown.WhyEnd == 0u,
+				 "the played person's why ends at a root (0), not %u: a story that begins "
+				 "with something they did",
+				 Grown.WhyEnd);
+	std::printf("    chronicle: the why is %u line(s) deep on this world, ending at a root\n", Grown.WhyCount);
 	for (uint32 i = 0; i < Grown.WhyCount; ++i)
 	{
 		const std::string Mine(Grown.WhyText + Grown.Why[i].Begin, Grown.Why[i].Length);
@@ -557,8 +572,14 @@ VAELEN_TEST(Chronicle, AWalkIsTwoLinesAndItsOwnWhy)
 	VT_CHECK_MSG(WalkedText.find(" walked from ") != std::string::npos, "%s", WalkedText.c_str());
 
 	// The why: the walk, because of the order to walk - ExportLife's own
-	// why block, and the same lines as the view's.
-	VT_REQUIRE(V.WhyCount == WhyLines);
+	// why block, and the same lines as the view's. TWO, and not WhyLines: it
+	// read `== WhyLines` when WhyLines was two, and that was a coincidence of
+	// capacity and content. The order to walk is a PlayerActed, which has no
+	// cause of its own, so this chain is two long whatever the view can hold
+	// - and 17.09's WhyEnd says it ended at a root rather than at the edge of
+	// the view.
+	VT_REQUIRE(V.WhyCount == 2u);
+	VT_CHECK_EQ(V.WhyEnd, 0u);
 	VT_CHECK_EQ(WhyAt(V, 0), WalkedText);
 	VT_CHECK_EQ(V.Why[0].Kind, static_cast<uint32>(LineKind::Walked));
 	VT_CHECK_EQ(V.Why[1].Kind, static_cast<uint32>(LineKind::Acted));

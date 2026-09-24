@@ -148,6 +148,7 @@ namespace Vaelen::View
 			V.WhyCount = 0;
 			V.WhyUsed = 0;
 			V.WhyTruncated = 0;
+			V.WhyEnd = 0;
 			for (LineView& L : V.Why)
 			{
 				L = LineView{};
@@ -158,7 +159,9 @@ namespace Vaelen::View
 				return;
 			}
 			std::vector<History::WhyStep> Steps;
-			History::Why(W, From.Types, PersistentId{V.WhyOf}, Steps, WhyLines);
+			// The view's OWN walk, to the view's own depth, so its end says
+			// whether the lines it holds are the whole story or a cut of one.
+			V.WhyEnd = static_cast<uint32>(History::Why(W, From.Types, PersistentId{V.WhyOf}, Steps, WhyLines));
 			std::string All;
 			Player::ExportWhyWithLife(W, From.Types, Life, PersistentId{V.WhyOf}, All);
 			usize At = 0;
