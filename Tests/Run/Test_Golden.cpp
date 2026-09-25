@@ -119,24 +119,32 @@ VAELEN_TEST(Golden, V3RoundTrips)
 	}
 }
 
-VAELEN_TEST(Golden, TheLayoutDigestCannotTellTwoMapSizesApart)
+VAELEN_TEST(Golden, TheDoorTellsTwoMapSizesApartThoughTheDigestCannot)
 {
-	// Defect 5 of the twelve this phase opened on, pinned where it will be
-	// fixed rather than left in a document. full-16 and full-32 are worlds
-	// whose maps differ by a factor of four in area, and the only value
-	// LoadSnapshot compares is equal for both: WorldMap::LayoutDigest folds
-	// layer name hashes and element sizes, and no extents.
+	// Defect 5 of the twelve Phase 16 opened on: full-16 and full-32 are
+	// worlds whose maps differ by a factor of four in area, and the layout
+	// digest LoadSnapshot compares is equal for both - WorldMap::LayoutDigest
+	// folds layer name hashes and element sizes, and no extents. THAT IS
+	// STILL TRUE, and asserted below as a fact: folding extents would change
+	// every image's bytes (a v4 bump, the owner's question).
 	//
-	// WHEN 16.08 FIXES THIS, THIS TEST MUST FAIL and be rewritten to say the
-	// opposite. That is the point of writing it down now: the defect is
-	// measured, in the suite, and cannot be quietly forgotten.
+	// 18.09 closed the door the defect left open without touching the digest:
+	// the map's reader refuses an image of another shape into a begun map, so
+	// the larger world's image offered to the smaller answers WorldShapeDiffers
+	// and leaves it as it was.
 	Aelvor Small(OptionsOf(Corpus[1]));
 	Aelvor Large(OptionsOf(Corpus[2]));
 	VT_REQUIRE(Small.Begin());
 	VT_REQUIRE(Large.Begin());
 	const Hash64 A = HashCombine(Small.Instance().Types().LayoutDigest(), Small.Instance().Map().LayoutDigest());
 	const Hash64 B = HashCombine(Large.Instance().Types().LayoutDigest(), Large.Instance().Map().LayoutDigest());
-	VT_CHECK_MSG(A == B, "TODAY they are equal, and that is the defect");
+	VT_CHECK_MSG(A == B, "the two layout digests are equal - the digest cannot tell the sizes apart");
 	VT_CHECK_MSG(Small.Instance().Map().Config().Width != Large.Instance().Map().Config().Width,
 				 "though the maps plainly differ");
+	std::vector<uint8> Image;
+	VT_REQUIRE(SaveSnapshot(Large.Instance(), Image) == SnapshotResult::Ok);
+	const Hash64 Before = ComputeStateDigest(Small.Instance());
+	const SnapshotResult Got = LoadSnapshot(Small.Instance(), Image.data(), Image.size());
+	VT_CHECK_MSG(Got == SnapshotResult::WorldShapeDiffers, "the door answered %s", SnapshotResultToString(Got));
+	VT_CHECK_DIGEST_EQ(ComputeStateDigest(Small.Instance()), Before);
 }

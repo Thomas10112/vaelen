@@ -509,9 +509,22 @@ namespace Vaelen::Population
 		}
 		// SimLod::Aggregate is the day (01.03's Period[] is {1, 4, 24, 720, 8640}).
 		const uint64 Day = Context.Tick / 24u;
-		const uint32 Take =
-			ShareOfDay(static_cast<uint32>(Day % Rules.DaysPerYear), Rules.DaysPerYear, Rules.FoodPerYear);
-		if (Take == 0)
+		const uint32 DayOfYear = static_cast<uint32>(Day % Rules.DaysPerYear);
+		const uint32 Take = ShareOfDay(DayOfYear, Rules.DaysPerYear, Rules.FoodPerYear);
+		// 18.08: today's chill, from the region's year - the same basis the
+		// yearly winter shapes the year from, so the year's days sum to it.
+		uint32 Chill = 0;
+		if (HasCold)
+		{
+			const WorldGen::YearBasis Basis =
+				WorldGen::RegionYearBasis(W, Setup, Rules.Region, Context.Tick / History::TicksPerYear, Climate);
+			if (Basis.Valid)
+			{
+				Chill = WorldGen::ChillOfDay(Basis.Mean, Basis.Latitude, Climate, DayOfYear, Rules.DaysPerYear,
+											 ExposurePerMille, DegreeDaysPerChill);
+			}
+		}
+		if (Take == 0 && Chill == 0)
 		{
 			return;
 		}
@@ -525,11 +538,18 @@ namespace Vaelen::Population
 						return;
 					}
 					PersonNeeds* N = W.Components().GetPool(Needs.Needs).TryGet(H);
-					if (N == nullptr)
+					if (N != nullptr)
 					{
-						return;
+						N->Food = static_cast<uint8>(N->Food > Take ? N->Food - Take : 0u);
 					}
-					N->Food = static_cast<uint8>(N->Food > Take ? N->Food - Take : 0u);
+					if (Chill > 0)
+					{
+						PersonWarmth* C = W.Components().GetPool(Warmth.Warmth).TryGet(H);
+						if (C != nullptr)
+						{
+							C->Chill = static_cast<uint8>(std::min<uint32>(255u, uint32{C->Chill} + Chill));
+						}
+					}
 				});
 	}
 } // namespace Vaelen::Population

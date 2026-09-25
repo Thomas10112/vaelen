@@ -141,6 +141,65 @@ namespace Vaelen::WorldGen
 		}
 	} // namespace
 
+	YearBasis RegionYearBasis(const World& W, const WorldSetup& Setup, uint32 Region, uint64 Year,
+							  const ClimateRules& Rules)
+	{
+		YearBasis Out;
+		Out.Mean = Fix64::Zero();
+		Out.Latitude = Fix64::Zero();
+		if (Region == 0u || !W.Map().IsReady())
+		{
+			return Out;
+		}
+		std::vector<uint32> Centroids;
+		CentroidsByRegion(W, Setup, Centroids);
+		const WorldGrid& Grid = W.Map().Grid();
+		if (Region >= Centroids.size() || Centroids[Region] >= Grid.Width * Grid.Height)
+		{
+			return Out;
+		}
+		const uint32 Tile = Centroids[Region];
+		const TileLayer<int64>& Mean = W.Map().GetLayer(Setup.Layers.Temperature);
+		Out.Mean = Fix64::FromRaw(Mean[Tile]) + YearVariation(W.Config().Seed, Year, Region, Rules.YearAmplitude);
+		Out.Latitude = LatitudeOfRow(Grid, Tile / Grid.Width);
+		Out.DaysPerYear = W.Clock().GetRules().DaysPerYear();
+		Out.Valid = true;
+		return Out;
+	}
+
+	Fix64 ColdSumThrough(Fix64 Mean, Fix64 Latitude, const ClimateRules& Rules, uint32 LastDay,
+						 uint32 DaysPerYear) noexcept
+	{
+		Fix64 Sum = Fix64::Zero();
+		for (uint32 Day = 0; Day <= LastDay && Day < DaysPerYear; ++Day)
+		{
+			const Fix64 T = TemperatureOn(Mean, Latitude, Day, DaysPerYear);
+			if (T < Rules.ColdLine)
+			{
+				Sum += Rules.ColdLine - T;
+			}
+		}
+		return Sum;
+	}
+
+	uint32 ChillOfDay(Fix64 Mean, Fix64 Latitude, const ClimateRules& Rules, uint32 DayOfYear, uint32 DaysPerYear,
+					  uint32 ExposurePerMille, uint32 DegreeDaysPerChill) noexcept
+	{
+		if (DaysPerYear == 0u || DegreeDaysPerChill == 0u)
+		{
+			return 0u;
+		}
+		const uint32 Day = DayOfYear % DaysPerYear;
+		auto Through = [&](uint32 Last) -> uint64
+		{
+			const int32 Sum = ColdSumThrough(Mean, Latitude, Rules, Last, DaysPerYear).FloorToInt();
+			return Sum > 0 ? static_cast<uint64>(Sum) * ExposurePerMille / 1000u / DegreeDaysPerChill : 0u;
+		};
+		const uint64 Now = Through(Day);
+		const uint64 Before = Day == 0u ? 0u : Through(Day - 1u);
+		return static_cast<uint32>(Now - Before);
+	}
+
 	YearShape RegionYear(const World& W, const WorldSetup& Setup, uint32 Region, uint64 Year, const ClimateRules& Rules)
 	{
 		YearShape Empty;

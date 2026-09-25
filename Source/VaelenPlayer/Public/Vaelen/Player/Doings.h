@@ -34,6 +34,7 @@
 #include "Vaelen/Player/PlayerApi.h"
 #include "Vaelen/Population/Families.h"
 #include "Vaelen/Population/Needs.h"
+#include "Vaelen/Population/Warmth.h"
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/Regions.h"
@@ -56,6 +57,8 @@ namespace Vaelen::Player
 		uint32 RestGain = 40;										 ///< rest a rest restores (of 255)
 		uint32 GiveMost = 20;										 ///< units one giving can move
 		uint32 TakeMost = 5;										 ///< units one taking can move
+		uint32 WorkChill = 6; ///< 18.08: chill a day of work outside costs, on a day below the cold line
+		uint32 RestWarm = 20; ///< 18.08: chill a rest takes off
 	};
 
 	/// The seven verbs, each one a call into the module that owns that change.
@@ -74,6 +77,16 @@ namespace Vaelen::Player
 		Refusal Allows(const World& W, uint32 Person, const PlayerCommand& Command) const override;
 		void Do(World& W, uint32 Person, const PlayerCommand& Command, SimTick Now, PersistentId Cause) override;
 
+		/// Optional (18.08): the body keeps warm too. With the warmth a climate
+		/// world declared, a day of work on a day below the cold line at the
+		/// person's region chills them by WorkChill, and a rest warms them by
+		/// RestWarm. Never told, the verbs are 10.05's.
+		void ObserveWarmth(Population::WarmthTypes InWarmth, const WorldGen::ClimateRules& InClimate) noexcept
+		{
+			Warmth = InWarmth;
+			Climate = InClimate;
+			HasWarmth = true;
+		}
 		/// What was actually done, for the tests and for 10.07: counted per kind.
 		const uint32* Done() const noexcept { return Tally; }
 		uint32 DoneOf(Intent Kind) const noexcept
@@ -96,6 +109,9 @@ namespace Vaelen::Player
 		Population::NeedTypes Needs;
 		Economy::EconomyTypes Economy;
 		DoingRules Rules;
+		Population::WarmthTypes Warmth;
+		WorldGen::ClimateRules Climate;
+		bool HasWarmth = false;
 		mutable WorldGen::RegionGraphCache Ways; ///< who a region's neighbours are (02.06)
 		uint32 Tally[IntentCount] = {};
 	};

@@ -128,6 +128,35 @@ namespace Vaelen::WorldGen
 	/// view reads today's temperature there.
 	VAELEN_SIM_API uint32 RegionCentroidTile(const World& W, const WorldSetup& Setup, uint32 Region);
 
+	/// What RegionYear shapes a region's year from: the centroid's mean with
+	/// the year's variation, its latitude, and the world's calendar (18.08).
+	/// Valid is false exactly where RegionYear answers the all-zero shape.
+	struct YearBasis
+	{
+		Fix64 Mean;
+		Fix64 Latitude;
+		uint32 DaysPerYear = DaysOfAYear;
+		bool Valid = false;
+	};
+	VAELEN_SIM_API YearBasis RegionYearBasis(const World& W, const WorldSetup& Setup, uint32 Region, uint64 Year,
+											 const ClimateRules& Rules);
+
+	/// The cold sum of the days [0, LastDay] of a year, summed in the order
+	/// ShapeYear sums it, so the last day's figure IS the year's ColdSum to
+	/// the raw value (18.08).
+	VAELEN_SIM_API Fix64 ColdSumThrough(Fix64 Mean, Fix64 Latitude, const ClimateRules& Rules, uint32 LastDay,
+										uint32 DaysPerYear = DaysOfAYear) noexcept;
+
+	/// The chill a day puts on a person living at the day (18.08): the
+	/// difference of two exact figures, floor(floor(cold sum through today) x
+	/// Exposure / 1000 / DegreeDaysPerChill) minus the same through yesterday,
+	/// so a year of days sums to what the yearly winter (18.06) puts on a
+	/// person of the same region at the same exposure, to the unit, and a day
+	/// that is not a frost day takes nothing. The schedule of ShareOfDay
+	/// (Needs.h), for a cold that does not fall evenly.
+	VAELEN_SIM_API uint32 ChillOfDay(Fix64 Mean, Fix64 Latitude, const ClimateRules& Rules, uint32 DayOfYear,
+									 uint32 DaysPerYear, uint32 ExposurePerMille, uint32 DegreeDaysPerChill) noexcept;
+
 	/// What a winter did to a region (18.06): the payload of Winter, the one
 	/// just lain, and WinterForeseen, the one coming. DECLARED HERE, in the
 	/// layer that owns the climate, for the reason Sim declares

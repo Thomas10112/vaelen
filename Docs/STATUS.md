@@ -32,7 +32,34 @@ PHASE       : 17 — DEBUG TOOLS, CLOSED 2026-09-24: all eleven clauses of its g
                yet: it is written here and parsed against the shim before that
                sitting. Section 22 has the clause-by-clause read.
                15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
-TASK        : 18.07 — DONE 2026-09-25. The harvest has a growing season; the world is alive.
+TASK        : 18.09 — DONE 2026-09-25. The tenth door is closed.
+
+              WorldMap::Serialize refuses an image of another shape into a begun map,
+              without failing the archive: LoadSnapshot answers WorldShapeDiffers and
+              puts the target back. No byte of any image and no frozen literal moved.
+              Run.RefusalsAreTheCachesSafety.TheTenthDoorIsClosed (a begun 16-tile
+              world refuses the 32-tile image by name and is unchanged; an unset one
+              still takes it) and Golden.TheDoorTellsTwoMapSizesApartThoughTheDigest
+              Cannot (the layout digests still equal, as a fact). ADR-0150 amended: all
+              ten doors are shut. Failed on purpose twice (the map compared with itself
+              answers Ok; the archive failed answers Truncated).
+
+TASK (18.08): 18.08 — DONE 2026-09-25. The day: the chill a day at a time.
+
+              Sim/Climate.h: ColdSumThrough and ChillOfDay - the exact-sum schedule of
+              the colony's food, for a cold that falls on frost days only; a year of
+              days sums to the yearly winter's chill to the unit. ColonyDaySystem::
+              ObserveCold chills the colony by the day; Doings::ObserveWarmth - a cold
+              day's work chills by 6, a rest warms by 20 (wired in Aelvor with Play and
+              Climate). Population.ColdDay: five places at four exposures exact; region
+              9 at 128/300, 301 persons each took exactly 34 in a year of days, and the
+              colony not told the cold has the same need bytes and log. Player.Doings:
+              0 -> 6 -> 0. Failed on purpose three times (per-day floors lose 140 of
+              275; a chill every day; work cold on a mild day). Deviation: the played
+              person is chilled yearly, not by the day - nothing below Player knows who
+              is played; written down for 18.10.
+
+TASK (18.07): 18.07 — DONE 2026-09-25. The harvest has a growing season; the world is alive.
 
               ProductionSystem::ObserveClimate: a region reaps min(1000, GrowingDays x
               1000 / 180) of its harvest, from the same RegionYear the winter reads, in

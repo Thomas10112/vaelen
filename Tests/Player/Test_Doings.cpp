@@ -16,6 +16,8 @@
 #include "Vaelen/Population/Lod.h"
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Population/Traits.h"
+#include "Vaelen/Population/Warmth.h"
+#include "Vaelen/Sim/Climate.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/Regions.h"
 #include "Vaelen/Sim/Snapshot.h"
@@ -49,7 +51,8 @@ namespace
 	struct Run
 	{
 		explicit Run(uint64 Seed, BondageRules InBonds = BondageRules{}, HourRules InHours = HourRules{},
-					 OrderRules InOrders = OrderRules{}, DoingRules InDoings = DoingRules{})
+					 OrderRules InOrders = OrderRules{}, DoingRules InDoings = DoingRules{}, bool WithWarmth = false,
+					 ClimateRules InClimate = ClimateRules{})
 			: Instance(Config(Seed)), Ages(Instance, PreHistoryRules{})
 		{
 			Persons = PersonTypes::Declare(Instance, Ages);
@@ -66,6 +69,12 @@ namespace
 			Queue = OrderTypes::Declare(Instance);
 			Needs = NeedTypes::Declare(Instance);
 			Goods = EconomyTypes::Declare(Instance);
+			// 18.08: the warmth, declared last and only when asked, so every
+			// other case of this file is the world it was.
+			if (WithWarmth)
+			{
+				Warmth = WarmthTypes::Declare(Instance);
+			}
 			Rules_ = InOrders;
 			LifeRules Life;
 			Life.SpouseRequired = 1;
@@ -87,6 +96,13 @@ namespace
 			// seven verbs it asks, each of which goes through somebody else.
 			Acts_ = std::make_unique<PlayerOrderSystem>(Instance, Ages.Types(), Persons, One, Clock, Queue, InOrders);
 			Hands = std::make_unique<Doings>(Ages.Types(), Persons, Families, Needs, Goods, InDoings);
+			if (WithWarmth)
+			{
+				// The line at frozen through and no yearly recovery: what the
+				// verbs do to the chill stays where the case can read it.
+				Fed->ObserveWinter(Warmth, WarmthRules{255u, 40u, 0u});
+				Hands->ObserveWarmth(Warmth, InClimate);
+			}
 			Houses->RunAfter("Lod");
 			Orgs->RunAfter("Lod");
 			Orgs->RunAfter("Traits");
@@ -231,6 +247,23 @@ namespace
 			return Best;
 		}
 		DoingStats Did() const { return MeasureDoings(Instance); }
+		/// The chill a person carries; 256 when they carry no warmth.
+		uint32 ChillOf(uint32 Person) const
+		{
+			uint32 Out = 256u;
+			Instance.Components()
+				.GetPool(Persons.Person)
+				.ForEach(
+					[&](EntityHandle H, const PersonInfo& P)
+					{
+						if (P.Index == Person && Warmth.Warmth.IsValid())
+						{
+							const PersonWarmth* C = Instance.Components().GetPool(Warmth.Warmth).TryGet(H);
+							Out = C != nullptr ? C->Chill : 256u;
+						}
+					});
+			return Out;
+		}
 		const PlayerHours* Today() const { return HoursOf(Instance, Clock); }
 		uint32 Left() const { return HoursLeft(Instance, Clock); }
 		uint32 Spend(uint32 Hours) { return SpendHours(Instance, Clock, Hours); }
@@ -270,6 +303,7 @@ namespace
 		OrderTypes Queue;
 		NeedTypes Needs;
 		EconomyTypes Goods;
+		WarmthTypes Warmth; ///< 18.08, only when asked
 		OrderRules Rules_;
 		DoingRules Doings_;
 		std::unique_ptr<LifeSystem> Lives;
@@ -596,4 +630,50 @@ VAELEN_TEST(Doings, DeterministicAndReplayable)
 	VT_CHECK_MSG(ComputeStateDigest(Again.Instance) == StateA, "and to the same world, economy and all");
 	VT_CHECK_EQ(Again.Did().Acts, A.Acts);
 	VT_CHECK_EQ(Again.Acts().Bad, 0u);
+}
+
+VAELEN_TEST(Doings, AColdDaysWorkChillsAndARestWarms)
+{
+	// 18.08. A day of work on a day below the cold line at the person's region
+	// chills them by WorkChill; a rest warms them by RestWarm, floored at warm.
+	// The line is set so every day is cold (+100) or none is (-100), so the
+	// case is about the verbs and not about which day of which year it is.
+	ClimateRules Always;
+	Always.ColdLine = Fix64::FromInt(100);
+	ClimateRules Never;
+	Never.ColdLine = Fix64::FromInt(-100);
+	const DoingRules R;
+	Run W(AelvorSeed, BondageRules{}, HourRules{}, OrderRules{}, DoingRules{}, true, Always);
+	const uint32 Who = Living(W);
+	VT_REQUIRE(Who != 0);
+	W.GiveHands();
+	const uint32 C0 = W.ChillOf(Who);
+	VT_REQUIRE(C0 <= 255u - R.WorkChill); // carries warmth, with room for a day's chill
+	VT_CHECK(W.Mean(Intent::Work) == Refusal::None);
+	W.Day();
+	VT_CHECK_EQ(W.Did().Worked, 1u);
+	VT_CHECK_EQ(W.ChillOf(Who), C0 + R.WorkChill);
+	VT_CHECK(W.Mean(Intent::Rest) == Refusal::None);
+	W.Day();
+	VT_CHECK_EQ(W.ChillOf(Who), C0 + R.WorkChill > R.RestWarm ? C0 + R.WorkChill - R.RestWarm : 0u);
+	// CONTROL: the same work on a world where no day is cold chills nobody,
+	// and the rest still floors at warm.
+	Run N(AelvorSeed, BondageRules{}, HourRules{}, OrderRules{}, DoingRules{}, true, Never);
+	const uint32 Other = Living(N);
+	VT_REQUIRE(Other == Who); // the same world, the same person
+	N.GiveHands();
+	const uint32 N0 = N.ChillOf(Other);
+	VT_CHECK(N.Mean(Intent::Work) == Refusal::None);
+	N.Day();
+	VT_CHECK_EQ(N.ChillOf(Other), N0);
+	VT_CHECK(N.Mean(Intent::Rest) == Refusal::None);
+	N.Day();
+	VT_CHECK_EQ(N.ChillOf(Other), N0 > R.RestWarm ? N0 - R.RestWarm : 0u);
+	// And a world not told the warmth has none to move.
+	Run P(AelvorSeed);
+	const uint32 Plain = Living(P);
+	VT_REQUIRE(Plain != 0);
+	VT_CHECK_EQ(P.ChillOf(Plain), 256u);
+	VAELEN_LOG_INFO(LogDoings, "a cold day's work: chill %u -> %u -> %u after a rest; on a mild world %u stays %u", C0,
+					C0 + R.WorkChill, C0 + R.WorkChill > R.RestWarm ? C0 + R.WorkChill - R.RestWarm : 0u, N0, N0);
 }

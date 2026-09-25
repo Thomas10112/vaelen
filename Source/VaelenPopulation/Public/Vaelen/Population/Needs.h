@@ -244,6 +244,24 @@ namespace Vaelen::Population
 		const char* GetName() const noexcept override { return "ColonyDay"; }
 		SimLod GetLod() const noexcept override { return SimLod::Aggregate; }
 		std::vector<std::string_view> GetDependencies() const override { return {}; }
+		/// Optional (18.08): the colony is chilled a day at a time too, by
+		/// ChillOfDay over its region's year - the exact-sum schedule of the
+		/// food, for a cold that falls on the frost days only. The yearly
+		/// winter leaves it alone (WinterRules::DailyRegion); the yearly
+		/// judgement still judges and spends it. The exposure is a rule: the
+		/// fuel the winter takes is the year's, and a colony's day does not
+		/// know it.
+		void ObserveCold(const WorldGen::WorldSetup& InSetup, WarmthTypes InWarmth,
+						 const WorldGen::ClimateRules& InClimate, uint32 InExposurePerMille = 1000u,
+						 uint32 InDegreeDaysPerChill = 20u) noexcept
+		{
+			Setup = InSetup;
+			Warmth = InWarmth;
+			Climate = InClimate;
+			ExposurePerMille = InExposurePerMille;
+			DegreeDaysPerChill = InDegreeDaysPerChill;
+			HasCold = true;
+		}
 		void Tick(TickContext& Context) override;
 
 	private:
@@ -251,6 +269,12 @@ namespace Vaelen::Population
 		PersonTypes Persons;
 		NeedTypes Needs;
 		ColonyDayRules Rules;
+		WorldGen::WorldSetup Setup;
+		WarmthTypes Warmth;
+		WorldGen::ClimateRules Climate;
+		uint32 ExposurePerMille = 1000u;
+		uint32 DegreeDaysPerChill = 20u;
+		bool HasCold = false;
 	};
 
 	/// What a day of the year takes, by the schedule above: the steps of a year
