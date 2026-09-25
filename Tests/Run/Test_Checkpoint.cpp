@@ -1206,9 +1206,22 @@ VAELEN_TEST(Checkpoint, ALookTooFarIsRefusedOnRestoreRatherThanDroppedInSilence)
 	// missing - and the looks are what decided which regions were detailed,
 	// so the restored world would have gone on to detail a different map and
 	// no digest in the save would have said why.
+	// 64 AT 20+10, NOT 32 AT 10+10, and the difference is 18.10. This case
+	// needs a played person and a tape; the world is scaffolding. It used the
+	// smallest world that offered somebody, and when Options::Climate became
+	// true by default that world stopped offering anybody at all - the
+	// TakeUp below went to zero and the case died on its own anti-vacuity
+	// check, which is the check doing its job. A world of 64 over thirty
+	// years still offers somebody with the climate on: it is the same world
+	// Tests/Run/SaveMatrix.h pins at person 11, measured after the flip.
+	//
+	// The climate is left at its default rather than switched off. A host
+	// that looks too far will be running the world this build actually
+	// generates, and a round-trip case that quietly pins the world before
+	// Phase 18 would stop being about that host.
 	Options O;
-	O.Size = 32u;
-	O.PreHistory = 10u;
+	O.Size = 64u;
+	O.PreHistory = 20u;
 	O.Years = 10u;
 	O.Play = true;
 	O.Stream = true;
