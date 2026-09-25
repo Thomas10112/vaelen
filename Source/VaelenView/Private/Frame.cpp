@@ -5,6 +5,7 @@
 #include "Vaelen/View/Frame.h"
 #include "Vaelen/View/Take.h"
 
+#include "Vaelen/Sim/Climate.h"
 #include "Vaelen/Sim/World.h"
 
 #include <algorithm>
@@ -116,6 +117,19 @@ namespace Vaelen::View
 					});
 		}
 
+		// 18.04: the season, and every region's year, only with a climate -
+		// without one both stay the zeros the frame had before Phase 18, and
+		// the frame digest with them.
+		std::vector<WorldGen::YearShape> Years;
+		uint32 DayOfYear = 0;
+		if (From.HasClimate)
+		{
+			const CalendarDate Date = W.Clock().Date();
+			Out.Season = 1u + Date.Season;
+			DayOfYear = Date.DayOfYear;
+			WorldGen::ShapeRegionYears(W, From.Types.World, Out.Year, From.Climate, Years);
+		}
+
 		Out.Regions.reserve(Ground.size());
 		for (const std::pair<uint32, EntityHandle>& G : Ground)
 		{
@@ -147,6 +161,16 @@ namespace Vaelen::View
 				V.Names = N != nullptr ? N->Count : 0u;
 			}
 			Out.People += V.People;
+			if (From.HasClimate && R->Index < Years.size())
+			{
+				const WorldGen::YearShape& Y = Years[R->Index];
+				const Fix64 Now =
+					WorldGen::TileTemperatureOn(W.Map(), From.Types.World.Layers, R->CentroidTile, DayOfYear);
+				const uint32 Outlook =
+					From.Climate.GrowFullDays == 0u ? 100u : (Y.GrowingDays * 100u / From.Climate.GrowFullDays);
+				V.Climate = PackRegionClimate(Now.FloorToInt(), Y.Coldest.FloorToInt(), Y.Warmest.FloorToInt(), Outlook,
+											  WorldGen::WinterSeverity(Y, From.Climate) >= 2u);
+			}
 			Out.Regions.push_back(V);
 		}
 	}

@@ -32,7 +32,29 @@ PHASE       : 17 — DEBUG TOOLS, CLOSED 2026-09-24: all eleven clauses of its g
                yet: it is written here and parsed against the shim before that
                sitting. Section 22 has the clause-by-clause read.
                15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
-TASK        : 18.03 — DONE 2026-09-24. The temperature is a function; the year is a shape.
+TASK        : 18.04 — DONE 2026-09-25. The page says the weather.
+
+              The leaves grew inside their reserved words: WorldView::Season,
+              RegionView::Climate (a packed word: today's degrees, coldest, warmest,
+              outlook, a hard-winter bit), LifeView::Season/Degrees/Chill/Winter; a new
+              leaf Vaelen/View/Climate.h (four bytes a tile, once a day); RowKind::Weather
+              after Digest; Page::Signed and Tenths. The row, only with a climate:
+              "winter  day 5 of 90  -12.3 deg here  chill 40  coldest -21  warmest 14
+              outlook 54%  a hard winter lies on the land"; "coming" before winter,
+              "deg here" only where somebody stands; the body row gains chill. Kernel:
+              WinterSeverity and RegionCentroidTile. Atlas --climate tells every take,
+              prints LogVaelenClimate and writes a climate JSON object; Atlas.Climate128
+              and ClimateFrozen128 pin climate 59615fa1f5d24bd1 and the ground; the
+              checker holds a climate object with six new self-test cases. NO FROZEN
+              DIGEST MOVED: every pin held (Test_Panel's two pages, PanelFrozen,
+              Frozen128, Test_Aelvor, ViewGate), and the without-a-climate control holds
+              frame, life and page equal under VT_CHECK_DIGEST_EQ. Failed on purpose: the
+              row written without a climate (seven instruments in three binaries red at
+              once: five Panel cases, PanelFrozen, the View.Climate control), the sign
+              dropped from Tenths (exactly the -12.3 and -0.5 checks). The census now reads the 0x tokens of the CMake
+              drivers it had skipped.
+
+TASK (18.03): 18.03 — DONE 2026-09-24. The temperature is a function; the year is a shape.
 
               Vaelen/Sim/Climate.h: SeasonalAmplitude, DayOffset (a triangle wave equal
               to SeasonalOffset at the four midpoints, exact on the raw), TemperatureOn,

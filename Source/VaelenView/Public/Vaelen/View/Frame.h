@@ -46,7 +46,14 @@ namespace Vaelen::View
 		uint32 Names = 0;		 ///< names the place carries (12.05)
 		uint32 Detailed = 0;	 ///< 1 when the world simulates it person by person
 		uint32 Grain_ = 0;		 ///< View::Grain - how finely to draw it, filled by 13.03 and 0 (Near) otherwise
-		uint32 Reserved = 0;	 ///< keeps the count of 32-bit fields even, which is what removes the padding
+		/// 18.04: the region's climate today, PACKED into the word that was
+		/// Reserved, so the struct's size and the frame digest of a world
+		/// without a climate do not move: 0 when the sources carry no climate.
+		/// Bits 0-7 today's temperature at the centroid in whole degrees
+		/// (int8), 8-15 the year's coldest day, 16-23 its warmest, 24-30 the
+		/// harvest outlook in percent (0..100), bit 31 a hard winter this
+		/// year. RegionClimateOf unpacks it.
+		uint32 Climate = 0;
 	};
 	// NOT sizeof == 56 on its own, which is what this said first and was wrong.
 	// The eleven 32-bit fields came to 52 bytes and the compiler rounded the
@@ -59,6 +66,38 @@ namespace Vaelen::View
 	static_assert(sizeof(RegionView) == sizeof(int64) + 12 * sizeof(uint32),
 				  "RegionView must have no padding: MeasureView hashes it and Diff memcmps it");
 
+	/// 18.04: a region's climate, unpacked from RegionView::Climate.
+	struct RegionClimate
+	{
+		int32 Now = 0;		///< whole degrees at the centroid today
+		int32 Coldest = 0;	///< the year's coldest day there
+		int32 Warmest = 0;	///< and its warmest
+		uint32 Outlook = 0; ///< the harvest outlook, percent of a full one
+		uint32 Hard = 0;	///< 1 when this year's winter is hard (severity 2 or more)
+	};
+	inline int32 ClampDegrees(int32 Degrees)
+	{
+		return Degrees < -128 ? -128 : (Degrees > 127 ? 127 : Degrees);
+	}
+	inline uint32 PackRegionClimate(int32 Now, int32 Coldest, int32 Warmest, uint32 Outlook, bool Hard)
+	{
+		const uint32 Percent = Outlook > 100u ? 100u : Outlook;
+		return (static_cast<uint32>(static_cast<uint8>(ClampDegrees(Now)))) |
+			   (static_cast<uint32>(static_cast<uint8>(ClampDegrees(Coldest))) << 8) |
+			   (static_cast<uint32>(static_cast<uint8>(ClampDegrees(Warmest))) << 16) | (Percent << 24) |
+			   (Hard ? 0x80000000u : 0u);
+	}
+	inline RegionClimate RegionClimateOf(const RegionView& R)
+	{
+		RegionClimate C;
+		C.Now = static_cast<int8>(static_cast<uint8>(R.Climate & 0xffu));
+		C.Coldest = static_cast<int8>(static_cast<uint8>((R.Climate >> 8) & 0xffu));
+		C.Warmest = static_cast<int8>(static_cast<uint8>((R.Climate >> 16) & 0xffu));
+		C.Outlook = (R.Climate >> 24) & 0x7fu;
+		C.Hard = (R.Climate & 0x80000000u) != 0u ? 1u : 0u;
+		return C;
+	}
+
 	/// The world as a renderer needs it, for one frame.
 	struct WorldView
 	{
@@ -68,7 +107,7 @@ namespace Vaelen::View
 		uint32 Height = 0;				 //
 		uint32 People = 0;				 ///< alive in the whole world
 		uint32 Played = 0;				 ///< person index of whoever is being played, 0 for nobody
-		uint32 Reserved = 0;			 //
+		uint32 Season = 0;				 ///< 18.04: 0 without a climate, else 1 spring, 2 summer, 3 autumn, 4 winter
 		std::vector<RegionView> Regions; ///< in index order, always
 	};
 

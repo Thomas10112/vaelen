@@ -74,7 +74,7 @@ ROOTS = [
 
 ALLOWED = set(
     ["Vaelen/View/%s.h" % n for n in
-     ("Frame", "Land", "Net", "Folk", "Delta", "Eye", "Life", "Chronicle", "Panel", "ViewApi")]
+     ("Frame", "Land", "Net", "Folk", "Delta", "Eye", "Life", "Chronicle", "Panel", "Climate", "ViewApi")]
     + ["Vaelen/Player/%s.h" % n for n in ("Intent", "Stream", "PlayerApi")]
 )
 

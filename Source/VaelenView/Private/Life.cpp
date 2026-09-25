@@ -14,6 +14,7 @@
 #include "Vaelen/Population/Needs.h"
 #include "Vaelen/Population/PersonHistory.h"
 #include "Vaelen/Population/Persons.h"
+#include "Vaelen/Sim/Climate.h"
 #include "Vaelen/Sim/HistoryText.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/Regions.h"
@@ -70,6 +71,12 @@ namespace Vaelen::View
 		{
 			Out.Cost[k] = Rules.HoursOf[k];
 		}
+		// 18.04: the season is the world's, played or not; the degrees are
+		// where the played person stands, below.
+		if (From.HasClimate)
+		{
+			Out.Season = 1u + W.Clock().Date().Season;
+		}
 		if (!From.HasPlayer || !From.HasLife)
 		{
 			return;
@@ -103,6 +110,17 @@ namespace Vaelen::View
 				Out.Health = N->Health;
 				Out.Rest = N->Rest;
 				Out.Hungry = N->Hungry;
+			}
+			// 18.04: today's temperature at the region's centroid, in tenths,
+			// and this year's winter there. Chill stays 0 until 18.05 gives a
+			// person one.
+			if (From.HasClimate && P->Region != 0)
+			{
+				const uint32 Centroid = WorldGen::RegionCentroidTile(W, From.Types.World, P->Region);
+				const Fix64 Now = WorldGen::TileTemperatureOn(W.Map(), From.Types.World.Layers, Centroid, Out.Day);
+				Out.Degrees = (Now * 10).FloorToInt();
+				Out.Winter = WorldGen::WinterSeverity(
+					WorldGen::RegionYear(W, From.Types.World, P->Region, Out.Year, From.Climate), From.Climate);
 			}
 		}
 

@@ -83,7 +83,7 @@ namespace Vaelen::View
 		uint32 Left = 0;  ///< what remains to mean anything with
 		uint32 DaysLived = 0;
 		uint32 Missed = 0;
-		uint32 Reserved0 = 0;
+		uint32 Season = 0; ///< 18.04: 0 without a climate, else 1 spring .. 4 winter
 
 		// The body, 0..255.
 		uint8 Food = 0;
@@ -97,8 +97,8 @@ namespace Vaelen::View
 		uint32 Refused = 0;
 		uint32 Dropped = 0;
 		uint32 LastRefusal = 0; ///< Player::Refusal of the last refusal
-		uint32 Reserved1 = 0;
-		uint32 Reserved2 = 0;
+		int32 Degrees = 0; ///< 18.04: tenths of a degree at the played region's centroid today; 0 without a climate
+		uint32 Chill = 0;  ///< 18.04: the played person's chill, 0 = warm (filled by 18.05; 0 until then)
 		Player::PlayerCommand Waiting[MostWaiting]; ///< the first Held of them, oldest first
 
 		// The regard (10.06).
@@ -116,7 +116,7 @@ namespace Vaelen::View
 		uint32 NearCount = 0;
 		uint32 CompanyCount = 0; ///< listed below
 		uint32 CompanyThere = 0; ///< alive in the region besides the played person, listed or not
-		uint32 Reserved3 = 0;
+		uint32 Winter = 0;		 ///< 18.04: this year's winter severity at the played region, 0..3; 0 without a climate
 		CompanyView Company[MostCompany];
 	};
 	static_assert(sizeof(LifeView) ==

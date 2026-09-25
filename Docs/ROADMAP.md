@@ -6811,3 +6811,93 @@ gcc release; verify_fast clean - after the census REFUSED the new file: the
 "CLIMATE" salt of `YearVariation` is a sixteen-hex literal in a file the table
 did not name, exactly the refusal 18.01 was built to make, and
 `Climate.cpp` is named HASH now.
+
+### 18.04 AS BUILT, 2026-09-25
+
+THE PAGE SAYS THE WEATHER, and it says nothing of it without a climate. The
+leaves grew inside the words they already had, so no frozen digest moved:
+`WorldView::Reserved` is `Season` (0 without a climate, 1 spring .. 4
+winter), `RegionView::Reserved` is `Climate`, a packed word - today's degrees
+at the centroid, the year's coldest and warmest, the harvest outlook in
+percent, a hard-winter bit - with `RegionClimateOf` / `PackRegionClimate`
+beside it and the padding `static_assert` untouched; `LifeView`'s four
+reserved words are `Season`, `Degrees` (tenths of a degree where the played
+person stands), `Chill` (0 until 18.05) and `Winter` (this year's severity
+there). `Vaelen/View/Climate.h` is a NEW leaf: `TileClimate` four bytes a tile
+(today, mid-winter, mid-summer, two flags), `ClimateView` taken once a day,
+`MeasureClimateView`; it passes the leaf probe and the UI fence.
+`RowKind::Weather` is appended AFTER `Digest`, so `Digest` keeps its ordinal;
+`Page::Signed` and `Page::Tenths` exist because `Number()` takes a `uint64`
+and a temperature is not one. The row, after the date and only when
+`Life.Season != 0`:
+
+```
+winter  day 5 of 90  -12.3 deg here  chill 40  coldest -21  warmest 14  outlook 54%  a hard winter lies on the land
+```
+
+- "deg here" and the region's figures only where somebody stands; a page
+  with nobody played says `spring  day 1 of 90` and no more;
+- "a hard winter is coming" in the three seasons before it and "lies on the
+  land" during it - the plan's example said "coming" of winter's fifth day,
+  and the row disagrees with the plan on purpose;
+- the body row gains `  chill N` under the same guard.
+
+The kernel gained two readers the view needed, in `Sim/Climate.h`:
+`WinterSeverity` (0..3 by the rules' three bands) and `RegionCentroidTile`.
+`ViewSources` carries `ClimateRules Climate` beside `HasClimate`, the host's,
+as `OrderRules` are. Tools/Atlas: `--climate` tells every take (the tool's
+own run through `WithClimate`, the Aelvor paths through `SourcesFor`),
+prints the proof line and writes a `climate` JSON object, absent without the
+flag:
+
+```
+LogVaelenClimate: AELVOR 128 seed 41454c564f52: day 1 of year 420, spring; coldest -26 warmest 28; frost 8381 of 16384 tiles, 6448 growing; hard winters 0, cold deaths 0; climate 59615fa1f5d24bd1
+```
+
+`Atlas.Climate128` runs it and `Atlas.ClimateFrozen128` pins `climate=` and
+the ground - the frame is NOT pinned, because 18.05-18.09 fill the words this
+task left at zero. `check_atlas_output.py` holds a climate object to its
+ground (tiles, a season the calendar has, frost and growing that fit and do
+not overlap, a non-zero digest) with six new self-test cases; a document
+without the object reads exactly as it did.
+
+MEASURED: with the flag on, the frame digest of AELVOR 128/120 is
+`a1ebd60d1d606a50` against `abc5a5767c6cf9dd` without - the view sees the
+climate - and mid-winter and mid-summer differ on every one of the 16384
+tiles; 8381 tiles freeze on the first day of spring.
+
+THE CONTROLS. `View.Climate.WithoutAClimateEveryViewIsTheWorldBeforePhase18`:
+season 0, every region word 0, the life's four words 0, no weather row, no
+chill on the body row, an empty leaf; frame, life and page taken twice with
+the flag off EQUAL under `VT_CHECK_DIGEST_EQ`; and with the flag on the same
+world reads differently, with every region carrying a word. The frozen pins
+held on every run of this task: `Test_Panel`'s two pages, `Atlas.PanelFrozen`,
+`Atlas.Frozen128`'s frame and ground, `Test_Aelvor`, `View.ViewGate`.
+`TheLeafIsFourBytesATileAndReadsTheKernel`: two instruments - the leaf's frost
+count against the kernel's `TileTemperatureOn` over every tile, every byte
+the kernel's floored, mid-winter and mid-summer differing on every tile, the
+copy outliving its world. `TheRegionWordIsTheKernelsFigures`: every region's
+word unpacked equals the kernel's five figures; the packing clamps -200 to
+-128 and 250% to 100. `Panel.TheWeatherRowIsComposedFromTheLeavesAndSaysTheSign`:
+the exact row from a hand-built life and frame; -0.5, 0.0, 123.4 through the
+row; coming in autumn, lying in winter; nobody played; no climate.
+`Climate.SeverityBandsAndTheCentroidAreTheKernels`: 149/150/599/600/1500,
+bands read, the pole a 3 and the equator a 0, region 2's centroid the pool's.
+
+TWO TEST DEFECTS OF MY OWN, both found by the tests failing on their first
+run, both in the tests: the 64-tile world took nobody up under the default
+rules, so the row rightly said only the season and the case had measured a
+page with nobody on it - it now REQUIRES a taking; and the pinned row said
+"coming" of winter's fifth day. FAILED ON PURPOSE, twice: the weather row
+written when `Season == 0` - seven instruments in three binaries go red at
+once: five cases of `Test_Panel` (the three-views page, both frozen pages, the
+page too long, and the row's own case), `Atlas.PanelFrozen`, and the
+without-a-climate control of `View.Climate`, which is the control the plan
+named as the true one (the page digest is over the TEXT); the sign dropped
+from `Tenths` - exactly the -12.3 and -0.5 checks fail, and the 0.0 and 123.4
+ones rightly hold.
+
+And the census learnt to read the `0x` tokens of the CMake drivers, which its
+bare pattern had skipped by design: the `--expect frame=0x...` pins of
+`Atlas.Frozen128` were sites it could not see, and the new `climate=` pin
+would have been another. 543 sites now.

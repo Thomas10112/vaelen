@@ -115,4 +115,15 @@ namespace Vaelen::WorldGen
 	/// this for one region.
 	VAELEN_SIM_API void ShapeRegionYears(const World& W, const WorldSetup& Setup, uint64 Year,
 										 const ClimateRules& Rules, std::vector<YearShape>& Out);
+
+	/// A winter's severity, 0..3, from the year's cold sum against
+	/// ClimateRules::SeverityDegreeDays: 0 below the first band, 3 at or above
+	/// the last. The one reading of "hard" the winter (18.06), the view
+	/// (18.04) and the chronicle share.
+	VAELEN_SIM_API uint32 WinterSeverity(const YearShape& Year, const ClimateRules& Rules) noexcept;
+
+	/// The centroid tile of a region, from the region pool; 0 for region 0, a
+	/// region the world does not have, or a map that is not ready. 18.04's
+	/// view reads today's temperature there.
+	VAELEN_SIM_API uint32 RegionCentroidTile(const World& W, const WorldSetup& Setup, uint32 Region);
 } // namespace Vaelen::WorldGen

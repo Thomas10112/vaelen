@@ -7,6 +7,7 @@
 //
 // STATUS: PROTOTYPE (Phase 14)
 #include "Vaelen/View/Chronicle.h"
+#include "Vaelen/View/Climate.h"
 #include "Vaelen/View/Delta.h"
 #include "Vaelen/View/Eye.h"
 #include "Vaelen/View/Folk.h"
@@ -32,13 +33,14 @@ int main()
 	LifeView Life;
 	ChronicleView Chronicle;
 	PanelView Panel;
+	ClimateView Climate;
 	Vaelen::Player::PlayerCommand C;
 	std::printf("[probe] the view headers are leaves: frame %u, map %u, net %u, people %u, eye %u, command %u, life "
-				"%u, chronicle %u, panel %u bytes\n",
+				"%u, chronicle %u, panel %u, climate %u bytes\n",
 				static_cast<unsigned>(sizeof(Frame)), static_cast<unsigned>(sizeof(Map)),
 				static_cast<unsigned>(sizeof(Net)), static_cast<unsigned>(sizeof(People)),
 				static_cast<unsigned>(sizeof(At)), static_cast<unsigned>(sizeof(C)),
 				static_cast<unsigned>(sizeof(Life)), static_cast<unsigned>(sizeof(Chronicle)),
-				static_cast<unsigned>(sizeof(Panel)));
+				static_cast<unsigned>(sizeof(Panel)), static_cast<unsigned>(sizeof(Climate)));
 	return 0;
 }

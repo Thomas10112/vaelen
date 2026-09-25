@@ -240,6 +240,9 @@ namespace
 			S.Trade = Trade;
 			S.HasColony = WithColony;
 			S.Colony_ = Pit;
+			// 18.04: told, not read, like --stream (Options::Climate): the host
+			// asked for a climate on the command line, and the view is the host's.
+			S.HasClimate = WithClimate;
 			return S;
 		}
 
@@ -267,6 +270,7 @@ namespace
 		}
 
 		bool WithColony = false;
+		bool WithClimate = false; ///< 18.04: --climate, told to the view sources like --stream is told to the run
 		bool WithChronicle = false;
 		/// The peopled region with the most people that has ORE under it.
 		///
@@ -623,6 +627,8 @@ namespace
 					 "  --replay FILE   replay a vaelen-stream into a fresh played Run and write what it came to\n"
 					 "  --empty         the empty play: the Play wiring with nobody taken up, no stream\n"
 					 "  --panel         with --replay or --empty: print the first screen it came to (14.06)\n"
+					 "  --climate       18.04: the view carries the climate (a season, degrees, a climate leaf); told, "
+					 "not read\n"
 					 "  --want-bound N  StartRules::WantBound for a replay (0 or 1, default 1; the engine host "
 					 "uses 0)\n"
 					 "  --stand FILE    write a stand-in stream: thirty days played by nobody (14.10)\n"
@@ -1227,6 +1233,16 @@ namespace
 		S.SlotSumWrong = Books.SlotSumWrong > S.SlotSumWrong ? Books.SlotSumWrong : S.SlotSumWrong;
 	}
 
+	/// 18.04: the run's sources with the climate the host asked for. Aelvor's
+	/// own Sources() leaves HasClimate false until 18.10 makes it the run's
+	/// flag; until then the view is TOLD, exactly as the run is told --stream.
+	ViewSources SourcesFor(const Vaelen::Run::Aelvor& A, const Options& Opt)
+	{
+		ViewSources S = A.Sources();
+		S.HasClimate = Opt.Climate;
+		return S;
+	}
+
 	int RunGate(const Options& Opt)
 	{
 		std::string Text;
@@ -1290,9 +1306,9 @@ namespace
 		LifeView Life;
 		ChronicleView Told;
 		PanelView Page;
-		TakeView(A.Instance(), A.Sources(), Frame);
-		TakeLifeView(A.Instance(), A.Sources(), Ways, Life);
-		TakeChronicleView(A.Instance(), A.Sources(), Told);
+		TakeView(A.Instance(), SourcesFor(A, Opt), Frame);
+		TakeLifeView(A.Instance(), SourcesFor(A, Opt), Ways, Life);
+		TakeChronicleView(A.Instance(), SourcesFor(A, Opt), Told);
 		TakePanel(Frame, Life, Told, Page);
 		const std::string Story = A.Life();
 
@@ -2904,9 +2920,9 @@ namespace
 		PanelView Page;
 		const auto Look = [&]()
 		{
-			TakeView(A.Instance(), A.Sources(), Frame);
-			TakeLifeView(A.Instance(), A.Sources(), Ways, Life);
-			TakeChronicleView(A.Instance(), A.Sources(), Told);
+			TakeView(A.Instance(), SourcesFor(A, Opt), Frame);
+			TakeLifeView(A.Instance(), SourcesFor(A, Opt), Ways, Life);
+			TakeChronicleView(A.Instance(), SourcesFor(A, Opt), Told);
 			TakePanel(Frame, Life, Told, Page);
 		};
 
@@ -3168,9 +3184,9 @@ namespace
 		WorldView Frame;
 		MapView Ground;
 		NetView Net;
-		TakeView(A.Instance(), A.Sources(), Frame);
-		TakeNetView(A.Instance(), A.Sources(), Net);
-		TakeMapView(A.Instance(), A.Sources(), Ground);
+		TakeView(A.Instance(), SourcesFor(A, Opt), Frame);
+		TakeNetView(A.Instance(), SourcesFor(A, Opt), Net);
+		TakeMapView(A.Instance(), SourcesFor(A, Opt), Ground);
 		const ViewStats FrameStats = MeasureView(Frame);
 		const MapStats GroundStats = MeasureMapView(Ground);
 		const NetStats NetStats_ = MeasureNetView(Net);
@@ -3185,8 +3201,8 @@ namespace
 			LifeView Life;
 			ChronicleView Told;
 			PanelView Page;
-			TakeLifeView(A.Instance(), A.Sources(), Ways, Life);
-			TakeChronicleView(A.Instance(), A.Sources(), Told);
+			TakeLifeView(A.Instance(), SourcesFor(A, Opt), Ways, Life);
+			TakeChronicleView(A.Instance(), SourcesFor(A, Opt), Told);
 			TakePanel(Frame, Life, Told, Page);
 			std::vector<char> Rows(PanelTextBytes, '\0');
 			Lines(Page, Rows.data(), PanelTextBytes);
@@ -3376,6 +3392,7 @@ namespace
 		const auto Started = std::chrono::steady_clock::now();
 		std::vector<Kept> Timeline;
 		KernelRun Run(Opt.Seed, Opt.Colony, Opt.Chronicle);
+		Run.WithClimate = Opt.Climate;
 		WorldGenConfig Gen;
 		Gen.Width = Opt.Size;
 		Gen.Height = Opt.Size;
@@ -3426,6 +3443,24 @@ namespace
 		if (Opt.Tiles)
 		{
 			TakeMapView(Run.Instance, Run.Sources(), Ground);
+		}
+		// 18.04: the climate of every tile today, only when asked for - the
+		// leaf is empty otherwise, and the line and the JSON object are absent
+		// so that a --no-climate document reads exactly as it did.
+		ClimateView Climate;
+		ClimateViewStats ClimateStats_;
+		if (Opt.Climate)
+		{
+			TakeClimateView(Run.Instance, Run.Sources(), Climate);
+			ClimateStats_ = MeasureClimateView(Climate);
+			static const char* const Seasons[] = {"none", "spring", "summer", "autumn", "winter"};
+			std::printf(
+				"LogVaelenClimate: AELVOR %u seed %012llx: day %u of year %u, %s; coldest %d warmest %d; frost %u "
+				"of %u tiles, %u growing; hard winters %u, cold deaths %u; climate %016llx\n",
+				Opt.Size, static_cast<unsigned long long>(Opt.Seed), Climate.Day + 1u, Climate.Year,
+				Seasons[Climate.Season < 5u ? Climate.Season : 0u], ClimateStats_.Coldest, ClimateStats_.Warmest,
+				ClimateStats_.Frost, ClimateStats_.Tiles, ClimateStats_.Growing, 0u, 0u,
+				static_cast<unsigned long long>(ClimateStats_.Digest));
 		}
 		// The chronicle, as lines with a year and a place on them. The kernel's
 		// own ExportChronicleWithEconomy writes the same sentences as one block
@@ -3570,6 +3605,27 @@ namespace
 			J.Number(GroundStats.Biomes[b]);
 		}
 		J.Put("]");
+		if (Opt.Climate)
+		{
+			J.Put("},\n\"climate\":{");
+			J.Field("tiles", ClimateStats_.Tiles);
+			J.Put(",");
+			J.Field("frost", ClimateStats_.Frost);
+			J.Put(",");
+			J.Field("growing", ClimateStats_.Growing);
+			J.Put(",\"coldest\":");
+			J.Number(ClimateStats_.Coldest);
+			J.Put(",\"warmest\":");
+			J.Number(ClimateStats_.Warmest);
+			J.Put(",");
+			J.Field("season", Climate.Season);
+			J.Put(",");
+			J.Field("day", Climate.Day);
+			J.Put(",");
+			J.Field("bytes", ClimateStats_.Bytes);
+			J.Put(",\"digest\":");
+			J.Hex(ClimateStats_.Digest);
+		}
 		J.Put("},\n\"network\":{");
 		J.Field("routes", NetStats_.Routes);
 		J.Put(",");

@@ -288,12 +288,23 @@ def class_of(relative, value, kind):
     return base
 
 
+def matches_in(relative, line):
+    """Every token of the line, in order. A CMake driver or a README carries
+    bare tokens AND `0x` ones (`--expect frame=0x...`): the bare pattern's
+    lookbehind skips the latter on purpose, so both patterns read those files
+    and a `0x` token is counted once, by the code pattern."""
+    found = list(HEX_CODE.finditer(line))
+    if pattern_for(relative) is HEX_BARE:
+        found += list(HEX_BARE.finditer(line))
+        found.sort(key=lambda m: m.start())
+    return found
+
+
 def sites_in(relative, text):
     """[(line_no, value, kind, class)] for one file's text; class None when unclassified."""
     out = []
-    pattern = pattern_for(relative)
     for number, line in enumerate(text.split("\n"), 1):
-        for match in pattern.finditer(line):
+        for match in matches_in(relative, line):
             value = match.group(1).lower()
             kind = kind_of(line, match.start(), value, relative)
             out.append((number, value, kind, class_of(relative, value, kind)))
@@ -513,12 +524,12 @@ def diff_fixture(parsed):
     removed, added = [], []
     for relative, (gone, came) in parsed.items():
         for number, line in enumerate(gone, 1):
-            for match in pattern_for(relative).finditer(line):
+            for match in matches_in(relative, line):
                 value = match.group(1).lower()
                 kind = kind_of(line, match.start(), value, relative)
                 removed.append((relative, class_of(relative, value, kind), kind, value, number))
         for number, line in enumerate(came, 1):
-            for match in pattern_for(relative).finditer(line):
+            for match in matches_in(relative, line):
                 value = match.group(1).lower()
                 kind = kind_of(line, match.start(), value, relative)
                 added.append((relative, class_of(relative, value, kind), kind, value, number))

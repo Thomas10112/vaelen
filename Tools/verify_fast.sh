@@ -77,8 +77,12 @@ echo "[verify] frozen census"
 # 18.01. Here and not only in ctest because a literal added in a file the
 # table does not name is exactly the kind of thing a person notices before a
 # push and nobody notices after; --diff A B is the other half, run by hand
-# when a commit is meant to move a digest and never otherwise.
-python3 Tools/frozen_census.py --check | head -1
+# when a commit is meant to move a digest and never otherwise. Captured, not
+# piped into head: under pipefail a `| head -1` can close the pipe before the
+# script's second line is written, and the census would go red for a reason
+# that is not a literal (seen once, 18.04).
+Census="$(python3 Tools/frozen_census.py --check)" || { printf '%s\n' "$Census" | head -3; exit 1; }
+printf '%s\n' "$Census" | head -1
 
 echo "[verify] compiles"
 # NOT piped through tail, unlike every check above it. The others answer with a

@@ -117,6 +117,19 @@ if(Python3_Interpreter_FOUND)
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_atlas_output.py ${VAELEN_ATLAS_128}
             --expect frame=0xabc5a5767c6cf9dd ground=0x8f7f4948f49b6e86)
   set_tests_properties(Atlas.Frozen128 PROPERTIES FIXTURES_REQUIRED Atlas128 TIMEOUT 300)
+  # 18.04: the same world TOLD it has a climate. The ground does not move (it
+  # is the map); the climate leaf's digest is frozen here the day it first
+  # existed, and the frame is NOT pinned because 18.05-18.09 fill the view
+  # words this task left at zero. --no-climate documents carry no climate
+  # object, and Atlas.Frozen128 above still holds its frame.
+  set(VAELEN_ATLAS_128_CLIMATE ${CMAKE_CURRENT_BINARY_DIR}/atlas-128-120-climate.json)
+  add_test(NAME Atlas.Climate128
+    COMMAND VaelenAtlas --size 128 --years 120 --climate --out ${VAELEN_ATLAS_128_CLIMATE})
+  set_tests_properties(Atlas.Climate128 PROPERTIES FIXTURES_SETUP Atlas128Climate TIMEOUT 900)
+  add_test(NAME Atlas.ClimateFrozen128
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_atlas_output.py ${VAELEN_ATLAS_128_CLIMATE}
+            --expect climate=0x59615fa1f5d24bd1 ground=0x8f7f4948f49b6e86)
+  set_tests_properties(Atlas.ClimateFrozen128 PROPERTIES FIXTURES_REQUIRED Atlas128Climate TIMEOUT 300)
 
   # 14.03: the empty play - the Play wiring with nobody taken up and no
   # stream, written as a replay document. Running it is the test; what the

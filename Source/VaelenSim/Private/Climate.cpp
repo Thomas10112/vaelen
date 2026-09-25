@@ -165,6 +165,35 @@ namespace Vaelen::WorldGen
 		return ShapeAt(W, Setup, Region, Centroids[Region], Year, Rules);
 	}
 
+	uint32 WinterSeverity(const YearShape& Year, const ClimateRules& Rules) noexcept
+	{
+		uint32 Severity = 0;
+		for (uint32 Band = 0; Band < 3u; ++Band)
+		{
+			if (Year.ColdSum >= Fix64::FromInt(static_cast<int32>(Rules.SeverityDegreeDays[Band])))
+			{
+				Severity = Band + 1u;
+			}
+		}
+		return Severity;
+	}
+
+	uint32 RegionCentroidTile(const World& W, const WorldSetup& Setup, uint32 Region)
+	{
+		if (Region == 0u || !W.Map().IsReady())
+		{
+			return 0u;
+		}
+		std::vector<uint32> Centroids;
+		CentroidsByRegion(W, Setup, Centroids);
+		const WorldGrid& Grid = W.Map().Grid();
+		if (Region >= Centroids.size() || Centroids[Region] >= Grid.Width * Grid.Height)
+		{
+			return 0u;
+		}
+		return Centroids[Region];
+	}
+
 	void ShapeRegionYears(const World& W, const WorldSetup& Setup, uint64 Year, const ClimateRules& Rules,
 						  std::vector<YearShape>& Out)
 	{

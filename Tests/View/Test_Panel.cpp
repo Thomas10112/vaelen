@@ -735,3 +735,75 @@ VAELEN_TEST(Panel, ThePageOutlivesTheWorld)
 	Player::PlayerCommand C;
 	VT_CHECK(Press(V, Player::Intent::Wait, 0, 1, C) == Player::Refusal::None);
 }
+
+VAELEN_TEST(Panel, TheWeatherRowIsComposedFromTheLeavesAndSaysTheSign)
+{
+	// 18.04: a hand-built life and frame, so the exact row is pinned without
+	// a world: winter, day 274 of the year (day 5 of the season), -12.3
+	// degrees, a chill of 40, the region's word saying -21 .. 14 and a 54%
+	// outlook with a hard winter - which LIES on the land, since day 274 is
+	// winter's fifth; "coming" is what the row says in autumn, below.
+	WorldView Frame;
+	Frame.Year = 12;
+	RegionView R;
+	R.Index = 3;
+	R.Climate = PackRegionClimate(-12, -21, 14, 54, true);
+	Frame.Regions.push_back(R);
+	LifeView Life;
+	Life.Year = 12;
+	Life.Day = 274;
+	Life.Person = 7;
+	Life.Region = 3;
+	Life.Alive = 1;
+	Life.Season = 4;
+	Life.Degrees = -123;
+	Life.Chill = 40;
+	Life.Winter = 2;
+	Named(Life.Name, "Someone");
+	Named(Life.RegionName, "Somewhere");
+	ChronicleView Told;
+	PanelView Page;
+	TakePanel(Frame, Life, Told, Page);
+
+	VT_REQUIRE(Page.RowCount > 2u);
+	VT_CHECK_EQ(Page.Rows[1].Kind, static_cast<uint32>(RowKind::Weather));
+	const std::string Row = RowAt(Page, 1);
+	VT_CHECK_MSG(Row == "winter  day 5 of 90  -12.3 deg here  chill 40  coldest -21  warmest 14  outlook 54%  a hard "
+						"winter lies on the land",
+				 "the weather row reads: %s", Row.c_str());
+	VT_CHECK_MSG(RowAt(Page, 3).find("  chill 40") != std::string::npos, "the body row reads: %s",
+				 RowAt(Page, 3).c_str());
+	VT_CHECK(Page.Rows[Page.RowCount - 1u].Kind == static_cast<uint32>(RowKind::Digest));
+	VT_CHECK(sizeof(PanelView) <= 4096u);
+
+	// The signed writers, through the row: -0.5, 0.0, 123.4; and in autumn
+	// the same hard winter is COMING, day 21 of that season.
+	Life.Degrees = -5;
+	Life.Day = 200;
+	Life.Season = 3;
+	TakePanel(Frame, Life, Told, Page);
+	VT_CHECK_MSG(RowAt(Page, 1).find("  -0.5 deg here") != std::string::npos, "%s", RowAt(Page, 1).c_str());
+	VT_CHECK_MSG(RowAt(Page, 1).find("a hard winter is coming") != std::string::npos, "%s", RowAt(Page, 1).c_str());
+	VT_CHECK_MSG(RowAt(Page, 1).find("autumn  day 21 of 90") != std::string::npos, "%s", RowAt(Page, 1).c_str());
+	Life.Season = 4;
+	Life.Day = 300;
+	Life.Degrees = 0;
+	Life.Winter = 1;
+	TakePanel(Frame, Life, Told, Page);
+	VT_CHECK_MSG(RowAt(Page, 1).find("  0.0 deg here") != std::string::npos, "%s", RowAt(Page, 1).c_str());
+	VT_CHECK_MSG(RowAt(Page, 1).find("hard winter") == std::string::npos, "%s", RowAt(Page, 1).c_str());
+	Life.Degrees = 1234;
+	TakePanel(Frame, Life, Told, Page);
+	VT_CHECK_MSG(RowAt(Page, 1).find("  123.4 deg here") != std::string::npos, "%s", RowAt(Page, 1).c_str());
+	// Nobody played: the season and the day, and no "here".
+	Life.Person = 0;
+	Life.Region = 0;
+	Life.Winter = 0;
+	TakePanel(Frame, Life, Told, Page);
+	VT_CHECK_MSG(RowAt(Page, 1) == "winter  day 31 of 90", "%s", RowAt(Page, 1).c_str());
+	// And no climate: no weather row at all, the second row is the self.
+	Life.Season = 0;
+	TakePanel(Frame, Life, Told, Page);
+	VT_CHECK_EQ(Page.Rows[1].Kind, static_cast<uint32>(RowKind::Self));
+	VT_CHECK(Rows(Page, RowKind::Weather) == 0u);
+}

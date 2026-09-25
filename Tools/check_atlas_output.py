@@ -136,6 +136,25 @@ def check(doc):
     idle = [c.get("region") for c in colonies if c.get("hands", 0) == 0 and c.get("lifted", 0) > 0]
     want(not idle, "colonies %s lifted ore with nobody on the rock" % idle[:8])
 
+  # ── the climate (18.04) ──────────────────────────────────────────────────
+  # Present only when the tool was told --climate; a document without it is
+  # the world before Phase 18 and says nothing here. When it IS present every
+  # figure is held: as many tiles as the ground, a season the calendar has, a
+  # frost and a growing count that fit and do not overlap, a digest that is
+  # not zero.
+  climate = doc.get("climate")
+  if climate is not None and want(isinstance(climate, dict), "climate is not an object"):
+    want(climate.get("tiles") == expected,
+         "climate.tiles is %r, not width * height = %d" % (climate.get("tiles"), expected))
+    frost, growing = climate.get("frost", -1), climate.get("growing", -1)
+    want(isinstance(frost, int) and 0 <= frost <= expected, "climate.frost is %r" % (frost,))
+    want(isinstance(growing, int) and 0 <= growing <= expected, "climate.growing is %r" % (growing,))
+    want(isinstance(frost, int) and isinstance(growing, int) and frost + growing <= expected,
+         "climate.frost + climate.growing exceed the tiles: a tile cannot both freeze and grow")
+    want(climate.get("season") in (1, 2, 3, 4), "climate.season is %r, not 1..4" % (climate.get("season"),))
+    want(isinstance(climate.get("digest"), str) and climate["digest"] != "0x0000000000000000",
+         "the climate digest is missing or zero")
+
   # ── the centuries ──────────────────────────────────────────────────────────
   tl = doc.get("timeline")
   if want(isinstance(tl, dict), "missing section: timeline"):
@@ -234,14 +253,15 @@ def a_world():
 def expect(doc, wants):
   """Complaints for every KEY=HEX the document does not carry."""
   bad = []
-  where = {"frame": ("frame", "digest"), "ground": ("ground", "digest"), "network": ("network", "digest")}
+  where = {"frame": ("frame", "digest"), "ground": ("ground", "digest"), "network": ("network", "digest"),
+           "climate": ("climate", "digest")}
   for want in wants:
     if "=" not in want:
       bad.append("--expect %r is not KEY=HEX" % want)
       continue
     key, value = want.split("=", 1)
     if key not in where:
-      bad.append("--expect %r: no such digest (frame, ground, network)" % key)
+      bad.append("--expect %r: no such digest (frame, ground, network, climate)" % key)
       continue
     section, field = where[key]
     have = str(doc.get(section, {}).get(field, ""))
@@ -287,6 +307,25 @@ def self_test():
   breaks("zero digest", lambda d: d["ground"].update(digest="0x0000000000000000"))
   breaks("missing digest", lambda d: d["frame"].pop("digest"))
   breaks("no elevation scale", lambda d: d["ground"].pop("elevationScale"))
+  # 18.04: a climate object, when present, is held to the ground.
+  def with_climate(d, **change):
+    d["climate"] = {"tiles": 4, "frost": 1, "growing": 2, "coldest": -3, "warmest": 21, "season": 2,
+                    "day": 100, "bytes": 56, "digest": "0x0000000000000004"}
+    d["climate"].update(change)
+  ok = a_world()
+  ok["frame"]["digest"] = "0x0000000000000002"
+  with_climate(ok)
+  if check(ok):
+    failures.append("a valid climate object was rejected: %s" % check(ok))
+  breaks("zero climate digest", lambda d: with_climate(d, digest="0x0000000000000000"))
+  breaks("climate tiles", lambda d: with_climate(d, tiles=3))
+  breaks("climate frost beyond the tiles", lambda d: with_climate(d, frost=9))
+  breaks("frost and growing overlap", lambda d: with_climate(d, frost=3, growing=3))
+  breaks("a season no calendar has", lambda d: with_climate(d, season=5))
+  if expect(ok, ["climate=0x0000000000000004"]):
+    failures.append("--expect climate= rejected the digest the object carries")
+  if not expect(a_world(), ["climate=0x0000000000000004"]):
+    failures.append("--expect climate= accepted a document with no climate object")
   breaks("size disagreement", lambda d: d["frame"].update(width=3))
   breaks("missing network", lambda d: d.pop("network"))
   breaks("route count", lambda d: d["network"].update(routes=2))

@@ -30,6 +30,16 @@ block, and the sections below Phase 14 stay the record they are.
   exist when the Phase 17 close read the tree, and it was written on the
   headless side first, like every engine-side file since 14.07. Its sitting
   has its own section below: what to type, and the lines to bring back.
+- **Phase 18 (CLIMATE & SEASONS) is OPEN, planned in `Docs/ROADMAP.md`
+  section 25.** Its first four tasks are headless and touch what the engine
+  COPIES: `View::WorldView`, `RegionView` and `LifeView` renamed their reserved
+  words (`Season`, `Climate`, `Degrees`, `Chill`, `Winter`) at the same size,
+  and `Vaelen/View/Climate.h` is a new leaf (four bytes a tile) Phase 19 will
+  colour the ground by. Nothing changes on screen until 18.10 flips
+  `Options::Climate` in all four wirings; the page then carries a weather row
+  and the HUD draws it through `View::Lines` as it draws the rest, with no
+  engine change. The engine files of 16.14 and the actors are parsed against
+  the shim on every commit of the phase.
 - **Phase 17 (DEBUG TOOLS) is CLOSED, 2026-09-24**, all eleven clauses, and it
   had no engine task. One thing it changed that the engine COPIES:
   `View::ChronicleView` (`Vaelen/View/Chronicle.h`) holds four why lines instead

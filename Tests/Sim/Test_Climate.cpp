@@ -561,3 +561,61 @@ VAELEN_TEST(Climate, RegionYearsAreTheCentroidsYearsAndAgreeInOnePass)
 				 Hand.Warmest.Raw == Y3.Warmest.Raw);
 	}
 }
+
+VAELEN_TEST(Climate, SeverityBandsAndTheCentroidAreTheKernels)
+{
+	// 18.04 added two readers the view needs: the winter's severity from the
+	// cold sum, by the rules' three bands, and a region's centroid tile from
+	// the pool.
+	const ClimateRules Rules;
+	YearShape Y;
+	Y.ColdSum = Fix64::FromInt(149);
+	VT_CHECK_EQ(WinterSeverity(Y, Rules), 0u);
+	Y.ColdSum = Fix64::FromInt(150);
+	VT_CHECK_EQ(WinterSeverity(Y, Rules), 1u);
+	Y.ColdSum = Fix64::FromInt(599);
+	VT_CHECK_EQ(WinterSeverity(Y, Rules), 1u);
+	Y.ColdSum = Fix64::FromInt(600);
+	VT_CHECK_EQ(WinterSeverity(Y, Rules), 2u);
+	Y.ColdSum = Fix64::FromInt(1500);
+	VT_CHECK_EQ(WinterSeverity(Y, Rules), 3u);
+	Y.ColdSum = Fix64::FromInt(100000);
+	VT_CHECK_EQ(WinterSeverity(Y, Rules), 3u);
+	// The bands are read: a rule with every band at 0 makes every winter hard.
+	ClimateRules Harsh;
+	Harsh.SeverityDegreeDays[0] = 0u;
+	Harsh.SeverityDegreeDays[1] = 0u;
+	Harsh.SeverityDegreeDays[2] = 0u;
+	Y.ColdSum = Fix64::Zero();
+	VT_CHECK_EQ(WinterSeverity(Y, Harsh), 3u);
+	// The pole's year is a severity-3 winter; the equator's a 0.
+	VT_CHECK_EQ(WinterSeverity(ShapeYear(Fix64::FromInt(-15), Fix64::FromInt(1), Rules), Rules), 3u);
+	VT_CHECK_EQ(WinterSeverity(ShapeYear(Fix64::FromInt(29), Fix64::Zero(), Rules), Rules), 0u);
+
+	WorldConfig C;
+	C.Seed = AelvorSeed;
+	World W(C);
+	const WorldSetup Setup = WorldSetup::Declare(W);
+	W.Build();
+	WorldGenConfig Gen;
+	Gen.Width = 64;
+	Gen.Height = 64;
+	VT_REQUIRE(GenerateWorld(W, Setup, Gen, WorldGenStage::Regions));
+	uint32 FromPool = 0, Regions = 0;
+	W.Components()
+		.GetPool(Setup.RegionTypes_.Region)
+		.ForEach(
+			[&](EntityHandle, const RegionInfo& R)
+			{
+				++Regions;
+				if (R.Index == 2u)
+				{
+					FromPool = R.CentroidTile;
+				}
+			});
+	VT_REQUIRE(Regions >= 2u);
+	VT_CHECK_EQ(RegionCentroidTile(W, Setup, 2u), FromPool);
+	VT_CHECK(RegionCentroidTile(W, Setup, 2u) < 64u * 64u);
+	VT_CHECK_EQ(RegionCentroidTile(W, Setup, 0u), 0u);
+	VT_CHECK_EQ(RegionCentroidTile(W, Setup, Regions + 9u), 0u);
+}
