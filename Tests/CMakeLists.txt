@@ -201,6 +201,21 @@ if(Python3_Interpreter_FOUND)
   set_tests_properties(Atlas.SceneLayout128 PROPERTIES TIMEOUT 900
     PASS_REGULAR_EXPRESSION "layout day 100: squares 3, houses 565 \\(unplaced 0\\), figures 779 \\(company 0\\), roads 16 over 282 tiles \\(unrouted 0\\), pits 0; layout 8542fca56e445402\n")
 
+  # 19.09: the day's snow, grass and sun from the climate leaf, at noon of
+  # sixteen waking hours over region 1's centroid row. Scene.Sky computes the
+  # same digest by another wiring. CONTROL: the world before the winter has
+  # no sky line - the leaf is empty there.
+  add_test(NAME Atlas.SceneSky128
+    COMMAND VaelenAtlas --size 128 --prehistory 1 --years 1 --scene-sky 8
+            --out ${CMAKE_CURRENT_BINARY_DIR}/atlas-scene-sky.json)
+  set_tests_properties(Atlas.SceneSky128 PROPERTIES TIMEOUT 900
+    PASS_REGULAR_EXPRESSION "sky day 1: snow 1789 of 16384 tiles, growing 3877, sun azimuth 1800 elevation 95, breath 0 shiver 0; sky b6f8dce3d92162c3\n")
+  add_test(NAME Atlas.SceneSky128Before
+    COMMAND VaelenAtlas --size 128 --prehistory 1 --years 1 --no-climate --scene-sky 8
+            --out ${CMAKE_CURRENT_BINARY_DIR}/atlas-scene-sky-before.json)
+  set_tests_properties(Atlas.SceneSky128Before PROPERTIES TIMEOUT 900
+    PASS_REGULAR_EXPRESSION "AELVOR" FAIL_REGULAR_EXPRESSION "sky day")
+
   # 14.03: the empty play - the Play wiring with nobody taken up and no
   # stream, written as a replay document. Running it is the test; what the
   # document says is read by 14.10's checker.

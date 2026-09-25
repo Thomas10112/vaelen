@@ -8,12 +8,14 @@ set(VAELEN_SCENE_PUBLIC_HEADERS
   Public/Vaelen/Scene/Terrain.h
   Public/Vaelen/Scene/Fence.h
   Public/Vaelen/Scene/Layout.h
+  Public/Vaelen/Scene/Sky.h
 )
 
 set(VAELEN_SCENE_SOURCES
   Private/Terrain.cpp
   Private/Fence.cpp
   Private/Layout.cpp
+  Private/Sky.cpp
   Private/Vaelen/Scene/LineWriter.h
 )
 

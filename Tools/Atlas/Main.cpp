@@ -59,6 +59,7 @@
 #include "Vaelen/View/Panel.h"
 #include "Vaelen/View/Proof.h"
 #include "Vaelen/Scene/Layout.h"
+#include "Vaelen/Scene/Sky.h"
 #include "Vaelen/Scene/Terrain.h"
 #include "Vaelen/View/Land.h"
 #include "Vaelen/View/Net.h"
@@ -499,6 +500,7 @@ namespace
 		std::string Replay; ///< 14.03: a stream to replay into a fresh played Run; the world is the stream's
 		bool Empty = false; ///< 14.03: the empty play - the Play wiring, nobody taken up, no stream
 		bool Panel = false; ///< 14.06: print the first screen of the world the replay came to
+		bool Scene = false; ///< 19.09: with --replay: print the terrain, layout and sky lines it came to
 		/// 14.10: the host's StartRules::WantBound. The rules are the host's
 		/// configuration and deliberately NOT in the stream (Door.h), so a
 		/// replay must be told which ones the stream was recorded under. The
@@ -529,6 +531,8 @@ namespace
 		std::string SceneDump;
 		/// 19.08: print the layout's LogVaelenScene line for this day (-1: none).
 		int64 SceneLayoutDay = -1;
+		/// 19.09: print the sky's LogVaelenScene line, this many of sixteen waking hours into the day (-1: none).
+		int64 SceneSkyHour = -1;
 		/// 17.01: write the container corpus to this directory.
 		std::string Containers;
 		/// 17.05: the cause census over a container read from this file. The
@@ -666,6 +670,7 @@ namespace
 					 "  --replay FILE   replay a vaelen-stream into a fresh played Run and write what it came to\n"
 					 "  --empty         the empty play: the Play wiring with nobody taken up, no stream\n"
 					 "  --panel         with --replay or --empty: print the first screen it came to (14.06)\n"
+					 "  --scene         with --replay: print the terrain, layout and sky lines it came to (19.09)\n"
 					 "  --no-climate    18.10: the world before Phase 18 - no winter, no season, no chill (the climate "
 					 "is the default)\n"
 					 "  --want-bound N  StartRules::WantBound for a replay (0 or 1, default 1; the engine host "
@@ -677,6 +682,7 @@ namespace
 					 "                  chunks, or the whole map\n"
 					 "  --scene-dump FILE  write the ground, hill-shaded, as a greyscale PGM picture (19.05)\n"
 					 "  --scene-layout DAY  print the layout's LogVaelenScene line for that day (19.08)\n"
+					 "  --scene-sky HOUR    print the sky's LogVaelenScene line, HOUR of 16 waking hours in (19.09)\n"
 					 "  --containers DIR  write the container corpus of 17.01 to this directory\n"
 					 "  --causes FILE   17.05: the cause census over a container, per event type\n"
 					 "  --census        the same over a world generated from --size and the rest\n"
@@ -734,6 +740,10 @@ namespace
 			{
 				Out.Panel = true;
 			}
+			else if (std::strcmp(Arg, "--scene") == 0)
+			{
+				Out.Scene = true;
+			}
 			else if (std::strcmp(Arg, "--scene-terrain") == 0 && HasValue)
 			{
 				Out.SceneTerrain = Argv[++I];
@@ -752,6 +762,17 @@ namespace
 					return false;
 				}
 				Out.SceneLayoutDay = static_cast<int64>(Day);
+			}
+			else if (std::strcmp(Arg, "--scene-sky") == 0 && HasValue)
+			{
+				char* End = nullptr;
+				const unsigned long Hour = std::strtoul(Argv[++I], &End, 10);
+				if (*End != '\0' || Hour > 16ul)
+				{
+					std::fprintf(stderr, "AELVOR: --scene-sky takes an hour from 0 to 16, not %s\n", Argv[I]);
+					return false;
+				}
+				Out.SceneSkyHour = static_cast<int64>(Hour);
 			}
 			else if (std::strcmp(Arg, "--walk") == 0 && HasValue)
 			{
@@ -3266,6 +3287,35 @@ namespace
 	/// 19.05: the terrain line, and the picture of the ground. The chunks are
 	/// every chunk of the map for "all", or every chunk holding a tile of the
 	/// region otherwise; the near lattice (stride 1) in both.
+	/// Every chunk touching Region (0: all of them) at the full lattice, into Stats.
+	void MeasureTerrainOf(const Scene::Ground& G, uint32 Region, Scene::TerrainStats& Stats)
+	{
+		Scene::TerrainMesh Mesh;
+		for (uint32 CY = 0; CY < Scene::ChunksDown(G); ++CY)
+		{
+			for (uint32 CX = 0; CX < Scene::ChunksAcross(G); ++CX)
+			{
+				bool Wanted = Region == 0u;
+				for (uint32 Y = CY * Scene::ChunkTiles; !Wanted && Y < (CY + 1u) * Scene::ChunkTiles && Y < G.Height;
+					 ++Y)
+				{
+					for (uint32 X = CX * Scene::ChunkTiles; X < (CX + 1u) * Scene::ChunkTiles && X < G.Width; ++X)
+					{
+						if (G.Region[Y * G.Width + X] == Region)
+						{
+							Wanted = true;
+							break;
+						}
+					}
+				}
+				if (Wanted && Scene::BuildChunk(G, CX, CY, 1u, Mesh))
+				{
+					Scene::MeasureTerrain(Mesh, Stats);
+				}
+			}
+		}
+	}
+
 	bool PrintSceneTerrain(const MapView& Map, const Options& Opt)
 	{
 		Scene::Ground G;
@@ -3290,30 +3340,7 @@ namespace
 				Region = static_cast<uint32>(Parsed);
 			}
 			Scene::TerrainStats Stats;
-			Scene::TerrainMesh Mesh;
-			for (uint32 CY = 0; CY < Scene::ChunksDown(G); ++CY)
-			{
-				for (uint32 CX = 0; CX < Scene::ChunksAcross(G); ++CX)
-				{
-					bool Wanted = Region == 0u;
-					for (uint32 Y = CY * Scene::ChunkTiles; !Wanted && Y < (CY + 1u) * Scene::ChunkTiles && Y < G.Height;
-						 ++Y)
-					{
-						for (uint32 X = CX * Scene::ChunkTiles; X < (CX + 1u) * Scene::ChunkTiles && X < G.Width; ++X)
-						{
-							if (G.Region[Y * G.Width + X] == Region)
-							{
-								Wanted = true;
-								break;
-							}
-						}
-					}
-					if (Wanted && Scene::BuildChunk(G, CX, CY, 1u, Mesh))
-					{
-						Scene::MeasureTerrain(Mesh, Stats);
-					}
-				}
-			}
+			MeasureTerrainOf(G, Region, Stats);
 			if (Stats.Chunks == 0u)
 			{
 				std::fprintf(stderr, "AELVOR: region %u has no tile on this map\n", Region);
@@ -3452,8 +3479,62 @@ namespace
 		{
 			ClimateView Climate;
 			TakeClimateView(A.Instance(), SourcesFor(A, Opt), Climate);
-			PrintClimateLine(A.Instance(), Climate, MeasureClimateView(Climate), A.Handles().Persons,
-							 A.Handles().Needs, RO.Size, RO.Seed);
+			PrintClimateLine(A.Instance(), Climate, MeasureClimateView(Climate), A.Handles().Persons, A.Handles().Needs,
+							 RO.Size, RO.Seed);
+		}
+		// 19.09: the scene the replay came to - the ground, what stands on it on
+		// this day of the year, and the sky over the played life at the hour the
+		// stream left it - in the three lines the engine prints. The sky needs
+		// the climate leaf: a world without one prints the first two only.
+		if (Opt.Scene)
+		{
+			Scene::Ground G;
+			if (!Scene::BuildGround(Ground, Scene::SceneScale{}, G))
+			{
+				std::fprintf(stderr, "AELVOR: the ground could not be built from a %ux%u map\n", Ground.Width,
+							 Ground.Height);
+				return 1;
+			}
+			char Line[Scene::LayoutLineBytes];
+			Scene::TerrainStats Terrain;
+			MeasureTerrainOf(G, 0u, Terrain);
+			if (Scene::TerrainLine(RO.Size, RO.Seed, 0u, Terrain, Line, Scene::TerrainLineBytes) != 0u)
+			{
+				std::printf("%s\n", Line);
+			}
+			WorldGen::RegionGraphCache Ways;
+			LifeView Life;
+			PeopleView Folk;
+			TakeLifeView(A.Instance(), SourcesFor(A, Opt), Ways, Life);
+			TakePeopleView(A.Instance(), SourcesFor(A, Opt), Folk);
+			Scene::SceneLayout Laid;
+			// The day counted from 1, as the climate line counts it.
+			Scene::BuildLayout(G, Frame, Net, Folk, Life, Life.Day + 1u, Laid);
+			if (Scene::LayoutLine(RO.Size, RO.Seed, Life.Day + 1u, Scene::MeasureLayout(Laid), Line,
+								  Scene::LayoutLineBytes) != 0u)
+			{
+				std::printf("%s\n", Line);
+			}
+			if (RO.Climate)
+			{
+				ClimateView Climate;
+				TakeClimateView(A.Instance(), SourcesFor(A, Opt), Climate);
+				// The sun over the played region's centroid row - the first region's when nobody is played.
+				uint32 Row = G.Height / 2u;
+				for (const RegionView& Region : Frame.Regions)
+				{
+					if (Region.Index == (Life.Region != 0u ? Life.Region : 1u))
+					{
+						Row = Region.CentroidTile / G.Width;
+						break;
+					}
+				}
+				const Scene::SkyStats Sky = Scene::MeasureSky(G, Climate, Life, Row);
+				if (Scene::SkyLine(RO.Size, RO.Seed, Climate.Day + 1u, Sky, Line, Scene::SkyLineBytes) != 0u)
+				{
+					std::printf("%s\n", Line);
+				}
+			}
 		}
 
 		Json J;
@@ -3734,6 +3815,29 @@ namespace
 			char Line[Scene::LayoutLineBytes];
 			if (Scene::LayoutLine(Opt.Size, Opt.Seed, Day, Scene::MeasureLayout(Laid), Line, Scene::LayoutLineBytes) !=
 				0u)
+			{
+				std::printf("%s\n", Line);
+			}
+		}
+		// 19.09: the day's snow, grass and sun, from the climate leaf. Nobody is
+		// played here, so the hours are the option's and there is no body; the
+		// sun stands over the first region's centroid row.
+		if (Opt.SceneSkyHour >= 0 && Opt.Climate)
+		{
+			MapView Map;
+			TakeMapView(Run.Instance, Run.Sources(), Map);
+			Scene::Ground G;
+			if (!Scene::BuildGround(Map, Scene::SceneScale{}, G))
+			{
+				return 1;
+			}
+			LifeView Hours;
+			Hours.Awake = 16;
+			Hours.Spent = static_cast<uint32>(Opt.SceneSkyHour);
+			const uint32 Row = Frame.Regions.empty() ? G.Height / 2u : Frame.Regions[0].CentroidTile / G.Width;
+			const Scene::SkyStats Sky = Scene::MeasureSky(G, Climate, Hours, Row);
+			char Line[Scene::SkyLineBytes];
+			if (Scene::SkyLine(Opt.Size, Opt.Seed, Climate.Day + 1u, Sky, Line, Scene::SkyLineBytes) != 0u)
 			{
 				std::printf("%s\n", Line);
 			}

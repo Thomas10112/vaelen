@@ -8026,3 +8026,75 @@ FAILED ON PURPOSE, each restored: water tiles allowed -> 531 failures; a
 figure's slot from its identity alone -> the day case red; a house plotted
 from its region's family count -> 152 houses moved by one death. Census kind
 WORLD/layout.
+
+### 19.09 AS BUILT, 2026-09-25
+
+**The cold and the heat can be seen.** STATUS: VALIDATED headless; what it
+looks like is sitting S2's.
+
+`Vaelen/Scene/Sky.h` / `Sky.cpp`: `SnowOf(TileClimate)` - 0 without the
+Frost flag whatever the byte says, 255 at `Now` <= -5 (`FullSnowDegrees`),
+a ramp 51..214 from -4 to 0 (never none while it freezes); `GrassOf` from the
+Growing flag, 0 under frost; `ApplyClimate(Ground, ClimateView, TerrainMesh&)`
+repaints a built mesh's vertex colours in place from the tile each vertex took
+its colour from (Terrain.cpp's rule mirrored: U / Steps clamped to the map),
+the sea untouched, an empty view leaving the mesh byte-identical; `SunOf(Row,
+Height, DayOfYear, Spent, Awake)` - a 91-entry integer sine table, the
+declination 23.4 deg x sin(day - 45) so mid-summer (day 135) is the top,
+noon's height 90 deg less the angle between the row's distance to the equator
+and the declination, the arc east (900) to west (2700) over Spent/Awake and
+the height rising and falling as the sine of it, Awake 0 = night; `BodyOf(Life)`
+- Breath when `Degrees < 0`, Shiver = min(255, Chill), nothing for nobody or
+the dead. `MeasureSky` digests every land tile's snow and grass with the sun
+and the body; `SkyLine` says it in the engine's words, the day counted from
+1 as the climate line counts it.
+
+DEVIATIONS from the plan row, said out loud: the sun takes `Spent` and
+`Awake` directly, not the `Season` field (the day of the year is finer than
+the season and the climate leaf carries it); the "moves only when hours are
+spent" instrument is `Sky.TheSunMovesWithTheHoursSpentAndOnlyWithThem`
+(the same life with another Tick, Year and DaysLived gives the same digest;
+another Spent does not); the frame-clock refusal by `Kernel.UiFence` is
+19.06's, when VaelenWalk exists.
+
+Atlas: `--scene-sky HOUR` on a fresh world (nobody played, sixteen waking
+hours, the sun over region 1's centroid row) and `--replay ... --scene`, which
+prints the terrain, layout and sky lines the replay came to - the layout on
+the life's day of the year (counted from 1, as every line now counts it), the
+sun at the hour the stream left the played life. `ReplayPlayed.cmake` takes
+TERRAIN / LAYOUT / SKY like CLIMATE.
+
+Pinned: `Atlas.SceneSky128` - `sky day 1: snow 1789 of 16384 tiles, growing
+3877, sun azimuth 1800 elevation 95, breath 0 shiver 0; sky b6f8dce3d92162c3`,
+the same digest from `Scene.Sky` by Run::Aelvor's wiring; `Atlas.SceneSky128Before`
+(CONTROL): the world before the winter prints no sky line. `Replay.Climate`
+now holds the three scene lines of the recorded month too:
+
+    LogVaelenScene: AELVOR 128 seed 41454c564f52 region all: chunks 64, vertices 1065024, triangles 2097152, z [-5000, 50636] cm, steep 0 of 2097152; terrain 105208c54e3c6ea9
+    LogVaelenScene: AELVOR 128 seed 41454c564f52 layout day 31: squares 46, houses 7039 (unplaced 0), figures 1960 (company 16), roads 84 over 1236 tiles (unrouted 2), pits 0; layout ead1d4340f2cdd08
+    LogVaelenScene: AELVOR 128 seed 41454c564f52 sky day 31: snow 1116 of 16384 tiles, growing 4475, sun azimuth 1012 elevation 45, breath 1 shiver 0; sky 8f48a6844f33fc3f
+
+- the terrain digest is `Atlas.SceneTerrain128`'s, since the ground is the
+map's and not the year's; the stream left Dokdahum 1 of 16 hours into day
+31, so the sun stands 4.5 deg up in the east (azimuth 101.2), and region 2
+is below zero that morning: breath 1, the first time a line of this project
+says what a played body feels of the weather.
+
+`Scene.Sky`, 5 cases, 32211 checks: snow by the tile (none without the flag
+at -20; 255 at -5 and -30; -1 thinner than -4, both between), the day's snow
+count equal to the land tiles below zero counted from the bytes - today,
+mid-winter and mid-summer views rebuilt from the leaf's own Winter/Summer
+bytes with the kernel's lines (0 and 5 deg) as the second instrument -
+winter whiter (2561 vs 0) and summer greener (6448 vs 3113); every vertex
+under full snow the snow's colour whatever its biome, 2226 of them, every
+sea vertex untouched, and all 64 chunks byte-identical without a climate
+(CONTROL, 19.05's digest); the sun at 0 on the horizon, rising through 8 of
+16 hours and falling to 0 at 16, south at 8, mid-summer's noon 46.8 deg above
+mid-winter's on every row beyond the tropic and no lower on any, the equinox
+halfway; the sun moving with the hours spent and with nothing else; breath
+and shiver, and none for nobody or the dead (CONTROL).
+
+FAILED ON PURPOSE, each restored: snow from the Winter byte instead of
+today's flag -> 6 checks red (the -5/-30 tiles, today's count, summer's
+count); a sun without seasons (declination 0) -> the 46.8 deg rows red; the
+sea painted too -> every sea vertex red. Census kind WORLD/sky.

@@ -156,6 +156,8 @@ TABLE = {
     # 19.05: the ground digest the scene is built from (Atlas.Frozen128's),
     # asserted as the terrain test's control.
     "Tests/Scene/Test_Terrain.cpp": "WORLD",
+    # 19.09: the Atlas's sky line (Atlas.SceneSky128), computed by a second wiring.
+    "Tests/Scene/Test_Sky.cpp": "WORLD",
     # 19.04: hand-built facts for the line composer; the climate digest is
     # copied from Atlas.ClimateFrozen128 as a sample, and does not move with it.
     "Tests/View/Test_Proof.cpp": "SYNTHETIC",
@@ -229,6 +231,8 @@ KIND_WORDS = [
     (re.compile(r"(?i)\bterrain\b"), "terrain"),
     # 19.08: what the scene invents on a day.
     (re.compile(r"(?i)\blayout\b"), "layout"),
+    # 19.09: the day's snow, grass and sun.
+    (re.compile(r"(?i)\bsky\b|MeasureSky"), "sky"),
 ]
 
 

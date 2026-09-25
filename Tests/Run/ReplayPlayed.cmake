@@ -29,8 +29,12 @@
 if(NOT DEFINED ERA)
   set(ERA --no-climate)
 endif()
+# 19.09: an entry that pins a scene line asks the replay for the scene.
+if(DEFINED TERRAIN OR DEFINED LAYOUT OR DEFINED SKY)
+  set(SCENE --scene)
+endif()
 execute_process(
-  COMMAND ${ATLAS} --replay ${STREAM} --panel --want-bound 0 ${ERA} ${MORE} --out ${OUT}
+  COMMAND ${ATLAS} --replay ${STREAM} --panel --want-bound 0 ${ERA} ${MORE} ${SCENE} --out ${OUT}
   RESULT_VARIABLE Ran
   OUTPUT_VARIABLE Said
   ERROR_VARIABLE Wrote)
@@ -68,6 +72,20 @@ if(DEFINED CLIMATE)
   endif()
   list(APPEND Expected "${CLIMATE}")
 endif()
+# 19.09: the scene the replay came to - the ground, what stands on it and the
+# day's sky over the played life - in the three lines the engine prints.
+foreach(Pair IN ITEMS "TERRAIN;120" "LAYOUT;120" "SKY;120")
+  list(GET Pair 0 Name)
+  list(GET Pair 1 Least)
+  if(DEFINED ${Name})
+    string(LENGTH "${${Name}}" Long)
+    if(Long LESS Least)
+      message(FATAL_ERROR "${Name} reached this script as ${Long} characters, fewer than the ${Least} a whole "
+                          "LogVaelenScene line has - most likely an unquoted argument. Value: [${${Name}}]")
+    endif()
+    list(APPEND Expected "${${Name}}")
+  endif()
+endforeach()
 foreach(Line IN LISTS Expected)
   string(FIND "${Said}" "${Line}" At)
   if(At EQUAL -1)
