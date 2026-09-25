@@ -8,7 +8,7 @@
 //
 // And measured, not just seen: every figure the engine prints matches
 // Tools/Atlas at the same seed and settings, INCLUDING the frame digest
-// (abc5a5767c6cf9dd at 128/120) and the ground digest (8f7f4948f49b6e86) since
+// (ec18241b89c3d246 at 128/120 since 18.10) and the ground digest (8f7f4948f49b6e86) since
 // ADR-0135 put the same systems in both. Two halves of one project, one world.
 //
 // This is the ONE file of the module that knows what a World is, and it knows
@@ -34,6 +34,7 @@
 #include "Vaelen/Economy/Stocks.h"
 #include "Vaelen/Economy/Trade.h"
 #include "Vaelen/Economy/Wealth.h"
+#include "Vaelen/Economy/Winter.h"
 #include "Vaelen/Politics/Polities.h"
 #include "Vaelen/Population/Families.h"
 #include "Vaelen/Population/Lives.h"
@@ -41,6 +42,7 @@
 #include "Vaelen/Population/Needs.h"
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Population/Traits.h"
+#include "Vaelen/Population/Warmth.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/World.h"
 #include "Vaelen/Sim/WorldGen.h"
@@ -93,6 +95,9 @@ namespace
 			Trade = TradeTypes::Declare(Instance);
 			Wealth = WealthTypes::Declare(Instance);
 			Polities = PolityTypes::Declare(Instance);
+			// 18.10: the climate, in every wiring at the same position - after
+			// Polity, before anything optional (ADR-0153).
+			Warmth = WarmthTypes::Declare(Instance);
 
 			LifeRules Life;
 			Life.SpouseRequired = 1;
@@ -133,6 +138,15 @@ namespace
 			Harvest->ObserveTraits(Traits.Traits);
 			Body->RunAfter("Production");
 			Body->ObserveRation(Production.Ration);
+			// 18.10: the winter after the stocks and before the harvest; the
+			// need system judges the chill; the harvest has a season.
+			Winters = std::make_unique<WinterSystem>(Instance, Ages.Types(), Persons, Families, Economy, Warmth,
+													 WinterRules{});
+			Winters->RunAfter("Stocks");
+			Winters->ObserveSettlements(Trade.Settlement);
+			Harvest->RunAfter("Winter");
+			Harvest->ObserveClimate(Vaelen::WorldGen::ClimateRules{});
+			Body->ObserveWinter(Warmth, WarmthRules{});
 			Rulers->RunAfter("Lod");
 
 			Instance.Systems().Add(Lives.get());
@@ -143,6 +157,7 @@ namespace
 			Instance.Systems().Add(Orgs.get());
 			Instance.Systems().Add(Customs.get());
 			Instance.Systems().Add(Stocks.get());
+			Instance.Systems().Add(Winters.get());
 			Instance.Systems().Add(Harvest.get());
 			Instance.Systems().Add(Fair.get());
 			Instance.Systems().Add(Roads_.get());
@@ -201,6 +216,10 @@ namespace
 			S.Bondage = Bondage;
 			S.HasTrade = true;
 			S.Trade = Trade;
+			// 18.10: the page says the weather, as the headless run's does.
+			S.HasClimate = true;
+			S.HasWarmth = true;
+			S.Warmth = Warmth;
 			return S;
 		}
 
@@ -221,6 +240,7 @@ namespace
 		Vaelen::Economy::TradeTypes Trade;
 		Vaelen::Economy::WealthTypes Wealth;
 		Vaelen::Politics::PolityTypes Polities;
+		Vaelen::Population::WarmthTypes Warmth; ///< 18.10
 		std::unique_ptr<Vaelen::Population::LifeSystem> Lives;
 		std::unique_ptr<Vaelen::Population::FamilySystem> Houses;
 		std::unique_ptr<Vaelen::Population::NeedSystem> Body;
@@ -229,6 +249,7 @@ namespace
 		std::unique_ptr<Vaelen::Society::OrganizationSystem> Orgs;
 		std::unique_ptr<Vaelen::Society::NormSystem> Customs;
 		std::unique_ptr<Vaelen::Economy::StockSystem> Stocks;
+		std::unique_ptr<Vaelen::Economy::WinterSystem> Winters; ///< 18.10
 		std::unique_ptr<Vaelen::Economy::ProductionSystem> Harvest;
 		std::unique_ptr<Vaelen::Economy::MarketSystem> Fair;
 		std::unique_ptr<Vaelen::Economy::TradeSystem> Roads_;
@@ -424,7 +445,7 @@ void AVaelenViewActor::BuildFromView()
 	// wired in, this number is now the same number Tools/Atlas publishes for
 	// the same seed and settings, and a person can hold the two side by side.
 	//
-	//     Tools/Atlas --size 128 --years 120   frame 0xabc5a5767c6cf9dd
+	//     Tools/Atlas --size 128 --years 120   frame 0xec18241b89c3d246 (18.10)
 	//
 	// If they ever differ again, the engine and the headless kernel have
 	// stopped simulating the same world, and this line is where that shows.

@@ -115,13 +115,14 @@ if(Python3_Interpreter_FOUND)
   set_tests_properties(Atlas.Runs128 PROPERTIES FIXTURES_SETUP Atlas128 TIMEOUT 900)
   add_test(NAME Atlas.Frozen128
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_atlas_output.py ${VAELEN_ATLAS_128}
-            --expect frame=0xabc5a5767c6cf9dd ground=0x8f7f4948f49b6e86)
+            --expect frame=0xec18241b89c3d246 ground=0x8f7f4948f49b6e86)
   set_tests_properties(Atlas.Frozen128 PROPERTIES FIXTURES_REQUIRED Atlas128 TIMEOUT 300)
   # 18.04: the same world TOLD it has a climate. The ground does not move (it
   # is the map); the climate leaf's digest is frozen here the day it first
-  # existed, and the frame is NOT pinned because 18.05-18.09 fill the view
-  # words this task left at zero. --no-climate documents carry no climate
-  # object, and Atlas.Frozen128 above still holds its frame.
+  # existed. Since 18.10 --climate is the default and this is the same world
+  # as Atlas.Runs128 above - kept, because the leaf's pin is the one that must
+  # not move with the simulation. --no-climate documents carry no climate
+  # object (Atlas.Frozen128Before below).
   set(VAELEN_ATLAS_128_CLIMATE ${CMAKE_CURRENT_BINARY_DIR}/atlas-128-120-climate.json)
   add_test(NAME Atlas.Climate128
     COMMAND VaelenAtlas --size 128 --years 120 --climate --out ${VAELEN_ATLAS_128_CLIMATE})
@@ -157,6 +158,25 @@ if(Python3_Interpreter_FOUND)
     COMMAND VaelenAtlas --empty --size 128 --years 120 --panel
             --out ${CMAKE_CURRENT_BINARY_DIR}/atlas-panel-frozen.json)
   set_tests_properties(Atlas.PanelFrozen PROPERTIES TIMEOUT 900
+    PASS_REGULAR_EXPRESSION "\ndigest d7e7149e65ceb69a\n")
+
+  # 18.10: THE WORLD BEFORE PHASE 18, still held. The default flipped to the
+  # climate and re-froze Frozen128's frame and PanelFrozen's page above; these
+  # entries hold the same commands with --no-climate to the digests they had
+  # before the flip, so the pre-winter path is a world every leg still
+  # reproduces and not a memory (gate clause (i)).
+  set(VAELEN_ATLAS_128_BEFORE ${CMAKE_CURRENT_BINARY_DIR}/atlas-128-120-before.json)
+  add_test(NAME Atlas.Runs128Before
+    COMMAND VaelenAtlas --no-climate --size 128 --years 120 --out ${VAELEN_ATLAS_128_BEFORE})
+  set_tests_properties(Atlas.Runs128Before PROPERTIES FIXTURES_SETUP Atlas128Before TIMEOUT 900)
+  add_test(NAME Atlas.Frozen128Before
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_atlas_output.py ${VAELEN_ATLAS_128_BEFORE}
+            --expect frame=0xabc5a5767c6cf9dd ground=0x8f7f4948f49b6e86)
+  set_tests_properties(Atlas.Frozen128Before PROPERTIES FIXTURES_REQUIRED Atlas128Before TIMEOUT 300)
+  add_test(NAME Atlas.PanelFrozenBefore
+    COMMAND VaelenAtlas --no-climate --empty --size 128 --years 120 --panel
+            --out ${CMAKE_CURRENT_BINARY_DIR}/atlas-panel-before.json)
+  set_tests_properties(Atlas.PanelFrozenBefore PROPERTIES TIMEOUT 900
     PASS_REGULAR_EXPRESSION "\ndigest 54787451e65766c1\n")
 
   # The checker's own regression suite: proves every rule still fires.

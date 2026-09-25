@@ -44,12 +44,18 @@ namespace
 		O.PreHistory = 60;
 		O.Years = 10;
 		O.Play = true;
+		// 18.10: the climate is the default now; these cases are about what the
+		// VIEW does with the flag, so the world is the one before Phase 18 and
+		// Warm() tells the view the climate by hand, as it did before the flip.
+		O.Climate = false;
 		return O;
 	}
 
 	ViewSources Cold(const Aelvor& A)
 	{
-		return A.Sources();
+		ViewSources S = A.Sources();
+		S.HasClimate = false; // explicit: a flipped default must not reach this control
+		return S;
 	}
 
 	ViewSources Warm(const Aelvor& A)

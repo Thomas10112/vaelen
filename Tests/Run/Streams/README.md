@@ -277,3 +277,15 @@ old age is not shaped like that. `--deathwalk` enforces its own clause instead,
 and refuses to write a file whose name would be a lie: no death in the horizon,
 or a death with nobody taken up afterwards, and nothing is written at all. Both
 refusals were exercised on purpose before this file was kept.
+
+## `aelvor128-climate-stand-2026-09-25.stream` - the climate world's month (18.10)
+
+Written by `VaelenAtlas --stand` on the day `Options::Climate` became the
+default, and for the reason the 14.10 stand-in was: so that a replay of a world
+WITH winters, seasons and chill is held by an entry (`Replay.Climate`, with
+`-DERA=--climate`) before anybody has played one in Unreal. Thirty days, 32
+intents, nobody's hand on it. Every other stream in this directory was recorded
+in the world before Phase 18, carries no Options, and is replayed with
+`--no-climate` (the four drivers default to it). The first month the owner
+plays in a climate build replaces this file, as the real month replaced the
+14.10 stand-in.

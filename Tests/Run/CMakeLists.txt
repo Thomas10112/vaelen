@@ -173,6 +173,25 @@ target_compile_definitions(VaelenRunTests PRIVATE VAELEN_STORE_DIR="${CMAKE_CURR
 # 4, which is LodRules::MaxDetailed, which is what a replay that DROPPED the
 # budget fell back to - so it round-tripped by numeric coincidence. A budget the
 # default cannot stand in for is the whole point of pinning it.
+# 18.10: a month of the CLIMATE world. A stand-in written by --stand on the
+# day the default flipped (thirty days, played by nobody: see Streams/README.md)
+# and replayed with -DERA=--climate, so the four digests are those of a world
+# with winters, seasons and chill. The same stream replayed with --no-climate
+# plays another person and prints another four digests (Dokdahum in region 2
+# here, Odordissuss there) - the option is a different world, which is why a
+# stream is replayed into the era it was recorded in.
+add_test(NAME Replay.Climate
+  COMMAND ${CMAKE_COMMAND}
+          -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DSTREAM=${PROJECT_SOURCE_DIR}/Tests/Run/Streams/aelvor128-climate-stand-2026-09-25.stream
+          -DOUT=${CMAKE_CURRENT_BINARY_DIR}/replay-climate.json
+          -DERA=--climate
+          "-DSAME=replay: 32 of 32 answered identically, 30 of 30 days"
+          "-DPLAYED=LogVaelenPlay: AELVOR 128 seed 41454c564f52: played Dokdahum (person 3588, region 2) 30 days, 32 intents (29 taken, 3 refused by the world, 0 dropped at the door), state a56776c2166d6de1, log 1ae67b101be35733, life 7406a01f544161f6, panel a24da97168077746"
+          "-DVERBS=LogVaelenPlay: verbs work 8 rest 9 eat 9 wait 1 speak 2 give 1 take 1 move 1"
+          -P ${CMAKE_CURRENT_LIST_DIR}/ReplayPlayed.cmake)
+set_tests_properties(Replay.Climate PROPERTIES TIMEOUT 1800 COST 2000)
+
 add_test(NAME Replay.Walked
   COMMAND ${CMAKE_COMMAND}
           -DATLAS=$<TARGET_FILE:VaelenAtlas>

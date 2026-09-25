@@ -13,26 +13,41 @@ rewritten afterwards; this block is the only part that tracks today.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 17 — DEBUG TOOLS, CLOSED 2026-09-24: all eleven clauses of its gate
-              met, read clause by clause in Docs/ROADMAP.md section 23. Clause (j):
-              Tools/run_gates.sh linux-clang-debug printed GATES-DONE 0 failing (of 17)
-              in 5122 s on 5032246; clause (i): no frozen digest moved over nine tasks.
-              CI run 276 on 5032246: nine of ten legs green, the clang-debug leg still
-              testing when this was written (run 274 on 65b60d4 was ten of ten).
-              NEXT: Phase 18 CLIMATE & SEASONS, PLANNED 2026-09-24 — ten tasks and a
-              twelve-clause gate in Docs/ROADMAP.md section 25, ADR-0151 to ADR-0154
-              proposed. The panel found clause (i) of Phase 17's gate measured with a
-              grep blind to `0x…ull` literals (0 over the ADR-0131 re-freeze that
-              removed 55); re-measured suffix-aware, Phase 17 removed 0 and added 138,
-              so the clause holds and section 23 says how. 18.01 is the instrument.
-              (16 SAVE/PERSISTENCE: fourteen tasks built, its GATE still open —
-               clause (j)'s migration half deferred to the v4 bump; and 16.14, whose
-               sitting is the owner's Windows machine AND whose engine half —
-               Vaelen.Save/Load, a store over IFileManager — is not written anywhere
-               yet: it is written here and parsed against the shim before that
-               sitting. Section 22 has the clause-by-clause read.
-               15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
-TASK        : 18.09 — DONE 2026-09-25. The tenth door is closed.
+PHASE       : 18 — CLIMATE & SEASONS, CLOSED headless 2026-09-25, read clause by
+              clause in Docs/ROADMAP.md section 25: eleven of twelve clauses met;
+              clause (c) met for the literals (census 18.02..18.09: 0 removed in every
+              class) and NOT as written for the gates, which ran at the flip and not at
+              every commit - and 18.09 left Politics.Reach red until 19b0ebc. The
+              climate is the DEFAULT world since 18.10 (ADR-0154): a current
+              temperature, a warmth need, a yearly winter through the ledger, a harvest
+              that takes the season, a cold day for the colony and the verbs. The world
+              before it stays one flag away (--no-climate, Options::Climate = false):
+              the goldens, the recorded months and the seventeen gates live there;
+              Replay.Climate joins the gate list as the eighteenth, in the new world.
+              run_gates.sh: GATES-DONE 0 failing (of 17) in 4012 s at this commit.
+              The two actors wire the climate unconditionally - parsed against the
+              shim, UNVERIFIED (engine) until Phase 19's first sitting.
+              NEXT: Phase 19 WORLD IN 3D - to be broken down by a panel, as 18 was.
+              (17 CLOSED 2026-09-24; 16 SAVE/PERSISTENCE: fourteen tasks built, its
+               GATE still open - clause (j)'s migration half deferred to the v4 bump,
+               and 16.14's sitting on the owner's Windows machine. Section 22.
+               15 CLOSED 2026-09-21; 14 CLOSED 2026-09-16)
+TASK        : 18.10 — DONE 2026-09-25. The switch and the re-freeze, in one commit.
+
+              Options::Climate = true, Atlas --no-climate; the four wirings agree with
+              the winter in all of them. Re-frozen, predicted first in ADR-0154's table
+              and read against it: the ADR-0135 frame abc5a5767c6cf9dd ->
+              ec18241b89c3d246 (ground 8f7f4948f49b6e86 unmoved), the empty page
+              54787451e65766c1 -> d7e7149e65ceb69a, the played page -> 777351768a3a4fc6,
+              the container corpus regenerated. Census: WORLD -14/+22, RECORD -10/+11,
+              GEN/HASH/CONST/SEED/SYNTHETIC 0. The old world held by three Before
+              entries; the climate world's month by Replay.Climate (a new stand-in
+              stream). Found at the flip: --golden inherited the default and wrote
+              climate images - it now names the world before and rewrites all three
+              byte for byte. Failed on purpose: one frame digit -> Atlas.Frozen128
+              alone red; a wiring without the winter -> Kernel.WorldWiring names it.
+
+TASK (18.09): 18.09 — DONE 2026-09-25. The tenth door is closed.
 
               WorldMap::Serialize refuses an image of another shape into a begun map,
               without failing the archive: LoadSnapshot answers WorldShapeDiffers and

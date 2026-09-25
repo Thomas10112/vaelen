@@ -12,8 +12,14 @@ if(NOT DEFINED ATLAS OR NOT DEFINED STREAM OR NOT DEFINED EXPECT)
   message(FATAL_ERROR "Gate.cmake needs ATLAS, STREAM and EXPECT")
 endif()
 
+# 18.10: the recorded months belong to the world before Phase 18 - a stream
+# carries no Options - so they are replayed into it unless the entry says
+# otherwise (-DERA=--climate for a month recorded in a climate world).
+if(NOT DEFINED ERA)
+  set(ERA --no-climate)
+endif()
 execute_process(
-  COMMAND ${ATLAS} --gate ${STREAM} --want-bound 0 --expect ${EXPECT}
+  COMMAND ${ATLAS} --gate ${STREAM} --want-bound 0 ${ERA} --expect ${EXPECT}
   OUTPUT_VARIABLE OUT
   ERROR_VARIABLE ERR
   RESULT_VARIABLE CODE)

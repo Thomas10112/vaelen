@@ -278,6 +278,11 @@ VAELEN_TEST(Checkpoint, TheRunTravelsWithTheWorldAndTheComparisonMustBeTheSource
 	// offers one. A world of 128 offers somebody either way (16.12), which is
 	// why the size is named here rather than the flag being called a law.
 	O.Lively = true;
+	// 18.10: AND WITHOUT THE CLIMATE. The same (32, 10+10, lively) world with
+	// the winter the default flipped in offers nobody at all - measured on the
+	// flip, three cases at once - so these cases, which are about the save and
+	// not the winter, name the world they were written against.
+	O.Climate = false;
 
 	Aelvor Source(O);
 	VT_REQUIRE(Source.Begin());
@@ -463,6 +468,11 @@ VAELEN_TEST(Checkpoint, AdoptTakesUpAWorldItNeverGenerated)
 	// offers one. A world of 128 offers somebody either way (16.12), which is
 	// why the size is named here rather than the flag being called a law.
 	O.Lively = true;
+	// 18.10: AND WITHOUT THE CLIMATE. The same (32, 10+10, lively) world with
+	// the winter the default flipped in offers nobody at all - measured on the
+	// flip, three cases at once - so these cases, which are about the save and
+	// not the winter, name the world they were written against.
+	O.Climate = false;
 
 	Aelvor Source(O);
 	VT_REQUIRE(Source.Begin());
@@ -803,9 +813,11 @@ VAELEN_TEST(Checkpoint, TheHostsDeclaredWorldIsCheckedAgainstTheSave)
 		return O;
 	};
 
+	// 18.10: the source is a climate world by default, so the mismatch is a
+	// host that asks for the world without one.
 	const auto WithClimate = [](Options O)
 	{
-		O.Climate = true;
+		O.Climate = false;
 		return O;
 	};
 
@@ -825,8 +837,8 @@ VAELEN_TEST(Checkpoint, TheHostsDeclaredWorldIsCheckedAgainstTheSave)
 	VT_REQUIRE(ReadHostSection(View, Carried));
 	VT_CHECK_MSG(Carried.Size == 32u && Carried.PreHistory == 6u && Carried.Years == 6u,
 				 "and it is the world the host declared");
-	VT_CHECK_MSG(Carried.Play && Carried.Stream && !Carried.Lively && !Carried.Colony && !Carried.Climate,
-				 "including every one of the five flags");
+	VT_CHECK_MSG(Carried.Play && Carried.Stream && !Carried.Lively && !Carried.Colony && Carried.Climate,
+				 "including every one of the five flags (the climate on by default since 18.10)");
 	VT_CHECK_MSG(View.Version == CheckpointVersion, "and the container version did not have to move");
 
 	const auto Offer = [&Image](const Options& Host)
@@ -964,6 +976,11 @@ VAELEN_TEST(Checkpoint, ProvenanceReplaysFromTheFileAlone)
 	Played.Play = true;
 	Played.Stream = true;
 	Played.Lively = true;
+	// 18.10: AND WITHOUT THE CLIMATE. The same (32, 10+10, lively) world with
+	// the winter the default flipped in offers nobody at all - measured on the
+	// flip, three cases at once - so these cases, which are about the save and
+	// not the winter, name the world they were written against.
+	Played.Climate = false;
 
 	Aelvor Source(Played);
 	VT_REQUIRE(Source.Begin());

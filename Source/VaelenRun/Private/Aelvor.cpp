@@ -638,7 +638,7 @@ namespace Vaelen::Run
 		S.HasLife = Given_.Play;
 		// 18.02: false whatever Given_.Climate says, until 18.04 gives the view
 		// something to read; 18.10 makes it Given_.Climate.
-		S.HasClimate = false;
+		S.HasClimate = Given_.Climate; // 18.10
 		// 18.05: the warmth the climate world declared, read by the life view
 		// for the chill; HasClimate above stays false until 18.10.
 		S.HasWarmth = Given_.Climate;
