@@ -8255,3 +8255,18 @@ grown to 24 moved-or-new); `Kernel.ShimLedger` (112 beliefs, the 94 of the
 walk listed by name with what each is for; the self-test's synthetic method
 renamed, since its old name became a real belief). One shim line added:
 `UWorld::GetFirstPlayerController`.
+
+### Found on CI run 309 (19.10), 2026-09-25: a known answer nobody re-measured
+
+The first run to reach every leg's suite since 18.09 came back 247 of 248
+on the four release and noasserts legs: `Kernel.EngineStatusSelfTest`. Its
+known answer - the seven engine files whose code moved since b0921, "a
+measurement of git" - was measured at 19.01 and not again: 19.10 moved
+VaelenPlayerController.cpp (the verbs bound from the table) and the self-test
+went red on the CI alone, because `verify_fast` runs the check and not its
+self-test, and the Kernel ctest group was run here after 19.03b and not after
+19.10. 19.06's commit re-measures it (24 files: nine moved, fifteen new) and
+says in the docstring that a task moving engine code adds its files. THE
+LESSON, written where the next one will read it: a self-test with a known
+answer is re-run in ctest after every engine-code change, not only after the
+change that first wrote it - `ctest -R '^Kernel\.'` is thirty seconds.
