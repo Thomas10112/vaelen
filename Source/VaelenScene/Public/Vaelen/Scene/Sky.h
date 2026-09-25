@@ -6,8 +6,11 @@
 // Climate.h) had no reader that draws. This turns the leaf and the played life
 // into what the scene paints, in integers, once a day:
 //   - SNOW on a tile that is below freezing TODAY (the Frost flag, never the
-//     winter's figure): full at -5 deg and below, thinning to nothing at 0;
-//   - GRASS greener where the tile is above the growing line today;
+//     winter's figure): full at -5 deg and below, thinner towards the line
+//     (91 at -1, 51 at a fraction below zero the byte rounds to 0), never
+//     none while it freezes, and never on the sea;
+//   - GRASS greener where a LAND tile is above the growing line today (a
+//     lake bed or a river bed carries no colour to green);
 //   - the SUN from the world's hours - how many of the day's waking hours are
 //     spent - and its day of the year, at the played region's row: never a
 //     frame clock (ADR-0138: the world has no clock inside a day);
@@ -49,6 +52,8 @@ namespace Vaelen::Scene
 	};
 	/// The sun over row Row of a map Height rows high, on the life's day of the
 	/// year, Spent of Awake waking hours into it. Awake 0 is night: elevation 0.
+	/// Held to its domain: a row past the map is its last row, a day past the
+	/// year its day of the year, Spent past Awake is Awake.
 	VAELEN_SCENE_API Sun SunOf(uint32 Row, uint32 Height, uint32 DayOfYear, uint32 Spent, uint32 Awake);
 
 	struct BodyWeather
@@ -71,9 +76,11 @@ namespace Vaelen::Scene
 		uint32 Reserved = 0;
 		Hash64 Digest = 0;
 	};
-	/// The day's sky: snow and grass on every land tile (a sea tile has
-	/// neither), the sun on the climate's day at CentroidRow, Life.Spent of
-	/// Life.Awake hours into it, and the played body's weather.
+	/// The day's sky: snow on every tile but the sea, grass on the land alone
+	/// (the same rule ApplyClimate paints by), the sun on the climate's day at
+	/// CentroidRow, Life.Spent of Life.Awake hours into it, and the played
+	/// body's weather. A view that does not fit the ground counts nothing:
+	/// Tiles = 0, as ApplyClimate paints nothing.
 	VAELEN_SCENE_API SkyStats MeasureSky(const Ground& G, const View::ClimateView& Climate, const View::LifeView& Life,
 										 uint32 CentroidRow);
 

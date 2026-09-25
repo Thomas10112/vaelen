@@ -201,7 +201,7 @@ add_test(NAME Replay.Climate
           # in the east, and Dokdahum's breath shows: region 2 is below zero.
           "-DTERRAIN=LogVaelenScene: AELVOR 128 seed 41454c564f52 region all: chunks 64, vertices 1065024, triangles 2097152, z [-5000, 50636] cm, steep 0 of 2097152; terrain 105208c54e3c6ea9"
           "-DLAYOUT=LogVaelenScene: AELVOR 128 seed 41454c564f52 layout day 31: squares 46, houses 7039 (unplaced 0), figures 1960 (company 16), roads 84 over 1236 tiles (unrouted 2), pits 0; layout ead1d4340f2cdd08"
-          "-DSKY=LogVaelenScene: AELVOR 128 seed 41454c564f52 sky day 31: snow 1116 of 16384 tiles, growing 4475, sun azimuth 1012 elevation 45, breath 1 shiver 0; sky 8f48a6844f33fc3f"
+          "-DSKY=LogVaelenScene: AELVOR 128 seed 41454c564f52 sky day 31: snow 1116 of 16384 tiles, growing 4019, sun azimuth 1012 elevation 45, breath 1 shiver 0; sky 84ceea193452087c"
           -P ${CMAKE_CURRENT_LIST_DIR}/ReplayPlayed.cmake)
 set_tests_properties(Replay.Climate PROPERTIES TIMEOUT 1800 COST 2000)
 

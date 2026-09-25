@@ -129,8 +129,13 @@ namespace Vaelen::Scene
 	{
 		Out = Ground{};
 		const uint64 Count = uint64{Map.Width} * Map.Height;
+		// The far edge of the map, in centimetres, must fit a vertex's int32
+		// (19.09b, found by the review: 2148 tiles at 1e6 cm wrapped a vertex to
+		// the wrong side of the map and it took another tile's colour).
+		const uint64 Side = static_cast<uint64>(Map.Width > Map.Height ? Map.Width : Map.Height);
+		const uint64 FarCm = Side * static_cast<uint64>(Scale.CmPerTile) + static_cast<uint64>(Scale.CmPerTile) / 2u;
 		if (Map.Width == 0u || Map.Height == 0u || Map.Tiles.size() != Count || !IsUsableScale(Scale) ||
-			Map.Width > 8192u || Map.Height > 8192u)
+			Map.Width > 8192u || Map.Height > 8192u || FarCm > 2147483647ull)
 		{
 			return false;
 		}

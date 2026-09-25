@@ -66,6 +66,17 @@ TASK        : 19.10 — DONE 2026-09-25 (headless); its engine half UNVERIFIED u
               the eight verbs from it (FKey(FName), a listed belief). Three sabotages
               caught - two of them redone after an unbuildable first attempt.
 
+TASK (19.09b): 19.09b — DONE 2026-09-25. The review's findings: one rule for the paint and the count.
+
+              MeasureSky counted grass on lakes and rivers that ApplyClimate never
+              greened; one rule now serves both, and a view that does not fit the
+              ground counts nothing. BuildGround refuses a map whose far edge
+              overflows a centimetre (found latent, reproduced). Five test holes closed
+              (every vertex compared, the sun's direction, the body in the digest, the
+              equinox on every row, the flags against the bytes). Re-pinned once:
+              Atlas.SceneSky128 growing 3454 / 160cbcc697d9dc4e, Replay.Climate's sky
+              4019 / 84ceea193452087c. Four sabotages caught.
+
 TASK (19.09): 19.09 — DONE 2026-09-25. The cold and the heat can be seen: snow, grass, sun, breath.
 
               Vaelen/Scene/Sky.h: SnowOf (today's Frost flag, 255 at -5, a ramp to

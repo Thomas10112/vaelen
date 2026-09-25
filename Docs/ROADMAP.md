@@ -8270,3 +8270,49 @@ says in the docstring that a task moving engine code adds its files. THE
 LESSON, written where the next one will read it: a self-test with a known
 answer is re-run in ctest after every engine-code change, not only after the
 change that first wrote it - `ctest -R '^Kernel\.'` is thirty seconds.
+
+### 19.09b, 2026-09-25: what the review of 19.09 found, and what moved
+
+The fleet's three-lens review of 19.09 (integer math, determinism, test
+strength), every finding put to a refuter, confirmed one defect, one latent
+overflow and five holes; all repaired here, the digests re-pinned once.
+
+THE DEFECT: `MeasureSky` counted grass on every non-sea tile while
+`ApplyClimate` greened land alone - the line said one thing and the mesh
+another (3877 growing counted, 3454 painted at 128 on day 1). One rule now
+serves both (`Fits`, `SnowOn`, `GrassOn`): snow on every tile but the sea,
+grass on the land, and a view that does not fit the ground paints nothing
+and counts nothing (Tiles = 0). Re-pinned: `Atlas.SceneSky128` growing 3454,
+sky 160cbcc697d9dc4e (the same from `Scene.Sky` by the other wiring);
+`Replay.Climate`'s sky line growing 4019, sky 84ceea193452087c. The terrain
+and layout lines did not move.
+
+THE LATENT OVERFLOW: a vertex's X is an int32 of centimetres, and
+`IsUsableScale` allowed 2148 tiles at 1e6 cm - the refuter reproduced a
+vertex wrapped to the far side of the map, taking another tile's colour.
+`BuildGround` now refuses a map whose far edge does not fit (`Scene.Terrain`:
+2148 x 1 at 1e6 refused, 2146 built - the CONTROL). No real map is near it.
+
+THE HOLES, closed: `TheMeshTurnsWhite...` now compares EVERY on-map vertex
+with what Before and its tile say (full snow the snow's colour, thin snow
+the blend channel by channel, bare land greener by GrassOf, a lake or a
+river untouched, the sea untouched) - 2226 white, 605 thin, 3155 greened,
+1236 kept; the sun's azimuth must grow with every hour (a sun running west
+to east passed before); the body reaches the stats and the digest (a
+chilled life: breath 1, shiver 12, another digest, the same snow); the
+equinox invariant on every row, exact within the tropics too (2E = S + W +
+2(23.4 - L)); today's snow has a floor and a ceiling; the kernel's flags
+confronted with the bytes on every tile; `GrassOf` under frost; `SunOf`
+held to its domain (a row past the map, a day past the year, hours past the
+day) with int64 where the review found a signed overflow reachable only from
+outside. Sky.h's story of snow at the line now matches the code (51 at a
+fraction below zero, 91 at -1). The Atlas prints the three scene lines from
+three buffers sized by their own constants and finds the sun's row by one
+helper (`SunRowOf`, by index).
+
+FAILED ON PURPOSE, each restored: the count greening lakes again -> the
+land count and the digest red; the paint greening lakes -> the untouched
+vertices red; the far-edge guard removed (the variable kept, so it builds:
+the first attempt did not, and an unbuilt sabotage proves nothing) -> the
+refusal red; the row clamp removed -> the domain case red. Scene: 26 cases,
+1 494 145 checks.

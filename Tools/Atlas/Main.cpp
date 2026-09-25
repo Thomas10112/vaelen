@@ -3303,6 +3303,21 @@ namespace
 	/// 19.05: the terrain line, and the picture of the ground. The chunks are
 	/// every chunk of the map for "all", or every chunk holding a tile of the
 	/// region otherwise; the near lattice (stride 1) in both.
+	/// The row the sun is measured over: the centroid's of Region, found by its
+	/// index and not its position in the view; the map's middle row when the
+	/// view has no such region (19.09b: one idiom for every site).
+	uint32 SunRowOf(const WorldView& Frame, uint32 Region, uint32 Width, uint32 Height)
+	{
+		for (const RegionView& R : Frame.Regions)
+		{
+			if (R.Index == Region && Width != 0u)
+			{
+				return R.CentroidTile / Width;
+			}
+		}
+		return Height / 2u;
+	}
+
 	/// Every chunk touching Region (0: all of them) at the full lattice, into Stats.
 	void MeasureTerrainOf(const Scene::Ground& G, uint32 Region, Scene::TerrainStats& Stats)
 	{
@@ -3511,12 +3526,14 @@ namespace
 							 Ground.Height);
 				return 1;
 			}
-			char Line[Scene::LayoutLineBytes];
-			Scene::TerrainStats Terrain;
-			MeasureTerrainOf(G, 0u, Terrain);
-			if (Scene::TerrainLine(RO.Size, RO.Seed, 0u, Terrain, Line, Scene::TerrainLineBytes) != 0u)
 			{
-				std::printf("%s\n", Line);
+				char Line[Scene::TerrainLineBytes];
+				Scene::TerrainStats Terrain;
+				MeasureTerrainOf(G, 0u, Terrain);
+				if (Scene::TerrainLine(RO.Size, RO.Seed, 0u, Terrain, Line, Scene::TerrainLineBytes) != 0u)
+				{
+					std::printf("%s\n", Line);
+				}
 			}
 			WorldGen::RegionGraphCache Ways;
 			LifeView Life;
@@ -3526,26 +3543,22 @@ namespace
 			Scene::SceneLayout Laid;
 			// The day counted from 1, as the climate line counts it.
 			Scene::BuildLayout(G, Frame, Net, Folk, Life, Life.Day + 1u, Laid);
-			if (Scene::LayoutLine(RO.Size, RO.Seed, Life.Day + 1u, Scene::MeasureLayout(Laid), Line,
-								  Scene::LayoutLineBytes) != 0u)
 			{
-				std::printf("%s\n", Line);
+				char Line[Scene::LayoutLineBytes];
+				if (Scene::LayoutLine(RO.Size, RO.Seed, Life.Day + 1u, Scene::MeasureLayout(Laid), Line,
+									  Scene::LayoutLineBytes) != 0u)
+				{
+					std::printf("%s\n", Line);
+				}
 			}
 			if (RO.Climate)
 			{
 				ClimateView Climate;
 				TakeClimateView(A.Instance(), SourcesFor(A, Opt), Climate);
 				// The sun over the played region's centroid row - the first region's when nobody is played.
-				uint32 Row = G.Height / 2u;
-				for (const RegionView& Region : Frame.Regions)
-				{
-					if (Region.Index == (Life.Region != 0u ? Life.Region : 1u))
-					{
-						Row = Region.CentroidTile / G.Width;
-						break;
-					}
-				}
+				const uint32 Row = SunRowOf(Frame, Life.Region != 0u ? Life.Region : 1u, G.Width, G.Height);
 				const Scene::SkyStats Sky = Scene::MeasureSky(G, Climate, Life, Row);
+				char Line[Scene::SkyLineBytes];
 				if (Scene::SkyLine(RO.Size, RO.Seed, Climate.Day + 1u, Sky, Line, Scene::SkyLineBytes) != 0u)
 				{
 					std::printf("%s\n", Line);
@@ -3850,7 +3863,7 @@ namespace
 			LifeView Hours;
 			Hours.Awake = 16;
 			Hours.Spent = static_cast<uint32>(Opt.SceneSkyHour);
-			const uint32 Row = Frame.Regions.empty() ? G.Height / 2u : Frame.Regions[0].CentroidTile / G.Width;
+			const uint32 Row = SunRowOf(Frame, 1u, G.Width, G.Height);
 			const Scene::SkyStats Sky = Scene::MeasureSky(G, Climate, Hours, Row);
 			char Line[Scene::SkyLineBytes];
 			if (Scene::SkyLine(Opt.Size, Opt.Seed, Climate.Day + 1u, Sky, Line, Scene::SkyLineBytes) != 0u)

@@ -209,7 +209,7 @@ if(Python3_Interpreter_FOUND)
     COMMAND VaelenAtlas --size 128 --prehistory 1 --years 1 --scene-sky 8
             --out ${CMAKE_CURRENT_BINARY_DIR}/atlas-scene-sky.json)
   set_tests_properties(Atlas.SceneSky128 PROPERTIES TIMEOUT 900
-    PASS_REGULAR_EXPRESSION "sky day 1: snow 1789 of 16384 tiles, growing 3877, sun azimuth 1800 elevation 95, breath 0 shiver 0; sky b6f8dce3d92162c3\n")
+    PASS_REGULAR_EXPRESSION "sky day 1: snow 1789 of 16384 tiles, growing 3454, sun azimuth 1800 elevation 95, breath 0 shiver 0; sky 160cbcc697d9dc4e\n")
   add_test(NAME Atlas.SceneSky128Before
     COMMAND VaelenAtlas --size 128 --prehistory 1 --years 1 --no-climate --scene-sky 8
             --out ${CMAKE_CURRENT_BINARY_DIR}/atlas-scene-sky-before.json)

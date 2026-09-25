@@ -40,6 +40,27 @@ namespace Vaelen::Scene
 		}
 
 		constexpr uint8 SnowR = 236, SnowG = 240, SnowB = 246;
+
+		/// One rule for the paint and the count, so the two cannot drift: a view
+		/// paints a ground only when it is that ground's shape.
+		bool Fits(const Ground& G, const View::ClimateView& C)
+		{
+			return !C.Tiles.empty() && C.Width == G.Width && C.Height == G.Height &&
+				   C.Tiles.size() == uint64{C.Width} * C.Height && G.Kind.size() == C.Tiles.size();
+		}
+
+		/// Snow lies on every tile but the sea; grass grows on land alone - a
+		/// lake bed or a river bed carries no biome colour to green (19.09b,
+		/// found by the review: the count said one thing and the paint another).
+		uint8 SnowOn(const Ground& G, const View::ClimateView& C, uint32 Tile)
+		{
+			return G.Kind[Tile] == GroundKind::Sea ? 0u : SnowOf(C.Tiles[Tile]);
+		}
+
+		uint8 GrassOn(const Ground& G, const View::ClimateView& C, uint32 Tile)
+		{
+			return G.Kind[Tile] == GroundKind::Land ? GrassOf(C.Tiles[Tile]) : 0u;
+		}
 	} // namespace
 
 	uint8 SnowOf(const View::TileClimate& T)
@@ -65,7 +86,7 @@ namespace Vaelen::Scene
 
 	void ApplyClimate(const Ground& G, const View::ClimateView& Climate, TerrainMesh& Mesh)
 	{
-		if (Climate.Tiles.empty() || Climate.Width != G.Width || Climate.Height != G.Height)
+		if (!Fits(G, Climate))
 		{
 			return;
 		}
@@ -80,21 +101,16 @@ namespace Vaelen::Scene
 			TX = TX < 0 ? 0 : (TX >= G.Width ? G.Width - 1 : TX);
 			TY = TY < 0 ? 0 : (TY >= G.Height ? G.Height - 1 : TY);
 			const uint32 Tile = static_cast<uint32>(TY) * G.Width + static_cast<uint32>(TX);
-			if (G.Kind[Tile] == GroundKind::Sea)
-			{
-				continue;
-			}
-			const View::TileClimate& T = Climate.Tiles[Tile];
-			const uint32 Snow = SnowOf(T);
+			const uint32 Snow = SnowOn(G, Climate, Tile);
 			if (Snow != 0u)
 			{
 				V.R = static_cast<uint8>((V.R * (255u - Snow) + SnowR * Snow) / 255u);
 				V.G = static_cast<uint8>((V.G * (255u - Snow) + SnowG * Snow) / 255u);
 				V.B = static_cast<uint8>((V.B * (255u - Snow) + SnowB * Snow) / 255u);
 			}
-			else if (G.Kind[Tile] == GroundKind::Land)
+			else
 			{
-				const uint32 Green = V.G + GrassOf(T);
+				const uint32 Green = V.G + GrassOn(G, Climate, Tile);
 				V.G = static_cast<uint8>(Green > 255u ? 255u : Green);
 			}
 		}
@@ -107,12 +123,17 @@ namespace Vaelen::Scene
 		{
 			return Out;
 		}
+		// Held to the domain (19.09b): a row past the map is its last row, a
+		// day past the year is its day of the year, and nothing below can
+		// overflow whatever the caller hands in.
+		Row = Row >= Height ? Height - 1u : Row;
+		const int32 Day = static_cast<int32>(DayOfYear % 360u);
 		// Distance to the equator row, whole degrees 0..90.
-		const int32 Mid = static_cast<int32>(Height - 1u);
-		const int32 Twice = 2 * static_cast<int32>(Row) - Mid;
-		const int32 Latitude = (Twice < 0 ? -Twice : Twice) * 90 / (Mid == 0 ? 1 : Mid);
+		const int64 Mid = int64{Height} - 1;
+		const int64 Twice = 2 * int64{Row} - Mid;
+		const int32 Latitude = static_cast<int32>((Twice < 0 ? -Twice : Twice) * 90 / (Mid == 0 ? 1 : Mid));
 		// The declination, 23.4 deg at mid-summer (day 135) and -23.4 at day 315.
-		const int32 Declination = 234 * SinDeg(static_cast<int32>(DayOfYear) - 45) / 10000; // tenths
+		const int32 Declination = 234 * SinDeg(Day - 45) / 10000; // tenths
 		// Noon's height is 90 deg less the angle between the row and the sun's
 		// declination; on a row nearer the equator than the declination the
 		// sun passes the zenith's other side, lower again.
@@ -123,7 +144,7 @@ namespace Vaelen::Scene
 			Out.Azimuth = 1800;
 			return Out;
 		}
-		const uint32 Into = Spent > Awake ? Awake : Spent;
+		const uint64 Into = Spent > Awake ? Awake : Spent;
 		// East at the day's first hour, south at its middle, west at its last;
 		// the height rises and falls as sin of the day's fraction.
 		const int32 Arc = static_cast<int32>(Into * 180u / Awake); // degrees 0..180
@@ -148,17 +169,20 @@ namespace Vaelen::Scene
 						uint32 CentroidRow)
 	{
 		SkyStats S;
-		Hash64 H = HashCombine(HashUInt64(Climate.Day), HashUInt64(Climate.Tiles.size()));
-		for (usize i = 0; i < Climate.Tiles.size(); ++i)
+		// The same rule the paint follows (Fits, SnowOn, GrassOn): a view that
+		// does not fit the ground paints nothing and counts nothing, and says so
+		// with Tiles = 0 - the sun and the body are still the life's.
+		const bool Painted = Fits(G, Climate);
+		S.Tiles = Painted ? static_cast<uint32>(Climate.Tiles.size()) : 0u;
+		Hash64 H = HashCombine(HashUInt64(Climate.Day), HashUInt64(S.Tiles));
+		for (uint32 i = 0; i < S.Tiles; ++i)
 		{
-			const bool Sea = i < G.Kind.size() && G.Kind[i] == GroundKind::Sea;
-			const uint8 Snow = Sea ? 0u : SnowOf(Climate.Tiles[i]);
-			const uint8 Grass = Sea ? 0u : GrassOf(Climate.Tiles[i]);
+			const uint8 Snow = SnowOn(G, Climate, i);
+			const uint8 Grass = GrassOn(G, Climate, i);
 			S.Snow += Snow != 0u ? 1u : 0u;
 			S.Growing += Grass != 0u ? 1u : 0u;
 			H = HashCombine(H, HashUInt64((uint64{Snow} << 8) | Grass));
 		}
-		S.Tiles = static_cast<uint32>(Climate.Tiles.size());
 		const Sun Now = SunOf(CentroidRow, G.Height, Climate.Day, Life.Spent, Life.Awake);
 		const BodyWeather Body = BodyOf(Life);
 		S.Azimuth = Now.Azimuth;
