@@ -97,10 +97,18 @@ if(Python3_Interpreter_FOUND)
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_modules.py)
   add_test(NAME Kernel.ModuleListsSelfTest
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_modules.py --self-test)
+  # Sitting S1 (2026-09-25): the editor build refused five members of
+  # Run::Aelvor exported inside an exported class (MSVC C2487), which no
+  # headless build can see - the API macro is only dllexport in the editor's.
+  add_test(NAME Kernel.DllApi
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_dll_api.py)
+  add_test(NAME Kernel.DllApiSelfTest
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_dll_api.py --self-test)
   set_tests_properties(Kernel.Purity Kernel.PuritySelfTest Kernel.WorldWiring Kernel.UiFence
                        Kernel.UiFenceSelfTest Kernel.EventTypes Kernel.EventTypesSelfTest
                        Kernel.EngineStatus Kernel.EngineStatusSelfTest Kernel.ShimLedger
                        Kernel.ShimLedgerSelfTest Kernel.ModuleLists Kernel.ModuleListsSelfTest
+                       Kernel.DllApi Kernel.DllApiSelfTest
                        PROPERTIES TIMEOUT 120)
 elseif(VAELEN_REQUIRE_PURITY_CHECK)
   message(FATAL_ERROR "Python 3 is required for the Kernel.Purity test. Install it or configure with -DVAELEN_REQUIRE_PURITY_CHECK=OFF (the purity check is then NOT run).")

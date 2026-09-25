@@ -81,6 +81,7 @@ echo "[verify] engine status"
 python3 Tools/check_engine_status.py | tail -1
 python3 Tools/check_shim_ledger.py | tail -1
 python3 Tools/check_modules.py | tail -1
+python3 Tools/check_dll_api.py | tail -1
 
 echo "[verify] frozen census"
 # 18.01. Here and not only in ctest because a literal added in a file the

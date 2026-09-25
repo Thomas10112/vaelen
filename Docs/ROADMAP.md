@@ -7814,6 +7814,34 @@ and `s1.session` (with `head`), `Session.P19S1` re-reading step 4 against
 `VaelenAtlas --gate <stream> --want-bound 0`, a RECORDED row `s1` in
 Tools/engine_builds.txt, and the STATUS lines moved to it by the checker.
 
+### 19.03b, 2026-09-25: S1's first error, repaired here
+
+**The sitting did its job on its first attempt: it stopped at step 1 with one
+cause.** The editor build of `c000399` failed (`OtherCompilationError`) on
+MSVC C2487 in `Source/VaelenRun/Public/Vaelen/Run/Aelvor.h`, lines 264, 318,
+331, 334 and 338: `Generations`, `AdoptResultToString`, `Adopt`,
+`GetRunState` and `SetRunState`, members of `class VAELEN_RUN_API Aelvor`,
+each carrying `VAELEN_RUN_API` again since Phase 16. The macro is
+`__declspec(dllexport)` only when UBT builds the module as a DLL; every
+headless leg - the Windows MSVC one included - sees it empty or as a
+visibility attribute, so nothing here could refuse it. The owner reported and
+did not repair (the standing rule); the five macros are removed here.
+
+WHAT KEEPS IT OUT NOW: `Kernel.DllApi` (`Tools/check_dll_api.py`) reads every
+header under Source/ the way that build does - comments and strings blanked,
+an exported class's body found by its braces, any `*_API` declared directly
+in it refused - and its self-test is shown failing on purpose: on the
+committed `Aelvor.h` of `c000399` it names exactly the five lines MSVC named,
+and no others in 146 headers. Also in verify_fast.
+
+WHAT IT DOES NOT SEE: every other way a DLL build differs from a static one
+(an exported class's implicit members over an incomplete type, a template
+exported across a module). None is known; the retake will say.
+
+The retake builds `19.03b` - the branch's head at that moment, so 19.04 to
+19.08 come with it (ENGINE_HANDOFF says so, and asks which module a first
+error is in).
+
 ### 19.04 AS BUILT, 2026-09-25
 
 **One composer for every engine line, and the replay says the weather.**

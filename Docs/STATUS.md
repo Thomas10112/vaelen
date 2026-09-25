@@ -29,7 +29,8 @@ PHASE       : 18 — CLIMATE & SEASONS, CLOSED headless 2026-09-25, read clause 
               shim, UNVERIFIED (engine) until Phase 19's first sitting.
               NOW: Phase 19 WORLD IN 3D (ROADMAP section 26, ADR-0155 to ADR-0159):
               twelve tasks, four sittings on the owner's machine. 19.01 and 19.02
-              DONE; 19.03 WAITS ON THE OWNER (sitting S1, ENGINE_HANDOFF). Headless
+              DONE; 19.03 WAITS ON THE OWNER (sitting S1, ENGINE_HANDOFF; its first
+              attempt found C2487 in Aelvor.h, repaired by 19.03b - the retake builds that). Headless
               work goes on meanwhile: 19.04 and 19.05 DONE; NEXT 19.06 is sitting S2
               (the engine contract: VaelenWalk, the walker, ZQSD) - its code is written
               here after S1 has built 19.03; 19.07 (the fence and the walk contract,
@@ -78,6 +79,16 @@ TASK (19.04): 19.04 — DONE 2026-09-25. One composer for every engine line.
               Vaelen.Play will call it (19.06). View.Proof: 1000 of 1000 seeded fact
               sets equal to the old format through snprintf, the widest line, all or
               nothing. Replay.Climate now pins its climate line too.
+
+TASK (19.03b): 19.03b — DONE 2026-09-25. S1's first attempt stopped at step 1; its error repaired here.
+
+              c000399's editor build: MSVC C2487 on five members of Run::Aelvor that
+              carried VAELEN_RUN_API inside a VAELEN_RUN_API class (Phase 16). dllexport
+              exists only in the editor build, so no headless leg could see it. Macros
+              removed; Kernel.DllApi (Tools/check_dll_api.py, + SelfTest, verify_fast)
+              refuses any *_API on a member of an exported class - on c000399's header
+              it names the same five lines MSVC did, and none elsewhere. The retake
+              builds the commit of 19.03b (ENGINE_HANDOFF, step 0).
 
 TASK (19.03): 19.03 — INCOMPLETE 2026-09-25: the headless half is written; sitting S1 is the owner's.
 

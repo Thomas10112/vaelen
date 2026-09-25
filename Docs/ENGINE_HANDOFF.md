@@ -297,11 +297,33 @@ one cause. The standing rule above holds without exception: REPORT, do not
 repair - above all nothing in `Source/VaelenCore` ... `VaelenMilitary`, nor in
 `VaelenRun`, `VaelenView`, `VaelenScene` or below.
 
-0. Check out THE COMMIT OF 19.03, not the branch's head - the branch goes on
-   with headless work (19.04, 19.05) that this build must not see:
+THE FIRST ATTEMPT, 2026-09-25, on 19.03's commit `c000399`, stopped at step 1
+exactly as this sitting is meant to stop: `Result: Failed
+(OtherCompilationError)`, the first error
+
+    Source\VaelenRun\Public\Vaelen\Run\Aelvor.h(264,25): error C2487: 'Generations':
+    le membre d'une classe d'interface dll ne peut pas être déclaré avec une interface dll
+
+and the same for `AdoptResultToString`, `Adopt`, `GetRunState` and `SetRunState`
+(lines 318, 331, 334, 338), in `Aelvor.cpp` and `VaelenCheckpointStore.cpp`.
+Phase 16 had put `VAELEN_RUN_API` on five members of a class that is itself
+`VAELEN_RUN_API`; the macro is `dllexport` only in the editor's DLL build, so
+every headless leg, MSVC's included, compiled it. Repaired HERE, not on the
+owner's machine (the standing rule held), by commit `19.03b`, which also adds
+`Kernel.DllApi` (`Tools/check_dll_api.py`): it reads every header the way
+that build does and finds those five lines, and only those, in `c000399`.
+
+The retake builds `19.03b`. It is the branch's head of that moment, so it
+carries 19.04 to 19.08 too - headless work in kernel modules the CI builds
+on every leg, and one new module, `VaelenScene` (a `Build.cs`, a module file
+and integer code). A first error in VaelenScene is therefore a possible
+second cause: report which module a first error is in.
+
+0. Check out THE COMMIT OF 19.03b, not the branch's head - the branch goes on
+   with headless work that this build must not see:
    ```
    git fetch origin claude/vaelen-master-prompt-aw7zqj
-   git checkout $(git log origin/claude/vaelen-master-prompt-aw7zqj --grep="^19.03: " -1 --format=%H)
+   git checkout $(git log origin/claude/vaelen-master-prompt-aw7zqj --grep="^19.03b: " -1 --format=%H)
    git rev-parse HEAD
    ```
    The FIRST line of what you bring back is that `rev-parse` - the log is
