@@ -259,15 +259,21 @@ a report: `IFileManager::Move` with Replace, `FindFiles` over a directory
 `SaveArrayToFile` / `LoadFileToArray`. On `Move`, read after S1's first
 attempt: it is a delete of the old file and then a rename, not one step;
 since 19.10 a failed move keeps the `.writing` temporary instead of deleting
-it (ROADMAP, "Found by the 19.10 audit"). If a `Vaelen.Save` over an
-existing name ever answers CannotWrite, bring back the listing of
-`Saved/Vaelen/`: the `.writing` file is the save.
+it (ROADMAP, "Found by the 19.10 audit"), and since 16.15 the old save is
+set aside as `<name>.previous` before the new one is moved in and given back
+under its own name by `Vaelen.Load` and `Vaelen.Saves` if that move fails.
+If a `Vaelen.Save` over an existing name ever answers CannotWrite, bring back
+the listing of `Saved/Vaelen/`: the `.writing` file is the new save, the
+`.previous` file the old one, and `Vaelen.Saves` should still list the name
+once. Step 2 below saves `first` TWICE, a `Vaelen.Day` apart, so that the
+replace over an existing name runs on the engine at least once.
 
 1. Build the editor as for 14.08. The console should list three new commands:
    `Vaelen.Save`, `Vaelen.Load`, `Vaelen.Saves`.
 2. Under `-game` (a game instance is needed, as for `Vaelen.Play`):
    `Vaelen.Play 128 120 1`, a few `Vaelen.Day`, one or two `Vaelen.Do`, then
-   `Vaelen.Save first`. Bring back the TWO lines it prints:
+   `Vaelen.Save first`; one more `Vaelen.Day` and `Vaelen.Save first` again
+   (the replace, 16.15). Bring back the TWO lines the second one prints:
    ```
    LogVaelenPlay: saved first: state <16 hex>, log <16 hex>, life <16 hex>, panel <16 hex>; year Y day D, played P, daily cadence; <path>
    LogVaelenPlay: check it headless: VaelenAtlas --load-from "<path>" --size 128 --years 120 --prehistory 300 --then-days 0 --stream --climate

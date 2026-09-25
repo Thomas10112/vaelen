@@ -5462,6 +5462,7 @@ I reported Phase 16 as "closed but for 16.14" in several session reports. That w
 | **(k) second-process load, `DiskFull`** | **MET 2026-09-22** — `Run.Store` covers the atomic write and the full-disk refusal; `Atlas.SaveThenLoadFromDisk` now covers the other half |
 | (l) provenance replays | met — `Checkpoint.ProvenanceReplaysFromTheFileAlone` |
 | (m) container round trip | met inside `Run.Checkpoint`, including the 180-offset sweep |
+| **(n) the last good save keeps its NAME through a replace that fails** (found by the 19.10 audit, not in the gate as written) | **MET 2026-09-25** — 16.15, `Run.SaveAside`: the rename-aside in both stores, the pre-fix arm kept beside it |
 
 **CLAUSE (h) IS NOW BUILT.** `Run.AdoptCostsNoGeneration`: a 256 checkpoint adopted into a world that was only CONSTRUCTED. Measured — Begin 4 569 ms, Adopt 794 ms, container 51.6 MiB, peak 223 MiB, `Generations() == 0`, and the adopted world reaches the saved digest. Its substance existed inside `Run.Checkpoint`'s 128 cell, but at 128, under another name, and **without the playability half**: that a day turns, that a look changes what is watched, and that the world still offers somebody to play after the carried life is put down. A world that restores to the right digest and cannot be lived in has restored a picture.
 
@@ -8186,7 +8187,8 @@ rename-aside (`<name>.previous` before the replace, hidden by the name rule
 like `.writing`, restored by Read when the name is missing) would close it,
 and needs the kernel's `IsUsableCheckpointName` and both stores. Phase 16's
 gate stays open on it. UNVERIFIED (engine) as the file was; S1 builds 19.03b
-and does not see it.
+and does not see it. CLOSED by 16.15 the same day (below): the aside in both
+stores, `Run.SaveAside` holding the stdio one to it on real files.
 
 The same audit REFUTED, by the owner's own build, its one predicted compile
 error: C4459 on the locals named `Where` in VaelenPlayCommands.cpp - the file
@@ -8466,3 +8468,65 @@ and above the old line by 67 s, so the margin was needed and not merely
 prudent; the leg's suite 235 of 235 in 6981.79 s. The first fully green run
 of this branch since 19.01's 297: every one between was cancelled by the
 next push or cut at this edge.
+
+### 16.15, 2026-09-25: the last good save keeps its name - the rename-aside in both stores
+
+What the 19.10 audit left open, closed headless. 16.07's promise was that a
+write which fails leaves the previous checkpoint WHOLE, and `Run.Store` holds
+the stdio store to it for a disk that fills while the temporary is written.
+The audit read the engine's replace and found the other half unkept: the
+engine's `Move` with Replace deletes the old file and then renames, so a
+rename that fails after the delete leaves the old save nowhere and the new
+one under `.writing` - the bytes safe, the NAME not, and `Read` answering
+NotFound over a folder that holds two whole saves. (The C library's `rename`
+on Windows refuses an existing destination outright: the stdio store, which
+only CI's Linux and macOS legs ever asked to overwrite a name, had the same
+window by another door.)
+
+THE RULE, in `Vaelen/Run/Store.h` where the `.writing` rule is: every store
+sets the old save ASIDE as `<name>.previous` (`PreviousSuffix`, refused by
+`IsUsableCheckpointName` like `.writing`) before the new one is moved into
+the empty place, and forgets the aside afterwards. Should the second move
+fail, the old save is whole under the aside and the new one whole under the
+temporary, both kept; should the first fail, nothing has moved and only the
+temporary goes. `Read` of a name that is missing while its aside is there
+renames the aside back and reads it; `List` shows such a save under its own
+name (and reads it, which restores it); `Forget` takes the name, the aside
+and the temporary alike, so a forgotten save cannot come back. An aside
+whose name IS there is a write in the middle of its replace, or one that
+failed to forget, and is not a second save. Both stores line for line:
+`Tools/Store/StdioCheckpointStore.h` (a `Rename` seam, so a test can make
+the one rename fail that no disk will) and the engine's
+`VaelenCheckpointStore.cpp` (UNVERIFIED (engine) as before, parsed: 25 TUs;
+the sitting of 16.14 exercises it the day `Vaelen.Save` writes a name
+twice).
+
+`Run.SaveAside`, six cases, 81 checks, on real files in a directory of its
+own: the rule hides the suffix and the store refuses it by name; the
+ordinary replace leaves the new bytes, no aside and no temporary (CONTROL);
+the replace that fails halfway answers CannotWrite, leaves the name empty,
+the old save under the aside and the new under the temporary, a COLD store
+lists one save under the player's name with the OLD tick, reading restores
+the name, and the next write of the name goes through; the window as a
+crash leaves it, laid out by hand with no store object, reads back the old
+bytes and restores the name, while an aside whose name is there is left
+alone (CONTROL); `Forget` takes all three and NotFound only when none was
+there; and THE PRE-FIX ARM, a store that replaces as the engine's Move did
+(delete, then a rename that fails): NotFound for a name whose bytes are
+whole on the disk, and nothing for the fixed store to restore either, since
+the old save was deleted and not set aside - the fix is in the write, and
+this shows it is not in the read.
+
+Failed on purpose, each built and each restored: Read never restoring the
+aside (6 checks red across two cases), the name rule accepting `.previous`
+(6 red: the rule case and the listing showing the aside as a second save),
+Forget leaving the aside (4 red), Write replacing in place with no aside
+(2 red: the window has the old save under its name and no aside, so the
+failing arm is not the one this test guards). `Run.Store`,
+`Run.StoreColdProcess` and `Atlas.InspectDir.ColdProcess` unchanged and
+green; `Run.Registry` counts the new suite. The shim ledger refused one name
+on the first run, `erase` - `std::vector::erase` after `std::unique` over the
+engine store's names, which the shim's TArray also uses inside - listed as
+the coincidence it is, beside `begin` and `end` (123 beliefs). Phase 16's gate gains row (n),
+met; clause (j)'s migration half and 16.14's sitting remain what keep the
+phase from CLOSED.

@@ -540,7 +540,8 @@ bool UVaelenWorldSubsystem::Save(const FString& Name, FString& Out, FString& Out
 	const std::string Plain(TCHAR_TO_UTF8(*Name));
 	if (!Vaelen::Run::IsUsableCheckpointName(Plain.c_str()))
 	{
-		Out = TEXT("not a name the store takes: not empty, no separator, no parent directory, not '.writing'");
+		Out = TEXT("not a name the store takes: not empty, no separator, no parent directory, not '.writing' nor "
+				   "'.previous'");
 		return false;
 	}
 	// The three-argument build: the tape travels with the world (16.11), so

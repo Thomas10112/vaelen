@@ -35,10 +35,24 @@ PHASE       : 18 — CLIMATE & SEASONS, CLOSED headless 2026-09-25, read clause 
               (the engine contract: VaelenWalk, the walker, ZQSD) - its code is WRITTEN
               (S1 built 19.03b on 2026-09-25); the sitting is the owner's. Ten owner questions, the tile
               scale first.
-              (17 CLOSED 2026-09-24; 16 SAVE/PERSISTENCE: fourteen tasks built, its
+              (17 CLOSED 2026-09-24; 16 SAVE/PERSISTENCE: fifteen tasks built, its
                GATE still open - clause (j)'s migration half deferred to the v4 bump,
-               and 16.14's sitting on the owner's Windows machine. Section 22.
+               and 16.14's sitting on the owner's Windows machine; the name promise
+               the 19.10 audit found unkept is met by 16.15. Section 22.
                15 CLOSED 2026-09-21; 14 CLOSED 2026-09-16)
+TASK        : 16.15 — DONE 2026-09-25 (headless). The last good save keeps its name.
+
+              The 19.10 audit found the engine's replace (a delete, then a rename)
+              could leave the last good save nameless while its bytes were whole.
+              Every store now sets the old save aside as `<name>.previous` (hidden
+              by the name rule like `.writing`) before the new one is moved in,
+              forgets the aside after, restores it under its own name on Read and
+              List when the name is missing, and Forget takes all three names.
+              Both stores line for line; Run.SaveAside (6 cases, 81 checks, on
+              real files, the pre-fix arm kept) holds the stdio one to it; the
+              engine one is UNVERIFIED (engine), parsed (25 TUs). Failed on
+              purpose four ways, each built. Phase 16's gate gains row (n), met.
+
 TASK        : 19.11 — WRITTEN 2026-09-25, UNVERIFIED (engine): the world drawn is the world built; S3 builds it.
 
               AVaelenScenery draws the subsystem's one layout as basic shapes (houses

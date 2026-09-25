@@ -152,6 +152,8 @@ file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/store)
 # 17.03's cold listing gets a directory of its own, so that Run.Store's files
 # cannot be counted by it and a stale run cannot make it pass.
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/store/cold)
+# 16.15's rename-aside gets one too, for the same reason.
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/store/aside)
 target_compile_definitions(VaelenRunTests PRIVATE VAELEN_STORE_DIR="${CMAKE_CURRENT_BINARY_DIR}/store")
 
 # VAELEN - Phase 15 task 15.10, HEADLESS HALF.

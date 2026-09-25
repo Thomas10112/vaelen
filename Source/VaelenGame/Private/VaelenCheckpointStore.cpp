@@ -9,7 +9,8 @@
 // other.
 //
 // STATUS: UNVERIFIED (engine) - written and PARSED against Tools/EngineShim on
-// 2026-09-24, not yet built by UnrealBuildTool nor run.
+// 2026-09-24 (16.15's rename-aside on 2026-09-25), not yet built by
+// UnrealBuildTool nor run.
 #include "VaelenCheckpointStore.h"
 
 #include "HAL/FileManager.h"
@@ -50,6 +51,8 @@ Vaelen::Run::StoreResult FVaelenCheckpointStore::Write(const char* Name, const V
 	const FString Final = PathOf(Name);
 	FString Temp = Final;
 	Temp += ANSI_TO_TCHAR(Vaelen::Run::WritingSuffix);
+	FString Aside = Final;
+	Aside += ANSI_TO_TCHAR(Vaelen::Run::PreviousSuffix);
 
 	TArray<Vaelen::uint8> Staged;
 	Staged.Reserve(static_cast<int32>(Size));
@@ -71,19 +74,51 @@ Vaelen::Run::StoreResult FVaelenCheckpointStore::Write(const char* Name, const V
 	// FFileManagerGeneric::Move with Replace DELETES the old save and then
 	// renames the temporary over its name. Between the two, and after a
 	// rename that fails, the last good save of that name is gone and the
-	// temporary is all there is - so on a failed move the temporary is KEPT,
-	// whole, as `<name>.writing` (IsUsableCheckpointName hides it from every
-	// listing), and the failure says so. Deleting it too, as the first
-	// version did, would leave neither. The promise the subsystem makes -
-	// that a write cannot destroy the last good save - holds for the bytes
-	// (they are on disk under one name or the other) and not yet for the
-	// name; the rename-aside rule that would close that window is named in
-	// ROADMAP (Phase 16's open gate) and not done here.
+	// temporary is all there is. So (16.15, the stdio store line for line)
+	// the old save is SET ASIDE first - moved to `<name>.previous`, which the
+	// name rule hides from every listing - the temporary moved into the
+	// empty place, and the aside forgotten. Should the second move fail, the
+	// old save is whole under the aside and the new one whole under
+	// `.writing`, both KEPT, and Read gives the old one back under its own
+	// name. Should the first fail, nothing has moved: the old save is where
+	// it was, and only the temporary goes. Deleting the temporary on a failed
+	// replace, as 16.14 did, would have left neither.
+	const bool HadOne = Files.FileExists(*Final);
+	if (HadOne)
+	{
+		// Move with Replace: any aside a failed forget left is deleted and
+		// the old save takes its name.
+		if (!Files.Move(*Aside, *Final, true, false, false, false))
+		{
+			Files.Delete(*Temp, false, true, true);
+			return StoreResult::CannotWrite;
+		}
+	}
 	if (!Files.Move(*Final, *Temp, true, false, false, false))
 	{
 		return StoreResult::CannotWrite;
 	}
+	if (HadOne)
+	{
+		// Best effort: an aside that lingers is hidden, never restored while
+		// its name is there, and replaced by the next write of the name.
+		Files.Delete(*Aside, false, true, true);
+	}
 	return StoreResult::Ok;
+}
+
+bool FVaelenCheckpointStore::Restore(const FString& Final, const FString& Aside) const
+{
+	IFileManager& Files = IFileManager::Get();
+	if (Files.FileExists(*Final))
+	{
+		return true;
+	}
+	if (!Files.FileExists(*Aside))
+	{
+		return false;
+	}
+	return Files.Move(*Final, *Aside, true, false, false, false);
 }
 
 Vaelen::Run::StoreResult FVaelenCheckpointStore::Read(const char* Name, std::vector<Vaelen::uint8>& Out)
@@ -93,7 +128,14 @@ Vaelen::Run::StoreResult FVaelenCheckpointStore::Read(const char* Name, std::vec
 	{
 		return StoreResult::BadName;
 	}
-	const FString Path = PathOf(Name);
+	// 16.15: a name that is missing while its aside is there is what a
+	// failed or interrupted replace left; the aside is moved back and read
+	// under the player's name. If even that move fails the aside is read
+	// where it lies - the bytes are the same bytes.
+	const FString Final = PathOf(Name);
+	FString Aside = Final;
+	Aside += ANSI_TO_TCHAR(Vaelen::Run::PreviousSuffix);
+	const FString Path = Restore(Final, Aside) ? Final : Aside;
 	if (!IFileManager::Get().FileExists(*Path))
 	{
 		return StoreResult::NotFound;
@@ -135,10 +177,24 @@ std::vector<Vaelen::Run::StoreEntry> FVaelenCheckpointStore::List()
 		if (Vaelen::Run::IsUsableCheckpointName(Leaf.c_str()))
 		{
 			Names.push_back(Leaf);
+			continue;
+		}
+		// 16.15: a save that exists only as `<name>.previous` - what a failed
+		// replace left - is listed as `<name>`, and reading it (below)
+		// restores the name. One whose name IS there is not a second save.
+		const std::string Suffix(Vaelen::Run::PreviousSuffix);
+		if (Leaf.size() > Suffix.size() && Leaf.compare(Leaf.size() - Suffix.size(), Suffix.size(), Suffix) == 0)
+		{
+			const std::string Stem = Leaf.substr(0, Leaf.size() - Suffix.size());
+			if (Vaelen::Run::IsUsableCheckpointName(Stem.c_str()) && !Files.FileExists(*PathOf(Stem.c_str())))
+			{
+				Names.push_back(Stem);
+			}
 		}
 	}
 	// Sorted, so two hosts listing the same folder agree on the order.
 	std::sort(Names.begin(), Names.end());
+	Names.erase(std::unique(Names.begin(), Names.end()), Names.end());
 	Out.reserve(Names.size());
 	for (const std::string& Name : Names)
 	{
@@ -170,11 +226,24 @@ Vaelen::Run::StoreResult FVaelenCheckpointStore::Forget(const char* Name)
 	{
 		return StoreResult::BadName;
 	}
+	// 16.15: the name, its aside and its temporary alike, so a save that was
+	// forgotten cannot come back through Read's restore.
 	const FString Path = PathOf(Name);
+	FString Aside = Path;
+	Aside += ANSI_TO_TCHAR(Vaelen::Run::PreviousSuffix);
+	FString Temp = Path;
+	Temp += ANSI_TO_TCHAR(Vaelen::Run::WritingSuffix);
 	IFileManager& Files = IFileManager::Get();
-	if (!Files.FileExists(*Path))
+	const bool HadName = Files.FileExists(*Path);
+	const bool HadAside = Files.FileExists(*Aside);
+	const bool HadTemp = Files.FileExists(*Temp);
+	if (!HadName && !HadAside && !HadTemp)
 	{
 		return StoreResult::NotFound;
 	}
-	return Files.Delete(*Path, true, false, true) ? StoreResult::Ok : StoreResult::CannotWrite;
+	bool Gone = true;
+	Gone = (!HadName || Files.Delete(*Path, true, false, true)) && Gone;
+	Gone = (!HadAside || Files.Delete(*Aside, true, false, true)) && Gone;
+	Gone = (!HadTemp || Files.Delete(*Temp, true, false, true)) && Gone;
+	return Gone ? StoreResult::Ok : StoreResult::CannotWrite;
 }
