@@ -256,7 +256,12 @@ compile error in those files is reported, not repaired - and an error inside
 Three engine calls were parsed and never run, and are the likeliest to need
 a report: `IFileManager::Move` with Replace, `FindFiles` over a directory
 (the store strips paths to leaves either way), and `FFileHelper`'s
-`SaveArrayToFile` / `LoadFileToArray`.
+`SaveArrayToFile` / `LoadFileToArray`. On `Move`, read after S1's first
+attempt: it is a delete of the old file and then a rename, not one step;
+since 19.10 a failed move keeps the `.writing` temporary instead of deleting
+it (ROADMAP, "Found by the 19.10 audit"). If a `Vaelen.Save` over an
+existing name ever answers CannotWrite, bring back the listing of
+`Saved/Vaelen/`: the `.writing` file is the save.
 
 1. Build the editor as for 14.08. The console should list three new commands:
    `Vaelen.Save`, `Vaelen.Load`, `Vaelen.Saves`.

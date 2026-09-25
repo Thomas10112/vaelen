@@ -8168,3 +8168,29 @@ cherry-picked with its source named), reproduced first on this tree (old
 glob WANTED=6 MADE=0, new glob WANTED=9 MADE=1). `verify_fast` does not run
 that step: a clean verify_fast is not evidence that this job passes, which
 that commit's message says and this note repeats.
+
+### Found by the 19.10 audit, 2026-09-25: the engine store's failure arm could lose a save
+
+The editor-build audit (a read-only fleet over the engine tree, every finding
+refuted by two skeptics) confirmed one thing in code no build has run:
+`FVaelenCheckpointStore::Write` (16.14) said the replace was "one step the
+filesystem makes whole or not at all" and, when `IFileManager::Move` failed,
+deleted the temporary too. Unreal's `FFileManagerGeneric::Move` with Replace
+is a DELETE of the destination and then a rename: after a failed rename the
+old save is gone and the temporary is all there is, and the store then
+deleted that. Fixed here by keeping the temporary (`<name>.writing`, whole,
+hidden from listings) and returning CannotWrite; the comment now says what
+the engine does. NOT closed: the subsystem's promise that a write cannot
+destroy the last good save holds for the bytes, not yet for the name - a
+rename-aside (`<name>.previous` before the replace, hidden by the name rule
+like `.writing`, restored by Read when the name is missing) would close it,
+and needs the kernel's `IsUsableCheckpointName` and both stores. Phase 16's
+gate stays open on it. UNVERIFIED (engine) as the file was; S1 builds 19.03b
+and does not see it.
+
+The same audit REFUTED, by the owner's own build, its one predicted compile
+error: C4459 on the locals named `Where` in VaelenPlayCommands.cpp - the file
+is byte-identical between 19.03b and HEAD, and 19.03b compiled on
+2026-09-25. Three lenses closed negative: no unity build in either target,
+the module-relative private include of VaelenScene resolved by UBT, the
+19.10 `Keys_` member UHT-safe.

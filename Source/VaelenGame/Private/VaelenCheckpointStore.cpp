@@ -2,10 +2,11 @@
 // Phase 16 task 16.14: the checkpoint store over the engine's file manager.
 //
 // Three calls here are the engine's, and the parse proves only their shape:
-// IFileManager::Move with Replace, FindFiles over a directory, and
-// FFileHelper's byte pair. Everything else is the stdio store's logic with
-// the engine's verbs, kept line for line where it could be so that a defect
-// found in one can be looked for in the other.
+// IFileManager::Move with Replace (a delete and a rename, not one step - see
+// Write), FindFiles over a directory, and FFileHelper's byte pair. Everything
+// else is the stdio store's logic with the engine's verbs, kept line for line
+// where it could be so that a defect found in one can be looked for in the
+// other.
 //
 // STATUS: UNVERIFIED (engine) - written and PARSED against Tools/EngineShim on
 // 2026-09-24, not yet built by UnrealBuildTool nor run.
@@ -65,11 +66,21 @@ Vaelen::Run::StoreResult FVaelenCheckpointStore::Write(const char* Name, const V
 		Files.Delete(*Temp, false, true, true);
 		return StoreResult::DiskFull;
 	}
-	// Replace: the previous save of that name gives way to this one in the
-	// one step the filesystem makes whole or not at all.
+	// Replace. NOT one step the filesystem makes whole or not at all, which
+	// is what this comment said until the 19.10 audit read the engine:
+	// FFileManagerGeneric::Move with Replace DELETES the old save and then
+	// renames the temporary over its name. Between the two, and after a
+	// rename that fails, the last good save of that name is gone and the
+	// temporary is all there is - so on a failed move the temporary is KEPT,
+	// whole, as `<name>.writing` (IsUsableCheckpointName hides it from every
+	// listing), and the failure says so. Deleting it too, as the first
+	// version did, would leave neither. The promise the subsystem makes -
+	// that a write cannot destroy the last good save - holds for the bytes
+	// (they are on disk under one name or the other) and not yet for the
+	// name; the rename-aside rule that would close that window is named in
+	// ROADMAP (Phase 16's open gate) and not done here.
 	if (!Files.Move(*Final, *Temp, true, false, false, false))
 	{
-		Files.Delete(*Temp, false, true, true);
 		return StoreResult::CannotWrite;
 	}
 	return StoreResult::Ok;
