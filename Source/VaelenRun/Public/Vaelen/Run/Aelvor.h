@@ -123,8 +123,9 @@ namespace Vaelen::Run
 		Economy::TradeTypes Trade;
 		Economy::WealthTypes Wealth;
 		Politics::PolityTypes Polities;
-		Colony::ColonyTypes Pit;	///< only with Options::Colony
-		Player::PlayerTypes Played; ///< only with Options::Play, and the five below
+		Population::WarmthTypes Warmth; ///< only with Options::Climate (18.05), declared before Pit
+		Colony::ColonyTypes Pit;		///< only with Options::Colony
+		Player::PlayerTypes Played;		///< only with Options::Play, and the five below
 		Player::StartTypes Start;
 		Player::HourTypes Hour;
 		Player::OrderTypes Order;

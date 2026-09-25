@@ -43,6 +43,7 @@
 #include "Vaelen/Population/Families.h"
 #include "Vaelen/Population/Needs.h"
 #include "Vaelen/Population/Persons.h"
+#include "Vaelen/Population/Warmth.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/Regions.h"
 #include "Vaelen/Society/Bondage.h"
@@ -109,6 +110,13 @@ namespace Vaelen::View
 		/// host's, as OrderRules are.
 		bool HasClimate = false;
 		WorldGen::ClimateRules Climate;
+		/// 18.05: the warmth a climate world declared (Population::WarmthTypes,
+		/// after Polity and before Colony), read by TakeLifeView for the
+		/// played person's chill. Separate from HasClimate because Aelvor
+		/// declares the type from 18.05 on while its HasClimate waits for
+		/// 18.10, and a take must never read a pool that was not declared.
+		bool HasWarmth = false;
+		Population::WarmthTypes Warmth;
 	};
 
 	/// Takes the frame. Const world in, numbers out: the signature is the

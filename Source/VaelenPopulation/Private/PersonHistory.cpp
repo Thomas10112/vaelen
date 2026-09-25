@@ -98,6 +98,9 @@ namespace Vaelen::Population
 			case DeathCause::Plague:
 				Append(Out, " of plague");
 				break;
+			case DeathCause::Cold:
+				Append(Out, " of the cold");
+				break;
 			case DeathCause::Natural:
 			default:
 				break;

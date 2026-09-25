@@ -35,7 +35,12 @@ block, and the sections below Phase 14 stay the record they are.
   COPIES: `View::WorldView`, `RegionView` and `LifeView` renamed their reserved
   words (`Season`, `Climate`, `Degrees`, `Chill`, `Winter`) at the same size,
   and `Vaelen/View/Climate.h` is a new leaf (four bytes a tile) Phase 19 will
-  colour the ground by. Nothing changes on screen until 18.10 flips
+  colour the ground by. 18.05 added `Population::WarmthTypes` (one component,
+  `PersonWarmth`, eight bytes, zero is warm), declared ONLY in a climate
+  world, after `PolityTypes` and BEFORE `ColonyTypes` - the position both
+  actors must take at the flip, because it shifts the Colony/Play/Lively type
+  ids by one (ADR-0153); `Tools/check_world_wiring.py` names it optional until
+  then. Nothing changes on screen until 18.10 flips
   `Options::Climate` in all four wirings; the page then carries a weather row
   and the HUD draws it through `View::Lines` as it draws the rest, with no
   engine change. The engine files of 16.14 and the actors are parsed against

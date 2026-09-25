@@ -111,9 +111,16 @@ namespace Vaelen::View
 				Out.Rest = N->Rest;
 				Out.Hungry = N->Hungry;
 			}
+			// 18.05: the chill the person carries, where the world declared one.
+			if (From.HasWarmth)
+			{
+				if (const Population::PersonWarmth* C = W.Components().GetPool(From.Warmth.Warmth).TryGet(Self))
+				{
+					Out.Chill = C->Chill;
+				}
+			}
 			// 18.04: today's temperature at the region's centroid, in tenths,
-			// and this year's winter there. Chill stays 0 until 18.05 gives a
-			// person one.
+			// and this year's winter there.
 			if (From.HasClimate && P->Region != 0)
 			{
 				const uint32 Centroid = WorldGen::RegionCentroidTile(W, From.Types.World, P->Region);

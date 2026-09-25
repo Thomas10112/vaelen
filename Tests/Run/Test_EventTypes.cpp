@@ -56,7 +56,8 @@ VAELEN_TEST(EventTypes, EveryRowHashesToItsOwnName)
 	// trips against itself and agrees with the running world about nothing.
 	// Re-hashing every name with the KERNEL's own HashString is what makes
 	// that impossible to miss.
-	VT_CHECK_MSG(EventTypeNameCount == 115u, "the table has %zu rows; the tree declared 115 when it was generated",
+	VT_CHECK_MSG(EventTypeNameCount == 117u,
+				 "the table has %zu rows; the tree declared 117 when it was generated (115 + 18.05's two winters)",
 				 EventTypeNameCount);
 	for (usize I = 0; I < EventTypeNameCount; ++I)
 	{

@@ -61,6 +61,7 @@ WIRINGS = {
 # in Tools/Atlas for exactly that reason, and Run::Aelvor declares its Play
 # and Lively types after Colony for the same one; this is the note that says so.
 OPTIONAL_DECLARES = {
+    "Warmth": "Tools/Atlas and Run::Aelvor, behind --climate / Options::Climate (18.05), declared after Polity and BEFORE Colony; the actors take it at the flip (18.10), when this entry goes",
     "Colony": "Tools/Atlas and Run::Aelvor, behind --colony / Options::Colony, declared after Polity so it shifts nothing",
     "PersonChronicle": "Tools/Atlas only, behind --chronicle, declared after Polity",
     "SocietyChronicle": "Tools/Atlas only, behind --chronicle, declared after Polity",

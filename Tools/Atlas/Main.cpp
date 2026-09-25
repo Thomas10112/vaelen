@@ -92,9 +92,9 @@ namespace
 	/// the premise of the game turns on.
 	struct KernelRun
 	{
-		KernelRun(uint64 InSeed, bool InWithColony, bool InWithChronicle)
-			: WithColony(InWithColony), WithChronicle(InWithChronicle), Instance(Config(InSeed)),
-			  Ages(Instance, PreHistoryRules{})
+		KernelRun(uint64 InSeed, bool InWithColony, bool InWithChronicle, bool InWithClimate)
+			: WithColony(InWithColony), WithChronicle(InWithChronicle), WithClimate(InWithClimate),
+			  Instance(Config(InSeed)), Ages(Instance, PreHistoryRules{})
 		{
 			Persons = PersonTypes::Declare(Instance, Ages);
 			Families = FamilyTypes::Declare(Instance);
@@ -111,6 +111,12 @@ namespace
 			Trade = TradeTypes::Declare(Instance);
 			Wealth = WealthTypes::Declare(Instance);
 			Polities = PolityTypes::Declare(Instance);
+			// 18.05: the warmth, only in a climate world, before the colony -
+			// the position every wiring keeps (ADR-0153).
+			if (WithClimate)
+			{
+				Warmth = WarmthTypes::Declare(Instance);
+			}
 			// Declared only when asked. ColonyTypes::Declare also declares
 			// Economy::RegionMined, so a world that is not told to have a colony
 			// carries no trace of one and its digests are the digests it had
@@ -192,6 +198,10 @@ namespace
 			Harvest->ObserveTraits(Traits.Traits);
 			Body->RunAfter("Production");
 			Body->ObserveRation(Production.Ration);
+			if (WithClimate)
+			{
+				Body->ObserveWinter(Warmth, WarmthRules{});
+			}
 			Rulers->RunAfter("Lod");
 
 			Instance.Systems().Add(Lives.get());
@@ -243,6 +253,8 @@ namespace
 			// 18.04: told, not read, like --stream (Options::Climate): the host
 			// asked for a climate on the command line, and the view is the host's.
 			S.HasClimate = WithClimate;
+			S.HasWarmth = WithClimate;
+			S.Warmth = Warmth;
 			return S;
 		}
 
@@ -270,8 +282,9 @@ namespace
 		}
 
 		bool WithColony = false;
-		bool WithClimate = false; ///< 18.04: --climate, told to the view sources like --stream is told to the run
 		bool WithChronicle = false;
+		bool WithClimate = false; ///< 18.04: --climate, told to the view sources like --stream is told to the run
+		WarmthTypes Warmth;		  ///< 18.05: only with --climate
 		/// The peopled region with the most people that has ORE under it.
 		///
 		/// A colony is people put on rock. Put on ground with no seam it lifts
@@ -3391,8 +3404,7 @@ namespace
 
 		const auto Started = std::chrono::steady_clock::now();
 		std::vector<Kept> Timeline;
-		KernelRun Run(Opt.Seed, Opt.Colony, Opt.Chronicle);
-		Run.WithClimate = Opt.Climate;
+		KernelRun Run(Opt.Seed, Opt.Colony, Opt.Chronicle, Opt.Climate);
 		WorldGenConfig Gen;
 		Gen.Width = Opt.Size;
 		Gen.Height = Opt.Size;

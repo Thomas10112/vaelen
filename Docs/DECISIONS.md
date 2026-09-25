@@ -10555,7 +10555,7 @@ The winter is displayed as a forecast and as a blow, the ledger stays closed (Ec
 
 ## ADR-0153 — Zero means warm: warmth is a chill in its own component, declared only in a climate world
 
-**Status:** PROPOSED 2026-09-24 by the Phase 18 panel (`Docs/ROADMAP.md` section 25); applied by task 18.05, which changes this line.
+**Status:** APPLIED 2026-09-25 by task 18.05 (proposed 2026-09-24 by the Phase 18 panel, `Docs/ROADMAP.md` section 25), with two deviations the as-built note records: the year spends the chill of EVERYONE it judged, cold or not (the panel's row recovered only below the line, which would have made one hard winter's chill permanent and fatal within three years for anyone nothing warms — the coarse rule kills at most 20‰ a year), and the count of persons above the line lives in `MeasureWarmth`'s `WarmthStats`, since `MeasureNeeds` cannot see a type its caller never declared; `NeedStats` gains `ColdDeaths` from the log as planned.
 
 ### Context
 

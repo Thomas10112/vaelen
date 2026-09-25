@@ -1249,11 +1249,14 @@ VAELEN_TEST(Checkpoint, TheClimateIsInTheHostSection)
 		VT_CHECK_MSG(!ReadAs(23u, Odd), "23 bytes: nor this");
 	}
 
-	// THE CONTROL, ADR-0149 rule 2: two worlds identical but for the flag,
-	// today, are THE SAME WORLD - nothing reads it yet. The day something
-	// does, this arm is the one that turns, and 18.10 rewrites it into the
-	// Stream-style "must part" control. Until then a refusal on a flag that
-	// changes nothing is a refusal on a promise, and the promise is measured.
+	// THE CONTROL, ADR-0149 rule 2. From 18.02 to 18.04 two worlds identical
+	// but for the flag were THE SAME WORLD - nothing read it. 18.05 turned
+	// this arm: the flag now declares PersonWarmth after Polity (ADR-0153), so
+	// the two are different worlds by their LAYOUT - the state digests must
+	// part - while their LOGS stay equal, because nothing chills anyone and
+	// the judgement takes no draw below the line, until 18.06 publishes a
+	// winter and 18.10 rewrites this into the Stream-style "must part" control
+	// on both. The refusal by the HOST byte is thus a refusal on a fact.
 	{
 		Aelvor Steady(Declaring(false));
 		Aelvor Asked(Declaring(true));
@@ -1269,7 +1272,9 @@ VAELEN_TEST(Checkpoint, TheClimateIsInTheHostSection)
 			Asked.LookAt(At);
 			Asked.Day();
 		}
-		VT_CHECK_DIGEST_EQ(ComputeStateDigest(Steady.Instance()), ComputeStateDigest(Asked.Instance()));
+		VT_CHECK_MSG(ComputeStateDigest(Steady.Instance()) != ComputeStateDigest(Asked.Instance()),
+					 "the flag declares a type since 18.05, and the two state digests still agree at %016llx",
+					 static_cast<unsigned long long>(ComputeStateDigest(Asked.Instance())));
 		VT_CHECK_DIGEST_EQ(Steady.Instance().Log().Digest(), Asked.Instance().Log().Digest());
 	}
 }

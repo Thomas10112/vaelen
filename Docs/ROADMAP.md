@@ -6901,3 +6901,108 @@ And the census learnt to read the `0x` tokens of the CMake drivers, which its
 bare pattern had skipped by design: the `--expect frame=0x...` pins of
 `Atlas.Frozen128` were sites it could not see, and the new `climate=` pin
 would have been another. 543 sites now.
+
+### 18.05 AS BUILT, 2026-09-25
+
+**Who is cold: the chill as a component declared only in a climate world, the
+cause, and the yearly judgement.** STATUS: PROTOTYPE (Phase 18), headless.
+
+`Vaelen/Population/Warmth.h`: `PersonWarmth {Chill, ColdYears, Clad,
+Reserved, Reserved2}`, eight bytes, static_asserted, ZERO MEANS WARM
+(ADR-0153, now APPLIED); `WarmthTypes::Declare` registers `PersonWarmth` on
+person entities; `WarmthRules {ChillLine 100, ColdDamage 40, ChillRecovery
+200}`; `WinterPayload {Region, Severity, ColdSum, Deaths}` with
+`WinterEvent = "Winter"` and `WinterForeseenEvent = "WinterForeseen"`
+declared here for Economy to publish in 18.06, as Sim declares
+`DisasterStruckEvent` for everybody; `ChillPerson` / `WarmPerson` declared
+here and defined in Needs.cpp beside `FeedPerson`, on the same living-person
+lookup - they saturate at 255, floor at 0, return what they moved, and move
+nothing for an unknown, dead or uncarried person; `MeasureWarmth` with
+`WarmthStats {WithWarmth, Cold, ChillSum, ColdDeaths}`. `DeathCause::Cold =
+4`, `" of the cold"` in PersonHistory.cpp. `NeedSystem::ObserveWinter(
+WarmthTypes, WarmthRules)`: at the year's turn newcomers get `PersonWarmth{}`
+where they get `PersonNeeds{}`; this year's `WinterEvent` of each detailed
+region is found the way the blows are (the latest within the year names the
+death; none is a valid cause too); and per person, after hunger and before
+plague, a chill above the line counts a cold year and costs `ColdDamage +
+Below(excess + 1)` through the frail lambda, the blow that ends a life naming
+the winter - then the year spends `ChillRecovery` of EVERYONE's chill.
+`NeedStats` gains `ColdDeaths`. Wired in `Run::Aelvor` and `Tools/Atlas`
+behind `Options::Climate` / `--climate`, declared after `PolityTypes` and
+BEFORE `ColonyTypes` (the KernelRun constructor now takes the flag, so the
+declaration is in the constructor where the others are), told to the need
+system beside `ObserveRation`; `check_world_wiring.py` names `Warmth`
+optional at that position with its reason (14 declarations optional now).
+`ViewSources` gains `HasWarmth` + `WarmthTypes` - separate from `HasClimate`,
+because Aelvor declares the type from this task on while its `HasClimate`
+waits for 18.10, and a take must never read a pool that was not declared -
+and `TakeLifeView` fills `LifeView::Chill`, the word 18.04 left at zero.
+`gen_event_names.py --write`: 117 names; `Test_EventTypes` pins 117.
+
+TWO DEVIATIONS FROM THE ROW, both recorded on ADR-0153. (1) The panel's row
+recovered the chill only BELOW the line (`else Chill -= ChillRecovery`).
+Nothing in the phase warms an ordinary detailed person otherwise - 18.06 only
+chills, 18.08 warms the colony and the played person by the day - so one hard
+winter's 150 of chill would have been permanent: judged cold every year,
+never spent, dead within three years of the first hard winter for everyone
+nothing warms, while the coarse rule of 18.06 kills at most 20‰ a year and
+18.07's own prediction wants cold-biome regions at ≥ 55 % of capacity. The
+year now spends the chill of everyone it judged, cold or not, as the ration
+spends hunger: a chill is the burden of the winter that gave it, and the next
+winter chills again (255 spent to 55, so a terrible winter is remembered a
+little). Deliberate failure C below is the row's rule, seen. (2) The count of
+persons above the line is `WarmthStats::Cold` from `MeasureWarmth`, not
+`NeedStats::Cold`: `MeasureNeeds(W, Persons, Needs, Region)` cannot see a
+type its caller never declared, and widening its signature would touch every
+caller for a figure the warmth measure owns anyway; `ColdDeaths` is in both,
+from the log. Also: the row's "the 128 cell never told still gives
+VAELEN_NEEDS_FROZEN_128" is `Population.Needs` itself, unchanged and green,
+rather than a second 128/300+200 run in this file.
+
+`Tests/Population/Test_Warmth.cpp`, six cases, 168 checks, AELVOR 64/120:
+`DefaultsAndTheComponentAreSane`; `TheChillSaturatesTheWarmthFloorsAndNobody
+ElseIsTouched` (before the first turn nobody carries warmth and the verbs say
+0; after it 602 of region 36 carry it warm; 250 then 5 then 0 up, 255 then 0
+down; unknown, dead, and the 464 people of region 32 promoted after the turn
+all 0; one chill is nobody else's); `TheColdKillsWithACauseAndTheWintersName`
+(ColdDamage 255 so the deaths are certain and the case is about the cause: a
+winter planted at the turn where 18.06 will publish it, three frozen through,
+three deaths of the cold each naming that winter and nothing else dying of
+anything but age; the counts reconciled; `CountCausedBy(Winter) == 3`; a year
+later three more die of the cold with NO cause event - real even unnamed - and
+the old winter still names three); `TheFrailTakeMoreAndTheYearWarmsWhomIt
+Judged` (a calm world so every person eats and heals alike: the control at
+255 stands exactly ON the line, the hale one over it ends 41 lower, the frail
+52 lower - 40 + a draw below 2, and 30 % more; ColdYears 1/1/0; every chill
+spent; the next year the streak ends and 40 comes back); `TheChillIsState
+AndSurvivesAnImage` (77 through a snapshot, three more years equal in state
+and log, and a world that never declared the type refuses the image);
+`AWinterThatChillsNobodyLeavesEveryNeedByteAsItWas` (ADR-0149 rule 2, three
+runs of six cursed years: never told, told with nobody chilled, and told with
+the line at 255 and one person frozen through every year - 364 people, 0 need
+bytes differ, both logs equal to the never-told one, the chill schedule 255 →
+55 to the unit on the three carried through alive, `Cold == 0`, and the
+state digests part on the declared type alone - the reason it is optional,
+seen).
+
+THE ARM THAT TURNED. `Run.Checkpoint`'s 18.02 control said two worlds
+identical but for the flag are THE SAME WORLD "until something reads it, when
+this arm turns". This task reads it: the arm now requires the state digests to
+PART (the layout) while the logs still agree (nothing chills anyone, no draw
+below the line), which is the shape 18.10 will finish into Stream's must-part
+control on both.
+
+THE CONTROLS FIRED. `gen_event_names.py --check` before `--write`: STALE,
+`+ Winter`, `+ WinterForeseen`, exit 1. `check_world_wiring.py` with the
+`Warmth` entry removed: "16. Warmth  -  -  Warmth", the position printed, the
+actors' columns empty, exit 1; with it, 4 wirings agree. FAILED ON PURPOSE,
+three times, each restored and the suite 6/6 after: (A) the cold death
+published with Cause 3 → "person 1 died of plague" three times, Cold 0 of 3,
+both ColdDeaths 0 of 3; (B) one draw taken below the line too → 376 people
+against 364, 348 need bytes differ, the logs part (b338f777783ac358 against
+da9844363fb37789) - the rule-2 instrument sees one wasted draw; (C) the chill
+spent only below the line, the row's rule → Chill 101 kept, ColdYears 2,
+Health 214 where 254 was due: the permanent winter.
+
+NO FROZEN DIGEST MOVED: nothing is declared without the flag, and with it
+nobody is chilled yet. Census: HASH +2 (the two table rows), WORLD 0, GEN 0.

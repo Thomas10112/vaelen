@@ -78,6 +78,14 @@ namespace Vaelen::Run
 			// so a world not asked for them carries no trace and its digests are
 			// the digests it had. ColonyTypes::Declare also declares
 			// Economy::RegionMined, which is why the Atlas keeps it optional too.
+			// 18.05: the warmth, only in a climate world, and before the
+			// colony - so a climate world's Colony/Play/Lively ids sit one
+			// higher, which is why the actors flip in 18.10's commit
+			// (ADR-0153), and a world without one carries no trace.
+			if (Given.Climate)
+			{
+				W.Warmth = WarmthTypes::Declare(Instance);
+			}
 			if (Given.Colony)
 			{
 				W.Pit = ColonyTypes::Declare(Instance);
@@ -224,6 +232,10 @@ namespace Vaelen::Run
 			Harvest->ObserveTraits(W.Traits.Traits);
 			Body->RunAfter("Production");
 			Body->ObserveRation(W.Production.Ration);
+			if (Given.Climate)
+			{
+				Body->ObserveWinter(W.Warmth, WarmthRules{});
+			}
 			Rulers->RunAfter("Lod");
 
 			Instance.Systems().Add(Lives.get());
@@ -606,6 +618,10 @@ namespace Vaelen::Run
 		// 18.02: false whatever Given_.Climate says, until 18.04 gives the view
 		// something to read; 18.10 makes it Given_.Climate.
 		S.HasClimate = false;
+		// 18.05: the warmth the climate world declared, read by the life view
+		// for the chill; HasClimate above stays false until 18.10.
+		S.HasWarmth = Given_.Climate;
+		S.Warmth = K->W.Warmth;
 		S.Hour = K->W.Hour;
 		S.Order = K->W.Order;
 		S.Regard = K->W.Regard;

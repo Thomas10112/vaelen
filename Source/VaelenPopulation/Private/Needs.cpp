@@ -85,6 +85,32 @@ namespace Vaelen::Population
 			}
 		}
 		std::reverse(Blows.begin(), Blows.end()); // oldest first
+		// 18.05: the winter that lay on each detailed region THIS year, found
+		// the way the blows are, to name the deaths of the cold. Only in a
+		// world told the warmth: elsewhere the log is not even read.
+		std::vector<std::pair<uint32, PersistentId>> Winters;
+		if (HasWarmth)
+		{
+			for (usize i = Events.size(); i > 0; --i)
+			{
+				const Event& E = Events[i - 1];
+				if (E.Tick + History::TicksPerYear <= Context.Tick)
+				{
+					break;
+				}
+				if (E.Is(WinterEvent))
+				{
+					const WinterPayload P = E.Get<WinterPayload>();
+					const bool Ours = std::find(Regions.begin(), Regions.end(), P.Region) != Regions.end();
+					const bool Named = std::find_if(Winters.begin(), Winters.end(), [&](const auto& Pair)
+													{ return Pair.first == P.Region; }) != Winters.end();
+					if (Ours && !Named)
+					{
+						Winters.emplace_back(P.Region, E.Id); // the latest names it
+					}
+				}
+			}
+		}
 
 		for (const uint32 Region : Regions)
 		{
@@ -120,12 +146,25 @@ namespace Vaelen::Population
 			{
 				continue;
 			}
-			// Everyone alive carries needs; newcomers start whole.
+			// Everyone alive carries needs; newcomers start whole - and warm,
+			// where the world has a warmth to carry (18.05).
 			for (const Ref& R : People)
 			{
 				if (W.Components().GetPool(Needs.Needs).TryGet(R.Handle) == nullptr)
 				{
 					W.Components().GetPool(Needs.Needs).Add(R.Handle, PersonNeeds{});
+				}
+				if (HasWarmth && W.Components().GetPool(Warmth.Warmth).TryGet(R.Handle) == nullptr)
+				{
+					W.Components().GetPool(Warmth.Warmth).Add(R.Handle, PersonWarmth{});
+				}
+			}
+			PersistentId WinterHere;
+			for (const auto& [WinterRegion, Named] : Winters)
+			{
+				if (WinterRegion == Region)
+				{
+					WinterHere = Named;
 				}
 			}
 			// The ration: capacity over the living, cut by this year's droughts.
@@ -211,6 +250,38 @@ namespace Vaelen::Population
 					N.Hungry = 0;
 					N.Health = Clamp255(static_cast<int32>(N.Health) + static_cast<int32>(Rules.HealthRecovery));
 				}
+				// 18.05: the cold, after hunger and before plague. A chill above
+				// the line costs ColdDamage plus a draw below the excess, through
+				// the same frail rule, and the blow that ends a life names this
+				// year's winter - or nothing, when no winter was recorded: the
+				// cold is real even unnamed. Then the year spends the chill of
+				// everyone it judged, cold or not, as the ration spends hunger:
+				// a chill is the burden of the winter that gave it, and the
+				// next winter chills again. The draw is taken only above the
+				// line, so a climate world whose winter chills nobody is the
+				// world before, draw for draw.
+				if (HasWarmth)
+				{
+					PersonWarmth& C = W.Components().GetPool(Warmth.Warmth).Get(R.Handle);
+					if (C.Chill > Winter.ChillLine)
+					{
+						C.ColdYears = static_cast<uint8>(C.ColdYears < 255 ? C.ColdYears + 1 : 255);
+						const uint32 Excess = C.Chill - Winter.ChillLine;
+						const uint32 Damage = Winter.ColdDamage + static_cast<uint32>(Random.Below(Excess + 1));
+						const bool Stood = N.Health > 0;
+						N.Health = Clamp255(static_cast<int32>(N.Health) - static_cast<int32>(Extra(Damage)));
+						if (Stood && N.Health == 0)
+						{
+							Cause = static_cast<uint32>(DeathCause::Cold);
+							CauseEvent = WinterHere;
+						}
+					}
+					else
+					{
+						C.ColdYears = 0;
+					}
+					C.Chill = static_cast<uint8>(C.Chill > Winter.ChillRecovery ? C.Chill - Winter.ChillRecovery : 0u);
+				}
 				if (PlagueSeverity > 0)
 				{
 					const uint32 S = PlagueSeverity > 3 ? 2u : PlagueSeverity - 1u;
@@ -286,6 +357,9 @@ namespace Vaelen::Population
 				break;
 			case DeathCause::Plague:
 				++S.PlagueDeaths;
+				break;
+			case DeathCause::Cold:
+				++S.ColdDeaths;
 				break;
 			case DeathCause::Natural:
 			default:
@@ -377,6 +451,28 @@ namespace Vaelen::Population
 		}
 		PersonNeeds* N = W.Components().GetPool(Needs.Needs).TryGet(H);
 		return N != nullptr ? LowerTo(N->Rest, Amount) : 0u;
+	}
+
+	uint32 ChillPerson(World& W, const PersonTypes& Persons, const WarmthTypes& Warmth, uint32 Person, uint32 Amount)
+	{
+		const EntityHandle H = LivingHandle(W, Persons, Person);
+		if (H.IsNull())
+		{
+			return 0;
+		}
+		PersonWarmth* C = W.Components().GetPool(Warmth.Warmth).TryGet(H);
+		return C != nullptr ? RaiseTo(C->Chill, Amount, 255u) : 0u;
+	}
+
+	uint32 WarmPerson(World& W, const PersonTypes& Persons, const WarmthTypes& Warmth, uint32 Person, uint32 Amount)
+	{
+		const EntityHandle H = LivingHandle(W, Persons, Person);
+		if (H.IsNull())
+		{
+			return 0;
+		}
+		PersonWarmth* C = W.Components().GetPool(Warmth.Warmth).TryGet(H);
+		return C != nullptr ? LowerTo(C->Chill, Amount) : 0u;
 	}
 
 	uint32 HungerPerson(World& W, const PersonTypes& Persons, const NeedTypes& Needs, uint32 Person, uint32 Amount)

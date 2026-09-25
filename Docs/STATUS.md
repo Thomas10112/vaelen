@@ -1,6 +1,6 @@
 # VAELEN — Build status
 
-STATUS: VALIDATED for the state it reports, checked on 2026-09-24 against the sources on
+STATUS: VALIDATED for the state it reports, checked on 2026-09-25 against the sources on
 branch `claude/vaelen-master-prompt-aw7zqj`. This is the living status
 document: it is refreshed at the end of every task (section "How to refresh"). The
 per-phase breakdowns below are the record of each phase as it closed and are not
@@ -32,7 +32,39 @@ PHASE       : 17 — DEBUG TOOLS, CLOSED 2026-09-24: all eleven clauses of its g
                yet: it is written here and parsed against the shim before that
                sitting. Section 22 has the clause-by-clause read.
                15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
-TASK        : 18.04 — DONE 2026-09-25. The page says the weather.
+TASK        : 18.05 — DONE 2026-09-25. Who is cold.
+
+              Vaelen/Population/Warmth.h: PersonWarmth {Chill, ColdYears, Clad, Reserved,
+              Reserved2}, eight bytes, zero means warm (ADR-0153 APPLIED, two deviations
+              recorded on it); WarmthTypes declared only in a climate world, after Polity
+              and BEFORE Colony in Aelvor and the Atlas (the actors take it at 18.10;
+              check_world_wiring.py names it optional at that position); WarmthRules
+              {ChillLine 100, ColdDamage 40, ChillRecovery 200}; ChillPerson/WarmPerson
+              beside FeedPerson; WinterEvent and WinterForeseenEvent declared here for
+              18.06 to publish (117 event names); DeathCause::Cold = 4, "of the cold".
+              NeedSystem::ObserveWinter: after hunger and before plague, a chill above the
+              line counts a cold year, costs ColdDamage + a draw below the excess through
+              the frail rule, and the blow that kills names this year's winter (or nothing:
+              the cold is real unnamed); then the year spends ChillRecovery of EVERYONE's
+              chill (the panel's row spent it only below the line, which made one hard
+              winter permanent and fatal - deliberate failure C shows it). LifeView::Chill
+              filled through ViewSources::HasWarmth. Test_Warmth: six cases, 168 checks at
+              AELVOR 64/120 - the verbs saturate and floor and touch nobody else (602 carry
+              warmth after the turn, 464 promoted after it none yet); three frozen through
+              die of the cold naming the planted winter and nothing else dies of anything
+              but age, then three more die unnamed; control 255 / hale 214 / frail 203
+              after one chill of 101; 77 of chill through an image; RULE 2: 364 people, 0
+              need bytes differ between never-told, told and frozen-at-the-line, both logs
+              equal, the state digests parting on the declared type alone. Run.Checkpoint's
+              18.02 arm turned: the flag now parts the state digests (layout) and still
+              not the logs. Controls fired: the event table STALE (+Winter, +WinterForeseen)
+              before --write; the wiring check names "16. Warmth" with the entry removed.
+              Failed on purpose, three times: Cause 3 → "person 1 died of plague"; a draw
+              below the line → 348 need bytes differ and the logs part; the chill spent
+              only below the line → Chill 101 kept, ColdYears 2, Health 214 for 254. NO
+              FROZEN DIGEST MOVED (census: HASH +2 for the two table rows, WORLD 0).
+
+TASK (18.04): 18.04 — DONE 2026-09-25. The page says the weather.
 
               The leaves grew inside their reserved words: WorldView::Season,
               RegionView::Climate (a packed word: today's degrees, coldest, warmest,
