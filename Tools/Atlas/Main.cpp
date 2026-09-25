@@ -57,6 +57,7 @@
 #include "Vaelen/Society/Standing.h"
 #include "Vaelen/View/Frame.h"
 #include "Vaelen/View/Panel.h"
+#include "Vaelen/View/Proof.h"
 #include "Vaelen/View/Land.h"
 #include "Vaelen/View/Net.h"
 #include "Vaelen/View/Take.h"
@@ -3207,6 +3208,30 @@ namespace
 	/// the Play wiring with nobody taken up, the baseline a played stream is
 	/// compared against. Exit 1 when the stream is of another world or any
 	/// answer differed, so a CTest entry can hold a stream to its world.
+	/// 19.04: LogVaelenClimate, from the one composer (View/Proof.h). The
+	/// winters and the dead of the cold are read from the log here; the line
+	/// itself is the leaf's, and the engine's Vaelen.Play prints the same bytes.
+	void PrintClimateLine(const Vaelen::World& W, const ClimateView& Climate, const ClimateViewStats& Stats,
+						  const Population::PersonTypes& Persons, const Population::NeedTypes& Needs, uint32 Size,
+						  uint64 Seed)
+	{
+		const WinterStats Winters_ = MeasureWinters(W, 0u);
+		ClimateLineFacts Facts;
+		Facts.Size = Size;
+		Facts.Seed = Seed;
+		Facts.Day = Climate.Day;
+		Facts.Year = Climate.Year;
+		Facts.Season = Climate.Season;
+		Facts.Stats = Stats;
+		Facts.HardWinters = Winters_.Winters[2] + Winters_.Winters[3];
+		Facts.ColdDeaths = Winters_.ColdDeaths + MeasureNeeds(W, Persons, Needs, 0u).ColdDeaths;
+		char Line[ClimateLineBytes];
+		if (ClimateLine(Facts, Line, ClimateLineBytes) != 0u)
+		{
+			std::printf("%s\n", Line);
+		}
+	}
+
 	int RunReplay(const Options& Opt)
 	{
 		Player::InputStream S;
@@ -3285,6 +3310,16 @@ namespace
 			Lines(Page, Rows.data(), PanelTextBytes);
 			std::printf("%s\n", Rows.data());
 			PlayedLines(S, R, Life, MeasurePanel(Page).Digest);
+		}
+		// 19.04: the replay of a climate world says its weather at the end, in
+		// the words a sitting prints; a world without one prints nothing, so
+		// the recorded months of the world before read exactly as they did.
+		if (RO.Climate)
+		{
+			ClimateView Climate;
+			TakeClimateView(A.Instance(), SourcesFor(A, Opt), Climate);
+			PrintClimateLine(A.Instance(), Climate, MeasureClimateView(Climate), A.Handles().Persons,
+							 A.Handles().Needs, RO.Size, RO.Seed);
 		}
 
 		Json J;
@@ -3531,18 +3566,10 @@ namespace
 			ClimateStats_ = MeasureClimateView(Climate);
 			// 18.07: what the winters did, from the log - the great and
 			// terrible ones, and the dead of the cold, coarse and person alike.
-			const WinterStats Winters_ = MeasureWinters(Run.Instance, 0u);
-			const uint32 ColdDead =
-				Winters_.ColdDeaths + MeasureNeeds(Run.Instance, Run.Persons, Run.Needs, 0u).ColdDeaths;
-			static const char* const Seasons[] = {"none", "spring", "summer", "autumn", "winter"};
-			std::printf(
-				"LogVaelenClimate: AELVOR %u seed %012llx: day %u of year %u, %s; coldest %d warmest %d; frost %u "
-				"of %u tiles, %u growing; hard winters %u, cold deaths %u; climate %016llx\n",
-				Opt.Size, static_cast<unsigned long long>(Opt.Seed), Climate.Day + 1u, Climate.Year,
-				Seasons[Climate.Season < 5u ? Climate.Season : 0u], ClimateStats_.Coldest, ClimateStats_.Warmest,
-				ClimateStats_.Frost, ClimateStats_.Tiles, ClimateStats_.Growing,
-				Winters_.Winters[2] + Winters_.Winters[3], ColdDead,
-				static_cast<unsigned long long>(ClimateStats_.Digest));
+			// 19.04: composed by the View leaf the engine will call too, so
+			// the line a sitting brings back is compared with THIS one byte
+			// for byte rather than with a second format string.
+			PrintClimateLine(Run.Instance, Climate, ClimateStats_, Run.Persons, Run.Needs, Opt.Size, Opt.Seed);
 		}
 		// The chronicle, as lines with a year and a place on them. The kernel's
 		// own ExportChronicleWithEconomy writes the same sentences as one block

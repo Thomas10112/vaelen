@@ -153,6 +153,9 @@ TABLE = {
     "Tests/Gameplay/Test_GameplayGate.cpp": "WORLD",
     "Tests/View/Test_ViewGate.cpp": "WORLD",
     "Tests/View/Test_Panel.cpp": "WORLD",
+    # 19.04: hand-built facts for the line composer; the climate digest is
+    # copied from Atlas.ClimateFrozen128 as a sample, and does not move with it.
+    "Tests/View/Test_Proof.cpp": "SYNTHETIC",
     "Tests/Run/Test_Aelvor.cpp": "WORLD",
     "Tests/Run/Test_Climate.cpp": "WORLD",
     "Tests/Run/Test_Golden.cpp": "WORLD",

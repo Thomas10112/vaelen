@@ -189,6 +189,8 @@ add_test(NAME Replay.Climate
           "-DSAME=replay: 32 of 32 answered identically, 30 of 30 days"
           "-DPLAYED=LogVaelenPlay: AELVOR 128 seed 41454c564f52: played Dokdahum (person 3588, region 2) 30 days, 32 intents (29 taken, 3 refused by the world, 0 dropped at the door), state a56776c2166d6de1, log 1ae67b101be35733, life 7406a01f544161f6, panel a24da97168077746"
           "-DVERBS=LogVaelenPlay: verbs work 8 rest 9 eat 9 wait 1 speak 2 give 1 take 1 move 1"
+          # 19.04: the weather the replay came to, composed by Vaelen/View/Proof.h.
+          "-DCLIMATE=LogVaelenClimate: AELVOR 128 seed 41454c564f52: day 31 of year 420, spring; coldest -20 warmest 29; frost 6844 of 16384 tiles, 7652 growing; hard winters 12864, cold deaths 1589; climate bf25b48823dbd83a"
           -P ${CMAKE_CURRENT_LIST_DIR}/ReplayPlayed.cmake)
 set_tests_properties(Replay.Climate PROPERTIES TIMEOUT 1800 COST 2000)
 

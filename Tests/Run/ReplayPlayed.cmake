@@ -56,7 +56,19 @@ foreach(Pair IN ITEMS "SAME;35" "PLAYED;200" "VERBS;60")
   endif()
 endforeach()
 
-foreach(Line IN ITEMS "${SAME}" "${PLAYED}" "${VERBS}")
+# 19.04: a replay of a climate world also says its weather, in the words the
+# engine's Vaelen.Play will print (Vaelen/View/Proof.h). Optional, because the
+# months of the world before print no such line and must not start to.
+set(Expected "${SAME}" "${PLAYED}" "${VERBS}")
+if(DEFINED CLIMATE)
+  string(LENGTH "${CLIMATE}" Long)
+  if(Long LESS 200)
+    message(FATAL_ERROR "CLIMATE reached this script as ${Long} characters, fewer than the 200 a whole "
+                        "LogVaelenClimate line has - most likely an unquoted argument. Value: [${CLIMATE}]")
+  endif()
+  list(APPEND Expected "${CLIMATE}")
+endif()
+foreach(Line IN LISTS Expected)
   string(FIND "${Said}" "${Line}" At)
   if(At EQUAL -1)
     message(FATAL_ERROR

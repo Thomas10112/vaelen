@@ -7798,3 +7798,42 @@ What closes it, when the log comes back: `Tests/Run/Sessions/s1-<date>.log`
 and `s1.session` (with `head`), `Session.P19S1` re-reading step 4 against
 `VaelenAtlas --gate <stream> --want-bound 0`, a RECORDED row `s1` in
 Tools/engine_builds.txt, and the STATUS lines moved to it by the checker.
+
+### 19.04 AS BUILT, 2026-09-25
+
+**One composer for every engine line, and the replay says the weather.**
+STATUS: VALIDATED headless.
+
+`Vaelen/View/Proof.h` / `Proof.cpp`, a leaf: `ClimateLineFacts` (size, seed,
+day, year, season, the ClimateView stats, hard winters, cold deaths) and
+`ClimateLine(Facts, Out, Bytes)`, all or nothing like `Lines()`, its own
+bounded writer, ClimateLineBytes 320 (the widest line is 270). The Atlas's
+printf is gone: `PrintClimateLine` measures and calls the leaf, and the replay
+(`RunReplay`) now prints the same line at its end when the world is the
+climate's - nothing when it is not, so the months of the world before read as
+they did. Proof.h joins the UI fence's allowed leaves and the View.Leaf probe;
+the engine's `Vaelen.Play` calls it from 19.06.
+
+MEASURED. The line the Atlas prints at 64/60+10 is byte-identical between the
+binary before 19.04 and after (`cmp`), and `Atlas.ClimateFrozen128` holds its
+digest unchanged. `View.Proof`: the literal of hand-built facts (coldest -26),
+the composer against the old format string through snprintf on 1000 seeded
+fact sets including every field's extremes (two instruments, 1000 of 1000),
+the widest line, and all-or-nothing at one byte short and exactly enough.
+`Replay.Climate` now also requires `LogVaelenClimate: AELVOR 128 seed
+41454c564f52: day 31 of year 420, spring; coldest -20 warmest 29; frost 6844 of
+16384 tiles, 7652 growing; hard winters 12864, cold deaths 1589; climate
+bf25b48823dbd83a` (ReplayPlayed.cmake takes an optional CLIMATE, length-checked
+like the others); `Replay.Played` unchanged.
+
+FOUND ON THE WAY. The first ClimateLineBytes, 256, was too small for the
+widest line: the composer refused to write (all or nothing) and View.Proof's
+equivalence case caught it on the extreme fact set. The day printed is
+`Day + 1` in uint32, as the format it replaced.
+
+FAILED ON PURPOSE. Coldest written through the unsigned writer: View.Proof
+red on the literal and on the equivalence; one digit of the pinned climate
+digest changed: Replay.Climate red, "the replay did not print". Both restored.
+
+Census: +1 WORLD/digest (Replay.Climate's line, Tests/Run/CMakeLists.txt), +1
+SYNTHETIC (Test_Proof.cpp's sample digest, classed as such); 0 removed.
