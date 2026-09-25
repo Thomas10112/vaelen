@@ -176,6 +176,7 @@ namespace
 				Winters->RunAfter("Stocks");
 				Winters->ObserveSettlements(Trade.Settlement);
 				Harvest->RunAfter("Winter");
+				Harvest->ObserveClimate(WorldGen::ClimateRules{}); // 18.07: the growing season
 			}
 			if (WithChronicle)
 			{
@@ -2576,6 +2577,42 @@ namespace
 	// pass a cause and which do not" is a question about types - and it is
 	// the first consumer of 17.02's name table. Without that table every row
 	// here would be sixteen hex digits.
+	/// 18.07: the growing season of every peopled region in the year just
+	/// ended, beside the cause table - the per-mille the harvest took.
+	void PrintGrowingSeason(const Vaelen::Run::Aelvor& A)
+	{
+		const Vaelen::World& W = A.Instance();
+		const Vaelen::History::PreHistoryTypes& Types = A.Ages();
+		const WorldGen::ClimateRules Rules;
+		const uint64 Year = W.Now() / History::TicksPerYear;
+		std::vector<WorldGen::YearShape> Years;
+		WorldGen::ShapeRegionYears(W, Types.World, Year > 0u ? Year - 1u : 0u, Rules, Years);
+		const WinterStats Winters_ = MeasureWinters(W, 0u);
+		std::printf("season: year %llu, %u great and %u terrible winters in the log, %u coarse dead of the cold\n",
+					static_cast<unsigned long long>(Year), Winters_.Winters[2], Winters_.Winters[3],
+					Winters_.ColdDeaths);
+		W.Components()
+			.GetPool(Types.World.RegionTypes_.Region)
+			.ForEach(
+				[&](EntityHandle H, const RegionInfo& R)
+				{
+					const RegionPopulation* P = W.Components().GetPool(Types.Population.Population).TryGet(H);
+					if (P == nullptr || P->Total == 0u || R.Index >= Years.size())
+					{
+						return;
+					}
+					const uint32 Grow = static_cast<uint32>(std::min<uint64>(
+						1000u, Rules.GrowFullDays > 0u ? uint64{Years[R.Index].GrowingDays} * 1000u / Rules.GrowFullDays
+													   : 1000u));
+					std::string Name;
+					NameRegion(W, Types, R.Index, Name);
+					std::printf("season: region %u %s: %u people, growing %u of %u days, harvest %u per mille, "
+								"coldest %d, cold sum %d\n",
+								R.Index, Name.c_str(), P->Total, Years[R.Index].GrowingDays, Rules.GrowFullDays, Grow,
+								Years[R.Index].Coldest.FloorToInt(), Years[R.Index].ColdSum.FloorToInt());
+				});
+	}
+
 	int PrintCensus(const Vaelen::World& W, const char* What)
 	{
 		const Vaelen::EventLog& Log = W.Log();
@@ -2713,10 +2750,15 @@ namespace
 			return 1;
 		}
 		char What[256];
-		std::snprintf(What, sizeof(What), "a fresh world, %u tiles, %u+%u years, seed %016llx%s%s%s", RO.Size,
+		std::snprintf(What, sizeof(What), "a fresh world, %u tiles, %u+%u years, seed %016llx%s%s%s%s", RO.Size,
 					  RO.PreHistory, RO.Years, static_cast<unsigned long long>(RO.Seed), RO.Stream ? ", stream" : "",
-					  RO.Lively ? ", lively" : "", RO.Colony ? ", colony" : "");
-		return PrintCensus(A.Instance(), What);
+					  RO.Lively ? ", lively" : "", RO.Colony ? ", colony" : "", RO.Climate ? ", climate" : "");
+		const int Rc = PrintCensus(A.Instance(), What);
+		if (RO.Climate)
+		{
+			PrintGrowingSeason(A);
+		}
+		return Rc;
 	}
 
 	// ------------------------------------------------------------------
@@ -3481,13 +3523,19 @@ namespace
 		{
 			TakeClimateView(Run.Instance, Run.Sources(), Climate);
 			ClimateStats_ = MeasureClimateView(Climate);
+			// 18.07: what the winters did, from the log - the great and
+			// terrible ones, and the dead of the cold, coarse and person alike.
+			const WinterStats Winters_ = MeasureWinters(Run.Instance, 0u);
+			const uint32 ColdDead =
+				Winters_.ColdDeaths + MeasureNeeds(Run.Instance, Run.Persons, Run.Needs, 0u).ColdDeaths;
 			static const char* const Seasons[] = {"none", "spring", "summer", "autumn", "winter"};
 			std::printf(
 				"LogVaelenClimate: AELVOR %u seed %012llx: day %u of year %u, %s; coldest %d warmest %d; frost %u "
 				"of %u tiles, %u growing; hard winters %u, cold deaths %u; climate %016llx\n",
 				Opt.Size, static_cast<unsigned long long>(Opt.Seed), Climate.Day + 1u, Climate.Year,
 				Seasons[Climate.Season < 5u ? Climate.Season : 0u], ClimateStats_.Coldest, ClimateStats_.Warmest,
-				ClimateStats_.Frost, ClimateStats_.Tiles, ClimateStats_.Growing, 0u, 0u,
+				ClimateStats_.Frost, ClimateStats_.Tiles, ClimateStats_.Growing,
+				Winters_.Winters[2] + Winters_.Winters[3], ColdDead,
 				static_cast<unsigned long long>(ClimateStats_.Digest));
 		}
 		// The chronicle, as lines with a year and a place on them. The kernel's

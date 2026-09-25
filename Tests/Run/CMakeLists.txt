@@ -35,6 +35,9 @@ set_tests_properties(Run.Shuffled PROPERTIES TIMEOUT 5400)
 # Run.Aelvor holds the 128/120 world of the frozen pair and a day measured at
 # 256 with the colony; it is the long pole of this module after Shuffled.
 set_tests_properties(Run.Aelvor PROPERTIES TIMEOUT 3600)
+# 18.07: two AELVOR 128/300+120 worlds, the climate off and on; the cost is
+# the gate's, written down.
+set_tests_properties(Run.Climate PROPERTIES TIMEOUT 3600)
 
 # ── 14.10: a month played by hand, replayed by no hand ───────────────────────
 # Tools/Atlas replays the checked-in stream into a fresh world of the STREAM's
@@ -79,6 +82,7 @@ set_tests_properties(Replay.Played PROPERTIES TIMEOUT 1800)
 # last. The numbers are relative, not seconds.
 set_tests_properties(Run.Shuffled PROPERTIES COST 10000)
 set_tests_properties(Run.Aelvor PROPERTIES COST 6000)
+set_tests_properties(Run.Climate PROPERTIES COST 6000)
 set_tests_properties(Replay.Played PROPERTIES COST 4000)
 set_tests_properties(Run.Door PROPERTIES COST 3000)
 # Phase 16's gate cell lives in Run.Checkpoint: 128 tiles with the full Play,

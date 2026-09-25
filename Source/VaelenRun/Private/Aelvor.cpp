@@ -175,6 +175,7 @@ namespace Vaelen::Run
 				Winters->RunAfter("Stocks");
 				Winters->ObserveSettlements(W.Trade.Settlement);
 				Harvest->RunAfter("Winter");
+				Harvest->ObserveClimate(WorldGen::ClimateRules{}); // 18.07: the growing season
 			}
 			if (Given.Play)
 			{

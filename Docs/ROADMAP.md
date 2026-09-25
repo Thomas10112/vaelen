@@ -7132,3 +7132,77 @@ control on both, arrived two tasks before 18.10 planned it; and
 NO FROZEN DIGEST MOVED: nothing is wired without the flag, the chronicle's
 new subscriptions record nothing in a world that publishes no winter, and
 the ledger's still and living pins held. Census: 545 sites, unmoved.
+
+### 18.07 AS BUILT, 2026-09-25
+
+**The harvest has a growing season, and the pre-history is measured
+alive.** STATUS: PROTOTYPE (Phase 18), headless.
+
+`ProductionSystem::ObserveClimate(const ClimateRules&)`: per region, from the
+SAME `ShapeRegionYears` the winter and the view read, over the year just
+ended (the season the harvest grew in), `Grow = min(1000, GrowingDays × 1000
+/ GrowFullDays)`, and `Kept = (1000 − Cut) × Grow / 1000` at the one line
+both the coarse branch and `Reap` read, so the two branches cannot disagree.
+Never told, `GrowFullDays 0`, and year 0 are all a full thousand - the world
+before. Told in Aelvor and the Atlas beside the winter, behind the option.
+`Tools/Atlas --census --climate` prints a `season:` line per peopled region
+(growing days, the harvest per mille, coldest, cold sum) after the cause
+table; the `LogVaelenClimate` line now counts the great and terrible winters
+and the dead of the cold (coarse and person) instead of the two zeros 18.04
+left: at 128/120, "hard winters 12835, cold deaths 1581".
+
+`Economy.Production` gains two cases. `TheGrowingSeasonScalesTheHarvestIn
+BothBranches`: four worlds from one seed, the season told after the
+pre-history so the first turn reaps the same fields under four rules - never
+told; GrowFullDays 0, equal to it everywhere to the unit; GrowFullDays twice
+the busiest region's 265 growing days, where the busiest region (detailed,
+109 houses) reaps 3201 of 6512, half within its houses' rounding, and 28
+coarse regions reap their share to the unit; and a growing line of +100,
+where all 29 peopled regions reap nothing. `TheFrozenFiguresHoldWithThe
+SeasonOff`: told GrowFullDays 0 from the first tick, the 06.02 pins
+`VAELEN_PRODUCTION_STOCKS_128 / RATIONS_128 / GRAIN_128` hold.
+
+`Tests/Run/Test_Climate.cpp` (CTest `Run.Climate`, TIMEOUT 3600, COST 6000):
+AELVOR 128/300+120 built twice, `Options::Climate` off and on. Measured:
+36374 people without the climate, 36032 with (99 %); winters 5148 / 6933 /
+5902 by severity, 143 foreseen, 1581 dead of the cold, 60628 timber and
+38427 grain taken. By biome, with against without: tundra 1082 of 1580
+(68 %), boreal forest 3570 of 3701 (96 %), cold steppe 99 %, the temperate
+and warm biomes 97 % to 116 %.
+
+THE PANEL'S PREDICTIONS FAILED ON THE FIRST RUN, and the figures said why.
+"No region peopled without is empty with": two emptied - region 3 (26 people,
+tundra) and region 80 (32 people, boreal, a coldest of -5) - while their
+neighbours kept theirs; after the first divergence the small regions follow
+the chaos of small numbers, not the climate. "Cold-biome regions at 55 % of
+their capacity or more": the tundra sits far under its capacity WITHOUT any
+climate (57 of 234, 26 of 92), so the clause measured the pre-history, not
+the winter. And the arithmetic confirms the rest: coarse growth is logistic
+at 25 ‰ of the room left, so a yearly drain of d ‰ settles a region at
+1 − d/25 of its capacity - 92 % under hard winters, 68 % under great ones,
+20 % under terrible ones. The bounds that stand are the ones a world can
+answer: no region of a hundred or more emptied; nine tenths of the peopled
+regions still peopled; the tundra between 50 % and 90 % of its people
+without the climate (two-sided: it pays, and it survives), the boreal forest
+and the cold steppe at 80 % or more; and the harvest judged on peopled turns
+only (a region settled mid-window has fewer turns to judge) - above zero in
+at least half of them, and in all of them where ninety days or more grow.
+The world total stays within [80 %, 110 %].
+
+THE SELF-CHECK refuses to conclude over a world without cold: ≥ 3 peopled
+regions with a coldest day under −15 °, ≥ 1 great winter, ≥ 1 region reaping
+under a full harvest, grain taken > 0. THE PINS, layout-independent:
+`VAELEN_CLIMATE_LOG_128 0xc5acefba48cd0fb5`, 12835 great and terrible
+winters, 1581 dead of the cold, 38427 grain taken; a zero pin is refused.
+
+THE CONTROL, the row's: `Economy.Winter.AHarshWinterEmptiesTheNorthAndThe
+BoundSeesIt` - ColdDeathsPerMille {0, 250, 500, 900} and GrowFullDays 360 -
+leaves 10248 people against 19781 calm (51 %) and empties 8 of 29 peopled
+regions: the bound and the never-emptied claim would both go red. FAILED ON
+PURPOSE: the season applied to the coarse branch only → the season case red
+twice, "the busiest region 26 reaped 6512 in full and 6512 at half" and 28
+of 29 reaping nothing at +100 where 29 were due.
+
+NO FROZEN DIGEST MOVED: nothing is told without the flag. Census: WORLD +1
+(the `Run.Climate` log pin; its three counts are integers the census does
+not read); nothing removed.

@@ -13,6 +13,7 @@
 #include "Vaelen/Population/Needs.h"
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Population/Traits.h"
+#include "Vaelen/Sim/Climate.h"
 #include "Vaelen/Sim/Deposits.h"
 #include "Vaelen/Sim/Disasters.h"
 #include "Vaelen/Sim/History.h"
@@ -25,6 +26,7 @@
 #include "VaelenTest.h"
 
 #include <algorithm>
+#include <map>
 #include <memory>
 #include <vector>
 
@@ -433,4 +435,155 @@ VAELEN_TEST(Production, DeterministicSnapshotSafeAndFrozen)
 	VT_CHECK_EQ(ComputeStateDigest(R.Instance), ComputeStateDigest(A.Instance));
 	VT_CHECK_EQ(R.Stock().Digest, S.Digest);
 	VT_CHECK_EQ(R.Stats().Digest, P.Digest);
+}
+
+VAELEN_TEST(Production, TheGrowingSeasonScalesTheHarvestInBothBranches)
+{
+	// 18.07. Four worlds from one seed, identical through the pre-history -
+	// the season is told AFTER it, which the setter allows - so the first turn
+	// after it reaps the same fields with the same hands under four rules:
+	// A never told; C told with GrowFullDays 0, the world before to the unit;
+	// B told with GrowFullDays twice the busiest region's growing days, so
+	// THAT region reaps half; D told with the growing line at +100, so nothing
+	// grows anywhere and every peopled region still says so.
+	Run A(AelvorSeed);
+	Run B(AelvorSeed);
+	Run C(AelvorSeed);
+	Run D(AelvorSeed);
+	VT_REQUIRE(A.Ages.Generate(Run::Square(128), 300));
+	VT_REQUIRE(B.Ages.Generate(Run::Square(128), 300));
+	VT_REQUIRE(C.Ages.Generate(Run::Square(128), 300));
+	VT_REQUIRE(D.Ages.Generate(Run::Square(128), 300));
+	const uint32 Region = A.Busiest();
+	VT_REQUIRE(RequestDetail(A.Instance, A.Lod, Region) && RequestDetail(B.Instance, B.Lod, Region) &&
+			   RequestDetail(C.Instance, C.Lod, Region) && RequestDetail(D.Instance, D.Lod, Region));
+	const uint64 Judged = A.Instance.Now() / TicksPerYear - 1u; // the year the next turn's harvest grew in
+	const YearShape Busy = RegionYear(A.Instance, A.Ages.Types().World, Region, Judged, ClimateRules{});
+	VT_REQUIRE(Busy.GrowingDays > 0u);
+	ClimateRules Half;
+	Half.GrowFullDays = 2u * Busy.GrowingDays;
+	ClimateRules Off;
+	Off.GrowFullDays = 0u;
+	ClimateRules Nothing;
+	Nothing.GrowLine = Fix64::FromInt(100);
+	B.Harvest->ObserveClimate(Half);
+	C.Harvest->ObserveClimate(Off);
+	D.Harvest->ObserveClimate(Nothing);
+	const SimTick Turn = A.Instance.Now();
+	A.Ages.Run(1);
+	B.Ages.Run(1);
+	C.Ages.Run(1);
+	D.Ages.Run(1);
+	// The harvest of every region at that turn: units, and whether a drought cut it.
+	struct Reaped
+	{
+		uint64 Units = 0;
+		bool Cut = false;
+	};
+	auto Harvests = [&](const Run& W)
+	{
+		std::map<uint32, Reaped> Out;
+		for (const Event& E : W.Instance.Log().All())
+		{
+			if (E.Tick == Turn && E.Is(HarvestEvent))
+			{
+				const StockPayload P = E.Get<StockPayload>();
+				Out[P.Region] = Reaped{P.Amount, E.Cause.IsValid()};
+			}
+		}
+		return Out;
+	};
+	const std::map<uint32, Reaped> HA = Harvests(A);
+	const std::map<uint32, Reaped> HB = Harvests(B);
+	const std::map<uint32, Reaped> HC = Harvests(C);
+	const std::map<uint32, Reaped> HD = Harvests(D);
+	VT_REQUIRE(HA.size() > 20u && HA.count(Region) == 1u);
+	VT_CHECK_EQ(static_cast<uint32>(HB.size()), static_cast<uint32>(HA.size()));
+	VT_CHECK_EQ(static_cast<uint32>(HC.size()), static_cast<uint32>(HA.size()));
+	VT_CHECK_EQ(static_cast<uint32>(HD.size()), static_cast<uint32>(HA.size()));
+	uint32 Exact = 0;
+	uint32 Skipped = 0;
+	uint32 Zero = 0;
+	uint32 Wrong = 0;
+	for (const auto& [R, Full] : HA)
+	{
+		// C is A, to the unit, everywhere; D reaps nothing and says so.
+		VT_CHECK_MSG(HC.count(R) == 1u && HC.at(R).Units == Full.Units, "region %u: off %llu, never told %llu", R,
+					 static_cast<unsigned long long>(HC.count(R) ? HC.at(R).Units : 0u),
+					 static_cast<unsigned long long>(Full.Units));
+		if (HD.count(R) == 1u && HD.at(R).Units == 0u)
+		{
+			++Zero;
+		}
+		if (HB.count(R) != 1u)
+		{
+			continue;
+		}
+		// B: a drought's cut composes with the season and is not this case's;
+		// the busiest region is detailed and rounds house by house; every
+		// other region is coarse and reaps its share of the full harvest to
+		// the unit, the share being the growing days over the rule's.
+		if (Full.Cut || HB.at(R).Cut)
+		{
+			++Skipped;
+			continue;
+		}
+		const YearShape Y = RegionYear(B.Instance, B.Ages.Types().World, R, Judged, ClimateRules{});
+		const uint64 Grow = std::min<uint64>(1000u, uint64{Y.GrowingDays} * 1000u / Half.GrowFullDays);
+		const uint64 Expected = Full.Units * Grow / 1000u;
+		if (R == Region)
+		{
+			continue;
+		}
+		Exact += HB.at(R).Units == Expected ? 1u : 0u;
+		if (HB.at(R).Units != Expected)
+		{
+			++Wrong;
+			VT_CHECK_MSG(false, "region %u: growing %u days, share %llu per mille, full %llu, reaped %llu, not %llu", R,
+						 Y.GrowingDays, static_cast<unsigned long long>(Grow),
+						 static_cast<unsigned long long>(Full.Units), static_cast<unsigned long long>(HB.at(R).Units),
+						 static_cast<unsigned long long>(Expected));
+		}
+	}
+	VT_CHECK_EQ(Wrong, 0u);
+	VT_CHECK(Exact >= 10u);
+	VT_CHECK_EQ(Zero, static_cast<uint32>(HA.size()));
+	// The busiest region, detailed: half of the full harvest within the
+	// rounding of its houses (each house's reaping is floored on its own).
+	uint32 Houses = 0;
+	B.Instance.Components()
+		.GetPool(B.Families.Family)
+		.ForEach([&](EntityHandle, const FamilyInfo& F) { Houses += F.Region == Region && F.Extinct == 0 ? 1u : 0u; });
+	const uint64 Full = HA.at(Region).Units;
+	const uint64 HalfUnits = HB.at(Region).Units;
+	VT_CHECK_MSG(!HA.at(Region).Cut && HalfUnits <= Full / 2u && Full / 2u - HalfUnits <= uint64{Houses} + 1u,
+				 "the busiest region %u reaped %llu in full and %llu at half, %u houses", Region,
+				 static_cast<unsigned long long>(Full), static_cast<unsigned long long>(HalfUnits), Houses);
+	VT_CHECK(HalfUnits > 0u);
+	VAELEN_LOG_INFO(LogProduction,
+					"season: busiest region %u grew %u days, full %llu, half %llu (%u houses); %u coarse regions "
+					"exact, %u skipped for a drought, %u of %u reaped nothing at a growing line of +100",
+					Region, Busy.GrowingDays, static_cast<unsigned long long>(Full),
+					static_cast<unsigned long long>(HalfUnits), Houses, Exact, Skipped, Zero,
+					static_cast<uint32>(HA.size()));
+}
+
+VAELEN_TEST(Production, TheFrozenFiguresHoldWithTheSeasonOff)
+{
+	// CONTROL, ADR-0149 rule 2: told the season with GrowFullDays 0 from the
+	// first tick, the world reproduces the frozen figures of 06.02 - the rule
+	// off is the world before, to the unit.
+	Run A(AelvorSeed);
+	ClimateRules Off;
+	Off.GrowFullDays = 0u;
+	A.Harvest->ObserveClimate(Off);
+	VT_REQUIRE(A.Ages.Generate(Run::Square(128), 300));
+	const uint32 Region = A.Busiest();
+	VT_CHECK(RequestDetail(A.Instance, A.Lod, Region));
+	A.Ages.Run(100);
+	const StockStats S = A.Stock();
+	const ProductionStats P = A.Stats();
+	VT_CHECK_EQ(S.Digest, Hash64{VAELEN_PRODUCTION_STOCKS_128});
+	VT_CHECK_EQ(P.Digest, Hash64{VAELEN_PRODUCTION_RATIONS_128});
+	VT_CHECK_EQ(P.Grain, uint64{VAELEN_PRODUCTION_GRAIN_128});
 }

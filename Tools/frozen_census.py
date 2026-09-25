@@ -154,6 +154,7 @@ TABLE = {
     "Tests/View/Test_ViewGate.cpp": "WORLD",
     "Tests/View/Test_Panel.cpp": "WORLD",
     "Tests/Run/Test_Aelvor.cpp": "WORLD",
+    "Tests/Run/Test_Climate.cpp": "WORLD",
     "Tests/Run/Test_Golden.cpp": "WORLD",
     "Tests/Run/Test_Containers.cpp": "WORLD",
     "Tests/CMakeLists.txt": "WORLD",

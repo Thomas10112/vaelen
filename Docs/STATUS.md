@@ -32,7 +32,24 @@ PHASE       : 17 — DEBUG TOOLS, CLOSED 2026-09-24: all eleven clauses of its g
                yet: it is written here and parsed against the shim before that
                sitting. Section 22 has the clause-by-clause read.
                15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
-TASK        : 18.06 — DONE 2026-09-25. The winter, yearly, as a consequence.
+TASK        : 18.07 — DONE 2026-09-25. The harvest has a growing season; the world is alive.
+
+              ProductionSystem::ObserveClimate: a region reaps min(1000, GrowingDays x
+              1000 / 180) of its harvest, from the same RegionYear the winter reads, in
+              both branches at one line. Economy.Production: busiest region 26 reaps 3201
+              of 6512 at half its season, 28 coarse regions exact, all 29 reap nothing at
+              a growing line of +100, and the 06.02 frozen figures hold with the season
+              off. Run.Climate (AELVOR 128/300+120, off and on): 36032 people with the
+              climate against 36374 (99 %); tundra 68 %, boreal 96 %, steppe 99 %; 12835
+              great and terrible winters, 1581 dead of the cold, 38427 grain taken; log
+              c5acefba48cd0fb5 pinned. The panel's two regional predictions failed on the
+              first run for reasons the figures showed (tiny regions diverging; the
+              tundra under capacity before any climate); the bounds were re-drawn by
+              biome and two-sided, and the logistic equilibrium 1 - d/25 written down.
+              Control: harsh rules leave 51 % and empty 8 regions - the bound sees it.
+              Failed on purpose: the season in the coarse branch only.
+
+TASK (18.06): 18.06 — DONE 2026-09-25. The winter, yearly, as a consequence.
 
               Vaelen/Economy/Winter.h: Economy::WinterSystem behind Options::Climate /
               --climate (after Stocks, before the harvest): per region at the year's

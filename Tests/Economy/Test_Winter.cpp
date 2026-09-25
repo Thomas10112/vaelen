@@ -716,3 +716,49 @@ VAELEN_TEST(Winter, TheSameYearTwiceFromOneImage)
 	VT_CHECK_EQ(SA.ColdDeaths, SR.ColdDeaths);
 	VT_CHECK(SA.Winters[1] + SA.Winters[2] + SA.Winters[3] > 0u);
 }
+
+VAELEN_TEST(Winter, AHarshWinterEmptiesTheNorthAndTheBoundSeesIt)
+{
+	// CONTROL for 18.07's gate (Run.Climate): its instrument - people with
+	// the climate within [80 %, 110 %] of without, no peopled region emptied
+	// - pointed at rules that must break it: a quarter of a coarse region's
+	// people dead in a hard winter, more in a great and a terrible one, and a
+	// growing season that reaps in full only where every day grows. The same
+	// wiring and seed through the pre-history, the winter and the season
+	// wired from the first tick in one of them.
+	Ask Calm;
+	Calm.WithWinter = false;
+	Ask Harsh;
+	Harsh.Winter.ColdDeathsPerMille[1] = 250u;
+	Harsh.Winter.ColdDeathsPerMille[2] = 500u;
+	Harsh.Winter.ColdDeathsPerMille[3] = 900u;
+	Run A(AelvorSeed, Calm);
+	Run B(AelvorSeed, Harsh);
+	ClimateRules Short;
+	Short.GrowFullDays = 360u;
+	B.Harvest->ObserveClimate(Short);
+	VT_REQUIRE(A.Ages.Generate(Run::Square(128), 300));
+	VT_REQUIRE(B.Ages.Generate(Run::Square(128), 300));
+	const PopulationStats PA = MeasurePopulation(A.Instance, A.Types().Population);
+	const PopulationStats PB = MeasurePopulation(B.Instance, B.Types().Population);
+	uint32 Emptied = 0;
+	uint32 Peopled = 0;
+	for (uint32 R = 1; R < A.RegionCount(); ++R)
+	{
+		const RegionPopulation* CA = A.Counts(R);
+		const RegionPopulation* CB = B.Counts(R);
+		if (CA == nullptr || CA->Total == 0u)
+		{
+			continue;
+		}
+		++Peopled;
+		Emptied += CB == nullptr || CB->Total == 0u ? 1u : 0u;
+	}
+	VAELEN_LOG_INFO(LogWinter, "harsh rules: %llu people against %llu calm (%llu%%), %u of %u peopled regions emptied",
+					static_cast<unsigned long long>(PB.People), static_cast<unsigned long long>(PA.People),
+					static_cast<unsigned long long>(PA.People > 0u ? PB.People * 100u / PA.People : 0u), Emptied,
+					Peopled);
+	VT_CHECK(PA.People > 0u);
+	VT_CHECK(PB.People * 10u < PA.People * 8u); // the bound would go red
+	VT_CHECK(Emptied > 0u);						// and so would the never-emptied claim
+}
