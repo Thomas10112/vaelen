@@ -83,6 +83,7 @@ add_subdirectory(Source/VaelenColony)
 add_subdirectory(Source/VaelenPlayer)
 add_subdirectory(Source/VaelenGameplay)
 add_subdirectory(Source/VaelenView)
+add_subdirectory(Source/VaelenScene)
 add_subdirectory(Source/VaelenRun)
 
 # ── Tools ────────────────────────────────────────────────────────────────────

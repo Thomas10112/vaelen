@@ -6,6 +6,7 @@
 // NOT YET RUN. Nothing here has been dropped in a level or looked at, so every
 // claim about what it DRAWS remains unmeasured. What compiling proves is only
 // that it is the shape of a program.
+// BUILD: b0921 - Tools/engine_builds.txt; its code is what that build compiled (19.01).
 //
 // Unlike the twelve kernel modules, this is not the module's ONLY Unreal-facing
 // translation unit; every file here is Unreal-facing. That is the difference

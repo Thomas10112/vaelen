@@ -70,17 +70,21 @@ ROOT = Path(__file__).resolve().parent.parent
 ROOTS = [
     ("VaelenUI", ()),
     ("VaelenGame", ("Private",)),
+    # 19.05, ADR-0156: the scene is built from view leaves alone, so that it can
+    # be built from a MapView that outlived its world - and so the engine's walk
+    # can include it. The same rules as the UI, applied to the whole module.
+    ("VaelenScene", ()),
 ]
 
 ALLOWED = set(
     ["Vaelen/View/%s.h" % n for n in
-     ("Frame", "Land", "Net", "Folk", "Delta", "Eye", "Life", "Chronicle", "Panel", "Climate", "ViewApi")]
+     ("Frame", "Land", "Net", "Folk", "Delta", "Eye", "Life", "Chronicle", "Panel", "Climate", "Proof", "ViewApi")]
     + ["Vaelen/Player/%s.h" % n for n in ("Intent", "Stream", "PlayerApi")]
 )
 
 # Anything under here is allowed too: Core is the kernel's own foundation and
 # has no way back to a World (Vaelen/Core/*.h).
-ALLOWED_PREFIX = "Vaelen/Core/"
+ALLOWED_PREFIX = ("Vaelen/Core/", "Vaelen/Scene/")  # 19.05: the scene is a leaf module, held here itself
 
 # Named so that the failure says WHICH rule, rather than "not in the list".
 REFUSED = [

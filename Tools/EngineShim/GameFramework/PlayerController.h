@@ -5,6 +5,9 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
+class APawn;
+class ULocalPlayer;
+
 class APlayerController : public AActor
 {
 public:
@@ -24,4 +27,12 @@ public:
 	/// be called on a non-const object either way. This file proves shape;
 	/// only the owner's machine proves the engine (ADR-0134).
 	virtual void GetPlayerViewPoint(FVector& OutLocation, FRotator& OutRotation) const;
+
+	/// 19.02 BELIEFS: what a controller that possesses a walker needs. Possess
+	/// is AController's in the engine; this shim has no AController.
+	ULocalPlayer* GetLocalPlayer() const;
+	APawn* GetPawn() const;
+	void Possess(APawn* InPawn);
+	FRotator GetControlRotation() const;
+	void SetControlRotation(const FRotator& NewRotation);
 };

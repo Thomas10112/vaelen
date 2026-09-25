@@ -1,0 +1,21 @@
+# VAELEN - what the owner's machine has built. 19.01, ADR-0159. Tools/engine_ledger.py says how it is read.
+#
+# One row per UnrealBuildTool build of the engine modules on the owner's Windows machine:
+#
+#   id      date        commit   source         what ran
+#
+# commit  the commit whose engine files that build compiled. Its record,
+#         Tools/EngineBuilds/<id>.txt, is derived from it by
+#         `python3 Tools/check_engine_status.py --record <id>`.
+# source  RECORDED when the sitting printed `git rev-parse HEAD` as its first
+#         line (every sitting from 19.03 on); RECONSTRUCTED when the commit is
+#         the one that REPORTED the build, because no session before Phase 19
+#         wrote down which commit it had checked out. A reconstructed row is a
+#         best reading, and says so: the engine files at that commit are the
+#         ones the report describes, not a line the machine printed.
+#
+b0907  2026-09-07  83f878e  RECONSTRUCTED  first UBT build: six modules, the editor runs, asserts on
+b0910  2026-09-10  7f4fd51  RECONSTRUCTED  13.06: VaelenAtlasActor compiled and linked, run in the editor
+b0914  2026-09-14  bca6745  RECONSTRUCTED  13.09: AVaelenViewActor built and run; the frame digest agrees with the headless one
+b0916  2026-09-16  9059709  RECONSTRUCTED  14.08-14.10: VaelenGame and VaelenUI built and run; the 83-day month played and written
+b0921  2026-09-21  867a129  RECONSTRUCTED  15.10: the look handed to the door each day; the 142-day lived walk written

@@ -1,0 +1,133 @@
+# build b0914 at bca6745 (RECONSTRUCTED), derived from git by check_engine_status.py --record.
+# Never edit by hand: re-derive it, and the self-test compares the bytes.
+file Source/Vaelen/Private/Vaelen.cpp 1366a52fb5ee72f1
+file Source/Vaelen/Private/VaelenAtlasActor.cpp 50a5c4907acc65f1
+file Source/Vaelen/Private/VaelenLogSink.cpp af3f30b3004cad44
+file Source/Vaelen/Private/VaelenLogSink.h dedee7a876ed4a62
+file Source/Vaelen/Public/Vaelen.h 2eb626ee01849e57
+file Source/Vaelen/Public/VaelenAtlasActor.h 4d42e808a9cf5324
+file Source/Vaelen/Vaelen.Build.cs 07ee380cf7831fd8
+file Source/VaelenPresentation/Private/VaelenPresentationModule.cpp 9ce06097ad90cb5f
+file Source/VaelenPresentation/Private/VaelenViewActor.cpp e553c6a6c78678e4
+file Source/VaelenPresentation/Private/VaelenViewDrawer.cpp 9e96f9c3f157c909
+file Source/VaelenPresentation/Public/VaelenViewActor.h 3600a817de392277
+file Source/VaelenPresentation/Public/VaelenViewDrawer.h 147d1e67d3e66a9e
+file Source/VaelenPresentation/VaelenPresentation.Build.cs 4f47a447b581073d
+seen A
+seen AActor
+seen Add
+seen AddInstances
+seen AddUnique
+seen All
+seen Args
+seen Atoi
+seen B
+seen BeginPlay
+seen Category
+seen Clamp
+seen ClearInstances
+seen ConstructorHelpers
+seen Count
+seen CreateDefaultSubobject
+seen CreateStatic
+seen DECLARE_LOG_CATEGORY_EXTERN
+seen DEFINE_LOG_CATEGORY
+seen DEFINE_LOG_CATEGORY_STATIC
+seen Display
+seen ECollisionEnabled
+seen EComponentMobility
+seen Error
+seen FAutoConsoleCommandWithWorldAndArgs
+seen FCString
+seen FConsoleCommandWithWorldAndArgsDelegate
+seen FLinearColor
+seen FMath
+seen FObjectFinder
+seen FPlatformTime
+seen FRotator
+seen FString
+seen FTransform
+seen FVector
+seen Fatal
+seen Find
+seen FindOrAdd
+seen G
+seen GENERATED_BODY
+seen GetWorld
+seen IMPLEMENT_MODULE
+seen IModuleInterface
+seen Index
+seen IsGameModule
+seen It
+seen KINDA_SMALL_NUMBER
+seen Log
+seen MarkRenderStateDirty
+seen Max
+seen Movable
+seen Name
+seen NoCollision
+seen Num
+seen NumCustomDataFloats
+seen Object
+seen Path
+seen Pow
+seen PrimaryActorTick
+seen Printf
+seen R
+seen Reserve
+seen RootComponent
+seen Rotation
+seen Scale
+seen Seconds
+seen SetCastShadow
+seen SetCollisionEnabled
+seen SetCustomDataValue
+seen SetMaterial
+seen SetMobility
+seen SetStaticMesh
+seen SetupAttachment
+seen ShutdownModule
+seen Size
+seen SpawnActor
+seen StartupModule
+seen Static
+seen Succeeded
+seen Super
+seen T
+seen TActorIterator
+seen TArray
+seen TCHAR
+seen TEXT
+seen TMap
+seen TObjectPtr
+seen TSet
+seen UCLASS
+seen UE_LOG
+seen UFUNCTION
+seen UHierarchicalInstancedStaticMeshComponent
+seen UMaterialInterface
+seen UPROPERTY
+seen USceneComponent
+seen UStaticMesh
+seen UWorld
+seen Verbose
+seen Verbosity
+seen Warning
+seen World_
+seen X
+seen Y
+seen Z
+seen ZeroRotator
+seen ZeroVector
+seen bCanEverTick
+seen int32
+seen int64
+seen meta
+seen size
+seen size_t
+seen std
+seen string
+seen uint32
+seen uint64
+seen uint8
+seen vector

@@ -26,6 +26,13 @@ T* NewObject(UObject* Outer, FName Name = FName())
 
 /// Loads an asset by path at runtime. Returns null here, which is the honest
 /// answer for a stand-in and the answer the calling code has to handle anyway.
+/// 19.02 BELIEF: the checked downcast every Enhanced Input setup starts with.
+template <typename ToType, typename FromType>
+ToType* Cast(FromType* Src)
+{
+	return nullptr;
+}
+
 template <typename T>
 T* LoadObject(UObject* Outer, const TCHAR* Path)
 {

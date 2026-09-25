@@ -24,15 +24,91 @@ PHASE       : 18 — CLIMATE & SEASONS, CLOSED headless 2026-09-25, read clause 
               before it stays one flag away (--no-climate, Options::Climate = false):
               the goldens, the recorded months and the seventeen gates live there;
               Replay.Climate joins the gate list as the eighteenth, in the new world.
-              run_gates.sh: GATES-DONE 0 failing (of 17) in 4012 s at this commit.
+              run_gates.sh: GATES-DONE 0 failing (of 17) in 4012 s at 18.10 (d339068).
               The two actors wire the climate unconditionally - parsed against the
               shim, UNVERIFIED (engine) until Phase 19's first sitting.
-              NEXT: Phase 19 WORLD IN 3D - to be broken down by a panel, as 18 was.
+              NOW: Phase 19 WORLD IN 3D (ROADMAP section 26, ADR-0155 to ADR-0159):
+              twelve tasks, four sittings on the owner's machine. 19.01 and 19.02
+              DONE; 19.03 WAITS ON THE OWNER (sitting S1, ENGINE_HANDOFF). Headless
+              work goes on meanwhile: 19.04 and 19.05 DONE; NEXT 19.06 is sitting S2
+              (the engine contract: VaelenWalk, the walker, ZQSD) - its code is written
+              here after S1 has built 19.03; 19.07 (the fence and the walk contract,
+              headless) can go first. Ten owner questions, the tile
+              scale first.
               (17 CLOSED 2026-09-24; 16 SAVE/PERSISTENCE: fourteen tasks built, its
                GATE still open - clause (j)'s migration half deferred to the v4 bump,
                and 16.14's sitting on the owner's Windows machine. Section 22.
                15 CLOSED 2026-09-21; 14 CLOSED 2026-09-16)
-TASK        : 18.10 — DONE 2026-09-25. The switch and the re-freeze, in one commit.
+TASK        : 19.07 — DONE 2026-09-25. The body is not an input, proven headless.
+
+              Vaelen/Scene/Fence.h fences the walker to its region's walkable tiles and
+              lets it cross only towards a Near region; Run.Walk walks 90 days in the
+              engine's order: 13 crossings, every look the life's region, the stream
+              replaying with no position, two wanderings -> one stream byte for byte,
+              and a host without the fence recording a Move the world refuses TooFar.
+              The plan's "the page answers TooFar" was wrong: the fence does.
+
+TASK (19.05): 19.05 — DONE 2026-09-25. The ground, in integers, in a pure module.
+
+              VaelenScene (the fourteenth kernel module, fenced like the UI) builds the
+              ground from the map leaf: one height per tile, a lattice between them, 16-
+              tile chunks with normals and colours, HeightAt on the mesh's own triangles,
+              the engine's point-to-tile rule. 250 m tiles at a quarter of the relief: 0
+              steep triangles of 2,097,152 at 128 and of 8,388,608 at 256 (predicted
+              <= 0.1 %); 12,529 at ratio 1/250, so the counter counts. Terrain digest
+              105208c54e3c6ea9 at 128, the same on gcc and clang, pinned by
+              Atlas.SceneTerrain128. Purity R8: no float in the kernel, VaelenCore's
+              three files the one named exemption (18 lines, predicted). Four failures
+              on purpose.
+
+TASK (19.04): 19.04 — DONE 2026-09-25. One composer for every engine line.
+
+              Vaelen/View/Proof.h composes LogVaelenClimate from plain facts; the Atlas
+              calls it instead of its printf (the line byte-identical before and after),
+              the replay of a climate world prints it at its end, and the engine's
+              Vaelen.Play will call it (19.06). View.Proof: 1000 of 1000 seeded fact
+              sets equal to the old format through snprintf, the widest line, all or
+              nothing. Replay.Climate now pins its climate line too.
+
+TASK (19.03): 19.03 — INCOMPLETE 2026-09-25: the headless half is written; sitting S1 is the owner's.
+
+              HeadlessCheck says the era both ways (--climate / --no-climate): since
+              18.10 a pre-climate container printed a check that rebuilt the wrong
+              world. ENGINE_HANDOFF "PHASE 19 - sitting S1": build the commit of 19.03
+              (not the branch head), rev-parse first, the ADR-0135 pair from the engine,
+              the 16.14 steps, three played days and the Weather row, stat unit at
+              ground level, and host24-16 loaded must say --no-climate. Closed by
+              Session.P19S1 over the committed log and a RECORDED ledger row.
+
+TASK (19.02): 19.02 — DONE 2026-09-25. The shim grows to the engine contract; Super is exact.
+
+              Twenty-four shim headers the walk needs (character, movement, spring
+              arm, camera, procedural mesh, Enhanced Input, lights, sky, fog, trace,
+              delegates), each a BELIEF until sitting S2. GENERATED_BODY() now pastes
+              file and line as UHT's does and each stub gives the class its real
+              Super. Tools/ShimProbe uses every new API as 19.06 will; 23 mutations
+              refused, among them Super::Jump under the old inherited Super.
+              Kernel.ModuleLists: known answer met - VaelenPresentation was missing
+              from both targets' ExtraModuleNames; it is now named (unbuilt until S1).
+              The ledger refused seven names the grown shim newly spelt; five renamed,
+              two listed as coincidences: 17 beliefs.
+
+TASK (19.01): 19.01 — DONE 2026-09-25. The instruments first, each with a known answer in git.
+
+              Tools/engine_builds.txt (five past builds, RECONSTRUCTED) and records
+              derived from git: every engine file's STATUS is now held to a named
+              build by Kernel.EngineStatus - a claim whose CODE moved past its build
+              is refused, a reworded comment is not. Kernel.ShimLedger counts the
+              shim's beliefs: 15, all 16.14's store, listed in Tools/shim_beliefs.txt.
+              Session.SelfTest re-reads an engine sitting's log against the headless
+              command (the 09-16 pair). Known answer met on the first run: claimed at
+              b0921, exactly the 5 moved files and the 2 newer ones are refused, the 3
+              comment-only ones are not. The five now say UNVERIFIED (engine); two
+              Build.cs labels corrected. Failed on purpose in temp trees and in the
+              real tree through CTest. Deviation: SEEN is derived from git, not
+              hand-tagged per shim line (ROADMAP 19.01 AS BUILT says why).
+
+TASK (18.10): 18.10 — DONE 2026-09-25. The switch and the re-freeze, in one commit.
 
               Options::Climate = true, Atlas --no-climate; the four wirings agree with
               the winter in all of them. Re-frozen, predicted first in ADR-0154's table

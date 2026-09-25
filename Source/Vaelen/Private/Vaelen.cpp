@@ -1,6 +1,7 @@
 // VAELEN - primary game module.
 //
 // STATUS: VALIDATED (UE 5.6, 2026-09-07) - compiled and run in the editor; not covered by the headless CI.
+// BUILD: b0921 - Tools/engine_builds.txt; its code is what that build compiled (19.01).
 #include "Vaelen.h"
 #include "VaelenLogSink.h"
 

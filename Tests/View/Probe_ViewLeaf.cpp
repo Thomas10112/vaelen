@@ -16,6 +16,7 @@
 #include "Vaelen/View/Life.h"
 #include "Vaelen/View/Net.h"
 #include "Vaelen/View/Panel.h"
+#include "Vaelen/View/Proof.h"
 #include "Vaelen/View/ViewApi.h"
 
 #include "Vaelen/Player/Intent.h"
@@ -34,13 +35,15 @@ int main()
 	ChronicleView Chronicle;
 	PanelView Panel;
 	ClimateView Climate;
+	ClimateLineFacts Proof;
 	Vaelen::Player::PlayerCommand C;
 	std::printf("[probe] the view headers are leaves: frame %u, map %u, net %u, people %u, eye %u, command %u, life "
-				"%u, chronicle %u, panel %u, climate %u bytes\n",
+				"%u, chronicle %u, panel %u, climate %u, proof %u bytes\n",
 				static_cast<unsigned>(sizeof(Frame)), static_cast<unsigned>(sizeof(Map)),
 				static_cast<unsigned>(sizeof(Net)), static_cast<unsigned>(sizeof(People)),
 				static_cast<unsigned>(sizeof(At)), static_cast<unsigned>(sizeof(C)),
 				static_cast<unsigned>(sizeof(Life)), static_cast<unsigned>(sizeof(Chronicle)),
-				static_cast<unsigned>(sizeof(Panel)), static_cast<unsigned>(sizeof(Climate)));
+				static_cast<unsigned>(sizeof(Panel)), static_cast<unsigned>(sizeof(Climate)),
+				static_cast<unsigned>(sizeof(Proof)));
 	return 0;
 }

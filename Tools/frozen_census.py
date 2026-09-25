@@ -153,6 +153,12 @@ TABLE = {
     "Tests/Gameplay/Test_GameplayGate.cpp": "WORLD",
     "Tests/View/Test_ViewGate.cpp": "WORLD",
     "Tests/View/Test_Panel.cpp": "WORLD",
+    # 19.05: the ground digest the scene is built from (Atlas.Frozen128's),
+    # asserted as the terrain test's control.
+    "Tests/Scene/Test_Terrain.cpp": "WORLD",
+    # 19.04: hand-built facts for the line composer; the climate digest is
+    # copied from Atlas.ClimateFrozen128 as a sample, and does not move with it.
+    "Tests/View/Test_Proof.cpp": "SYNTHETIC",
     "Tests/Run/Test_Aelvor.cpp": "WORLD",
     "Tests/Run/Test_Climate.cpp": "WORLD",
     "Tests/Run/Test_Golden.cpp": "WORLD",
@@ -219,6 +225,8 @@ KIND_WORDS = [
     (re.compile(r"(?i)\blife\b|_LIFE\b"), "life"),
     (re.compile(r"(?i)\blog\b|_LOG\b|_LOG_"), "log"),
     (re.compile(r"(?i)\bstate\b|FROZEN|STILL|LIVING|EXPECT=|RIGHT="), "state"),
+    # 19.05: the ground one walks on, VaelenScene's digest.
+    (re.compile(r"(?i)\bterrain\b"), "terrain"),
 ]
 
 

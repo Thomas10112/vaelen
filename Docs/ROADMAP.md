@@ -86,7 +86,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 16 | SAVE/PERSISTENCE | **The row said "serialisation of the whole world state" until the planning measured it: that shipped in Phase 01 and works.** What is not saved is the RUN - `Run::Aelvor`'s own members - so a restored world continues identically until somebody LOOKS, and then parts company with the world it was copied from. The gap is about thirty bytes, one part in 700,000 of the image. So the phase is a save that can refuse, a load that cannot half-apply, a container around the untouched image, a verb by which a run adopts a world it did not generate, a file that cannot destroy the last good one, and a migration chain. | BROKEN DOWN (16.01-16.14, section 22; the planning found twelve defects first, among them that `SaveSnapshot` cannot fail and cannot say so in exactly the builds a player runs) |
 | 17 | DEBUG TOOLS | **The row said inspectors, replay tooling, a determinism diff, statistics and a console; the panel measured the causal graph at 1.3% dense and one edge deep and the phase became the instruments that could see that.** As built: a container corpus, the event-type name table, a store that reads a directory, a walk that says how it ended, the causal census, the inspector, a harness that sees a vacuous assertion, nine doors guarded and a tenth pinned open, and a why that names its end. Section 23. | CLOSED 2026-09-24, all eleven clauses; no frozen digest moved |
 | 18 | CLIMATE & SEASONS | **Owner's decision, 2026-09-24: "le froid, le chaud et tout doivent s'afficher."** Today a tile has an ANNUAL MEAN temperature that decides its biome at generation and is never read again; seasons exist in the clock and are consumed by nothing but generation and the snapshot; a person's only need is hunger. This phase gives the world a CURRENT temperature (tile × season), a warmth need beside hunger, a winter that weighs on stores and mortality, a harvest that depends on the climate, and the figures in the view leaves so the HUD can draw them. Kernel work: it moves every frozen digest and lands with its own re-freeze. Section 24. **Broken down in section 25 (2026-09-24): ten tasks, a twelve-clause gate, ADR-0151 to ADR-0154; the temperature is a FUNCTION not a layer, the winter has a calendar not an omen, the chill is its own component declared only in a climate world, and the re-freeze is ONE commit whose footprint a classified census predicts - after that census has shown Phase 17's clause (i) grep blind to `0x…ull`.** | CLOSED headless 2026-09-25 (section 25): eleven clauses met, (c) not met as written (the gates were run at the flip, not at every commit); the climate is the default world since 18.10; the actors UNVERIFIED (engine) |
-| 19 | WORLD IN 3D | **Owner's decision, 2026-09-24: "un RPG médiéval en 3D, ZQSD, où l'on peut tout faire."** What exists is a MAP: regions, biomes, roads, a person and a colony drawn from the view leaves, a camera that moves region to region, at 100+ fps (Phase 13). This phase is a world one WALKS: terrain in volume from `TileGrid` and `Hydrology`, buildings from Infrastructure, persons from Population as characters, the played person moved at the keyboard, a shoulder camera, and the climate of Phase 18 visible. The procedural-mesh and controller C++ is written here and parsed against the shim; meshes, materials, animation and SEEING IT are the owner's machine, one session per task and not per phase. Section 24. | PLANNED |
+| 19 | WORLD IN 3D | **Owner's decision, 2026-09-24: "un RPG médiéval en 3D, ZQSD, où l'on peut tout faire."** What exists is a MAP: regions, biomes, roads, a person and a colony drawn from the view leaves, a camera that moves region to region, at 100+ fps (Phase 13). This phase is a world one WALKS: terrain in volume from `TileGrid` and `Hydrology`, buildings from Infrastructure, persons from Population as characters, the played person moved at the keyboard, a shoulder camera, and the climate of Phase 18 visible. The procedural-mesh and controller C++ is written here and parsed against the shim; meshes, materials, animation and SEEING IT are the owner's machine, one session per task and not per phase. Section 24. | BROKEN DOWN 2026-09-25 (19.01-19.12, section 26): twelve tasks, four sittings on the owner's machine (budget six), a fourteen-clause gate, ADR-0155 to ADR-0159 proposed |
 | 20 | STRESS TEST | Long-duration and large-world runs, performance budgets, determinism at scale — measured WITH Phases 18 and 19 in, not before them. 17.05 already handed it a figure: `PlayerActed` is 54% of a 16.8-million-event log in a world nobody played. | PLANNED (was 18) |
 | 21 | MODDING | Data-driven definitions, mod loading, stable ids and APIs for mods. | PLANNED (was 19) |
 | 22 | POLISH | Balance, content, quality, release readiness. | PLANNED (was 20) |
@@ -7404,3 +7404,560 @@ seventeen gates on a freshly configured `out/build/linux-clang-debug`.
 measures and not as written, said above, not re-worded.** The two actors'
 climate wiring is parsed against the shim and UNVERIFIED (engine) until
 Phase 19's first sitting.
+
+## 26. Phase 19 - WORLD IN 3D: task breakdown
+
+Proposed by a four-angle panel on 2026-09-25 at HEAD `d339068` (18.10). The four angles were engine-contract-first, player-experience-first, kernel-and-view-leaves-first and verification-discipline-first. Three judges scored the plans, each on a separate lens. **The engine-contract angle won two lenses of three**, so it is the spine of this plan. Its strengths:
+- the walker is confined to the region the world says the person is in, and crosses only by `Move`;
+- the geometry is built in integers in a pure module and digested;
+- the shim grows to every Unreal API the phase uses before any of them is relied on;
+- no frozen WORLD, GEN or HASH literal moves.
+
+**The discipline angle won the third lens by finding the measurement that decides the phase.** `git diff 867a129 HEAD`, taken over the four engine modules since the last UBT build (15.10, 2026-09-21), holds **410 non-comment lines in 7 files that no compiler has read**. Five of those files still say VALIDATED:
+- `VaelenWorldSubsystem.cpp:10`
+- `VaelenWorldSubsystem.h:20`
+- `VaelenPlayCommands.cpp:14`
+- `VaelenViewActor.cpp:3`
+- `VaelenAtlasActor.cpp:3`
+
+ENGINE_HANDOFF.md:244-246 says the 16.14 additions carry `UNVERIFIED (engine)`, and they do not. Phase 19 adds dozens of engine APIs this project has never compiled. So the phase opens with instruments that can see that drift. Its first sitting builds the tree as it stands, before any Phase 19 engine line lands, so the first UBT error has one cause and not two.
+
+The measurement that decides the ground is the tile scale. At a height-to-width ratio of 1/1000 (250 m tiles at a quarter of the relief, or 1 km tiles at true relief):
+- 0 of the 12,395 adjacent land-tile pairs at 128 are steeper than CharacterMovement's 44.76° floor, and 0 of the 50,490 pairs at 256;
+- at 250 m tiles and true relief, 812 pairs at 128 are too steep.
+
+The judges' scores, each on its own lens (grafts listed in the rows that take them):
+
+| lens | engine | player | kernel | discipline | winner |
+|---|---|---|---|---|---|
+| Feasibility and owner cost | **8.5** | 6.5 | 5.5 | 6 | engine |
+| Architecture and determinism | **8.2** | 4.6 | 7.4 | 6 | engine |
+| Verification honesty (ADR-0149) | 8 | 5 | 7 | **8.5** | discipline |
+| total | **24.7** | 16.1 | 19.9 | 20.5 | engine, 2 of 3 |
+
+Every wrong claim the judges found was re-checked against the file here: 11 on the feasibility lens, 15 on architecture and 12 on verification, with overlaps between the lenses. All of them stand except one: discipline's "VALIDATED" point is right in substance and slightly overstated in wording. The spine had three wrong claims of its own, plus one internal contradiction that no judge caught. All are corrected below.
+
+### The measurement table (every figure re-measured or re-read for this synthesis)
+
+| figure | value at `d339068` | evidence |
+|---|---|---|
+| Engine code never compiled | 10 files and 556 insertions since the last UBT build. **410 non-comment lines in 7 files**: CheckpointStore .h/.cpp, PlayCommands, Subsystem .h/.cpp, ViewActor.cpp, AtlasActor.cpp. `VaelenViewDrawer.cpp`/`.h` and `VaelenViewActor.h` changed in comments only | `git diff --stat 867a129 HEAD -- Source/Vaelen Source/VaelenPresentation Source/VaelenGame Source/VaelenUI`; `867a129` is "15.10: the gate is met" (2026-09-21) |
+| STATUS lines against the truth | 5 files say VALIDATED over that code (lines above). Only `VaelenCheckpointStore.h:17` and `.cpp:10` say `UNVERIFIED (engine)`. ENGINE_HANDOFF.md:105 ("No file … carries STATUS: UNVERIFIED any more") and :244-246 both contradict the tree. The four engine modules hold **28** files | `grep -n STATUS`; `find … -type f \| wc -l` |
+| The engine plays the climate world | `Options::Climate = true` (Aelvor.h:105). `Begin` sets Size, Years, Play and Stream only (VaelenWorldSubsystem.cpp:124-128) | read |
+| Latent defect | `HeadlessCheck` prints `--climate` when the container has it and nothing otherwise (VaelenWorldSubsystem.cpp:405-408). The Atlas default has been the climate since 18.10 (Main.cpp:516, :734-739), so a pre-climate container prints a check that rebuilds the wrong world | read |
+| Elevation unit | metres. The lapse rate is (above sea / 1000) × LapseRate (WorldGen.cpp:524-526). TileView holds Q16.16 (Land.h:70). Land at 128 runs from 0.005 m to **2025 m**, median 644 m; sea tiles run from −6125 m to −0.59 m, so AELVOR's sea level is 0. **MapView carries no sea level** (Land.h:81-89) and **no metres-per-tile exists anywhere** | scratch `p19/a128.json`, `elevationScale 65536` |
+| Adjacent land-tile height step | at 128: median 82 / p99 430 / max 724 m over 12,395 pairs. At 256: 47 / 231 / 447 m over 50,490 pairs | python over `tiles.elevation` |
+| Pairs steeper than 44.76° (and than 30°) at 128 / 256 | 100 m ×1: 5222 (7771) / 9109. 250 m ×1: 812 (3139) / 339. 500 m ×1: 59 (477) / 0. **1000 m ×1: 0 (21) / 0 (0). 250 m ×0.25: 0 (21) / 0 (0).** 200 m ×0.5: 158 (1038) / 4 | same data; tan 44.76° = 0.9923 |
+| Regions | 128: 99 regions, every land tile in one; tiles per region min/median/max 1 / 72 / 157; at most 8 land neighbours (= `MostNear`, Life.h:33); a region plus its neighbours holds at most 981 tiles; 223 river and 298 lake tiles. 256: 126 regions, 1 / 121 / 658, degree 8, ring 4099, 444 river, 1551 lake | same data |
+| Buildings in the played world | none. `Infrastructure` appears 0 times in Aelvor.cpp, Tools/Atlas/Main.cpp and both actors. `Work` is Granary/Mill/Smithy/Wall (Buildings.h:44-51); `PlaceInfo.Tile` (Places.h:52) is declared in no wiring. No dwelling exists | grep; read |
+| Where a person is | a region and nothing smaller (PersonView Folk.h:50-54; PersonInfo Persons.h:46-49). The drawer invents the spot and says so (VaelenViewDrawer.h:163-172, applied at VaelenViewDrawer.cpp:392-395) | read |
+| The move | `Door::Mean` queues (Door.h:65). The day turns at Door.h:80. Only to an adjacent **detailed** region (Doings.cpp:84-90; Near filled at Life.cpp:198-206) | read |
+| Climate in the engine | nobody reads it. `TakeClimateView`'s only caller is Main.cpp:3530. `LogVaelenClimate` is printed only in `RunAtlas` (Main.cpp:3538-3545), never by `RunReplay` (:3210-3399) | grep |
+| What the subsystem gives out | World, People, Life, Chronicle, Panel (VaelenWorldSubsystem.h:150-154). It holds the ground (.cpp:50, taken at :142) and exposes it to nobody. `TakeAll` (:65-76) takes no ClimateView and no NetView | read |
+| Two worlds | `AVaelenViewActor` builds its own world (VaelenViewActor.cpp:372-396); the host plays another (VaelenWorldSubsystem.cpp:118-145). They share the ground and not the people | read |
+| Keys | W R E T **S** G K M Tab Space F9 (VaelenPlayerController.cpp:53-63; S = Speak at :57); cursor shown (:64). The page's letters `{'T','W','R','E','M','S','G','K'}` (Panel.cpp:218) are printed into the digested text (:386-387, digest :467). Enhanced Input is enabled (Vaelen.uproject:223; DefaultInput.ini:1-4) and no C++ uses it | read |
+| The look of a level camera | `RegionTheCameraIsOver` returns 0 when the camera does not look down (VaelenPlayerController.cpp:142). A look at 0 is recorded as "looking nowhere" (Door.h comment at Look). 15.10 measured that the look changes the world (ROADMAP:4955) | read |
+| Plugins, content, map | EnhancedInput and ModelingToolsEditorMode only; **no ProceduralMeshComponent** (Vaelen.uproject:221-233). `git ls-files Content` gives `.gitkeep` alone, and `/Game/M_VaelenTile` (VaelenViewActor.cpp:324) is on one disk. The game map is `/Engine/Maps/Entry` (DefaultEngine.ini:3) | read |
+| Shim and module lists | 36 shim files. `Super` is inherited from `AActor`, "exactly right for an actor derived straight from AActor … the day one derives from another … this file is what gets fixed" (Tools/EngineShim/GameFramework/Actor.h:18-26). `ENGINE_MODULES` = 4 (parse_engine_modules.py:56), `UI_MODULES` = {VaelenUI} (:67). **VaelenPresentation is absent from `ExtraModuleNames`** in both targets (Vaelen.Target.cs:15, VaelenEditor.Target.cs:15). CI asserts 13 kernel modules (kernel-ci.yml:135) | read |
+| The fence | ROOTS = VaelenUI, and VaelenGame except Private (check_ui_fence.py:70-73). TOKENS refuse `FPlatformTime` :112, `DeltaSeconds` :114, `Tick(` :115. VaelenPlayerController.h:58: "There is NO Tick in this module and there must not be" | read |
+| Float in the kernel | **18** `float`/`double` code tokens in VaelenCore (Random.h:78-93, CoreTypes.h:71-72, Random.cpp) and **0** in the other 12 modules. The word "double" also appears in prose in Polities.h:147 and Living.h:24. No purity rule checks this (R0-R7, check_kernel_purity.py:66-73) | token count with comments stripped |
+| Frame time on the owner's T400 | from above, over the 13.09 scene: 8.33 ms. **At ground level: 30.4 ms, GPU-bound, 954.8 K prims.** The template map with the HUD and nothing drawn: 28.15 ms (ROADMAP:4641-4644) | read |
+| Census at the start | 555 sites: WORLD 192, GEN 14, HASH 247, CONST 15, SEED 15, SYNTHETIC 14, RECORD 58 | `python3 Tools/frozen_census.py --check` |
+| Names already taken | `Replay.Walked` (Tests/Run/CMakeLists.txt:195). There are 18 gates today (run_gates.sh:44-47) | read |
+
+### The shape the panel agreed on
+
+- **The walker belongs to the host; the person belongs to the world (ADR-0155).**
+  - The capsule's floating-point position is never recorded, never saved and never read by the kernel.
+  - A collision fence confines the capsule to the walkable tiles of `LifeView.Region` (Life.h:67): land minus lakes.
+  - Leaving takes `M` while facing a `Near` neighbour at the fence. The page's `Press` answers first, then `Mean`, exactly as today (VaelenPlayerController.cpp:217-224).
+  - The world moves the person at the day turn. Then the walker is placed on a deterministic arrival tile.
+  - The daily look is the walker's region. By construction that equals `Life.Region`, so a shoulder camera never records "looking nowhere".
+  - A walk is therefore a stream like 14.10's and 15.10's, and it replays headlessly.
+- **No Tick anywhere in our code.**
+  - Enhanced Input fires the move handler while a key is held, and CharacterMovement ticks inside the engine.
+  - The new actor module, VaelenWalk, is fenced like VaelenUI. On top of that it refuses every call that moves the world.
+  - The controller in VaelenUI stays the only caller of the door. This resolves the discipline plan's contradiction, which put a per-tick fence in VaelenUI, and it does not weaken the fence the way the kernel plan's "ticking module" would.
+- **Geometry is built in integers from view leaves, in a pure module, VaelenScene (ADR-0156).**
+  - It is CMake-built, purity-checked with a new rule R8, digested, and pinned on gcc, clang and MSVC. The Atlas prints it in exactly the format the engine prints.
+  - The engine converts int32 to float, uploads the arrays and draws them.
+  - Everything the scene invents says so in its header: sub-tile relief, lake surfaces, houses, figure slots.
+- **The kernel exposes nothing new, and no view struct changes.** The subsystem gains read accessors, and the page gains a host-chosen key table whose default is byte-identical.
+- **Every engine line is composed by the same code the Atlas calls.** It is brought back in a committed log and re-read by a CTest entry (ADR-0159). No engine clause closes by writing in a document.
+
+### What moves, as one paragraph
+
+Nothing of WORLD, GEN or HASH at any commit: the census `--diff` at every task head shows **0 removed in every class**. The additions are new pins in named kinds, each added to the census table by the task that makes it:
+- WORLD/terrain, which moves only with the ground;
+- WORLD/scene;
+- WORLD/sky;
+- WORLD/panel, the walk-key page only;
+- RECORD/session, the lines brought back from the owner's machine.
+
+The default page keeps its bytes: `VAELEN_PANEL_FROZEN_EMPTY 0xd7e7149e65ceb69a` and `…PLAYED 0x777351768a3a4fc6` (Test_Panel.cpp:35-36), `Atlas.PanelFrozen`, and `Replay.Played`'s `panel 7de2c5faf3cc1813` (Tests/Run/CMakeLists.txt:69) are asserted unchanged in 19.10.
+
+**The gates run at the heads of 19.05, 19.10 and 19.12. The touched suites and the census run at every commit.** This is said in advance because Phase 18's clause (c) promised every commit and was "met for what it measures and not as written" (ROADMAP:7403-7404).
+
+### The breakdown
+
+| Task | What | Verified by (CONTROL, failing on purpose) | Why |
+|---|---|---|---|
+| 19.01 | **The instruments come first: STATUS drift, a shim ledger, a build ledger and a session reader, each with a known answer in git.**<br>• `Tools/check_engine_status.py` over `ENGINE_MODULES` (parse_engine_modules.py:56). Every file must carry `UNVERIFIED (engine)`, or `BUILT`/`VALIDATED <build-id>` naming a row of the new `Tools/engine_builds.txt` (date, commit built, what ran). The four past builds are entered as RECONSTRUCTED (13.06 on 09-10, 13.09 on 09-14, 14.08-14.10 on 09-16, 15.10 = `867a129`). A file claiming a build whose non-comment tokens changed since that commit is refused by name.<br>• `Tools/check_shim_ledger.py`: every shim declaration carries `// SEEN <build>` or `// BELIEF <task>`, and a BELIEF that no Source file uses is refused.<br>• `Tools/check_session.py`: per sitting, a table of expected line patterns and the headless command that must print each line byte for byte. Logs are committed as `Tests/Run/Sessions/<id>-<date>.log`.<br>• All three run in CTest and in `verify_fast.sh`.<br>• In the same commit: the five files gain the `UNVERIFIED (engine)` mark for their 16.14, 18.02 and 18.10 additions, as ENGINE_HANDOFF.md:244-246 says they already carry; the stale labels are corrected (VaelenUI.Build.cs:6 says "NOT yet run" over a module run on 09-16; VaelenPresentation.Build.cs:3-7 says PROTOTYPE); ENGINE_HANDOFF.md:78's "seventeen frozen gates" becomes eighteen. | `ctest -R '^Kernel\.(EngineStatus\|ShimLedger)$\|^Session\.SelfTest$'`.<br>**Known answers:**<br>• Before re-marking, the status checker names exactly the 5 files of the table.<br>• The ledger's `--diff 867a129 HEAD` lists the declarations added since the last build as BELIEF. Their count is written as a prediction before the first run; the discipline proposer counted 10, from `c146c43`.<br>• The session reader accepts the 2026-09-16 pair (Tests/Run/CMakeLists.txt:68-70) against `--replay aelvor256-2026-09-16.stream --panel --want-bound 0 --no-climate`.<br>**CONTROL:** the three comment-only files are NOT flagged. The checker reads code, not dates.<br>**Failing on purpose, in a temp tree:**<br>• a code token changed in `VaelenHUD.cpp` is refused as stale, while a changed comment is accepted;<br>• an untagged shim declaration is refused with its file:line;<br>• `SEEN` naming an unknown build is refused;<br>• one hex digit changed in a log is refused, naming the column; a missing line is refused as `missing`. | The phase's every claim is "parsed here, seen there", and STATUS is its only record. 5 of 28 files already claim more than was built. The shim is compiled against, so a wrong entry turns CI greener, not redder. ADR-0149: an instrument is guilty until it has failed on purpose, and these have answers in git, as 18.01's did. |
+| 19.02 | **The shim grows to the engine contract, `Super` becomes exact, and the module lists are checked.**<br>New shim headers, each naming the UE 5.6 header it stands for, every entry `// BELIEF 19.02`:<br>• `GameFramework/Pawn.h`, `Character.h`, `CharacterMovementComponent.h` (`MaxWalkSpeed`, `SetWalkableFloorAngle`, `bOrientRotationToMovement`);<br>• `Components/CapsuleComponent.h`, `GameFramework/SpringArmComponent.h`, `Camera/CameraComponent.h`;<br>• `ProceduralMeshComponent.h` (`CreateMeshSection_LinearColor`, `ClearAllMeshSections`, `bUseComplexAsSimpleCollision`, `bUseAsyncCooking`, `FProcMeshTangent`); the ISM header split from the HISM one;<br>• `EnhancedInputComponent.h` (`BindAction` with `ETriggerEvent` and a `const FInputActionValue&` handler), `EnhancedInputSubsystems.h`, `InputAction.h`, `InputMappingContext.h` (`MapKey`), `InputActionValue.h`, `InputModifiers.h` (Negate, SwizzleAxis), `Engine/LocalPlayer.h`;<br>• Directional/SkyLight/SkyAtmosphere/ExponentialHeightFog components; `UWorld::LineTraceSingleByChannel` with `FHitResult`; `DECLARE_MULTICAST_DELEGATE`; `FKey` from a name; `UEngine::VertexColorMaterial`.<br>**Exact `Super`:** the stub writer reads `class X_API Name : public Base` and writes a `GENERATED_BODY()` that expands to `using Super = Base; using ThisClass = Name;`.<br>**`Tools/check_modules.py`:** every `Source/*/*.Build.cs` must be in Vaelen.uproject; in both targets' `ExtraModuleNames` or named as an exception; in kernel_modules.txt if and only if it has a CMakeLists.txt; in `ENGINE_MODULES` if and only if it does not. Every plugin a Build.cs names must be enabled. Once its known answer has been shown, VaelenPresentation is added to both targets. | `python3 Tools/test_engine_shim.py && python3 Tools/check_modules.py --self-test && ctest -R '^Kernel\.ModuleLists$'`.<br>**New mutations, each caught:**<br>• `CreateMeshSection_LinearColor` called with 7 arguments;<br>• a `BindAction` handler with the wrong signature;<br>• `MaxWalkingSpeed` misspelt;<br>• `MapKey` on a const context;<br>• `Super::Only()` where `Only` exists on the intermediate base: red under the inherited `Super`, green under the exact one.<br>**CONTROL:** the healthy tree parses first, and the existing mutations are still caught.<br>**Known answer:** on HEAD, `check_modules.py` reports exactly "VaelenPresentation absent from ExtraModuleNames" for Vaelen.Target.cs:15 and VaelenEditor.Target.cs:15.<br>**Failing on purpose:** a temp Build.cs naming ProceduralMeshComponent while the uproject lacks the plugin is named; a module missing from kernel_modules.txt is named. | ACharacter is the first class in the project that does not derive straight from a shim base (Actor.h:18-26). 14.08 cost three defects that nothing headless could see (ENGINE_HANDOFF.md:156-173). The target lists have already drifted without anyone noticing. Instrument first, as 16.01, 17.01 and 18.01 did. |
+| 19.03 | **S1: the tree as it stands, built once, before any Phase 19 engine line.**<br>• `HeadlessCheck` prints `--no-climate` when `!Given.Climate` (VaelenWorldSubsystem.cpp:405-408).<br>• A Phase 19 section in ENGINE_HANDOFF.md: what to type and what to bring back.<br>• Tag `p19-s1`.<br>No VaelenScene, VaelenWalk or subsystem addition lands before this sitting. | **Session S1**, first line `git rev-parse HEAD` equal to the tag:<br>(1) the UBT result, and the first error verbatim if any (report it, do not repair it);<br>(2) `Vaelen.View 128 120` → `AELVOR digests: frame ec18241b89c3d246, ground 8f7f4948f49b6e86` (VaelenViewActor.cpp:452-453). This is Phase 18's pending engine line (ROADMAP:7404-7406; ENGINE_HANDOFF.md:50-55);<br>(3) ENGINE_HANDOFF's 16.14 steps (from :240);<br>(4) `Vaelen.Play 128 120 1`, three `Vaelen.Day`, `Vaelen.Stream.Write`: the three LogVaelenPlay lines and a screenshot of the page's Weather row, never yet seen on an engine screen;<br>(5) `stat unit` at ground level over `Vaelen.View 128 120` and over `Vaelen.Play`. This is the baseline for owner question 4.<br>`Session.P19S1` re-reads the committed log: (4) equals `VaelenAtlas --gate <file> --want-bound 0` byte for byte after the prefix.<br>**CONTROL:** copy `Tests/Run/Containers/host24-16.container` into `Saved/Vaelen`, then `Vaelen.Load host24-16`. The check line must say `--no-climate`, and the headless side must adopt it. Line (2) is the Phase 13 VALIDATED path, so a mismatch elsewhere isolates newer code.<br>**Failing on purpose:** the log with one digit changed turns `Session.P19S1` red; the same stream replayed with `--no-climate` must NOT match.<br>**Afterwards:** `engine_builds.txt` gains `s1`, the checker moves the 7 files to VALIDATED `s1`, and the beliefs it exercised become SEEN. | 410 lines from three phases are waiting for a compiler. Landing Phase 19 code first would leave the first UBT error with two possible causes. The defect at :405-408 appears only after 18.10's flip and cannot be seen by parsing. VaelenGame must build before the walk can. |
+| 19.04 | **One composer for every engine line, and the replay prints the climate.**<br>• New leaf `Vaelen/View/Proof.h` / `Proof.cpp`: `uint32 ClimateLine(const ClimateLineFacts&, char* Out, uint32 Bytes)`, all or nothing like `Lines` (Panel.h:132-138). The facts are Size, Seed, Day, Year, Season, `ClimateViewStats`, HardWinters and ColdDeaths.<br>• Main.cpp:3538-3545's `printf` is replaced by it.<br>• `RunReplay` (Main.cpp:3210-3399) prints the line at the replay's end when the era is the climate.<br>• Proof.h joins the fence's ALLOWED list (check_ui_fence.py:75-79) and the View.Leaf probe. | `ctest -R '^View\.Proof$\|^Atlas\.Climate128$\|^Atlas\.ClimateFrozen128$\|^Replay\.Climate$\|^Atlas\.OutputSelfTest$'`.<br>• `View.Proof` composes from hand-built stats and requires the literal. With the true stats, the line must end `climate 59615fa1f5d24bd1`, the value `Atlas.ClimateFrozen128` pins (Tests/CMakeLists.txt:132).<br>• `Replay.Climate` gains a required climate line; its three pinned lines are unchanged, because it matches line by line (ReplayPlayed.cmake:60).<br>**CONTROL:** `Atlas.ClimateFrozen128` is unchanged, so the refactor moved no byte; `--no-climate` prints no climate line.<br>**Failing on purpose:** an unsigned writer turns View.Proof red on `-26`. | Phase 18 said the screenshot would be checked against `LogVaelenClimate` (ROADMAP:6613), and no engine code prints it. Composing it once, for both sides, is the lesson of 14.10, where the lines were compared as files. |
+| 19.05 | **The ground, built in integers from the ground leaf, in a pure module.**<br>• **Module:** `Source/VaelenScene` (kernel_modules.txt goes to 14, and kernel-ci.yml:135's 13 goes to 14; CMake; Build.cs; uproject PreDefault after VaelenView; both targets; ENGINE_HANDOFF's do-not-fix list at :70-74). The fence gains `("VaelenScene", ())` under the UI rule set, so its includes are Core plus the View leaves only.<br>• **Purity rule R8 no-float** in check_kernel_purity.py: no `float`/`double` code token in any kernel module, comments stripped. VaelenCore's Random and CoreTypes sites are the one named exemption.<br>• **Scale (question 1):** `Vaelen/Scene/Terrain.h`: `SceneScale {CmPerTile 25000, ReliefPerMille 250, Steps 8, SeaFloorCm -5000, RiverCm 300, DetailCm 200}`. That is ratio 1/1000, whose slopes are the 1 km-at-true-relief figures of the table at a quarter of the walking distance.<br>• **The lattice:** a global lattice whose every `Steps`-th point is a tile centre. A land tile's centre Z = Elevation × ReliefPerMille exactly. Sea tiles sit at SeaFloorCm under a sea plane at 0; MapView has no sea level, so the Land flag decides (Land.h:46). Lake tiles are clamped under a lake surface. River centres are lowered by RiverCm. Between centres: integer bilinear, one fixed diagonal split. Detail is hashed from the global lattice point, bounded by DetailCm, and 0 on tile centres. Chunks are 16×16 tiles. Normals come from int64 cross products and are stored as int16. The biome palette is RGBA8, asserted against `BiomeKinds` (Land.h:66).<br>• **What is invented, and says so:** the lake surface is the lowest non-lake land neighbour of the lake's component.<br>• **Functions:** `HeightAt(x, y)` is the same triangle interpolation as the mesh. `PointOfTile`/`TileOfPoint` in int64 cm are half-open and tested against `RegionUnderGround`'s +0.5 (VaelenWorldSubsystem.cpp:219-220). `MeasureTerrain` gives vertices, triangles, z range, steep triangles and a digest.<br>• **Atlas:** `Vaelen/Scene/Lines.h` `TerrainLine`, and Atlas `--scene-terrain R\|all` prints `LogVaelenScene: AELVOR 128 seed 41454c564f52 region R: chunks C, vertices V, triangles T, z [a, b] cm, steep S of E; terrain <hex>`, with `--expect terrain=`. `--scene-dump` plus a standard-library `Tools/scene_preview.py` writes a hill-shaded PNG, so the ground can be looked at on any machine. | `ctest -R '^Scene\.Terrain$\|^Atlas\.SceneTerrain128$\|^Kernel\.Purity$\|^Kernel\.PuritySelfTest$'` on every CI leg, `windows` included (kernel-ci.yml runs the MSVC suite at :156), and the MSVC leg must pin the same digest.<br>**Scene.Terrain**, over every region at 128 and at 256:<br>(1) every land tile centre, outside lakes and rivers, has Z == Elevation × ratio exactly;<br>(2) seam vertices are equal on both sides, and the map built as one chunk set and as a partition gives the same digest;<br>(3) every interior edge belongs to exactly two triangles;<br>(4) triangles steeper than 44.76° are counted and must be ≤ the prediction written before the first run. The tile-pair figure is 0 at 128 and at 256, but a triangle combines both axes, so the prediction says by how much the count may exceed it;<br>(5) `PointOfTile` then `TileOfPoint` is the identity on every tile, and agrees with RegionUnderGround's formula on a 5×5 grid of points per tile, edges included;<br>(6) `HeightAt` at 10,000 seeded points equals an independent triangle interpolation (two instruments);<br>(7) the mesh is built after its world is destroyed.<br>**CONTROL:** ReliefPerMille 0 and DetailCm 0 give every land Z = 0 (the instrument can see relief); `--climate` and `--no-climate` give one terrain digest; ground `8f7f4948f49b6e86` is still printed.<br>**Failing on purpose:**<br>• corners computed per chunk → the seam clause names a lattice point;<br>• the +0.5 dropped (the 15.10 defect) → (5) red;<br>• ratio 1/250 → (4) red with its count (812 pairs at 128);<br>• a `float` planted in a temp VaelenScene → R8 names its file:line;<br>• R8's exemption removed → the 18 VaelenCore sites are named, while the prose "double" in Polities.h:147 and Living.h:24 is not (the comment control). | The ground leaf already carries everything terrain needs (Land.h:44-89), so the kernel exposes nothing. Integers make the geometry digestible on every compiler, so the only float step is the engine's conversion, which is exact below 2^24 cm per axis. The ratio decides slope and the tile size decides pace; both are rules, not kernel facts. |
+| 19.06 | **S2: the engine contract, run once before the scene is built on it.**<br>**Engine module `Source/VaelenWalk`, actors only.** Deps: Core, CoreUObject, Engine, ProceduralMeshComponent, VaelenCore, VaelenView, VaelenScene, VaelenGame.<br>• `AVaelenLand`: PMC sections for the played region's chunks and its ring at `Steps`, far land at Steps 1; collision only on the chunks the played region touches; `GEngine->VertexColorMaterial` (believed) unless M_VaelenTile exists.<br>• `AVaelenSky`: directional light, real-time sky light, sky atmosphere and height fog made in C++, because `/Engine/Maps/Entry` has no light.<br>• `AVaelenWalker : ACharacter`: capsule; CMC at 44.76° and 500 cm/s; a 300 cm spring arm with `bUsePawnControlRotation`; a camera. **No Tick override.**<br>**VaelenUI:**<br>• `AVaelenWalkController : AVaelenPlayerController`: Enhanced Input Move/Look actions and a mapping context **made at runtime** (Z/Q/S/D and the arrows with Swizzle/Negate, Mouse2D), added through `UEnhancedInputLocalPlayerSubsystem`. The handler calls `AddMovementInput`. Verbs are not bound in walk mode until 19.10.<br>• `AVaelenWalkGameMode` uses that controller, the walker and AVaelenHUD.<br>**VaelenGame:**<br>• `Ground()`, which exposes the map already held (.cpp:50);<br>• `Climate()` and `Net()`, taken in `TakeAll` once a day;<br>• `OnViewsTaken`, broadcast after `Held->TakeAll()` in Begin (:143) and AdvanceDay (:287);<br>• the climate line through Proof.h, printed by `Vaelen.Play` and `Vaelen.Day`. Its facts come from Private, which may name Run (check_ui_fence.py:64-65).<br>• Console: `Vaelen.Walk <size> <years>` begins with the daily cadence and possesses the walker at the played region's centroid tile (Frame.h:39). `Vaelen.Probe N [biasMm]` compares N line traces with `HeightAt`.<br>**Tools:** ROOTS gains `("VaelenWalk", ())` with the UI tokens **plus** per-root tokens refusing `Mean(`, `Watch(`, `AdvanceDay(`, `TakeSomebodyElse(`, `Save(`, `Load(`. `UI_MODULES`, `ENGINE_MODULES`, the uproject (module plus PMC plugin) and both targets gain VaelenWalk. | **Headless:** `Tools/verify_fast.sh` (the parse includes VaelenWalk) and `ctest -R '^Kernel\.(UiFence\|UiFenceSelfTest\|ModuleLists\|EngineStatus\|ShimLedger)$'`. Self-test witnesses: a `Tick(` in a copy of VaelenWalk is refused; `Mean(` in VaelenWalk is refused; the prose control "Meaning … Ticker" passes. New files say `UNVERIFIED (engine)`, as the checker requires.<br>**Session S2** (tag `p19-s2`):<br>(1) rev-parse;<br>(2) UBT;<br>(3) `Vaelen.Walk 128 120` → the LogVaelenScene terrain line for region R, and `LogVaelenClimate`;<br>(4) `Vaelen.Probe 64` → `max \|trace−builder\| X cm, misses M`;<br>(5) Z, Q, S, D pressed once each → four `LogVaelenWalk: key <FKey> -> move (x,y)` lines;<br>(6) walk up the steepest triangle the line names;<br>(7) `stat unit` at eye level and from 30 m;<br>(8) two screenshots.<br>`Session.P19S2` requires (3) to equal `VaelenAtlas --size 128 --years 120 --scene-terrain R` and the Atlas climate line byte for byte, and (4) ≤ 1 cm with 0 misses.<br>**CONTROL:** `Vaelen.View 128 120` in the same sitting.<br>**Failing on purpose, in the engine:** `Vaelen.Probe 64 50` offsets every trace by 5 cm and must print a max of 5.0. A probe that cannot fail is not a probe. | Every API the phase rests on runs once, early: PMC and its complex collision under CMC, mapping contexts made without assets, ZQSD on AZERTY (believed: UE's letter keys follow the layout), a lit sky in a map with no light, and the vertex-colour material. If any fails, 19.07-19.10 still stand headless, and only the engine side is redesigned. |
+| 19.07 | **The fence and the walk contract, proven headless: the body is not an input.**<br>`Vaelen/Scene/Fence.h`:<br>• `WalkableTiles(Map, Region)`: the region's land minus Lake;<br>• `BuildFence`: edges between walkable and non-walkable tiles, merged into closed loops, emitted as 4 m collision-only quads;<br>• `Arrival(Map, From, To, Point)`: the walkable tile of To nearest the point, ties by index;<br>• `Inside`;<br>• `RegionAt(Map, Scale, Xcm, Ycm)`;<br>• `CrossingOf(Map, Life, Point, Yaw)`: the region across the fence ahead, **only if it is in `Life.Near`** (Life.h:115), otherwise 0 with a reason;<br>• `PlaceAfterDay(Map, Before, After, Point)`.<br>New `Tests/Run/Test_Walk.cpp` (CTest `Run.Walk`) is an engine-free host: Aelvor with Play, Stream and Climate; a Door; a body stepped in fixed sub-tile steps through the fence. It follows the controller's order (M → `CrossingOf` → `Press` → `Mean` only on None, VaelenPlayerController.cpp:217-224) and the subsystem's order (`Look(RegionAt(body))`, then `Day()`, VaelenWorldSubsystem.cpp:283-285), then `PlaceAfterDay`. It writes the stream and replays it with `Run::Replay` (Door.h:164), as `Door.TheEngineHostsOwnOrderReplaysToItself` does (named at VaelenWorldSubsystem.cpp:277).<br>Atlas `--walk3d <script>` writes the same kind of stand-in stream. | `ctest -R '^Scene\.Fence$\|^Run\.Walk$'`.<br>**Scene.Fence**, every region at 128 and 256:<br>• loops closed;<br>• every edge separates walkable from non-walkable;<br>• the perimeter counted independently from the grid equals the edge count (two instruments);<br>• `Arrival` lands inside To, next to From when they share a border;<br>• `Inside(PointOfTile(t))` if and only if t is walkable.<br>**Run.Walk:** the replay equals the host on four digests with Wrong 0.<br>**CONTROLs:**<br>(a) two walks with the same crossings on the same days and different paths inside the regions give **byte-identical** encoded streams and equal digests;<br>(b) M at a non-Near border answers TooFar from the page, and the stream is byte-identical to the walk that never tried;<br>(c) a Move with too few hours answers Costly and records nothing;<br>(d) every recorded look equals that day's `Life.Region`.<br>**Failing on purpose:**<br>• one crossing dropped → the life digest differs;<br>• a look taken from a hashed position → (a) red;<br>• lakes counted walkable → Scene.Fence names the 298 / 1551 lake tiles;<br>• `PlaceAfterDay` skipped → (d) red. | Orders apply at the day turn (Door.h:80), so this is the whole "second source of truth" risk, closed by a test rather than a promise. The look changes the world (ROADMAP:4955), and a level camera records region 0 (VaelenPlayerController.cpp:142). Near lists every border: degree ≤ 8 at 128 and 256, and MostNear is 8. |
+| 19.08 | **Towns, houses, roads and figures: what the scene invents, from what the views hold.**<br>`Vaelen/Scene/Layout.h` `BuildLayout(Map, WorldView, NetView, PeopleView, LifeView, Scale, Day, SceneLayout&)`:<br>• a square at `CentroidTile` where `Settlement != 0` (Frame.h:39, :44);<br>• one house per distinct living family in the region (`PersonView.Family`, Folk.h:54; `IsAlive`, :87), plotted from `HashCombine(Seed, Family)`. A family yields only to lower-indexed families, so a house never moves when a later family appears or dies. Regions not detailed get ⌈People/5⌉ houses;<br>• rejection on sea, river, lake, off-region, outside the fence, or slopes over 20° (`HeightAt`);<br>• roads by integer A* over walkable tiles between the centroids of open routes (Net.h:40), ties broken on tile index;<br>• the colony pit where `ColonyIn` finds one (Net.h:91);<br>• figures for every living person of the drawn detailed regions except the played person, at a slot from `HashCombine(Identity, Day)` (VaelenViewDrawer.cpp:392-395's rule, made integer and daily), with Company members flagged (Life.h:120);<br>• `AimAt(layout, point, yaw)`: the nearest Company figure within 3 m and ±30°, ties broken by index.<br>The header says in capitals what is invented (VaelenViewDrawer.h:163-172's rule). `LayoutLine`; Atlas `--scene-layout`. | `ctest -R '^Scene\.Layout$\|^Atlas\.SceneLayout128$'`:<br>• nothing on water, a lake, another region or an unwalkable slope; no two house boxes overlap;<br>• houses == distinct living families counted independently from PeopleView (two instruments); figures == the living in the drawn regions minus one;<br>• day d and d+1 differ in figure slots, and the same day twice is identical;<br>• removing the highest-indexed family moves no other house;<br>• it is built after the world is destroyed;<br>• AimAt picks the nearer of two, never one behind, never someone outside Company.<br>**CONTROL:** an empty PeopleView gives 0 houses and 0 figures with the terrain still built; Settlement 0 gives no square.<br>**Failing on purpose:** no water rejection → houses on the 223 river and 298 lake tiles; a slot from Identity alone → the d/d+1 case red; houses seeded by rank → the stability case red. | The simulation holds no house (Buildings.h:44-51), holds its works in a module no world wires, and places people by region only. An invented position is honest only if it is a function of the views, the same on both machines, and stable under births and deaths. |
+| 19.09 | **The cold and the heat can be seen: snow, grass, sun, breath.**<br>`Vaelen/Scene/Sky.h`:<br>• `SnowOf(TileClimate)`: the Frost flag is required (Climate.h:25); 255 at `Now` ≤ −5, a ramp to 0 at 0;<br>• `GrassOf`, from the Growing flag;<br>• both blended into the terrain vertex colours in integers;<br>• `SunOf(Life, row)`: azimuth and elevation in tenths of a degree from `Awake`/`Spent` (Life.h:81-82) and `Season` (:86), from an integer sine table at the played region's centroid row. **The world's hours, never a frame clock**;<br>• Breath when `Degrees < 0` (Life.h:100) and Shiver from `Chill` (:101).<br>`SkyLine`. Atlas `--replay … --scene` prints the terrain, layout and sky lines at the replay's end. | `ctest -R '^Scene\.Sky$\|^Atlas\.SceneSky128$'`:<br>• snow tiles == `ClimateViewStats.Frost` over the window (Climate.h:60; two instruments);<br>• days 135 and 315 differ on every chunk away from the equator rows;<br>• the sun rises, then falls, over Spent 0..Awake; the summer noon sun is higher than the winter one on the same row.<br>**CONTROL:** an empty ClimateView gives exactly 19.05's colour digest and no snow.<br>**Failing on purpose:**<br>• snow from `Winter` instead of `Now` → the day-135 case red;<br>• an hour from `Tick % 24` → the "moves only when hours are spent" case red;<br>• a frame-clock sun planted in VaelenWalk → `Kernel.UiFence` refuses it (check_ui_fence.py:112-114). | « froid chaud et tout doivent s'afficher ». Today only the HUD's text row shows the climate, and the leaf built for this (Take.h:134) has no engine reader. The world has no clock inside a day (ADR-0138). |
+| 19.10 | **The keys belong to the host, and the page says them.**<br>• Panel.h gains `PanelKeys {uint8 Keys[PanelVerbs];}`. `DefaultKeys` is Panel.cpp:218's table. `WalkKeys` is the same with **Speak on 'F'** (question 2).<br>• A `TakePanel(…, const PanelKeys&, Out)` overload; the four-argument form uses DefaultKeys.<br>• `ValidKeys(keys, reserved)` refuses duplicates and reserved letters, naming the letter.<br>• Atlas `--keys XXXXXXXX` is told, not read, like `--want-bound`, and reaches the drivers through `MORE` (ReplayPlayed.cmake:33).<br>• The subsystem holds the host's keys, and every retake uses them.<br>• `AVaelenPlayerController` binds the eight verbs from `Panel().Verbs[i].Key` instead of eight literals (VaelenPlayerController.cpp:53-60). | `ctest -R '^View\.Panel$\|^Atlas\.PanelFrozen$\|^Atlas\.Keys128$\|^Replay\.Played$'`.<br>**CONTROL:** with DefaultKeys, Test_Panel.cpp:35-36's pins, `Atlas.PanelFrozen` and `Replay.Played`'s `panel 7de2c5faf3cc1813` are unchanged under `VT_CHECK_DIGEST_EQ`, and census `--diff` shows 0 removed.<br>• The WalkKeys page differs in exactly one row (`[F] speak`) and gets a new WORLD/panel pin.<br>• `Atlas.Keys128`: one stream replayed with and without `--keys` differs **only** in the panel digest; state, log and life are equal.<br>**Failing on purpose:** `ValidKeys("TWREMSGK", "ZQSD ")` is refused, naming S; composing while ignoring the table turns the one-row case red; one byte of DefaultKeys changed turns `Atlas.PanelFrozen` red. | S is Speak (VaelenPlayerController.cpp:57), and the page prints its letter into digested text (Panel.cpp:386-387). Renaming it in place would move every panel pin, including two that came off the owner's machine. A table the host chooses moves none. Binding from the page makes 14.09's "cannot drift" true instead of eight literals. |
+| 19.11 | **S3: the world drawn is the world built, in both seasons.**<br>`AVaelenScenery` (VaelenWalk) draws the layout as ISMs from `/Engine/BasicShapes`:<br>• houses: Cube plus Cone, with collision;<br>• figures: Cylinder plus Sphere, NoCollision, Company figures distinct;<br>• the square, the roads, the pit.<br>`AVaelenLand` repaints snow and grass. The sun comes from `SunOf`. The sea plane is at 0 and the lake planes at their invented surfaces. The fence is a collision-only section. Everything rebuilds on `OnViewsTaken`, **never on a frame**, and the walker is put back by `PlaceAfterDay`, counted.<br>The walk controller uses WalkKeys:<br>• M at the fence → `CrossingOf`, with Tab as fallback;<br>• Speak, Give and Take → `AimAt`, with Tab as fallback;<br>• Space turns the day with the look = `RegionAt(walker)`;<br>• one line a day: `LogVaelenWalk: day D tile T region R life L looked K`.<br>`Vaelen.Scene` prints the three LogVaelenScene lines. | **Session S3** (tag `p19-s3`):<br>• `Vaelen.Walk 128 120`, `Vaelen.Scene`, `Vaelen.Day 10`, `Vaelen.Scene`, `Vaelen.Stream.Write`;<br>• days into the first frosts: a screenshot and `Vaelen.Scene`; a summer screenshot;<br>• `stat unit` at eye level in the settlement with the HUD on;<br>• four walks into the fence, each printing `blocked`.<br>`Session.P19S3`: `VaelenAtlas --replay <S3 stream> --panel --want-bound 0 --stream --keys TWREMFGK --scene` prints the Scene, Climate and Play lines **byte-identical as files**, and every LogVaelenWalk line has region = life = looked. The instance counts drawn equal the counts in the layout line.<br>**CONTROL:** `Vaelen.View 128 120` in the same sitting.<br>**Failing on purpose (headless):** the same replay with the scene day offset by one prints a different layout digest; a log with one looked ≠ region is refused. | The map the owner walked over in 14.10 and 15.10 was another world instance (VaelenViewActor.cpp:372-396 against VaelenWorldSubsystem.cpp:118-145). A world one walks through must be the played one, read only through the subsystem's leaves. |
+| 19.12 | **S4: a life on foot, replayed by nobody, and the gate.**<br>• The stream is checked in as `Tests/Run/Streams/aelvor128-onfoot-<date>.stream`. The climate stand-in stays as its headless twin, and Streams/README.md:285-291 is amended to say so.<br>• `Replay.OnFoot` (ReplayPlayed.cmake, `-DERA=--climate`, `-DMORE="--stream --keys TWREMFGK"`) and `Run.Gate.OnFoot` become gates 19 and 20 in run_gates.sh:44-47. The name is `OnFoot`, not `Walked3D`: `^Replay\.Walked` would also match the taken `Replay.Walked`.<br>• `Vaelen.Stream.Write` adds `LogVaelenWalk: N days on foot, C crossings, R refused, A aimed, F fence contacts, P put back`.<br>• STATUS is closed by the checker, not by hand. ENGINE_HANDOFF gets a Phase 19 section; ARCHITECTURE's module map is updated; ADR-0155 to ADR-0159 are applied. | **Session S4** (tag `p19-s4`): `Vaelen.Walk 128 120`, at least 30 days:<br>• every verb at least once;<br>• at least 2 crossings by M at the fence and at least 1 refused crossing (TooFar, no record);<br>• at least 1 Speak aimed at a figure (not with Tab);<br>• days into winter;<br>• `Vaelen.Stream.Write`, and a screenshot whose last page row is the panel digest, and `stat unit`.<br>`ctest -R '^Replay\.OnFoot$\|^Run\.Gate\.OnFoot$\|^Session\.P19S4$'`: the replay gives `N of N answered identically, D of D days`, both lines are byte-identical, P == 0, C ≥ 2, A ≥ 1.<br>**CONTROL:** Replay.Played, Lived and Climate are unchanged; the replay without `-DERA=--climate` must fail; without `--keys` it differs only in the panel.<br>**Failing on purpose:** one recorded look's region edited in a copy → a different state digest; one life digit changed turns `Replay.OnFoot` alone red; `run_gates.sh --self-test` is still red. | The world is a function of what came through the door (Door.h:9). The walker's path is not recorded, so no frame rate can reach the world. Phase 18's "the first walk recorded WITH a winter is Phase 19's first sitting" is paid here. |
+
+### The sittings, in one table
+
+Four sittings are planned, one per engine task. The budget is six, because 14.08 needed three fixes that nothing headless could see: a failed build becomes a repeat sitting of the same task. Every sitting opens with `git rev-parse HEAD` equal to its tag, and its log is committed and re-read by `Session.P19Sn`.
+
+| sitting | task | decisive because | compared against |
+|---|---|---|---|
+| S1 | 19.03 | 410 unbuilt lines get one cause; Phase 18's and 16.14's engine lines close; the frame-time baseline | `Vaelen.View`'s `ec18241b89c3d246 / 8f7f4948f49b6e86`; `--gate <stream>`; the host24 load says `--no-climate` |
+| S2 | 19.06 | PMC, CMC, runtime Enhanced Input, C++ sky and ZQSD on AZERTY run once before four headless tasks build on them | `--scene-terrain R`; the Atlas climate line; the probe ≤ 1 cm, with the forced 5.0 |
+| S3 | 19.11 | the engine draws exactly the scene the builders built, from the played world, summer and winter | `--replay <S3> --scene --keys …`, as byte-identical files |
+| S4 | 19.12 | a life played on foot is a stream and replays exactly | `Replay.OnFoot`: four digests |
+
+### The gate
+
+Fourteen clauses, each naming a command. `<19.xx head>` is the commit that closes that task. The gates run at the heads of 19.05, 19.10 and 19.12; the touched suites and the census run at every commit.
+
+| clause | command |
+|---|---|
+| (a) the instruments have failed on purpose and hold their known answers: the 5 files, the 3 comment-only controls, the ledger's predicted beliefs, the 2026-09-16 pair, VaelenPresentation's missing target entry, the exact-`Super` mutation | `ctest -R '^Kernel\.(EngineStatus\|ShimLedger\|ModuleLists)$\|^Session\.SelfTest$' && python3 Tools/test_engine_shim.py && python3 Tools/check_modules.py --self-test` |
+| (b) S1: the tree as it stood was built; the ADR-0135 pair came from the engine; the host24 check says `--no-climate`; the stream replays | `ctest -R '^Session\.P19S1$'` |
+| (c) one composer: the Atlas refactor moved no byte, and the replay prints the climate | `ctest -R '^View\.Proof$\|^Atlas\.ClimateFrozen128$\|^Replay\.Climate$'` |
+| (d) the ground: exact centres, seams, watertight, partition-free, steep triangles within the prediction, one point↔tile arithmetic, R8 with its exemption, the same digest on MSVC (CI run id written in) | `ctest -R '^Scene\.Terrain$\|^Atlas\.SceneTerrain128$\|^Kernel\.Purity$\|^Kernel\.PuritySelfTest$'` on every CI leg |
+| (e) S2: terrain and climate lines byte-equal, probe ≤ 1 cm with 0 misses, the forced bias printing 5.0, four ZQSD lines | `ctest -R '^Session\.P19S2$'` |
+| (f) the body is not an input: closed fences, perimeter by two instruments, byte-identical streams for two wanderings, TooFar and Costly recording nothing, look = life every day | `ctest -R '^Scene\.Fence$\|^Run\.Walk$'` |
+| (g) the layout invents only for what exists: nothing on water or off-region, houses == families, stable under a later death, AimAt inside Company | `ctest -R '^Scene\.Layout$\|^Atlas\.SceneLayout128$'` |
+| (h) the cold is seen: snow tiles == frost tiles; no climate, no snow; the sun follows the hours | `ctest -R '^Scene\.Sky$\|^Atlas\.SceneSky128$'` |
+| (i) the keys are the host's: default page digests unmoved; walk page one row apart; `--keys` moves only the panel | `ctest -R '^View\.Panel$\|^Atlas\.PanelFrozen$\|^Atlas\.Keys128$\|^Replay\.Played$'` |
+| (j) the fences and the wirings: VaelenScene and VaelenWalk fenced, with a planted `Tick(` and `Mean(` refused; the parse clean; the four wirings untouched | `python3 Tools/check_ui_fence.py --self-test && ctest -R '^Kernel\.(UiFence\|WorldWiring)$' && Tools/verify_fast.sh && git diff --quiet d339068 HEAD -- Tools/check_world_wiring.py Source/VaelenRun/Private/Aelvor.cpp` |
+| (k) S3: the drawn scene is the built scene in both seasons; four `blocked` lines; region = life = looked | `ctest -R '^Session\.P19S3$'` |
+| (l) S4: a walked life replays identically, P == 0, C ≥ 2, A ≥ 1 | `ctest -R '^Replay\.OnFoot$\|^Run\.Gate\.OnFoot$\|^Session\.P19S4$'` |
+| (m) nothing frozen moved; nothing claims more than was built; the gates green and still able to go red | `python3 Tools/frozen_census.py --diff d339068 <19.12 head> && python3 Tools/check_engine_status.py && python3 Tools/check_shim_ledger.py --expect-beliefs 0 && Tools/run_gates.sh linux-clang-debug && Tools/run_gates.sh linux-clang-debug --self-test` |
+| (n) frame time at eye level in the settlement at 128 meets the owner's target (question 4) and is not worse than S1's ground-level baseline | `python3 Tools/check_session.py p19-s4 --frame-target <Q4> --baseline p19-s1` |
+
+### What is NOT in Phase 19, and why
+
+- **Buildings the simulation holds (granary, mill, smithy, wall; places on tiles).**
+  - VaelenInfrastructure is wired in none of the four wirings (Aelvor.cpp:63-107; grep gives 0).
+  - Wiring it adds types and systems to every played world, which moves every WORLD digest, and needs a HOST byte. It is a switch-and-flip pair like 18.02/18.10.
+  - Even wired, it holds no house (Buildings.h:44-51). This is question 7.
+- **A kernel position for people below the region.** It would change `PersonInfo` and every state digest, and as an input the stream format too. Positions are invented and say so (ADR-0156).
+- **Travel within a day, or an automatic day.** A move lands at the day turn (Door.h:80), and the fence refuses clocks (check_ui_fence.py:112-114). This is question 8.
+- **Skeletal characters, animation blueprints, the Mannequin, Landscape, Nanite, World Partition.** These are content, nothing headless can check them, and `Content/` holds `.gitkeep` alone. Figures are engine basic shapes. These are questions 5 and 6.
+- **NPCs walking.** Cosmetic motion needs a frame clock. Figures change place once a day.
+- **A water leaf (lake spill level, flow, river width).** MapView has no sea level and TileView no spare byte (Land.h:68-76). Lake surfaces are invented from the lowest shore, and AELVOR's sea sits at 0 by measurement. A `WaterView` leaf would move no digest and can come when flowing rivers are wanted.
+- **A fifth wiring, or moving the Phase 13 actors onto the live world.** The scene reads only the subsystem's views, and the map actors stay the map.
+- **Saving the walker's position.** It is host state; on load, the walker arrives at `Arrival` on the played region.
+- **Re-recording the 09-16 and 09-21 months.** They stay `--no-climate` replays; the first climate month is 19.12's.
+- **New verbs, combat, inventory.** The eight verbs are fixed (Panel.h:43).
+
+### Open questions only the owner can answer
+
+1. **Scale.** No tile size exists anywhere, and slope depends only on the height-to-width ratio.
+   - The proposal is 250 m tiles at a quarter of the relief: 0 unwalkable tile pairs at 128 and 256, 21 steeper than 30° at 128. A median region (72 tiles, about 8.5 across) is about 2.1 km, some 7 minutes at 5 m/s.
+   - The same slopes come from 1 km at true relief, at four times the walking distance.
+   - 200 m at half relief gives 158 unwalkable pairs at 128.
+2. **Keys.**
+   - ZQSD and the arrows move and the mouse looks.
+   - In walk mode, Speak moves from S to F.
+   - Space still turns the day, so there is no jump.
+   - Are these the letters? Should QWERTY WASD also be bound, knowing that W is Work?
+3. **Crossing.** An explicit M at the fence (proposed), or an automatic Move when the walker presses into a `Near` region? Either way it lands at the day turn.
+4. **Frame-time target at ground level on the T400.** The measured baselines are 30.4 ms over the 13.09 scene, and 28.15 ms for the template map with the HUD alone (ROADMAP:4641-4644). The spine's "≥ 60 fps" was not a measured possibility.
+5. **Content in git.** M_VaelenTile lives on one disk. May `.uasset` files be committed (Git LFS?), or should Phase 19 stay asset-free, with `VertexColorMaterial` and the basic shapes?
+6. **Animated characters** (the UE5 Mannequin and its Animation Blueprint): a sitting in Phase 19, or a phase of their own?
+7. **Wire VaelenInfrastructure into the played world?** It is its own re-freeze of every WORLD digest, plus a HOST byte, after this phase.
+8. **Should time pass while you walk** (a day every N minutes, recorded as DayTurned), or should the day stay on a key?
+9. **Start mode.** Should the game open in the walker (`AVaelenWalkGameMode`) or on the Phase 13 map?
+10. **Phase 18's question 2, now pressing.** Should `StreamHeader` carry an era word? Every Phase 19 walk is a climate world, and the replay drivers default to `--no-climate` (ReplayPlayed.cmake:29-30).
+
+### What this plan corrects in the record
+
+- **Section 24 and ROADMAP:89 say "buildings from Infrastructure".** No wiring declares any Infrastructure type (grep gives 0; Aelvor.cpp:63-107), and no dwelling exists (Buildings.h:44-51). Houses are drawn from families, and say so.
+- **"Terrain from `TileGrid` and `Hydrology`" needs no kernel reach.** MapView carries elevation in metres and the River/Lake flags (Land.h:44-89). **"Persons as characters":** a person has a region and nothing smaller (Folk.h:50-54).
+- **Phase 18 (ROADMAP:6613) says it ships "the LogVaelenClimate line the screenshot is checked against".** No engine code prints that line or takes a ClimateView (the only caller is Main.cpp:3530), and `--replay` never prints it (Main.cpp:3210-3399). 19.04 and 19.06 add both.
+- **ROADMAP:89's "100+ fps"** was read from above: 8.33 ms in the editor viewport. At ground level the scene costs 30.4 ms, GPU-bound, and the template map with the HUD alone costs 28.15 ms (ROADMAP:4641-4644).
+- **Engine STATUS claims more than was built.**
+  - ENGINE_HANDOFF.md:244-246 says the 16.14 additions carry `UNVERIFIED (engine)`, and they do not.
+  - ENGINE_HANDOFF.md:105's "no file carries UNVERIFIED any more" is stale (VaelenCheckpointStore.cpp:10).
+  - The two actors say VALIDATED over the 18.10 changes, while ENGINE_HANDOFF.md:55 says they are UNVERIFIED.
+  - ENGINE_HANDOFF.md:78 says seventeen gates; there are eighteen.
+  - VaelenUI.Build.cs:6 and VaelenPresentation.Build.cs:3-7 claim less than was run.
+  - No commit is recorded beside any UBT result.
+- **VaelenWorldSubsystem.cpp:405-408 prints a wrong headless check** for a pre-climate container since 18.10. Fixed in 19.03.
+- **The targets' `ExtraModuleNames` omit VaelenPresentation** (Vaelen.Target.cs:15, VaelenEditor.Target.cs:15). Nothing checked it; 19.02 does.
+- **"No float in the kernel" is a convention.** VaelenCore holds 18 code tokens (Random.h:78-93, CoreTypes.h:71-72), so the player plan's whole-kernel R8 would be red at HEAD. The 19.05 rule names the exemption.
+- **VaelenViewDrawer.h:67-72 counts TileView units as metres.** TileView is Q16.16 (Land.h:70). The highest land, about 2025 m, is about 1.3 × 10⁸ units.
+- **Section 24's "one session per task"** holds. Measured by task, it means 8 headless tasks of 12 and 4 sittings.
+- **The panel's own wrong claims, corrected here:**
+  - The player plan put S/Speak at VaelenPlayerController.cpp:34 and the bindings at :30-40; they are at :57 and :53-63. It put RegionTheCameraIsOver at :91-115 (it starts at :117) and Tab-cycling at :160-163 (it is at :100-113).
+  - TileSize is at VaelenViewDrawer.h:64, not :223. The invented-position rule is at :163-172, not :322-331; the engine plan made this mistake too. The file has 205 lines.
+  - Folk.h has 117 lines, and the cited :135-174, :234 and :267 do not exist: Family is at :54 and IsAlive at :87. Frame.h has 127 lines: Settlement is at :44, not :224. View Climate.h has 69 lines: Frost is at :25 and TileClimate at :30, not :141-179. Net.h has 104 lines: ColonyView is at :54, not :282-288.
+  - The discipline plan's "29 files" is 28. Its per-tick `Walk::Fence` inside VaelenUI contradicts check_ui_fence.py:115. Here the fence is collision geometry and the check runs on `OnViewsTaken`.
+  - The engine plan had four defects:
+    - its corner-mean terrain could not pass its own clause (1), because a tile centre would be a weighted mean of nine tiles;
+    - its S3 replay would have differed on the panel digest without `--keys`;
+    - its accessors omitted `Net()`, which the layout needs;
+    - its "≥ 60 fps" was a hard clause with no measurement behind it.
+- **ADR-0155 to ADR-0159 are written in `Docs/DECISIONS.md` as PROPOSED**, each applied by the task that names it.
+
+### Found after the Phase 18 close, on CI run 297
+
+Six entries were red on every release leg: `Atlas.Inspect.{bare-16, played-16,
+full-32}` and `Atlas.Causes.{bare-16, played-16, full-32}`. They pin what the
+inspector and the cause census read out of the container corpus, which 18.10
+regenerated in the climate world - and neither family was in 18.10's
+verification set (the gate clauses named `Run.Containers` and
+`Atlas.ContainersRegenerate`, which were green). Re-pinned with the corpus's
+own figures; full-32's census moved from 7 caused events of 577 (1.21 %) to 49
+of 701 (6.99 %) - the winter's cause edges, foreseen -> winter -> stores taken
+and dead of the cold - and its widest fan-out from 1 to 2. `host24-16` kept its
+old lines: it is the world before. The lesson is 18.10's clause (k): "the census
+diff equals the table" measured the literals; these were pins written as prose
+in CMake strings, which the census reads only when they are sixteen hex digits.
+
+### 19.01 AS BUILT, 2026-09-25
+
+**The instruments first: every engine STATUS held to a build, every shim
+belief counted, every sitting closed by a log CTest re-reads.** STATUS:
+VALIDATED headless (the instruments); what they measure is the engine's.
+
+BUILT. `Tools/engine_builds.txt`, five rows, all RECONSTRUCTED from the
+commits that reported them (b0907 83f878e, b0910 7f4fd51, b0914 bca6745,
+b0916 9059709, b0921 867a129) - no sitting before Phase 19 printed its commit.
+`Tools/EngineBuilds/<id>.txt`, each derived from git by
+`check_engine_status.py --record <id>` and never by hand: a code fingerprint
+(comments stripped, then tokens, sha-256) for every engine file at that
+commit, and the shim names that build's engine code used, of the shim of
+that commit. `Tools/engine_ledger.py` is the shared reader. Committed rather
+than recomputed because the CI clones at depth 1; where the history exists
+the self-test re-derives all five byte for byte.
+
+`Tools/check_engine_status.py` (`Kernel.EngineStatus`, `…SelfTest`): the
+first `// STATUS:` of each of the 28 engine files names VALIDATED, BUILT or
+PROTOTYPE with a `// BUILD: <id>` whose record holds the file and whose code
+fingerprint is the file's, or UNVERIFIED (engine) / INCOMPLETE. The Build.cs
+files are held too; `Vaelen.Build.cs` had no STATUS line and has one.
+
+`Tools/check_shim_ledger.py` (`Kernel.ShimLedger`, `…SelfTest`) and
+`Tools/shim_beliefs.txt`: a shim name the engine code uses and no build's
+record has seen must be listed with its task; a listed name a build has seen,
+or no engine file uses, is refused. `--diff A B` needs git.
+
+`Tools/check_session.py` (`Session.SelfTest`) and `Tests/Run/Sessions/`:
+`s0916.session` and its log, the two lines the owner pasted on 2026-09-16
+(no raw log of that sitting was kept; the session says so and names no
+`head`). All three tools are in `verify_fast.sh`.
+
+MARKED. The five files whose code moved past b0921 now say
+`UNVERIFIED (engine)` and name what moved (16.14's store in the subsystem and
+the play commands, 18.02's host byte, 18.10's climate wiring in both actors),
+with `// BUILD: b0921` as the last build of an earlier form; their earlier
+records stay below as `UNTIL 19.01:`. Twenty files gained `// BUILD: b0921`.
+`VaelenUI.Build.cs` said "NOT yet run" over a module a month was played
+through; `VaelenPresentation.Build.cs` said PROTOTYPE, NOT YET RUN, four builds
+late - both corrected. ENGINE_HANDOFF: eighteen gates, and the two paragraphs
+that said files carried marks they did not.
+
+KNOWN ANSWERS, predicted in writing before the first run:
+- Every engine file claimed VALIDATED at b0921: refused for exactly the five
+  moved files and the two 16.14 wrote after it (VaelenCheckpointStore.cpp/.h,
+  in no build); the three whose comments alone changed are NOT named (the
+  CONTROL - the checker reads code, not dates). Predicted: the five and the
+  three. Met on the first run.
+- `check_shim_ledger.py --diff 867a129 HEAD`: 13 names (Delete, Directory,
+  FileExists, FindFiles, GetCleanFilename, IFileManager, LoadFileToArray,
+  MakeDirectory, SaveArrayToFile, TCHAR_TO_UTF8, begin, end, push_back).
+  Predicted 8 to 25 - met; the prediction's "at least FFileHelper, FPaths,
+  FScopeLock, FCriticalSection" was WRONG on all four: the engine code used them
+  before 15.10. The check itself counts 15: the diff cannot see Move and Bytes,
+  names the engine code used before as OTHER things (the verb; a tally) and
+  which the shim acquired only in 16.14. Two instruments, the gap explained.
+- The session reader accepts the 09-16 pair against
+  `--replay aelvor256-2026-09-16.stream --panel --want-bound 0 --no-climate`.
+
+FAILED ON PURPOSE. In temp trees (the self-tests): one code token changed in
+VaelenHUD.cpp refused as changed since b0921, a changed comment accepted; a
+BUILD naming no row, a file with no STATUS, VALIDATED with no BUILD - each
+refused; an unlisted belief refused naming its engine file:line, a seen name
+listed as a belief refused, a listed name nobody uses refused, a new shim
+class and member used by engine code and listed nowhere refused by both names
+and accepted once the use is only a comment; one hex digit changed in the log
+refused naming the column, a missing line refused as missing, a log opened on
+another commit refused, the engine's timestamp and Display prefix ignored, and
+the same log against the stream replayed with `--climate` refused. In the real
+tree, through CTest: `const` → `const volatile` in VaelenHUD.cpp and
+IFileManager struck from the list turned `Kernel.EngineStatus` and
+`Kernel.ShimLedger` red with those two sentences; restored from a copy.
+
+DEVIATION FROM THE ROW, and why. The row asked for `// SEEN <build>` or
+`// BELIEF <task>` on every shim declaration. Built instead: SEEN is DERIVED -
+a name is seen when a build's engine code used it, read from git at that
+build's commit - and only beliefs are written down, in one list. A hand tag
+on 1313 lines would be a claim; the derivation is a measurement, and it cannot
+say SEEN about a name no build compiled. It reads names, not meanings, so it
+over-counts (Bytes, Directory, begin, end and push_back are the store's own
+variables or std::vector's) and never under-counts; the list says which.
+The row's "SEEN naming an unknown build" has no place to occur; its
+counterpart, a BUILD naming no ledger row, is refused.
+
+Census: 0 in every class (no literal of the classified kinds added).
+
+### 19.02 AS BUILT, 2026-09-25
+
+**The shim grows to the engine contract, Super becomes exact, and the module
+lists are held together.** STATUS: VALIDATED headless (the parse, the probe,
+the lists); every new shim entry is a BELIEF until sitting S2 compiles a use.
+
+THE SHIM. Twenty-four new headers, each naming the UE 5.6 header it stands for
+and saying it is a belief: Pawn, Character, CharacterMovementComponent,
+CapsuleComponent, SpringArmComponent, CameraComponent, ProceduralMeshComponent
+(with FProcMeshTangent), InstancedStaticMeshComponent (split from the HISM
+header, which now includes it), the six Enhanced Input headers
+(EnhancedInputComponent with three handler shapes and ETriggerEvent,
+EnhancedInputSubsystems, InputAction, InputActionValue with Get<T>,
+InputMappingContext with a non-const MapKey, InputModifiers with Negate and
+SwizzleAxis), LocalPlayer, the light, sun, sky-light, atmosphere and fog
+components, EngineTypes (ECollisionChannel), HitResult, CollisionQueryParams
+and Material. Existing headers gained, each line marked 19.02 BELIEF:
+SetupAttachment's socket name and two rotation setters, the controller's
+GetLocalPlayer/GetPawn/Possess/control rotation, DefaultPawnClass, FKey from an
+FName and the walk's keys (Z Q D F, the arrows, Mouse2D), UEngine's
+VertexColorMaterial, UWorld::LineTraceSingleByChannel, Cast<To, From>, and a
+multicast delegate with DECLARE_MULTICAST_DELEGATE.
+
+EXACT SUPER. GENERATED_BODY() now pastes CURRENT_FILE_ID, its line and
+_GENERATED_BODY, as UnrealHeaderTool's does, and the stub
+parse_engine_modules.py writes for each .generated.h defines that name per
+class from the header's own text: `public: using Super = <base as written>;
+using ThisClass = <class>; private:` for a UCLASS, Super alone for a USTRUCT
+with a base. Read back from the stubs: AVaelenHUD's Super is AHUD, the
+subsystem's UGameInstanceSubsystem, the controller's APlayerController - no
+longer an inherited AActor. `--super inherited` keeps the old behaviour for
+the test that shows the difference.
+
+THE CONTRACT PROBE, not in the row and needed by it: `Tools/ShimProbe` -
+a walker (ACharacter, capsule, movement at 44.76 deg and 500 cm/s, a 300 cm
+spring arm, a camera on its socket, `Jump` calling `Super::Jump()`), a
+controller that makes its actions and its Z/Q/S/D + mouse mapping context at
+run time and binds them with Enhanced Input, and a land actor (a procedural
+mesh section with collision, the vertex-colour material, an ISM, the sun, sky,
+atmosphere and fog in C++, a line trace, a delegate broadcast). Parsed with the
+engine modules (17 TUs), never built, and outside ENGINE_MODULES, so the STATUS
+check and the ledger do not count it: a name only the probe uses becomes a
+belief the day 19.06's engine code uses it.
+
+MODULE LISTS. `Tools/check_modules.py` (`Kernel.ModuleLists`, `…SelfTest`):
+every Build.cs in the uproject and both targets, kernel_modules.txt iff a
+CMakeLists.txt, ENGINE_MODULES iff not, every plugin module a Build.cs names
+enabled. KNOWN ANSWER, met on the first run at HEAD: exactly "VaelenPresentation
+absent from ExtraModuleNames" at Vaelen.Target.cs:15 and
+VaelenEditor.Target.cs:15. Both targets now name it - an engine configuration
+change nothing here can build, first compiled at S1 (19.03).
+
+FAILED ON PURPOSE. test_engine_shim.py: 23 mutations, each refused - the 16
+before, plus a mesh section with seven arguments, a Triggered action bound to a
+method of the wrong shape, MaxWalkingSpeed, MapKey into a const context,
+ETriggerEvent::Pressed, a class whose GENERATED_BODY() has no .generated.h, and
+the healthy tree under the inherited Super (refused exactly at
+`Super::Jump()`: "no member named 'Jump' in 'AActor'"). check_modules.py: the
+known answer, a plugin module not enabled, a kernel module missing from
+kernel_modules.txt, an engine module nothing parses, a Build.cs listed nowhere
+(four refusals). CONTROL: the healthy tree parses first in every run.
+
+THE LEDGER SAW THE SHIM GROW. The first run after the new headers refused
+seven names - C, File, Line, To, Options, None, Started - the engine code's
+own, which the shim had just started to spell. Five were parameter names of
+mine (a paste macro, Cast's template parameters, AddMappingContext's options)
+and were renamed; None and Started are ETriggerEvent's own enumerators and are
+listed as what they are, NOT shim uses. 17 beliefs. The instrument did its
+job on its own authors on the first day.
+
+DEVIATIONS. Shim entries are not tagged `// BELIEF 19.02` one by one: each new
+header says it, and the ledger (19.01) counts a belief when engine code uses it.
+The probe and two mutations (Pressed, a missing .generated.h) are additions.
+
+Census: 0 in every class.
+
+### 19.03 AS BUILT (the headless half), 2026-09-25
+
+**S1 is written down; the sitting is the owner's.** STATUS: INCOMPLETE -
+the code change and the protocol are here, the build is not.
+
+`HeadlessCheck` (VaelenWorldSubsystem.cpp) now names the era both ways,
+`--climate` or `--no-climate`: since 18.10 the Atlas's default is the climate,
+and a container of the world before printed a check that rebuilt the wrong
+world. Parsed, not compiled; the file's STATUS line names it among what moved
+since b0921. ENGINE_HANDOFF gains "PHASE 19 - sitting S1": check out the
+commit of 19.03 (found by its subject, so the branch may go on without the
+build seeing it - no tag is pushed), print `git rev-parse HEAD` first, build,
+`Vaelen.View 128 120` (the ADR-0135 pair since 18.10, `ec18241b89c3d246 /
+8f7f4948f49b6e86`, never yet printed by an engine), the 16.14 steps (whose
+check line now ends with the era), `Vaelen.Play` three days and a screenshot
+of the Weather row, `stat unit` at ground level twice, and the control: 
+`host24-16.container` loaded must print a check ending `--no-climate`.
+
+What closes it, when the log comes back: `Tests/Run/Sessions/s1-<date>.log`
+and `s1.session` (with `head`), `Session.P19S1` re-reading step 4 against
+`VaelenAtlas --gate <stream> --want-bound 0`, a RECORDED row `s1` in
+Tools/engine_builds.txt, and the STATUS lines moved to it by the checker.
+
+### 19.04 AS BUILT, 2026-09-25
+
+**One composer for every engine line, and the replay says the weather.**
+STATUS: VALIDATED headless.
+
+`Vaelen/View/Proof.h` / `Proof.cpp`, a leaf: `ClimateLineFacts` (size, seed,
+day, year, season, the ClimateView stats, hard winters, cold deaths) and
+`ClimateLine(Facts, Out, Bytes)`, all or nothing like `Lines()`, its own
+bounded writer, ClimateLineBytes 320 (the widest line is 270). The Atlas's
+printf is gone: `PrintClimateLine` measures and calls the leaf, and the replay
+(`RunReplay`) now prints the same line at its end when the world is the
+climate's - nothing when it is not, so the months of the world before read as
+they did. Proof.h joins the UI fence's allowed leaves and the View.Leaf probe;
+the engine's `Vaelen.Play` calls it from 19.06.
+
+MEASURED. The line the Atlas prints at 64/60+10 is byte-identical between the
+binary before 19.04 and after (`cmp`), and `Atlas.ClimateFrozen128` holds its
+digest unchanged. `View.Proof`: the literal of hand-built facts (coldest -26),
+the composer against the old format string through snprintf on 1000 seeded
+fact sets including every field's extremes (two instruments, 1000 of 1000),
+the widest line, and all-or-nothing at one byte short and exactly enough.
+`Replay.Climate` now also requires `LogVaelenClimate: AELVOR 128 seed
+41454c564f52: day 31 of year 420, spring; coldest -20 warmest 29; frost 6844 of
+16384 tiles, 7652 growing; hard winters 12864, cold deaths 1589; climate
+bf25b48823dbd83a` (ReplayPlayed.cmake takes an optional CLIMATE, length-checked
+like the others); `Replay.Played` unchanged.
+
+FOUND ON THE WAY. The first ClimateLineBytes, 256, was too small for the
+widest line: the composer refused to write (all or nothing) and View.Proof's
+equivalence case caught it on the extreme fact set. The day printed is
+`Day + 1` in uint32, as the format it replaced.
+
+FAILED ON PURPOSE. Coldest written through the unsigned writer: View.Proof
+red on the literal and on the equivalence; one digit of the pinned climate
+digest changed: Replay.Climate red, "the replay did not print". Both restored.
+
+Census: +1 WORLD/digest (Replay.Climate's line, Tests/Run/CMakeLists.txt), +1
+SYNTHETIC (Test_Proof.cpp's sample digest, classed as such); 0 removed.
+
+### 19.05 AS BUILT, 2026-09-25
+
+**The ground, built in integers from the ground leaf, in a pure module.**
+STATUS: VALIDATED headless on gcc and clang; MSVC's digest is CI's to show;
+the winding of the triangles is a BELIEF about Unreal until S2 looks from above.
+
+`Source/VaelenScene` - the fourteenth kernel module (kernel_modules.txt,
+CMake, a Build.cs, the uproject before VaelenRun, both targets, kernel-ci.yml's
+count 13 -> 14, ENGINE_HANDOFF's do-not-fix list), fenced by
+check_ui_fence.py like the UI: its includes are Core, the view leaves and its
+own headers, and nothing names a world. `Vaelen/Scene/Terrain.h`:
+`SceneScale` (250 m tiles, relief 250 per mille, 8 steps, sea floor -5000 cm,
+lake depth 200, river 300, detail 200), `BuildGround` from a MapView (one
+height per tile: land = the kernel's metres x 100 x relief / 1000, floored;
+sea = the sea floor; a lake's floor 200 cm under its component's lowest shore
+- invented, and said so; a river's bed 300 cm down), `LatticeZ` (bilinear
+between centres, integer, a hashed wrinkle on land only and never on a
+centre), `HeightAt` on the mesh's own triangles, `PointOfTile` / `TileOfPoint`
+(half-open, the engine's +0.5), `BuildPatch` / `BuildChunk` (16-tile chunks,
+any stride dividing the steps, int16 normals from int64 differences and an
+integer square root, RGBA8 from the biome or the water, a static_assert on the
+twelve biomes), `IsSteep` (44.77 deg as 119 K^2 < 121 (dx^2 + dy^2), exact on
+the reduced normal of a lattice triangle), `MeasureTerrain` and `TerrainLine`.
+
+Purity rule R8, no-float: no float or double code token in any kernel module;
+the one exemption is NAMED, by file: VaelenCore's Random.h, Random.cpp and
+CoreTypes.h, the tools' door. The census gained the kind WORLD/terrain.
+Atlas `--scene-terrain R|all` prints the line; `--scene-dump FILE` writes the
+ground hill-shaded as a PGM picture (looked at once: the continent, its lakes,
+the sea - the relief is faint at this scale, as the scale says it should be).
+
+PREDICTED IN WRITING FIRST, then measured:
+- steep triangles at most 0.1 % of the map: 0 of 2,097,152 at 128 and 0 of
+  8,388,608 at 256 - met. The counter was then shown to count: at ratio 1/250
+  (62.5 m tiles) the same map's mesh has 12,529 steep of 131,072.
+- the ground digest unmoved: the scene reads the map, `8f7f4948f49b6e86` still.
+- R8 without its exemption: 18 lines, all in the three VaelenCore files; 0
+  elsewhere, VaelenScene included; the prose "double" of Polities.h and
+  Living.h not flagged - met, now a self-test known answer.
+- --climate and --no-climate give one terrain digest - met
+  (`Atlas.SceneTerrain128Before`).
+
+PINNED: `LogVaelenScene: AELVOR 128 seed 41454c564f52 region all: chunks 64,
+vertices 1065024, triangles 2097152, z [-5000, 50636] cm, steep 0 of 2097152;
+terrain 105208c54e3c6ea9` (Atlas.SceneTerrain128), the same digest from
+Scene.Terrain's own path and from the clang build. At 256: terrain
+5b29727b01436706, z up to 51790 cm. Region 9 at 128: 2 chunks, terrain
+05f5e0cefbe78608.
+
+Scene.Terrain, 10 cases, 1.19 M checks at 128 and 256: every centre the
+kernel's height (5938 land, 9925 sea, 298 lake, 223 river tiles at 128 - every
+kind exercised), no neighbouring land pair too steep (and the instrument sees
+slope at 1/250), a 32-tile patch and its four chunks agree on every vertex
+byte for byte, the far lattice stands on the near one's points, every chunk a
+closed disc (V - E + F = 1, border 4 x side), 128 x 128 x 25 points in the tile
+the engine's own formula names, HeightAt equal to the plane of the built
+mesh's triangle at 10,000 seeded points, no relief no height (and the wrinkle
+alone moves the digest), the ground outlives its world, the line all or
+nothing. CONTROL: the ground the scene read is the pinned one.
+
+FAILED ON PURPOSE, each restored: corners offset per chunk -> the shared-point
+case names the vertices; the +0.5 dropped -> the engine's tile disagrees;
+ratio 1/250 as the default -> the pair and the triangle counts go red; a
+`float` planted in Terrain.cpp -> R8 names Terrain.cpp:114.
+
+DEVIATIONS. No `scene_preview.py`: the Atlas writes the PGM itself, which any
+viewer opens. The lake surface is the lowest land SHORE's raw height; the
+kernel keeps no spill level (owner question: a water leaf).
+
+### 19.07 AS BUILT, 2026-09-25
+
+**The fence and the walk contract, proven headless: the body is not an
+input.** STATUS: VALIDATED headless.
+
+`Vaelen/Scene/Fence.h`: `IsWalkable` (the region's own land and river tiles,
+not sea, not lake), `RegionAt`, `Inside`, `BuildFence` (unit edges between a
+walkable tile and what is not, wound one way), `CrossingOf(Ground, Life,
+Ahead)` (Crossing only towards a region in `Life.Near`; otherwise Home,
+OffMap, Water or NotNear, and nothing is sent), `Arrival` (the nearest
+walkable tile of the region, ties by index), `PlaceAfterDay`.
+
+Scene.Fence, every region at 128 and 256: every edge walkable on one side and
+not the other, every corner met an even number of times (closed loops), the
+length equal to an independent row-and-column scan (4132 edges over 99 regions
+at 128, 9214 over 126 at 256; 348 and 1142 against a lake - the walker does not
+walk on water), Inside exactly on the walkable tiles, an arrival from a border
+tile always four-adjacent to it, and CrossingOf's five answers.
+
+Run.Walk, an engine-free host in the controller's and the subsystem's order,
+90 days at AELVOR 128/100 in the climate world: 13 Moves sent at the fence, 13
+crossings at the turn, 13 put-backs, 89 looks all equal to that day's region
+of the life (one day skipped for a taking, 15.10's rule), and the stream
+replays with no position to the recorded state (90a0ba18ecbec67f).
+CONTROLS: another wandering with the same crossings records the SAME stream,
+byte for byte; facing a region the life does not list, the fence refuses and
+the stream is unchanged; and the fence is what does it - a host that sends
+that Move anyway records it, and the world refuses it TooFar 13 times.
+
+CORRECTED IN THE PLAN: the row said the PAGE answers TooFar for a non-Near
+region. It does not: `Press` checks the verb and the hours, never the target
+(Panel.cpp); TooFar is the world's, at the turn. The fence is the only thing
+that keeps such a Move out of the stream, and the test now shows it.
+FAILED ON PURPOSE: no put-back after the day -> a look off the life's region;
+a look taken from where the body happens to be -> the looks and the two
+wanderings' streams differ. Both restored.
+DEFERRED: Atlas `--walk3d` (a stand-in stream written by the Atlas) - Run.Walk
+holds the contract; the stand-in lands with 19.11 when there is a scene to
+replay it against.

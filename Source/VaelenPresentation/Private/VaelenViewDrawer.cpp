@@ -5,6 +5,7 @@
 // twelve biomes, rivers, towns, roads, and 1467 people standing on 117 tiles of
 // one region (6996 on 639 at 256), after the world they came from was
 // destroyed. 100 fps on a T400 4GB with 72649 instances.
+// BUILD: b0921 - Tools/engine_builds.txt; its code is what that build compiled (19.01).
 //
 // And measured, not just seen: every figure the engine prints matches
 // Tools/Atlas at the same seed and settings, INCLUDING the frame digest

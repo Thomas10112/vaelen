@@ -12,6 +12,7 @@ add_subdirectory(Colony)
 add_subdirectory(Player)
 add_subdirectory(Gameplay)
 add_subdirectory(View)
+add_subdirectory(Scene)
 add_subdirectory(Run)
 
 # Kernel purity: no engine headers, exceptions, RTTI or non-deterministic
@@ -72,8 +73,34 @@ if(Python3_Interpreter_FOUND)
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/gen_event_names.py --check)
   add_test(NAME Kernel.EventTypesSelfTest
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/gen_event_names.py --self-test)
+  # 19.01, ADR-0159: what the engine modules say about themselves, held to what
+  # the owner's machine built. Nothing in CI compiles those four modules, so
+  # their STATUS lines were the whole record, and on 2026-09-25 five of them
+  # said VALIDATED over code no compiler had read. EngineStatus refuses a claim
+  # whose CODE moved since the build it names (Tools/engine_builds.txt, the
+  # records in Tools/EngineBuilds/); ShimLedger refuses a name of the shim the
+  # engine code relies on that no build compiled and nobody listed. Each
+  # self-test holds a known answer from git and fails its instrument on purpose.
+  add_test(NAME Kernel.EngineStatus
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_engine_status.py)
+  add_test(NAME Kernel.EngineStatusSelfTest
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_engine_status.py --self-test)
+  add_test(NAME Kernel.ShimLedger
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_shim_ledger.py)
+  add_test(NAME Kernel.ShimLedgerSelfTest
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_shim_ledger.py --self-test)
+  # 19.02, ADR-0157: a module is named in six places and nothing held any two
+  # of them together; VaelenPresentation had already fallen out of both
+  # targets. ModuleLists refuses any disagreement, and its self-test has the
+  # targets as the Phase 19 plan found them as its known answer.
+  add_test(NAME Kernel.ModuleLists
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_modules.py)
+  add_test(NAME Kernel.ModuleListsSelfTest
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_modules.py --self-test)
   set_tests_properties(Kernel.Purity Kernel.PuritySelfTest Kernel.WorldWiring Kernel.UiFence
                        Kernel.UiFenceSelfTest Kernel.EventTypes Kernel.EventTypesSelfTest
+                       Kernel.EngineStatus Kernel.EngineStatusSelfTest Kernel.ShimLedger
+                       Kernel.ShimLedgerSelfTest Kernel.ModuleLists Kernel.ModuleListsSelfTest
                        PROPERTIES TIMEOUT 120)
 elseif(VAELEN_REQUIRE_PURITY_CHECK)
   message(FATAL_ERROR "Python 3 is required for the Kernel.Purity test. Install it or configure with -DVAELEN_REQUIRE_PURITY_CHECK=OFF (the purity check is then NOT run).")
@@ -97,6 +124,16 @@ set_tests_properties(Atlas.Runs PROPERTIES FIXTURES_SETUP AtlasA TIMEOUT 900)
 set_tests_properties(Atlas.RunsAgain PROPERTIES FIXTURES_SETUP AtlasB TIMEOUT 900)
 
 if(Python3_Interpreter_FOUND)
+  # 19.01, ADR-0159: an engine sitting is closed by its committed log re-read
+  # here against the headless command that must print the same lines - not by
+  # pasting them into a document. Its known answer is the sitting of 2026-09-16:
+  # accepted as it stands, refused with one digit changed, with a line missing,
+  # and against the same stream replayed into the climate world.
+  add_test(NAME Session.SelfTest
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_session.py
+            ${PROJECT_SOURCE_DIR}/Tests/Run/Sessions/s0916.session --atlas $<TARGET_FILE:VaelenAtlas> --self-test)
+  set_tests_properties(Session.SelfTest PROPERTIES TIMEOUT 3600 COST 2000)
+
   add_test(NAME Atlas.Output
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_atlas_output.py ${VAELEN_ATLAS_A})
   set_tests_properties(Atlas.Output PROPERTIES FIXTURES_REQUIRED AtlasA TIMEOUT 300)
@@ -131,6 +168,21 @@ if(Python3_Interpreter_FOUND)
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_atlas_output.py ${VAELEN_ATLAS_128_CLIMATE}
             --expect climate=0x59615fa1f5d24bd1 ground=0x8f7f4948f49b6e86)
   set_tests_properties(Atlas.ClimateFrozen128 PROPERTIES FIXTURES_REQUIRED Atlas128Climate TIMEOUT 300)
+
+  # 19.05: the ground one walks on, built in integers by VaelenScene from the
+  # map leaf, and said in the line the engine will print (ADR-0156). One
+  # year is enough: the ground is the map's, and the map is generation's.
+  # The same digest with --no-climate: the era does not reach the ground.
+  add_test(NAME Atlas.SceneTerrain128
+    COMMAND VaelenAtlas --size 128 --prehistory 1 --years 1 --scene-terrain all
+            --out ${CMAKE_CURRENT_BINARY_DIR}/atlas-scene-terrain.json)
+  set_tests_properties(Atlas.SceneTerrain128 PROPERTIES TIMEOUT 900
+    PASS_REGULAR_EXPRESSION "region all: chunks 64, vertices 1065024, triangles 2097152, z \\[-5000, 50636\\] cm, steep 0 of 2097152; terrain 105208c54e3c6ea9\n")
+  add_test(NAME Atlas.SceneTerrain128Before
+    COMMAND VaelenAtlas --size 128 --prehistory 1 --years 1 --no-climate --scene-terrain all
+            --out ${CMAKE_CURRENT_BINARY_DIR}/atlas-scene-terrain-before.json)
+  set_tests_properties(Atlas.SceneTerrain128Before PROPERTIES TIMEOUT 900
+    PASS_REGULAR_EXPRESSION "; terrain 105208c54e3c6ea9\n")
 
   # 14.03: the empty play - the Play wiring with nobody taken up and no
   # stream, written as a replay document. Running it is the test; what the

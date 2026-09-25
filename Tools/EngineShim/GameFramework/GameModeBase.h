@@ -13,4 +13,6 @@ public:
 
 	TSubclassOf<AHUD> HUDClass;
 	TSubclassOf<APlayerController> PlayerControllerClass;
+	/// 19.02 BELIEF: the walker a walk game mode spawns for its player.
+	TSubclassOf<AActor> DefaultPawnClass;
 };

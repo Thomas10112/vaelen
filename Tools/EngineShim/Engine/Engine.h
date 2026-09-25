@@ -4,6 +4,7 @@
 #include "CoreMinimal.h"
 #include "Engine/Canvas.h"
 #include "Engine/World.h"
+#include "Materials/Material.h"
 #include "UObject/Object.h"
 
 class UEngine : public UObject
@@ -15,6 +16,10 @@ public:
 	/// The font a HUD draws text with when it ships no asset of its own, which
 	/// is what 14.09's page of Canvas text does.
 	UFont* GetSmallFont() const;
+
+	/// 19.02 BELIEF: the engine's own material that shows vertex colours -
+	/// the asset-free way to paint a procedural mesh (ADR-0157).
+	TObjectPtr<UMaterial> VertexColorMaterial;
 };
 
 extern UEngine* GEngine;

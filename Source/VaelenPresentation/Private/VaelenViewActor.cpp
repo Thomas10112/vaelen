@@ -1,6 +1,13 @@
 // VAELEN - VaelenPresentation. Phase 13 tasks 13.07c and 13.08b.
 //
-// STATUS: VALIDATED - built by UnrealBuildTool on UE 5.6.1 with MSVC 14.44,
+// STATUS: UNVERIFIED (engine) since 19.01's ledger - its code has changed after the last build
+// that compiled it (b0921, 15.10, 867a129): 18.10's climate wiring - WarmthTypes, the
+// WinterSystem, the season told to the harvest (d339068). Parsed against Tools/EngineShim, never
+// compiled. Tools/check_engine_status.py holds this line to Tools/engine_builds.txt; the record
+// of what earlier builds validated follows.
+// BUILD: b0921
+//
+// UNTIL 19.01: VALIDATED - built by UnrealBuildTool on UE 5.6.1 with MSVC 14.44,
 // run in the editor and LOOKED AT on 2026-09-14: AELVOR at 128 and at 256,
 // twelve biomes, rivers, towns, roads, and 1467 people standing on 117 tiles of
 // one region (6996 on 639 at 256), after the world they came from was

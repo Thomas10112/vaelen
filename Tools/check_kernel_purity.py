@@ -37,8 +37,12 @@
 #                              or "implement later".
 #   R7 fixed-width           - no bare `long` / `unsigned long` / `long long` types
 #                              (heuristic: `long` tokens outside static_cast<...>).
+#   R8 no-float              - no `float` / `double` token in code (19.05, ADR-0156).
+#                              "No float in the kernel" was a convention until then,
+#                              held by nothing. The one named exemption is VaelenCore's
+#                              door to floating point for tools (R8_EXEMPT_FILES).
 #
-# R1-R4 and R7 are applied after stripping comments and string/character
+# R1-R4, R7 and R8 are applied after stripping comments and string/character
 # literals (line numbers are preserved); R5 and R6 are applied to the raw text.
 # A violation is exempted by a trailing comment on the same line:
 #   // PURITY-ALLOW(R7): reason            (several rules: PURITY-ALLOW(R1, R4): reason)
@@ -71,6 +75,7 @@ RULE_NAMES = {
   "R5": "header-hygiene",
   "R6": "no-fake-done",
   "R7": "fixed-width",
+  "R8": "no-float",
 }
 EXEMPTABLE_RULES = frozenset(rule for rule in RULE_NAMES if rule != "R0")
 STATUS_VALUES = ("VALIDATED", "PROTOTYPE", "INCOMPLETE", "UNVERIFIED")
@@ -175,6 +180,18 @@ R6_PATTERNS = (
   (re.compile(r"\bimplement\s+later\b", re.IGNORECASE), "'implement later'"),
 )
 R7_LONG_RE = re.compile(r"\b(?:unsigned\s+)?long\b(?:\s+(?:long|int|double)\b)*")
+
+# 19.05: the kernel is integers. VaelenCore's Random hands tools a double and a
+# float (NextDouble/NextFloat) and CoreTypes names the two types for them; that
+# door is the one exemption, NAMED here by file rather than hidden in a comment,
+# and --self-test turns it off to show the sites it covers.
+R8_FLOAT_RE = re.compile(r"\b(?:float|double)\b")
+R8_EXEMPT_FILES = frozenset([
+  "Source/VaelenCore/Public/Vaelen/Core/CoreTypes.h",
+  "Source/VaelenCore/Public/Vaelen/Core/Random.h",
+  "Source/VaelenCore/Private/Random.cpp",
+])
+R8_EXEMPTION_ON = [True]
 STATIC_CAST_RE = re.compile(r"\bstatic_cast\s*<")
 
 INCLUDE_RE = re.compile(r'^[ \t]*#[ \t]*include[ \t]*(?:<([^>\n]*)>|"([^"\n]*)"|(\S+))', re.MULTILINE)
@@ -451,6 +468,19 @@ def check_fixed_width(path: str, src: SourceText) -> List[Violation]:
   return [found[line] for line in sorted(found)]
 
 
+def check_no_float(path: str, src: SourceText) -> List[Violation]:
+  if R8_EXEMPTION_ON[0] and path in R8_EXEMPT_FILES:
+    return []
+  found: Dict[int, Violation] = {}
+  for match in R8_FLOAT_RE.finditer(src.code):
+    line = src.line_of(match.start())
+    if line not in found:
+      found[line] = Violation(path, line, "R8",
+                              "'%s' in the kernel: the simulation and the scene are integers (Fix64, int32 "
+                              "centimetres); a float's rounding differs between compilers" % match.group(0))
+  return [found[line] for line in sorted(found)]
+
+
 def check_header_hygiene(path: str, src: SourceText, extension: str) -> Tuple[List[Violation], Optional[str]]:
   out: List[Violation] = []
   is_header = extension in (".h", ".inl")
@@ -500,6 +530,7 @@ def check_file(path: str, raw: str, extension: str) -> FileReport:
   candidates += hygiene
   candidates += check_no_fake_done(path, src, status)
   candidates += check_fixed_width(path, src)
+  candidates += check_no_float(path, src)
 
   violations: List[Violation] = list(structural)
   exempted: List[Tuple[Violation, str]] = []
@@ -837,6 +868,9 @@ def _build_self_test_repo(root: Path) -> Tuple[List[Tuple[str, int, str]], List[
   b.line("\t\tlong G2 = 1; // PURITY-ALLOW(R0): structure is not exemptable", "R7", "R0")
   b.line("\t\tlong G3 = 1; // PURITY-ALLOW R7: missing parentheses", "R7", "R0")
   b.line("\t\tlong H = 1; // PURITY-ALLOW(R7): allowed", exempt=["R7"])
+  b.line("\t\tfloat Fl = 1.0f;", "R8")
+  b.line("\t\tdouble Db = 2.0; // PURITY-ALLOW(R8): the one door", exempt=["R8"])
+  b.line("\t\t// a double written in prose is no double at all")
   b.line("\t\tint I = rand(); throw 2; // PURITY-ALLOW(R4, R2): two rules at once", exempt=["R4", "R2"])
   b.line("\t\t// PURITY-ALLOW(R2): unused exemption", unused=["R2"])
   b.line("\t}")
@@ -1056,6 +1090,24 @@ def self_test() -> int:
       pass  # symlinks unavailable on this filesystem: not tested here
     finally:
       sys.stderr = old_stderr
+
+  # -- R8's known answer, on this repository: with the named exemption turned
+  # off, every float and double of the kernel's code is in VaelenCore's three
+  # files and nowhere else (18 lines on 2026-09-25, predicted before R8 ran).
+  real_root = Path(__file__).resolve().parent.parent
+  if (real_root / "Tools" / "kernel_modules.txt").is_file():
+    R8_EXEMPTION_ON[0] = False
+    try:
+      buffer = io.StringIO()
+      with redirect_stdout(buffer):
+        main(["--root", str(real_root)])
+    finally:
+      R8_EXEMPTION_ON[0] = True
+    sites = [line for line in buffer.getvalue().splitlines() if ": R8 no-float:" in line]
+    files = {line.split(":", 1)[0] for line in sites}
+    expect(files == set(R8_EXEMPT_FILES) and len(sites) == 18,
+           "R8 without its exemption names exactly the 18 lines of VaelenCore's three files: %d in %s"
+           % (len(sites), sorted(files)))
 
   for failure in failures:
     print("[purity] self-test FAILED: %s" % failure)

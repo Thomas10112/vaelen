@@ -132,7 +132,7 @@ jobs:
         run: |
           set -o pipefail
           python3 Tools/check_kernel_purity.py --root . --verbose | tee purity.log | tail -1
-          test "$(grep -c '^\[purity\] module ' purity.log)" = 13
+          test "$(grep -c '^\[purity\] module ' purity.log)" = 14
 
   windows:
     name: Windows (MSVC)

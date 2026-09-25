@@ -71,13 +71,13 @@ block, and the sections below Phase 14 stay the record they are.
 Source/VaelenCore  Source/VaelenSim  Source/VaelenPopulation  Source/VaelenSociety
 Source/VaelenEconomy  Source/VaelenPolitics  Source/VaelenMilitary
 Source/VaelenInfrastructure  Source/VaelenColony  Source/VaelenPlayer
-Source/VaelenGameplay  Source/VaelenView  Source/VaelenRun
+Source/VaelenGameplay  Source/VaelenView  Source/VaelenScene  Source/VaelenRun
 ```
 
-They are validated by the headless CI: seventeen frozen gates (`Tools/run_gates.sh`),
+They are validated by the headless CI: eighteen frozen gates (`Tools/run_gates.sh`; seventeen until 18.10 added `Replay.Climate`),
 six Linux presets, a Windows MSVC leg and a macOS AppleClang leg, 219 CTest entries
 (2026-09-24; it was fourteen, and 175, when this was first written). A fix applied on the engine machine
-is a fix nothing in that matrix has seen, and the frozen digests of seventeen gates
+is a fix nothing in that matrix has seen, and the frozen digests of eighteen gates
 are exactly the kind of thing a well-meant edit moves.
 
 **Report the errors. Do not repair them.** Paste the compiler output, name the
@@ -101,10 +101,15 @@ marks are paid for.
 The remaining four - `VaelenRun`'s rules file and Unreal-facing translation unit,
 `Source/VaelenGame` and `Source/VaelenUI` - were built by UBT on 2026-09-16, in
 the same editor configuration, and the modules were then RUN: a life was played
-through `VaelenUI`'s eight keys for eighty-three days. **No file in the
-repository carries `STATUS: UNVERIFIED` any more.** The fifteen that did now say
-VALIDATED with the date and what was run; getting there cost three defects that
-nothing headless could see, listed under Phase 14 below.
+through `VaelenUI`'s eight keys for eighty-three days. The fifteen files that
+carried `STATUS: UNVERIFIED` then said VALIDATED with the date and what was run;
+getting there cost three defects that nothing headless could see, listed under
+Phase 14 below. **That stopped being true after 15.10, and nothing noticed:** by
+2026-09-25, 16.14 and 18.02/18.10 had put 410 non-comment lines into seven engine
+files, five of which still said VALIDATED. Since 19.01 every engine file names the
+build its STATUS rests on (`// BUILD: <id>`, a row of `Tools/engine_builds.txt`),
+and `Kernel.EngineStatus` refuses a claim whose code moved past that build. The
+list of what is UNVERIFIED is what that check accepts, not this paragraph.
 
 ## 13.06 - the first UBT build of all twelve kernel modules
 
@@ -242,9 +247,10 @@ commandlet.
 
 The engine half is written and parsed (2026-09-24), not built and not run.
 `Source/VaelenGame/Private/VaelenCheckpointStore.h` and `.cpp` carry
-`STATUS: UNVERIFIED (engine)` until this sitting, and so do the additions to
+`STATUS: UNVERIFIED (engine)` until this sitting, and since 19.01 so do
 `VaelenWorldSubsystem` (`Save`, `Load`, `Saves`) and `VaelenPlayCommands`
-(`Vaelen.Save`, `Vaelen.Load`, `Vaelen.Saves`). The standing rule holds: a
+(`Vaelen.Save`, `Vaelen.Load`, `Vaelen.Saves`) - until 19.01 this paragraph said
+they did, and they still said VALIDATED; `Kernel.EngineStatus` now holds it. The standing rule holds: a
 compile error in those files is reported, not repaired - and an error inside
 `Source/VaelenRun` or below is reported and NOT repaired, whatever it says.
 Three engine calls were parsed and never run, and are the likeliest to need
@@ -259,8 +265,10 @@ a report: `IFileManager::Move` with Replace, `FindFiles` over a directory
    `Vaelen.Save first`. Bring back the TWO lines it prints:
    ```
    LogVaelenPlay: saved first: state <16 hex>, log <16 hex>, life <16 hex>, panel <16 hex>; year Y day D, played P, daily cadence; <path>
-   LogVaelenPlay: check it headless: VaelenAtlas --load-from "<path>" --size 128 --years 120 --prehistory 300 --then-days 0 --stream
+   LogVaelenPlay: check it headless: VaelenAtlas --load-from "<path>" --size 128 --years 120 --prehistory 300 --then-days 0 --stream --climate
    ```
+   (Since 19.03 the check names its era both ways, `--climate` or
+   `--no-climate`: the Atlas's default flipped at 18.10.)
 3. A few more `Vaelen.Day`, then `Vaelen.Stream.Write`; bring its lines too.
 4. CLOSE THE EDITOR. Reopen under `-game` again and, WITHOUT `Vaelen.Play`:
    `Vaelen.Saves` (bring the listing), then `Vaelen.Load first`. Bring back
@@ -277,6 +285,52 @@ requires `adopted at` the same state; adds `Run.Gate.Saved` over the container
 exactly as `Run.Gate.Lived` was added over the walk of 2026-09-21; replays the
 container's own STREAM section and requires the digests of step 5; and turns
 the four `UNVERIFIED (engine)` lines to VALIDATED with the date.
+
+## PHASE 19 - sitting S1 (task 19.03): the tree as it stands, built once
+
+Before any Phase 19 engine line lands (ROADMAP section 26, ADR-0159). Since
+the last build (15.10, 2026-09-21, commit `867a129`) 410 lines of engine code in
+seven files have been written here and parsed, and never compiled: 16.14's
+save and load, 18.02's host byte, 18.10's climate wiring in both actors, and
+19.03's era flag. This sitting builds exactly that, so that a first error has
+one cause. The standing rule above holds without exception: REPORT, do not
+repair - above all nothing in `Source/VaelenCore` ... `VaelenMilitary`, nor in
+`VaelenRun`, `VaelenView`, `VaelenScene` or below.
+
+0. Check out THE COMMIT OF 19.03, not the branch's head - the branch goes on
+   with headless work (19.04, 19.05) that this build must not see:
+   ```
+   git fetch origin claude/vaelen-master-prompt-aw7zqj
+   git checkout $(git log origin/claude/vaelen-master-prompt-aw7zqj --grep="^19.03: " -1 --format=%H)
+   git rev-parse HEAD
+   ```
+   The FIRST line of what you bring back is that `rev-parse` - the log is
+   refused without it (`Tools/check_session.py`, `head`).
+1. Build the editor as for 14.08. Bring back the UBT result line and, if it
+   fails, the FIRST error verbatim, and stop there.
+2. In the editor console: `Vaelen.View 128 120`. Bring back its
+   `AELVOR digests:` line; it must say `frame ec18241b89c3d246, ground
+   8f7f4948f49b6e86` - the headless frame since 18.10, never yet printed by an
+   engine.
+3. The 16.14 steps above, as written.
+4. Under `-game`: `Vaelen.Play 128 120 1`, `Vaelen.Day` three times,
+   `Vaelen.Stream.Write`. Bring back the `LogVaelenPlay:` lines, the stream
+   file it names, and a SCREENSHOT of the page: its second row is the Weather
+   row, which no engine screen has shown yet.
+5. `stat unit` twice, the camera at ground level: over `Vaelen.View 128 120`
+   and during `Vaelen.Play`. Bring back the Frame / Game / Draw / GPU figures.
+   They are the baseline Phase 19's frame-time question is measured against.
+6. THE CONTROL. Copy `Tests/Run/Containers/host24-16.container` from the
+   repository into `Saved/Vaelen/`, then `Vaelen.Load host24-16`. Its `check
+   it headless` line must end with `--no-climate`: the world before the winter,
+   said by name.
+
+Bring back the whole `Saved/Logs/Vaelen.log` as it is, with the rev-parse line
+put first. It is committed as `Tests/Run/Sessions/s1-<date>.log` and re-read by
+`Session.P19S1`: the lines of step 4 against `VaelenAtlas --gate <stream>
+--want-bound 0`, byte for byte after the category. Afterwards
+`Tools/engine_builds.txt` gains the row `s1` (RECORDED), and
+`check_engine_status.py` moves the files this build compiled to VALIDATED.
 
 ## What the kernel half already hands you
 

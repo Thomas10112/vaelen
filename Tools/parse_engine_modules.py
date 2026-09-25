@@ -66,6 +66,13 @@ ENGINE_MODULES = ["VaelenPresentation", "Vaelen", "VaelenGame", "VaelenUI"]
 # module is added - which is the failure this whole file exists to prevent.
 UI_MODULES = {"VaelenUI"}
 
+# 19.02: the shim's contract probe (Tools/ShimProbe/README.md). Parsed with the
+# engine modules and never built, and NOT an engine module: the STATUS check and
+# the shim ledger read ENGINE_MODULES only, so a name the probe alone uses stays
+# a belief nobody has to list until engine code uses it.
+PROBE_MODULES = ["ShimProbe"]
+PARSED_MODULES = ENGINE_MODULES + PROBE_MODULES
+
 def ui_include_dirs(source_root):
     """What VaelenUI may see, and nothing else."""
     out = [module_dir(source_root, "VaelenGame", "Public")]
@@ -90,6 +97,9 @@ def module_dir(source_root, module, sub):
 
 def module_root(source_root, module):
     """Where this module's Public and Private live: Source, or the witness."""
+    if module in PROBE_MODULES:
+        under = os.path.join(source_root, "Tools", module)
+        return under if os.path.isdir(under) else os.path.join(ROOT, "Tools", module)
     under_source = os.path.join(source_root, "Source", module)
     if os.path.isdir(os.path.join(under_source, "Private")):
         return under_source
@@ -154,14 +164,54 @@ def stub_generated_headers(source_root, modules, into):
                 stub = os.path.join(into, wanted)
                 os.makedirs(os.path.dirname(stub) or into, exist_ok=True)
                 with open(stub, "w", encoding="utf-8") as f:
-                    f.write(
-                        "// Written by Tools/parse_engine_modules.py, not by UnrealHeaderTool.\n"
-                        "// The real one declares reflection boilerplate; GENERATED_BODY() is a\n"
-                        "// no-op in Tools/EngineShim, so an empty header is the honest stand-in.\n"
-                        "#pragma once\n"
-                    )
+                    f.write(generated_stub(wanted, text))
                 made.append(wanted)
     return made
+
+
+CLASS_HEAD = re.compile(
+    r"\b(class|struct)\s+(?:[A-Z0-9_]+_API\s+)?([A-Za-z_]\w*)\s*(?:final\s*)?"
+    r"(?::\s*(?:public|protected|private)\s+([A-Za-z_][\w:]*)[^{;]*)?\{")
+BODY = re.compile(r"\bGENERATED_BODY\s*\(")
+
+
+def generated_stub(wanted, text):
+    """What UnrealHeaderTool's .generated.h gives a parser: Super and ThisClass. 19.02.
+
+    GENERATED_BODY() in Tools/EngineShim/CoreMinimal.h pastes CURRENT_FILE_ID,
+    the line it stands on and _GENERATED_BODY into one name, as the engine's
+    does; this defines that name, per class, from the header's own text - the
+    class, its base as written, and the line. A GENERATED_BODY() with no class
+    head before it, or in a header whose .generated.h is not included, leaves
+    the name undefined and the parse fails: the engine would fail too.
+
+    A UCLASS body ends `private:`, as the engine's does; a USTRUCT body changes
+    no access and gets Super only when it has a base.
+    """
+    file_id = "VAELEN_FID_" + re.sub(r"\W", "_", wanted[: -len(".generated.h")])
+    heads = [(m.start(), m.group(1), m.group(2), m.group(3)) for m in CLASS_HEAD.finditer(text)]
+    lines = [
+        "// Written by Tools/parse_engine_modules.py, not by UnrealHeaderTool.",
+        "// Defines what the shim's GENERATED_BODY() pastes together for each class",
+        "// of the header that includes it: Super and ThisClass, exact (19.02).",
+        "#undef CURRENT_FILE_ID",
+        "#define CURRENT_FILE_ID " + file_id,
+    ]
+    for body in BODY.finditer(text):
+        before = [h for h in heads if h[0] < body.start()]
+        if not before:
+            continue
+        _, kind, name, base = before[-1]
+        line = text.count("\n", 0, body.start()) + 1
+        if kind == "class":
+            parts = ["public:"]
+            if base:
+                parts.append("using Super = {};".format(base))
+            parts += ["using ThisClass = {};".format(name), "private:"]
+        else:
+            parts = ["using Super = {};".format(base)] if base else []
+        lines.append("#define {}_{}_GENERATED_BODY {}".format(file_id, line, " ".join(parts)))
+    return "\n".join(lines) + "\n"
 
 
 def main():
@@ -178,6 +228,9 @@ def main():
     # from its own, which is what this file did before and what the self-test
     # uses to prove the difference.
     ap.add_argument("--stub-scope", choices=("shared", "own"), default="shared")
+    # 19.02: exact Super (the default), or every class inheriting its shim
+    # base's, as before - kept only for the self-test that shows the difference.
+    ap.add_argument("--super", choices=("exact", "inherited"), default="exact")
     args = ap.parse_args()
 
     if shutil.which(args.compiler) is None:
@@ -190,7 +243,7 @@ def main():
     # parsed. See stub_generated_headers.
     with tempfile.TemporaryDirectory(prefix="vaelen-uht-") as shared:
         if args.stub_scope == "shared":
-            stubs = stub_generated_headers(args.source_root, ENGINE_MODULES, shared)
+            stubs = stub_generated_headers(args.source_root, PARSED_MODULES, shared)
             if args.verbose:
                 print(f"[parse] generated stubs: {len(stubs)} ({', '.join(sorted(set(stubs)))})")
         failures, checked = parse_modules(args, shared)
@@ -210,7 +263,7 @@ def main():
 def parse_modules(args, shared):
     failures = 0
     checked = 0
-    for module in ENGINE_MODULES:
+    for module in PARSED_MODULES:
         public = module_dir(args.source_root, module, "Public")
         units = translation_units(args.source_root, module)
         if not units:
@@ -243,6 +296,8 @@ def parse_modules(args, shared):
                 "-Wno-unused-private-field",
                 "-DVAELEN_SHIM_PARSE=1",
             ]
+            if args.super == "inherited":
+                command.append("-DVAELEN_SHIM_INHERITED_SUPER=1")
             # UnrealBuildTool defines <MODULE>_API per module for the dllexport
             # dance. Every engine module here gets its own, and the ones it
             # depends on, rather than one hardcoded name - the second module

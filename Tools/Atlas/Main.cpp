@@ -57,6 +57,8 @@
 #include "Vaelen/Society/Standing.h"
 #include "Vaelen/View/Frame.h"
 #include "Vaelen/View/Panel.h"
+#include "Vaelen/View/Proof.h"
+#include "Vaelen/Scene/Terrain.h"
 #include "Vaelen/View/Land.h"
 #include "Vaelen/View/Net.h"
 #include "Vaelen/View/Take.h"
@@ -520,6 +522,10 @@ namespace
 		std::string Gate;
 		/// 16.01: write the golden corpus to this directory.
 		std::string Golden;
+		/// 19.05: print the ground's LogVaelenScene line - "all", or one region's chunks.
+		std::string SceneTerrain;
+		/// 19.05: write the ground as a hill-shaded greyscale picture (PGM) to this file.
+		std::string SceneDump;
 		/// 17.01: write the container corpus to this directory.
 		std::string Containers;
 		/// 17.05: the cause census over a container read from this file. The
@@ -664,6 +670,9 @@ namespace
 					 "  --stand FILE    write a stand-in stream: thirty days played by nobody (14.10)\n"
 					 "  --walk FILE     write a stand-in WALK: looks, takings and the streaming cadence (15.10)\n"
 					 "  --golden DIR    write the golden save corpus of 16.01 to this directory\n"
+					 "  --scene-terrain R|all  print the ground's LogVaelenScene line (19.05): one region's\n"
+					 "                  chunks, or the whole map\n"
+					 "  --scene-dump FILE  write the ground, hill-shaded, as a greyscale PGM picture (19.05)\n"
 					 "  --containers DIR  write the container corpus of 17.01 to this directory\n"
 					 "  --causes FILE   17.05: the cause census over a container, per event type\n"
 					 "  --census        the same over a world generated from --size and the rest\n"
@@ -720,6 +729,14 @@ namespace
 			else if (std::strcmp(Arg, "--panel") == 0)
 			{
 				Out.Panel = true;
+			}
+			else if (std::strcmp(Arg, "--scene-terrain") == 0 && HasValue)
+			{
+				Out.SceneTerrain = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--scene-dump") == 0 && HasValue)
+			{
+				Out.SceneDump = Argv[++I];
 			}
 			else if (std::strcmp(Arg, "--walk") == 0 && HasValue)
 			{
@@ -3203,6 +3220,133 @@ namespace
 	/// the Play wiring with nobody taken up, the baseline a played stream is
 	/// compared against. Exit 1 when the stream is of another world or any
 	/// answer differed, so a CTest entry can hold a stream to its world.
+	/// 19.04: LogVaelenClimate, from the one composer (View/Proof.h). The
+	/// winters and the dead of the cold are read from the log here; the line
+	/// itself is the leaf's, and the engine's Vaelen.Play prints the same bytes.
+	void PrintClimateLine(const Vaelen::World& W, const ClimateView& Climate, const ClimateViewStats& Stats,
+						  const Population::PersonTypes& Persons, const Population::NeedTypes& Needs, uint32 Size,
+						  uint64 Seed)
+	{
+		const WinterStats Winters_ = MeasureWinters(W, 0u);
+		ClimateLineFacts Facts;
+		Facts.Size = Size;
+		Facts.Seed = Seed;
+		Facts.Day = Climate.Day;
+		Facts.Year = Climate.Year;
+		Facts.Season = Climate.Season;
+		Facts.Stats = Stats;
+		Facts.HardWinters = Winters_.Winters[2] + Winters_.Winters[3];
+		Facts.ColdDeaths = Winters_.ColdDeaths + MeasureNeeds(W, Persons, Needs, 0u).ColdDeaths;
+		char Line[ClimateLineBytes];
+		if (ClimateLine(Facts, Line, ClimateLineBytes) != 0u)
+		{
+			std::printf("%s\n", Line);
+		}
+	}
+
+	/// 19.05: the terrain line, and the picture of the ground. The chunks are
+	/// every chunk of the map for "all", or every chunk holding a tile of the
+	/// region otherwise; the near lattice (stride 1) in both.
+	bool PrintSceneTerrain(const MapView& Map, const Options& Opt)
+	{
+		Scene::Ground G;
+		if (!Scene::BuildGround(Map, Scene::SceneScale{}, G))
+		{
+			std::fprintf(stderr, "AELVOR: the ground could not be built from a %ux%u map\n", Map.Width, Map.Height);
+			return false;
+		}
+		if (!Opt.SceneTerrain.empty())
+		{
+			uint32 Region = 0;
+			if (Opt.SceneTerrain != "all")
+			{
+				char* End = nullptr;
+				const unsigned long Parsed = std::strtoul(Opt.SceneTerrain.c_str(), &End, 10);
+				if (End == Opt.SceneTerrain.c_str() || *End != '\0' || Parsed == 0ul || Parsed > 65535ul)
+				{
+					std::fprintf(stderr, "AELVOR: --scene-terrain takes a region (1-65535) or \"all\", not %s\n",
+								 Opt.SceneTerrain.c_str());
+					return false;
+				}
+				Region = static_cast<uint32>(Parsed);
+			}
+			Scene::TerrainStats Stats;
+			Scene::TerrainMesh Mesh;
+			for (uint32 CY = 0; CY < Scene::ChunksDown(G); ++CY)
+			{
+				for (uint32 CX = 0; CX < Scene::ChunksAcross(G); ++CX)
+				{
+					bool Wanted = Region == 0u;
+					for (uint32 Y = CY * Scene::ChunkTiles; !Wanted && Y < (CY + 1u) * Scene::ChunkTiles && Y < G.Height;
+						 ++Y)
+					{
+						for (uint32 X = CX * Scene::ChunkTiles; X < (CX + 1u) * Scene::ChunkTiles && X < G.Width; ++X)
+						{
+							if (G.Region[Y * G.Width + X] == Region)
+							{
+								Wanted = true;
+								break;
+							}
+						}
+					}
+					if (Wanted && Scene::BuildChunk(G, CX, CY, 1u, Mesh))
+					{
+						Scene::MeasureTerrain(Mesh, Stats);
+					}
+				}
+			}
+			if (Stats.Chunks == 0u)
+			{
+				std::fprintf(stderr, "AELVOR: region %u has no tile on this map\n", Region);
+				return false;
+			}
+			char Line[Scene::TerrainLineBytes];
+			if (Scene::TerrainLine(Opt.Size, Opt.Seed, Region, Stats, Line, Scene::TerrainLineBytes) != 0u)
+			{
+				std::printf("%s\n", Line);
+			}
+		}
+		if (!Opt.SceneDump.empty())
+		{
+			// Every other lattice point, lit from the north-west and above: a
+			// picture any viewer opens, of the ground the engine will draw.
+			const uint32 Stride = static_cast<uint32>(G.Scale.Steps) / 2u;
+			std::vector<uint8> Pixels;
+			Scene::TerrainMesh Whole;
+			if (!Scene::BuildPatch(G, 0, 0, G.Width, G.Height, Stride, Whole))
+			{
+				return false;
+			}
+			const uint32 Across = Whole.Across;
+			const uint32 Down = static_cast<uint32>(Whole.Vertices.size() / Whole.Across);
+			Pixels.reserve(Whole.Vertices.size());
+			for (const Scene::TerrainVertex& V : Whole.Vertices)
+			{
+				// The light (-1, 1, 2) over sqrt(6), against the unit normal times 32767.
+				const int64 Dot = -int64{V.NX} + int64{V.NY} + 2 * int64{V.NZ};
+				int64 Lit = Dot * 255 / 80263;
+				Lit = Lit < 0 ? 0 : (Lit > 255 ? 255 : Lit);
+				Pixels.push_back(static_cast<uint8>(V.Z < 0 ? Lit / 3 : Lit));
+			}
+			std::FILE* File = std::fopen(Opt.SceneDump.c_str(), "wb");
+			if (File == nullptr)
+			{
+				std::fprintf(stderr, "AELVOR: cannot write %s\n", Opt.SceneDump.c_str());
+				return false;
+			}
+			std::fprintf(File, "P5\n%u %u\n255\n", Across, Down);
+			const usize Wrote = std::fwrite(Pixels.data(), 1, Pixels.size(), File);
+			const bool Closed = std::fclose(File) == 0;
+			if (Wrote != Pixels.size() || !Closed)
+			{
+				std::fprintf(stderr, "AELVOR: %s is incomplete\n", Opt.SceneDump.c_str());
+				return false;
+			}
+			std::printf("LogVaelenScene: ground picture %ux%u written to %s\n", Across, Down, Opt.SceneDump.c_str());
+		}
+		return true;
+	}
+
 	int RunReplay(const Options& Opt)
 	{
 		Player::InputStream S;
@@ -3281,6 +3425,16 @@ namespace
 			Lines(Page, Rows.data(), PanelTextBytes);
 			std::printf("%s\n", Rows.data());
 			PlayedLines(S, R, Life, MeasurePanel(Page).Digest);
+		}
+		// 19.04: the replay of a climate world says its weather at the end, in
+		// the words a sitting prints; a world without one prints nothing, so
+		// the recorded months of the world before read exactly as they did.
+		if (RO.Climate)
+		{
+			ClimateView Climate;
+			TakeClimateView(A.Instance(), SourcesFor(A, Opt), Climate);
+			PrintClimateLine(A.Instance(), Climate, MeasureClimateView(Climate), A.Handles().Persons,
+							 A.Handles().Needs, RO.Size, RO.Seed);
 		}
 
 		Json J;
@@ -3527,18 +3681,21 @@ namespace
 			ClimateStats_ = MeasureClimateView(Climate);
 			// 18.07: what the winters did, from the log - the great and
 			// terrible ones, and the dead of the cold, coarse and person alike.
-			const WinterStats Winters_ = MeasureWinters(Run.Instance, 0u);
-			const uint32 ColdDead =
-				Winters_.ColdDeaths + MeasureNeeds(Run.Instance, Run.Persons, Run.Needs, 0u).ColdDeaths;
-			static const char* const Seasons[] = {"none", "spring", "summer", "autumn", "winter"};
-			std::printf(
-				"LogVaelenClimate: AELVOR %u seed %012llx: day %u of year %u, %s; coldest %d warmest %d; frost %u "
-				"of %u tiles, %u growing; hard winters %u, cold deaths %u; climate %016llx\n",
-				Opt.Size, static_cast<unsigned long long>(Opt.Seed), Climate.Day + 1u, Climate.Year,
-				Seasons[Climate.Season < 5u ? Climate.Season : 0u], ClimateStats_.Coldest, ClimateStats_.Warmest,
-				ClimateStats_.Frost, ClimateStats_.Tiles, ClimateStats_.Growing,
-				Winters_.Winters[2] + Winters_.Winters[3], ColdDead,
-				static_cast<unsigned long long>(ClimateStats_.Digest));
+			// 19.04: composed by the View leaf the engine will call too, so
+			// the line a sitting brings back is compared with THIS one byte
+			// for byte rather than with a second format string.
+			PrintClimateLine(Run.Instance, Climate, ClimateStats_, Run.Persons, Run.Needs, Opt.Size, Opt.Seed);
+		}
+		// 19.05: the ground one walks on, built from the map leaf by VaelenScene
+		// and said in the line the engine prints for it.
+		if (!Opt.SceneTerrain.empty() || !Opt.SceneDump.empty())
+		{
+			MapView Map;
+			TakeMapView(Run.Instance, Run.Sources(), Map);
+			if (!PrintSceneTerrain(Map, Opt))
+			{
+				return 1;
+			}
 		}
 		// The chronicle, as lines with a year and a place on them. The kernel's
 		// own ExportChronicleWithEconomy writes the same sentences as one block

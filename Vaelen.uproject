@@ -150,6 +150,15 @@
 			]
 		},
 		{
+			"Name": "VaelenScene",
+			"Type": "Runtime",
+			"LoadingPhase": "PreDefault",
+			"AdditionalDependencies": [
+				"VaelenCore",
+				"VaelenView"
+			]
+		},
+		{
 			"Name": "VaelenRun",
 			"Type": "Runtime",
 			"LoadingPhase": "PreDefault",
