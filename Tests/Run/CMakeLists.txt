@@ -87,7 +87,12 @@ set_tests_properties(Run.Climate PROPERTIES COST 6000)
 # 4.5 minutes on a debug leg, one of this directory's long poles.
 set_tests_properties(Run.Walk PROPERTIES TIMEOUT 3600 COST 3000)
 set_tests_properties(Replay.Played PROPERTIES COST 4000)
-set_tests_properties(Run.Door PROPERTIES COST 3000)
+# Run.Door on the Windows MSVC Debug leg: 1747.83 s on CI run 308 (green) and
+# 1800.26 s on run 312 - the same test, the same day, the default 1800 s cut it
+# off by a quarter of a second. Given the margin Run.Walk, Run.Aelvor and
+# Run.Climate have (845 s on gcc debug); a regression would be a test twice as
+# slow, not 3 % slower.
+set_tests_properties(Run.Door PROPERTIES TIMEOUT 3600 COST 3000)
 # Phase 16's gate cell lives in Run.Checkpoint: 128 tiles with the full Play,
 # Stream, Lively and Colony wiring, generated once and adopted once. Measured at
 # about 95 seconds and a peak of 1.1 GB, which puts it between Run.Door and

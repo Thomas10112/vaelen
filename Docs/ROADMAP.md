@@ -8439,3 +8439,23 @@ an instances line the plan row did not name.
 Held by the fence (33 files), the module lists, the status ledger (26
 moved-or-new), the shim ledger (10 more beliefs, five of them coincidences
 named as such).
+
+### Found on CI run 312 (docs, 2abfdef), 2026-09-25: the Windows leg's long pole sat a quarter of a second past its timeout
+
+The first Windows MSVC Debug leg to run to its end since 19.01 (every one
+between was cancelled by the next push) came back 233 of 234: `Run.Door
+(Timeout)` at 1800.26 s against the directory's default of 1800. Not a
+regression: on run 308 - the PR branch's leg, green, the same day, the same
+runner class - the same test passed in 1747.83 s, 52 s under the line.
+Between the two trees `Test_Door.cpp`, `Door.cpp` and `Aelvor.cpp` are byte
+for byte the same; `Aelvor.h` differs by 19.03b's five struck macros and the
+Run module by nothing else of ours (19.09, 19.10 and 19.09b are Scene, Panel
+and the Atlas, and the Door suite takes no panel). On the gcc debug build
+here the suite passes in 845 s - the MSVC Debug leg is twice as slow, as it
+has been on every long pole. The one change: `Run.Door` gets the
+3600 s the other long poles of `Tests/Run` (`Run.Walk`, `Run.Aelvor`,
+`Run.Climate`) already carry, with the two measurements written beside it.
+A regression worth a timeout is a test twice as slow, not one 3 % slower on
+a leg that already runs 118 minutes; the leg's own `timeout-minutes: 180`
+still bounds it. Run 313 (19.11) carries the same tree for the suite and is
+expected to hit the same edge; the push of this note supersedes it.
