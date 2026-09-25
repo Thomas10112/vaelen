@@ -5,6 +5,8 @@
 
 #include "Vaelen/Sim/PreHistory.h"
 
+#include "Vaelen/Sim/Climate.h"
+
 #include "Vaelen/Sim/Snapshot.h"
 #include "Vaelen/Sim/World.h"
 
@@ -58,6 +60,11 @@ namespace Vaelen::History
 		Chronicle_->Chronicle_(ReligionFoundedEvent.TypeHash);
 		Chronicle_->Chronicle_(SchismEvent.TypeHash);
 		Chronicle_->Chronicle_(DisasterStruckEvent.TypeHash);
+		// 18.06: a winter is a yearly fact of the climate and history only when
+		// it is harder than the region's usual one; the one foreseen is
+		// published only when it is.
+		Chronicle_->Chronicle_(WorldGen::WinterEvent.TypeHash, &WorldGen::WinterIsHistory);
+		Chronicle_->Chronicle_(WorldGen::WinterForeseenEvent.TypeHash);
 	}
 
 	PreHistory::~PreHistory() = default;

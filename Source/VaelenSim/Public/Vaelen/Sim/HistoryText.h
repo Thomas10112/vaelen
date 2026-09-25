@@ -14,6 +14,7 @@
 #include "Vaelen/Core/CoreTypes.h"
 #include "Vaelen/Core/Hash.h"
 #include "Vaelen/Sim/Event.h"
+#include "Vaelen/Sim/Causality.h"
 #include "Vaelen/Sim/History.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/SimApi.h"
@@ -50,8 +51,20 @@ namespace Vaelen::History
 	/// Why: from an event id, or from an entity id (through its origin), the
 	/// cause chain from the event itself to the root cause, each with its era
 	/// and region. Empty when the id resolves to nothing.
-	VAELEN_SIM_API void Why(const World& W, const PreHistoryTypes& Types, PersistentId Id, std::vector<WhyStep>& Out,
-							uint32 MaxDepth = 64);
+	///
+	/// 17.09: AND HOW THE CHAIN ENDED. `Root` is the beginning of a story;
+	/// `CauseMissing` is a log that was cut; `DepthExhausted` is a caller that
+	/// asked for less than there was. Until this returned, all three were an
+	/// empty tail, and a person reading a why could not tell the beginning of
+	/// the world from a hole in the record. `NoSuchEvent` when `Out` is empty.
+	VAELEN_SIM_API WalkEnd Why(const World& W, const PreHistoryTypes& Types, PersistentId Id, std::vector<WhyStep>& Out,
+							   uint32 MaxDepth = 64);
+
+	/// One sentence for an end that is not `Root`, and "" for `Root` and for
+	/// `NoSuchEvent` - the beginning of a story needs no sentence, and an event
+	/// that is not there has no story. The ONE place this wording lives: both
+	/// text exports print it, so a test of one is a test of both.
+	VAELEN_SIM_API const char* WhyEndText(WalkEnd End) noexcept;
 
 	/// Every record about a region, in tick order (then id order).
 	VAELEN_SIM_API void RegionTimeline(const World& W, const PreHistoryTypes& Types, uint32 Region,

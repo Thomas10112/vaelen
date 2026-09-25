@@ -14,6 +14,48 @@ phase closes on it: the frame rate, clause (c) of 14.10, at the end of the
 Phase 14 section below. Phases 13's sections are kept as the record of how the
 last hand-off went.
 
+**Where this stands on 2026-09-24.** Phases 15, 16 and 17 happened after the
+paragraph above and none of them touched this file; that is corrected here in one
+block, and the sections below Phase 14 stay the record they are.
+
+- **Phase 15 (STREAMING & LOD) is CLOSED, 2026-09-21**, all six clauses. Its
+  engine half, 15.10, is built and was run on this machine: the world subsystem
+  hands the camera's region to `Run::Door::Look` when the day turns, and the walk
+  played here on 2026-09-21 is `Replay.Lived` and `Run.Gate.Lived` in the frozen
+  gate list — the only two entries that came off another computer.
+- **Phase 16 (SAVE/PERSISTENCE): fourteen tasks built headless, its gate still
+  open on two things.** One is headless (the migration half of clause (j),
+  deferred to the v4 format bump). The other is yours: **16.14's engine half
+  is WRITTEN and PARSED (2026-09-24), not built and not run.** It did not
+  exist when the Phase 17 close read the tree, and it was written on the
+  headless side first, like every engine-side file since 14.07. Its sitting
+  has its own section below: what to type, and the lines to bring back.
+- **Phase 18 (CLIMATE & SEASONS) is OPEN, planned in `Docs/ROADMAP.md`
+  section 25.** Its first four tasks are headless and touch what the engine
+  COPIES: `View::WorldView`, `RegionView` and `LifeView` renamed their reserved
+  words (`Season`, `Climate`, `Degrees`, `Chill`, `Winter`) at the same size,
+  and `Vaelen/View/Climate.h` is a new leaf (four bytes a tile) Phase 19 will
+  colour the ground by. 18.05 added `Population::WarmthTypes` (one component,
+  `PersonWarmth`, eight bytes, zero is warm), declared ONLY in a climate
+  world, after `PolityTypes` and BEFORE `ColonyTypes` - the position both
+  actors must take at the flip, because it shifts the Colony/Play/Lively type
+  ids by one (ADR-0153); `Tools/check_world_wiring.py` names it optional until
+  then. 18.06 added `Economy::WinterSystem` behind the same option, built
+  after the stock system with `RunAfter("Stocks")`, `ObserveSettlements(
+  Trade.Settlement)`, and the harvest told `RunAfter("Winter")` - the four
+  lines both actors add at the flip. Nothing changes on screen until 18.10 flips
+  `Options::Climate` in all four wirings; the page then carries a weather row
+  and the HUD draws it through `View::Lines` as it draws the rest, with no
+  engine change. The engine files of 16.14 and the actors are parsed against
+  the shim on every commit of the phase.
+- **Phase 17 (DEBUG TOOLS) is CLOSED, 2026-09-24**, all eleven clauses, and it
+  had no engine task. One thing it changed that the engine COPIES:
+  `View::ChronicleView` (`Vaelen/View/Chronicle.h`) holds four why lines instead
+  of two and carries a `WhyEnd`, so its `sizeof` went from 7816 to 8144 bytes.
+  `UVaelenWorldSubsystem` keeps one by value, so the next UBT build recompiles
+  it and nothing else is asked of you; the HUD draws `View::Lines` and never
+  reads the struct.
+
 ## The standing rule, first, because it is the one that matters
 
 **Do not fix anything inside these directories:**
@@ -25,9 +67,10 @@ Source/VaelenInfrastructure  Source/VaelenColony  Source/VaelenPlayer
 Source/VaelenGameplay  Source/VaelenView  Source/VaelenRun
 ```
 
-They are validated by the headless CI: fourteen phase gates, six Linux presets, a
-Windows MSVC leg and a macOS AppleClang leg, 175 CTest entries. A fix applied on the engine machine
-is a fix nothing in that matrix has seen, and the frozen digests of eleven gates
+They are validated by the headless CI: seventeen frozen gates (`Tools/run_gates.sh`),
+six Linux presets, a Windows MSVC leg and a macOS AppleClang leg, 219 CTest entries
+(2026-09-24; it was fourteen, and 175, when this was first written). A fix applied on the engine machine
+is a fix nothing in that matrix has seen, and the frozen digests of seventeen gates
 are exactly the kind of thing a well-meant edit moves.
 
 **Report the errors. Do not repair them.** Paste the compiler output, name the
@@ -187,6 +230,46 @@ day 8 because of it.)
 `Vaelen.Play` needs a game instance: it is a `UGameInstanceSubsystem`, so it
 runs under PIE or `-game`, and answers `no game instance` from an editor
 commandlet.
+
+## PHASE 16 - the sitting of 16.14: what to type, and what to bring back
+
+The engine half is written and parsed (2026-09-24), not built and not run.
+`Source/VaelenGame/Private/VaelenCheckpointStore.h` and `.cpp` carry
+`STATUS: UNVERIFIED (engine)` until this sitting, and so do the additions to
+`VaelenWorldSubsystem` (`Save`, `Load`, `Saves`) and `VaelenPlayCommands`
+(`Vaelen.Save`, `Vaelen.Load`, `Vaelen.Saves`). The standing rule holds: a
+compile error in those files is reported, not repaired - and an error inside
+`Source/VaelenRun` or below is reported and NOT repaired, whatever it says.
+Three engine calls were parsed and never run, and are the likeliest to need
+a report: `IFileManager::Move` with Replace, `FindFiles` over a directory
+(the store strips paths to leaves either way), and `FFileHelper`'s
+`SaveArrayToFile` / `LoadFileToArray`.
+
+1. Build the editor as for 14.08. The console should list three new commands:
+   `Vaelen.Save`, `Vaelen.Load`, `Vaelen.Saves`.
+2. Under `-game` (a game instance is needed, as for `Vaelen.Play`):
+   `Vaelen.Play 128 120 1`, a few `Vaelen.Day`, one or two `Vaelen.Do`, then
+   `Vaelen.Save first`. Bring back the TWO lines it prints:
+   ```
+   LogVaelenPlay: saved first: state <16 hex>, log <16 hex>, life <16 hex>, panel <16 hex>; year Y day D, played P, daily cadence; <path>
+   LogVaelenPlay: check it headless: VaelenAtlas --load-from "<path>" --size 128 --years 120 --prehistory 300 --then-days 0 --stream
+   ```
+3. A few more `Vaelen.Day`, then `Vaelen.Stream.Write`; bring its lines too.
+4. CLOSE THE EDITOR. Reopen under `-game` again and, WITHOUT `Vaelen.Play`:
+   `Vaelen.Saves` (bring the listing), then `Vaelen.Load first`. Bring back
+   its `loaded first:` line - its state digest must be the one `saved`
+   printed - and the `day(s) on the tape` line after it.
+5. `Vaelen.Day` the same number of times as in step 3, `Vaelen.Stream.Write`,
+   and bring back that line and BOTH files: `Saved/Vaelen/first` (the
+   container) and the stream it wrote.
+6. If anything refuses, bring the exact line: every refusal names its reason
+   (the store's, the container's, or `Adopt`'s), and the line is the report.
+
+What the headless side does with it: runs the `check it headless` command and
+requires `adopted at` the same state; adds `Run.Gate.Saved` over the container
+exactly as `Run.Gate.Lived` was added over the walk of 2026-09-21; replays the
+container's own STREAM section and requires the digests of step 5; and turns
+the four `UNVERIFIED (engine)` lines to VALIDATED with the date.
 
 ## What the kernel half already hands you
 

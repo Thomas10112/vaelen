@@ -35,6 +35,17 @@ if(Python3_Interpreter_FOUND)
   # four source files and needs no compiler of its own.
   add_test(NAME Kernel.WorldWiring
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_world_wiring.py)
+  # 18.01: the classified census of every frozen sixteen-hex literal. Phase
+  # 17's clause (i) grep, `\b[0-9a-f]{16}\b`, printed 0 over the ADR-0131
+  # re-freeze that removed 55 `0x...ull` literals - a suffix leaves no word
+  # boundary - so "no frozen digest moved" had never been measured by anything
+  # that could see one move. --check refuses a literal in a file the table does
+  # not name; --self-test has that commit as its known answer, from a fixture,
+  # because this CI clones at depth 1 and cannot show be9df8d itself.
+  add_test(NAME Kernel.FrozenCensus
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/frozen_census.py --check)
+  add_test(NAME Kernel.FrozenCensusSelfTest
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/frozen_census.py --self-test)
   # 14.07: what the UI may include, and what it may never name. The UI cannot
   # be built by any leg of this CI, and under UnrealBuildTool every kernel
   # include path is transitive into it (VaelenView.Build.cs:29), so this text
@@ -45,8 +56,25 @@ if(Python3_Interpreter_FOUND)
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_ui_fence.py --root ${PROJECT_SOURCE_DIR})
   add_test(NAME Kernel.UiFenceSelfTest
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_ui_fence.py --self-test --root ${PROJECT_SOURCE_DIR})
+  # 17.02: the event-type name table. An Event carries a Hash64 and nothing
+  # else about its identity, and until this phase nothing in the tree could
+  # turn one back into a word - so every census, inspector and causal walk
+  # Phase 17 plans would print sixteen hex digits at a person. The table is
+  # GENERATED from the 115 MakeEventType declarations across nine modules,
+  # because a compile-time one would need every module's headers in a single
+  # translation unit and VaelenSim may not know VaelenMilitary exists.
+  #
+  # This entry re-runs the generator and diffs. It is the only thing that
+  # notices a type added, renamed or deleted; Run.EventTypes checks the table
+  # against the kernel's own HashString and against real declaration sites,
+  # which is a different claim and a different entry.
+  add_test(NAME Kernel.EventTypes
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/gen_event_names.py --check)
+  add_test(NAME Kernel.EventTypesSelfTest
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/gen_event_names.py --self-test)
   set_tests_properties(Kernel.Purity Kernel.PuritySelfTest Kernel.WorldWiring Kernel.UiFence
-                       Kernel.UiFenceSelfTest PROPERTIES TIMEOUT 120)
+                       Kernel.UiFenceSelfTest Kernel.EventTypes Kernel.EventTypesSelfTest
+                       PROPERTIES TIMEOUT 120)
 elseif(VAELEN_REQUIRE_PURITY_CHECK)
   message(FATAL_ERROR "Python 3 is required for the Kernel.Purity test. Install it or configure with -DVAELEN_REQUIRE_PURITY_CHECK=OFF (the purity check is then NOT run).")
 else()
@@ -89,6 +117,19 @@ if(Python3_Interpreter_FOUND)
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_atlas_output.py ${VAELEN_ATLAS_128}
             --expect frame=0xabc5a5767c6cf9dd ground=0x8f7f4948f49b6e86)
   set_tests_properties(Atlas.Frozen128 PROPERTIES FIXTURES_REQUIRED Atlas128 TIMEOUT 300)
+  # 18.04: the same world TOLD it has a climate. The ground does not move (it
+  # is the map); the climate leaf's digest is frozen here the day it first
+  # existed, and the frame is NOT pinned because 18.05-18.09 fill the view
+  # words this task left at zero. --no-climate documents carry no climate
+  # object, and Atlas.Frozen128 above still holds its frame.
+  set(VAELEN_ATLAS_128_CLIMATE ${CMAKE_CURRENT_BINARY_DIR}/atlas-128-120-climate.json)
+  add_test(NAME Atlas.Climate128
+    COMMAND VaelenAtlas --size 128 --years 120 --climate --out ${VAELEN_ATLAS_128_CLIMATE})
+  set_tests_properties(Atlas.Climate128 PROPERTIES FIXTURES_SETUP Atlas128Climate TIMEOUT 900)
+  add_test(NAME Atlas.ClimateFrozen128
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_atlas_output.py ${VAELEN_ATLAS_128_CLIMATE}
+            --expect climate=0x59615fa1f5d24bd1 ground=0x8f7f4948f49b6e86)
+  set_tests_properties(Atlas.ClimateFrozen128 PROPERTIES FIXTURES_REQUIRED Atlas128Climate TIMEOUT 300)
 
   # 14.03: the empty play - the Play wiring with nobody taken up and no
   # stream, written as a replay document. Running it is the test; what the

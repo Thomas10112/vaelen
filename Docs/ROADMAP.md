@@ -84,10 +84,12 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 14 | UI | Interface and read-only views; command submission through the gameplay layer. | **CLOSED** 2026-09-16, all five clauses met - (e) certified by CI run 215 on 4137b08, ten jobs of ten green (14.01-14.10 - eighty-three days played at the keyboard in UE 5.6, replayed headlessly to the same four digests byte for byte, and the HUD measured at 0.52 ms of game thread over a scene that runs at about 122 fps; the breakdown is section 20) |
 | 15 | STREAMING & LOD | Engine streaming coupled to the simulation's grains: what is simulated at which detail away from the player. **The row said "simulation LOD 0-4" until 15.09 found that two different things were being called LOD.** `SimLod` (Sim/System.h) is a real five-rung ladder of how OFTEN a system runs - 1, 4, 24, 720, 8640 ticks - and 15.02 moved a system down it. A REGION has two grains and not five: person by person, or counts per culture. `RegionLod::Level` is written in one place, always the same value, and levels 0, 1 and 3 have never been reachable. | **CLOSED 2026-09-21** (15.01-15.10, section 21). The planning found five defects before a line was written; the review of 15.10 found 27 more, among them that the engine host recorded a world its own replay does not reach. The gate is met on a walk a person actually lived. |
 | 16 | SAVE/PERSISTENCE | **The row said "serialisation of the whole world state" until the planning measured it: that shipped in Phase 01 and works.** What is not saved is the RUN - `Run::Aelvor`'s own members - so a restored world continues identically until somebody LOOKS, and then parts company with the world it was copied from. The gap is about thirty bytes, one part in 700,000 of the image. So the phase is a save that can refuse, a load that cannot half-apply, a container around the untouched image, a verb by which a run adopts a world it did not generate, a file that cannot destroy the last good one, and a migration chain. | BROKEN DOWN (16.01-16.14, section 22; the planning found twelve defects first, among them that `SaveSnapshot` cannot fail and cannot say so in exactly the builds a player runs) |
-| 17 | DEBUG TOOLS | Inspectors, replay tooling, determinism diff, world statistics, headless console. | PLANNED |
-| 18 | STRESS TEST | Long-duration and large-world runs, performance budgets, determinism at scale. | PLANNED |
-| 19 | MODDING | Data-driven definitions, mod loading, stable ids and APIs for mods. | PLANNED |
-| 20 | POLISH | Balance, content, quality, release readiness. | PLANNED |
+| 17 | DEBUG TOOLS | **The row said inspectors, replay tooling, a determinism diff, statistics and a console; the panel measured the causal graph at 1.3% dense and one edge deep and the phase became the instruments that could see that.** As built: a container corpus, the event-type name table, a store that reads a directory, a walk that says how it ended, the causal census, the inspector, a harness that sees a vacuous assertion, nine doors guarded and a tenth pinned open, and a why that names its end. Section 23. | CLOSED 2026-09-24, all eleven clauses; no frozen digest moved |
+| 18 | CLIMATE & SEASONS | **Owner's decision, 2026-09-24: "le froid, le chaud et tout doivent s'afficher."** Today a tile has an ANNUAL MEAN temperature that decides its biome at generation and is never read again; seasons exist in the clock and are consumed by nothing but generation and the snapshot; a person's only need is hunger. This phase gives the world a CURRENT temperature (tile × season), a warmth need beside hunger, a winter that weighs on stores and mortality, a harvest that depends on the climate, and the figures in the view leaves so the HUD can draw them. Kernel work: it moves every frozen digest and lands with its own re-freeze. Section 24. **Broken down in section 25 (2026-09-24): ten tasks, a twelve-clause gate, ADR-0151 to ADR-0154; the temperature is a FUNCTION not a layer, the winter has a calendar not an omen, the chill is its own component declared only in a climate world, and the re-freeze is ONE commit whose footprint a classified census predicts - after that census has shown Phase 17's clause (i) grep blind to `0x…ull`.** | PLANNED, breakdown in section 25; placed BEFORE the stress test because the stress test must measure the world we mean to ship |
+| 19 | WORLD IN 3D | **Owner's decision, 2026-09-24: "un RPG médiéval en 3D, ZQSD, où l'on peut tout faire."** What exists is a MAP: regions, biomes, roads, a person and a colony drawn from the view leaves, a camera that moves region to region, at 100+ fps (Phase 13). This phase is a world one WALKS: terrain in volume from `TileGrid` and `Hydrology`, buildings from Infrastructure, persons from Population as characters, the played person moved at the keyboard, a shoulder camera, and the climate of Phase 18 visible. The procedural-mesh and controller C++ is written here and parsed against the shim; meshes, materials, animation and SEEING IT are the owner's machine, one session per task and not per phase. Section 24. | PLANNED |
+| 20 | STRESS TEST | Long-duration and large-world runs, performance budgets, determinism at scale — measured WITH Phases 18 and 19 in, not before them. 17.05 already handed it a figure: `PlayerActed` is 54% of a 16.8-million-event log in a world nobody played. | PLANNED (was 18) |
+| 21 | MODDING | Data-driven definitions, mod loading, stable ids and APIs for mods. | PLANNED (was 19) |
+| 22 | POLISH | Balance, content, quality, release readiness. | PLANNED (was 20) |
 
 Planned module names per phase are listed in `Docs/ARCHITECTURE.md` section 3.2.
 `IdKind` in `Ids.h` already reserves value ranges for Phases 01-12 (see ADR-0004).
@@ -5564,6 +5566,181 @@ Adopt is **13.5× faster than generating the same world**, and `Generations() ==
   divergence found, or a null result with the horizons and wirings it was
   searched over — is written into DECISIONS whichever way it came out.
 
+### 16.14, the engine half: WRITTEN and PARSED 2026-09-24; the sitting is still the owner's
+
+Found at the Phase 17 close by reading the tree: the row above asks for
+`Vaelen.Save`, `Vaelen.Load` and a store over `IFileManager`, and none of the
+three existed anywhere - `grep -rn 'Vaelen\.Save\|CheckpointStore' Source/VaelenGame`
+printed nothing. Written here the way every engine-side file since 14.07 is
+written, and parsed against `Tools/EngineShim`, which grew what the parse
+needed: `FFileHelper::SaveArrayToFile` / `LoadFileToArray` (bytes, where the
+shim had only strings), `FPaths::GetCleanFilename`, and a `HAL/FileManager.h`
+carrying the six verbs the store calls, with the engine's defaults.
+
+- `Source/VaelenGame/Private/VaelenCheckpointStore.{h,cpp}`: `Run::ICheckpointStore`
+  over the engine's file manager, the twin of the stdio store and the same
+  shape on purpose - `<name>.writing` in the same directory, moved into place
+  whole (`IFileManager::Move` with Replace); a listing that reads the directory
+  and reports the image trailer; a read that swaps in only a whole file.
+- `UVaelenWorldSubsystem::Save / Load / Saves`, and `Vaelen.Save <name>`,
+  `Vaelen.Load <name>`, `Vaelen.Saves`. Save builds the three-argument
+  container (the tape travels, 16.11) and prints the four digests the way
+  `Vaelen.Stream.Write` prints them, then the exact `VaelenAtlas --load-from`
+  command that must come back to the same state - the options spelled out
+  from what the host was given, because Atlas takes them on its command line
+  and Adopt refuses a host that declares them differently. Load builds the
+  host from the container's own HOST section, adopts into a FRESH Aelvor and
+  never over a begun one, hands the tape back to the door, retakes the ground
+  and the five views. Every refusal names its reason: the store's, the
+  container's or `Adopt`'s.
+- Three shim-test mutations, one per file, each caught: 16 of 16.
+
+TWO THINGS THE WRITING FOUND, both fixed in the kernel with their tests, and
+neither moving a digest:
+
+1. **The trailer had three readers.** `StdioCheckpointStore::TrailerOf`,
+   Atlas's `TrailerOf` and the corpus test's own, each eight bytes read its
+   own way, and the engine store would have been a fourth - the number 17.03
+   found reported wrong. `Run::ImageTrailer` (`Checkpoint.h`) is the one
+   reader now; the store and Atlas call it, and `Run.Containers` keeps its own
+   as the INDEPENDENT one and requires the two to agree on every file of the
+   corpus. The test's comment had said "until something in production needs
+   to"; now something does.
+2. **`.writing` leftovers were listed as saves.** The stdio store's `List` said
+   temporaries "are skipped by the same rule" as stray files, and
+   `IsUsableCheckpointName` knew nothing of the suffix: a write interrupted
+   between `fwrite` and `rename` left a file the next listing reported as a
+   save of tick 0. `Run::WritingSuffix` is the interface's now and the rule
+   refuses it, so both stores skip such a file and neither can be asked to
+   write under that name. `Run.Store` has the names; `Run.StoreColdProcess`
+   plants the leftover and requires it listed by nobody, with the control that
+   the same half file under a plain name IS listed (container version 0) - so
+   the skip is the rule's and not the bytes'.
+
+STATUS of the engine files: `UNVERIFIED (engine)` - parsed, not built, not
+run. What the sitting types and brings back is in `Docs/ENGINE_HANDOFF.md`;
+`Run.Gate.Saved` is added the day a checkpoint written by the engine is
+carried here, exactly as `Run.Gate.Lived` was added over the walk of
+2026-09-21.
+
+### Out of scope for Phase 16, and where it belongs
+
+- **Log truncation.** All four plans measured the same thing — the log is 83.6%
+  of the image at 256, 90.9% at 128, 93.5% at 64 and 90.6-95.6% of a 500-year
+  world; it grows 49.2/151.0/285.5 kB per simulated year without bound; only the
+  last simulated year is ever read by a running system, and that tail is 0.65%
+  of the events at 128 and 0.80% at 256, a 10.4× / 5.9× image reduction. All four
+  are also right that the evidence it can be dropped is TWO worlds run 400 day
+  turns each with the log cleared, against five systems that demonstrably read
+  `W.Log().All()` inside `Tick` — `ProductionSystem` (`Production.cpp:91`),
+  `MarketSystem` (`Markets.cpp:138`), `DecaySystem` (`Decay.cpp:56`),
+  `FactionSystem` (`Factions.cpp:284`), `RegardSystem` (`Regard.cpp:95`).
+  Truncating also moves every frozen digest, because the log is inside the image
+  the trailer hashes. **Phase 16 truncates nothing, compresses nothing, and
+  builds no truncation machinery — not even switched off.** It records the
+  numbers and the question. The SEARCH for a divergence, with the injected-event
+  control that proves the search can see the log at all, is folded into 16.12's
+  fuzzer as a reported measurement, not a shipped policy. The decision belongs to
+  **Phase 20 STRESS TEST** (18 until the owner's decisions of 2026-09-24), which is where a 500-year AELVOR 256 — a 182 MB save
+  that takes 52 s to generate — is exercised at all, and to a phase that OPENS
+  with it rather than one that stumbles into it while shipping a save.
+- **Severing `ComputeStateDigest` from the image trailer, and any project-wide
+  re-freeze.** "adversary" 16.04 and "migration" 16.02 both proposed it, by
+  different means. Nothing in this phase requires it once the container carries
+  the new state, and doing it mid-phase destroys the only instrument that could
+  catch this phase's own regressions: afterwards the eleven gates assert new
+  numbers produced by the same changed code. If it is ever wanted, it belongs to
+  a later phase that opens with it, and migration's version/flags substitution is
+  the cheaper of the two forms.
+- **A per-field layout digest** (defect 9). "determinism" 16.09 proposed deriving
+  it "from `PlainData.h`'s existing traits"; `PlainDataTraits` carries exactly one
+  member, `static constexpr bool NoPadding`, and there is no member enumeration
+  anywhere to derive offsets or type tags from. A real fix needs a member-listing
+  macro applied across ~55 component types and every map layer and the `Event`
+  payload set. That is its own job and belongs with **Phase 21 MODDING**'s stable
+  ids and APIs. Until then the hole stands and this phase says so: a same-size
+  field reorder or retype is not caught by anything 16.08 adds.
+- **Loading a save into a world generated differently.** Explicitly refused by
+  16.10. The `DiplomacySystem` region-count cache is recorded as the thing that
+  breaks first if that refusal is ever loosened.
+- **A save browser, thumbnails, named slots, autosave UI.** `Phase 17 DEBUG
+  TOOLS` for the inspector side, `Phase 22 POLISH` for the player-facing side.
+  16.04's section table and manifest are what makes listing saves without
+  generating a world possible; this phase stops there.
+- **Compression.** If it comes, it comes as an optional section under 16.04's
+  may-ignore flag rule, in a later phase.
+
+### Open questions only the owner can answer
+
+1. **Where do saves live on the Windows machine, and what are the verbs called?**
+   16.14 assumes `Vaelen.Save <name>` / `Vaelen.Load <name>` under the project's
+   saved directory. If the sitting should instead use a key like F9 (as
+   `Vaelen.Stream.Write` does), say so before 16.07 fixes the store's naming.
+2. **Does a save carry its recorded tape by default?** 16.11 says yes: four
+   kilobytes against twenty-two megabytes, and without it a restored world cannot
+   be audited or replayed. If saves are ever to be shared, that tape is a record
+   of what somebody did, and that is the owner's call and not the code's.
+3. **How many checkpoints in the ring, and is there an autosave?** 16.07 builds
+   the ring; nothing decides N, and nothing decides whether the game writes one
+   on its own. If it does, the cadence must be counted in DAY TURNS and never in
+   wall clock (ADR-0109).
+4. **Is a save ever to be loadable into a world generated differently?** Today
+   the seed check forbids it, and that is the only thing making
+   `DiplomacySystem`'s region-count cache safe. Answering "yes, one day" makes
+   fixing that cache a Phase 17 task rather than a recorded note.
+5. **What is an acceptable save size at the far end?** A 500-year AELVOR 256 is
+   182 MB today and unbounded thereafter. Phase 16 ships that and calls it
+   correct. If it is not acceptable, Phase 20 (the stress test) needs to open with the log question
+   rather than inherit it.
+6. **Does the MSVC leg get the corpus?** Clause (j) says yes, and the leg exists
+   (`kernel-ci.yml`, `windows-2022`, `ctest --preset windows-msvc-debug -E Shuffled`).
+   It adds a few seconds and it is the only cross-compiler witness the format
+   will ever have. Confirm it should not be excluded.
+
+### What the probes could NOT settle, and the risks that follow
+
+- **A death across a save was never reached.** The longest horizon measured is 60
+  day turns at the fullest wiring with the played person alive throughout. A
+  death exercises `Release`, a fresh `TakeUp`, `NearDetail`'s give-back path and
+  a recorded `TakenUp` — the machinery `Near_` feeds — and is the most likely
+  place for a fourth piece of run state to be hiding. 16.12(c) asks for one and
+  asserts its own precondition; if no workable seed reaches a death in a
+  workable horizon, the task must SAY so in its STATUS line rather than let a
+  gate that never met a death imply it did.
+- **`Detail_` and `Dug_` could not be varied in isolation.** They are private and
+  only `Begin()` writes them, so the argument for saving them is from the code
+  (`Reside` reads `Detail_` at `:532` and `:566`) and from the never-`Begin()`-ed
+  run where both read 0. Confirming needs a setter, which is a task and not a
+  probe. This is why 16.05 copies them rather than deriving them.
+- **Everything measured is gcc on Linux.** `sizeof(Event) == 112`, the
+  `static_assert`s on padding, and `WorldGenConfig` being written as raw bytes
+  through one `SerializeBytes` call are an ARGUMENT that MSVC and AppleClang
+  agree, not a run. Clause (j) is the only thing that turns it into a
+  measurement, which is why the corpus is small enough to live in git.
+- **16.06's `Adopt` sets `Begun_` without `Begin()` running.** That is provably
+  complete today — `Begin()`'s only non-world outputs are `Detail_`, `Dug_` and
+  `Begun_` — and that completeness is a property of today's `Begin()`, not of the
+  design. 16.05's single struct filled by both paths is the guard; if a later
+  phase adds a line to `Begin()` that writes a member and not the struct, a
+  restored world diverges silently again and 16.12's matrix is the only
+  instrument that would catch it.
+- **The two probes disagree by 27,565 bytes on the same wiring** (21,980,402
+  against 22,007,967 at AELVOR 128, Play+Stream, 20 played days). The walks
+  differed by a few hundred logged events. Same world, same conclusion, and
+  neither number should be quoted as a constant.
+- **The count of frozen digest literals is not a constant either.** The planners
+  quoted 249 and 252; a bare `[0-9a-f]{16}` grep over `Tests/`, `Source/` and
+  `Docs/ROADMAP.md` here returns 178. Clause (b) checks the DIFF, not a count, for
+  that reason.
+- **Fourteen tasks is above this project's range**, and 16.12 is the biggest of
+  them. If the phase has to shed weight, 16.13 goes first (it is a performance
+  task with a zero-change contract) and 16.09's forge second (the corpus alone
+  still migrates, it just stops being a witness once the schema moves twice).
+  16.01 through 16.06 are not sheddable: they are the save.
+
+Next: 16.01, the goldens and the gate list, because both are one-way doors and
+neither can be recovered once another task has landed.
+
 ## 23. Phase 17 - DEBUG TOOLS: task breakdown
 
 Proposed by a four-angle judge panel on 2026-09-23 (causal graph / save inspector / what the log
@@ -5640,16 +5817,626 @@ reached the beginning of the world or fell off the end of a log.
   its own failure text. That turns an unanswerable owner question into a test that fires the day the
   refusal is loosened.
 
-### What the panel unanimously dropped
+### The breakdown
 
-- **Filling `Cause` across the publish sites, in this phase.** Correct work, honestly priced by the
-  proposal that offered it, and it re-freezes every digest in the repository. It cannot land beside
-  the corpus that is supposed to pin the format.
-- **Log tiering and compaction.** A phase's work, not a task: there are **49 `Log().All()` call
-  sites**, not the five one angle assumed, and a dozen scan the whole log every tick. It buys
-  resident memory and not save size, and it is the one task that could move all ~178 frozen digest
-  literals without anyone intending it. It stays where DECISIONS put it, and Phase 18 opens with the
-  log question rather than inheriting it.
+| Task | Deliverable | Test (with its control) | Why |
+|---|---|---|---|
+| 17.01 | **A real container corpus, before anything reads one.** Three checked-in VAELENCP v2 containers under `Tests/Run/Containers/` — a bare world, a played one with a STREAM section, and one saved through the two-argument form so it has THREE sections and no stream — each beside a README recording every header field, every section kind, offset, length and digest, the state digest read from the image TRAILER, and the exact `Tools/Atlas` command that regenerates it. | `Run.Containers` reads all three without generating a world and checks every recorded number against the file. CONTROL: regenerate each from its recorded command and require byte equality; and a container whose recorded section count is edited by one must be REFUSED, so the README is checked against the bytes rather than admired beside them. | There is no VAELENCP container anywhere in the tree — `Tests/Run/Golden/` holds `.snapshot` IMAGES, which is a different format. Every clause below is written against nothing until this exists, and the format is about to move. All three judges put it first. |
+| 17.02 | **The event-type name table.** A generated, checked-in `Vaelen/Sim/EventTypeNames.h` mapping every `TypeHash` to its declared name, produced by `Tools/gen_event_names.py` over the 115 `MakeEventType` declarations in kernel headers (**115, not the 116 the plan said** — the 116th `MakeEventType` is the template's own definition in `Event.h`, which has no name to read), plus `NameOfEventType(Hash64) -> const char*` returning a stable `"?<hex>"` for an unknown hash. `constexpr` data, no allocation, no `<fstream>` in the kernel. | `Kernel.EventTypes` re-runs the generator and diffs against the checked-in file. CONTROL: stub the table so one module's types are missing and require every consumer to print `?<hex>` rather than crash or print an empty string; and a type renamed in a header must make the diff fail. | `grep -rn 'EventTypeName\|NameOfEvent\|TypeName(' Source/ Tools/ Tests/` returns **nothing**. An `Event` carries an FNV-1a hash of its type name and nothing anywhere can turn it back into a word, so every census, inspector and causal walk below prints numbers a person cannot read. Grafted from the "weight" angle; all three judges called it unconditional. |
+| 17.03 | **The store reads a directory, and reports the digest it means.** `StdioCheckpointStore::List()` enumerates the DIRECTORY rather than the private `Written` vector; `StoreEntry::Digest` becomes the image trailer digest read through `View.Find(SectionKind::State, Length)`, whose result is used rather than discarded; and `StoreEntry` gains the section count so a caller can see the shape without opening the file again. | `Run.Store.ColdProcess`: one process writes three checkpoints, a SECOND process constructs a store over the same directory and must list all three with the right ticks and digests. CONTROL, and the judges singled it out: run the identical test against today's `List` and require it to FAIL, reporting zero entries — the defect stays visible after the fix. Second control: reorder the section table so STATE is not first and require the reported digest to be unchanged. | Two defects in 16.07, both mine. `List()` iterates `Written`, filled only by `Write()` in the same process (`StdioCheckpointStore.h:119-128, 192`), so a cold host pointed at a directory of saves lists none — which defeats exactly what this phase is for. And `:143-147` calls `Find(State)`, **discards the result**, and reports `Sections.front().Digest` by POSITION: right today only because STATE happens to be section 0, the ADR-0150 "safe by accident" pattern, and it is the section digest rather than the trailer every frozen digest in this repository is. `Run.Store` passes because it writes and lists in one process. |
+| 17.04 | **A walk that says how it ended.** `WalkEnd {Root, NoSuchEvent, CauseMissing, CauseNotAnEvent, CauseNotBeforeEffect, DepthExhausted, BudgetExhausted}` and `CauseWalk(const EventLog&, PersistentId, std::vector<const Event*>&, WalkLimits{Depth, Nodes}) -> WalkEnd` in `Vaelen/Sim/Causality.h`. `History::CauseChain` stays, reimplemented as a wrapper that discards the end, so its **two** callers do not churn (`HistoryText.cpp:267` and `Atlas --why`; the plan said five). | `Sim.CauseWalk`: hand-built logs, one per `WalkEnd`, each asserting the end AND the partial chain. CONTROL, kept permanently: today's `CauseChain` pointed at the `CauseMissing` log and at the `Root` log must return the SAME thing — the indistinguishability is the defect, and a test that only shows the new function working cannot show it. | `History.cpp:198-211` `break`s identically when `Cause` is invalid (a genuine root) and when `FindEvent` returns `nullptr` (a link that is gone). Verified by two judges. A tool that walks backwards and stops cannot say whether it reached the beginning of the world or fell off the end of a log. Grafted whole from the "causal" angle, which the judges called the best-argued defect in the panel. |
+| 17.05 | **The census, and it is allowed to conclude the phase is about something else.** `CauseCensus {Events, WithCause, RootCauses, Dangling, NotAnEvent, MaxDepth, MedianDepth, MaxFanOut}` over an `EventLog`, `TakeCauseCensus`, and `Tools/Atlas --causes` printing it per event type using 17.02's names. Run over the 17.01 corpus and over a fresh AELVOR 128, and the figures WRITTEN INTO THIS ROADMAP. | `Sim.Causality`: a planted log with a chain of depth 7, a fan-out of 5, one dangling cause and one `Cause` of `IdKind::Entity` must report exactly 7, 5, 1 and 1. CONTROL: the same log with every `Cause` cleared must report `MaxDepth 0, MaxFanOut 0` — if the depth survives the edges being removed it was never reading them. Second control: an empty log reports every field 0, not "no problems found". | The panel measured 7 causes in 535 events (1.31%) with a deepest chain of ONE EDGE, and three of four angles had planned a walker, an index and a renderer over that. A census that can be re-run is how this stays true rather than becoming folklore — and my own brace-aware count of the publishers that pass a cause (30) disagrees with the winning angle's (27) and another's (34), with two sites my parser still cannot read. |
+| 17.06 | **The inspector.** `Tools/Atlas --inspect <container>`: header, every section with kind name, length, share and digest, the HOST wiring, the RUN state's shape, whether a STREAM section is present and how many records it holds — **without generating a world**. `--inspect-dir <dir>` lists a directory through `ICheckpointStore` with tick, size, container version and trailer digest. | `Atlas.Inspect` over all three 17.01 containers, pinning the printed lines. CONTROL: `--inspect` must refuse a `.snapshot` image with a message naming the format it found, and must refuse a container truncated at 4 KiB rather than printing a partial table as if it were whole. | ROADMAP's own words: "16.04's section table and manifest are what makes listing saves without generating a world possible; this phase stops there." `Atlas --save --sections` generates a world first and never opens a file, so nothing in the tree reads a container from disk except a test. |
+| 17.07 | **A test harness that can see a vacuous assertion.** `VT_CHECK_ROUNDTRIP(Written, Read)` records a failure when the WRITTEN value is byte-equal to `T{}` before it compares anything, and `VT_CHECK_DIGEST_EQ(A, B)` refuses `0` and `EventLog::EmptyDigest` as operands. | `Harness.VacuityIsSeen`, with BOTH ARMS IN ONE RUN: the reconstructed default-vs-default `StartRules` assertion must FAIL under `VT_CHECK_ROUNDTRIP` and PASS under plain `VT_CHECK`, in the same test, so the defect stays visible after the fix. CONTROL: a genuine non-default round trip must pass under both. | This session committed exactly that defect — a `StartRules` round-trip comparing two default-constructed structs, which passed even though `ReadStreamSection` could have written nothing — and it was found by a reviewer, not by the suite. One judge called the two-arms-in-one-run shape the single best control-design idea in the panel. Grafted from the "discipline" angle. |
+| 17.08 | **Guard now, fix if asked: the `DiplomacySystem` cache.** No change to the cache. Instead a test asserting that EVERY route into a world still refuses a differently-generated one BY NAME — `Adopt`'s seven `*Differs` results and `LoadSnapshot`'s `SeedMismatch` and `WorldShapeDiffers` — with the failure text naming `DiplomacySystem`'s region-count cache as the thing that breaks if a refusal is loosened. | `Run.RefusalsAreTheCachesSafety`: each route, each refusal, by name. CONTROL: delete one refusal in a scratch build and require the test to fail naming that route — a guard that cannot say WHICH door opened is not a guard. | ADR-0150 records that `DiplomacySystem` rebuilds its region graph only when the region COUNT changes and is safe "only by accident", because 16.10 refuses a differently-generated world. That safety is a consequence of checks elsewhere, so it should fail loudly the day somebody loosens one. Converts an unanswerable owner question into a test rather than waiting on the answer. |
+| 17.09 | **The deep why — and the census said there is one, in the ledger.** *(Resolved 2026-09-24 by 17.05: depth 3 at AELVOR 128, so this row is CODE. But every cause is in the stock ledger and none in the human story, so the why it deepens explains goods and not people; section 23's 17.05 note has the table.)* `ExplainDepth` raised past two steps in `ExportWhyWithLife`, reading 17.04's walk so a chain that ends says how. **Conditional on 17.05**: if the census confirms a maximum depth of one edge, this task becomes a ROADMAP note recording that the Phase 14 deferral was a data debt and not a tooling debt, and the depth stays where it is. | `View.Chronicle` extended with a planted deep chain; the why must print every step and name its end. CONTROL: the same test over a REAL world must print what the census predicts — if the census says depth 1 and the why prints three steps, one of the two instruments is lying. | Phase 14 deferred "a why deeper than two steps" to Phase 17 (`Chronicle.h`, ROADMAP). The measurement says there may be nothing to walk to. Writing this row as conditional is the honest form: the work is either real or it is a note, and 17.05 decides which. |
+
+### 17.01 AS BUILT, 2026-09-24
+
+`Tests/Run/Containers/` holds three VAELENCP v2 containers, a README recording
+every header field, every section row and the image trailer, and two ctest
+entries. `Tools/Atlas --containers DIR` writes them and **reads its own output
+back through `ReadCheckpoint` before recording a single figure**, refusing if
+the trailer it finds is not `ComputeStateDigest`.
+
+| file | sections | bytes | tick | log events | image trailer |
+|---|---|---|---|---|---|
+| `bare-16.container` | 3 | 77685 | 95040 | 129 | `d17d7fd9a6f09ea6` |
+| `played-16.container` | **4**, with STREAM | 80862 | 95184 | 148 | `64d11b40b612581c` |
+| `full-32.container` | 3, played but saved without its tape | 182719 | 95184 | 577 | `2ec516c4d275ab6f` |
+
+`bare-16.container`'s trailer is the golden `bare-16.snapshot`'s state digest
+and its STATE section is that file's exact size, 77478 bytes. The container
+carries the image VERBATIM, and that is now checkable by `memcmp`.
+
+**AND THE CORPUS COULD NOT HAVE A PLAYED CONTAINER AT ALL until something was
+measured.** `Door::TakeUp` was offered nobody at 16, 24 or 32 tiles. Sweeping
+the rules at ten years of pre-history: `WantBound 1` offers nobody under any
+age window; `WantBound 0` offers person 1 at ages 0-10 and nobody at 12-120.
+**Nobody in a ten-year world is twelve, and nobody in it is bound to anything** -
+everyone alive was born inside it. So `StartRules{}`, a bound life aged 16 to
+40, is offered nobody, which is also why `full-16.snapshot` next door was never
+played. The two played containers carry `{0, 45, 0, 0}`: all four fields
+non-default, which is 17.07's defect guarded a task early, by the corpus rather
+than by a macro.
+
+Two entries, making opposite claims:
+
+- `Run.Containers` - **generates no world at all**; there is no `Aelvor` in the
+  file. Five cases: the record against the bytes; the STREAM rules against the
+  defaults *and then* against their values; every recorded field bent in turn
+  with the comparison required to name it; edited bytes refused (section count
+  3/5/0/64, a flipped payload byte, a truncation) with the untouched bytes
+  still reading in the same run; and a `.snapshot` handed to `ReadCheckpoint`
+  required to say `BadMagic`.
+- `Atlas.ContainersRegenerate` - generates three worlds and requires byte
+  equality with the checked-in files, because `Run.Containers` would go on
+  passing on the day this build lost the ability to WRITE one.
+
+**THREE DELIBERATE FAILURES, ALL OF WHICH FIRED** (ADR-0149). Flipping byte
+40000 of `bare-16.container`: the regeneration entry says
+`bare-16.container no longer regenerates`, and `Run.Containers` names the
+refusal. Deleting one field's comparison from `FirstDisagreement`:
+`PerturbationsAreSeen` says `bending log bytes was not seen at all`. The first
+run of it also found a real defect in the recorder - a 256-byte `snprintf` had
+sliced a table header in half at `|---|---|--` while the FILES were correct, so
+only the record was truncated; the buffer is 640 now and the return value is
+checked, because a README that agrees with nothing is the same class of defect
+as a store that reports a digest by position.
+
+Costs on this machine: `Run.Containers` 0.01 s, `Atlas.ContainersRegenerate`
+0.17 s. The corpus is 341 kB.
+
+### 17.02 AS BUILT, 2026-09-24
+
+`Source/VaelenSim/Public/Vaelen/Sim/EventTypeNames.h` is generated by
+`Tools/gen_event_names.py` from the **115** `MakeEventType` call sites across
+nine modules - 115 distinct names, no duplicates, no hash collisions, all
+checked by the generator before it writes a byte.
+
+**THE COUNT IN THE PLAN WAS WRONG BY ONE AND IN MY OWN HANDWRITING.** `grep -c
+MakeEventType` returns 116; one of them is the template's own definition in
+`Event.h`, which has no name to read. The generator's regex is written to match
+a string LITERAL and its self-test requires it NOT to match that definition, so
+the off-by-one cannot come back.
+
+**WHY GENERATED AND NOT CONSTEXPR.** A compile-time table built from the
+`EventType<T>` constants needs every module's headers in one translation unit -
+Colony, Military, Politics, Economy, Society, Population, Sim - and VaelenSim
+may not know VaelenMilitary exists. The generated header knows hashes and
+string literals and depends on nothing but `CoreTypes.h`, `Hash.h` and
+`<cstdio>`, which purity allows.
+
+`NameOfEventType(Hash64, char (&)[18])` is a binary search over a hash-sorted
+table. **An unknown hash is answered with `?<16 hex digits>` in the CALLER's
+buffer** - not an empty string, not a static, not a crash. A log written by a
+build carrying a type this one lacks is a thing a save format exists to make
+possible, and the three wrong answers are a crash, a blank row that looks like a
+bug in the census, and a plausible name belonging to something else.
+
+Four entries, and they make different claims:
+
+- `Kernel.EventTypes` re-runs the generator and diffs. The ONLY thing that
+  notices a type added, renamed or deleted.
+- `Kernel.EventTypesSelfTest` runs the generator's own four controls, including
+  that the regex does not match the template definition and that the empty
+  string hashes to the FNV-1a offset basis - the one value the arithmetic
+  cannot get right by accident.
+- `Run.EventTypes` (five cases, 0.01 s) re-hashes **every one of the 115 names
+  with the KERNEL's own `HashString`**, checks the table is strictly sorted,
+  finds every row by its own hash, samples one real declaration from each of
+  seven modules, and requires an unknown hash to answer `?<hex>` while a known
+  one still answers its name **in the same run**.
+- The last case pins that the lookup uses the caller's buffer and nothing else:
+  two unknown hashes into two buffers must both still read, and a KNOWN hash
+  must not touch the buffer at all.
+
+**THE ROWS CARRY NO `// path:line` COMMENT, and that is a decision made after
+seeing the alternative.** The first cut put the declaration site on every row;
+clang-format then wanted to align a hundred and fifteen trailing comments into
+one column whose position is set by the longest line in the block, so adding a
+single long event name would reformat the entire table and the diff would stop
+being readable. The site is one grep away - `grep -rn '"OreLifted"' Source/` -
+and the header says so where a reader will look for it.
+
+**FOUR DELIBERATE FAILURES, ALL OF WHICH FIRED.** Renaming `ArmyRetreated` to
+`ArmyWithdrew` in `Battle.h`: the check reports `+ ArmyWithdrew` and
+`- ArmyRetreated` by name, because a diff of a 115-row table is unreadable and
+the answer is almost always one name. Adding a type: `116 declarations found`,
+`+ ProbeOnlyForTheControl`. Hashing with a trailing NUL - the classic way to
+build a table that is self-consistent, compiles, round-trips against itself and
+agrees with the running world about nothing - makes the generated text differ
+AND, when that header is actually built, makes `Run.EventTypes` report **129
+failures**, every row of the table among them.
+
+### 17.03 AS BUILT, 2026-09-24
+
+Both defects fixed, and **making the test fail on purpose reversed which of
+them matters.**
+
+`List()` reads the DIRECTORY (`<filesystem>`, `error_code` overloads
+throughout, never the throwing ones, because this tree builds `-fno-exceptions`),
+sorted so two hosts agree on order, skipping anything `IsUsableCheckpointName`
+refuses - which also skips a `.writing` temporary left by an interrupted write.
+`StdioCheckpointStore` is no longer `final`, `Written` and `Remember` are
+**deleted**, and `StoreEntry` gained `SectionCount` so a caller can see a save's
+shape - above all whether it carries its own tape - without opening it twice.
+
+**THE DIGEST WAS WRONG ALWAYS, NOT ONLY FOR AN UNUSUAL LAYOUT.** I wrote in the
+plan, and repeated in 17.01's README, that `Sections.front().Digest` was "right
+today because STATE happens to be section 0". Measured: on an ORDINARY
+container the old code reports `e0614906cb8a5676` where `ComputeStateDigest`
+returns `0f6fa26b35d09a70`. The section digest and the image trailer are
+different numbers over the same bytes, on every container, whatever the order.
+So position was the SECOND fault - ADR-0150's "safe by accident", which had not
+started mattering yet - and the first was reporting a number no other
+instrument in this repository means by a save's digest. A host comparing a
+listed digest against a logged one was told two identical saves were different
+worlds, and it was told that always. All three places that carried my wrong
+account are corrected in the same commit.
+
+**AND THE SECOND CONTROL FOUND SOMETHING ABOUT THE FORMAT.** The gate asks for
+a container in which STATE is not first. Rotating the table ROWS is refused
+`BadSectionTable` - correctly: `ReadCheckpoint` requires ascending offsets, no
+overlap, and every payload byte claimed. A legal container with STATE second
+therefore needs the PAYLOADS moved with the rows, which the test now does, then
+recomputes the trailer. The result reads `Ok`, its first section is RUN, its
+STATE bytes are `memcmp`-identical to the original's - and the fixed store
+reports the same trailer while the pre-fix one reports RUN's section digest.
+
+`Run.StoreColdProcess`, two cases, 0.10 s:
+
+- a store that wrote NOTHING lists three containers another object wrote, with
+  the right bytes, tick, container version, section count and trailer - the
+  trailer checked against `ComputeStateDigest` over the world that was saved,
+  never against another listing;
+- **the pre-fix listing is kept**, as `AWrittenOnlyStore`, deriving from the
+  real store so it differs from it in the defect and in nothing else. It lists
+  ZERO of the same three files in the same run, and then lists the one file it
+  writes itself - so the arm is about coldness and not about the class being
+  broken outright.
+
+**TWO DELIBERATE FAILURES AGAINST THE FIXED CODE, BOTH OF WHICH FIRED.**
+Putting `Sections.front().Digest` back: `alpha: listed e0614906cb8a5676,
+ComputeStateDigest 0f6fa26b35d09a70`. Making `List` return early before it reads
+the directory: `a cold store listed 0 of 3`.
+
+**AND THE CI FOUND TWO DEFECTS IN THE TESTS THEMSELVES, ON `4340938`, THAT
+NO LINUX DEBUG BUILD COULD SEE.** Four of ten legs red.
+
+The serious one: `Named(Cold.List(), "swapped")` - a pointer INTO a temporary
+vector that dies at the end of the expression, in the second case of
+`Run.StoreColdProcess`. The first case had bound the vector to a name; the
+second copied the pattern wrong. gcc's allocator left the freed bytes in place
+and the test passed on every Linux leg and on this machine; AppleClang read
+`0000000000000000` and MSVC read `dddddddddddddddd`, its freed-memory fill. A
+test that passes on one platform because of what its allocator happens to leave
+behind is the exact shape of defect this phase keeps finding elsewhere, and this
+one was mine and a day old. **AddressSanitizer sees it deterministically**:
+`heap-use-after-free ... READ of size 8 ... Test_StoreColdProcess.cpp:360` on
+the pre-fix file, and the fixed file runs clean under ASan, 49 checks. That
+probe is now the local instrument for this class - `scratchpad/asan_*`, one
+translation unit compiled `-fsanitize=address` against the debug libraries.
+
+The other: gcc at `-O2` with `-Wnull-dereference` refuses `Bent[SectionCountAt]
+= Count` on a copy of a non-empty vector, and `-Werror` made both gcc release
+legs fail to BUILD `Test_Containers.cpp`. A debug build cannot see it because
+the analysis only runs with optimisation. The index goes through a pointer
+checked non-null now, and a gcc `RelWithDebInfo` tree matching the CI preset is
+configured beside the debug one so the compile check can be run under the same
+flags before a push rather than after.
+
+Neither defect was in the store. Both were in the instruments that judge it,
+and both were found by the only thing that runs the instruments on four
+compilers - which is the argument for ten legs, made by ten legs.
+
+### 17.04 AS BUILT, 2026-09-24
+
+`Vaelen/Sim/Causality.h` declares `WalkEnd` and `CauseWalk`;
+`History::CauseChain` stays, reimplemented as a wrapper that discards the end,
+so its **two** callers do not churn - `HistoryText.cpp:267` and `Atlas --why`.
+The plan said five; there are two.
+
+**SIX ENDS, NOT SEVEN, AND THE SEVENTH WAS DROPPED ON PURPOSE.** The plan wrote
+`WalkLimits{Depth, Nodes}` with a `BudgetExhausted` beside it. A backwards walk
+is LINEAR - one node per step - so a node budget and a depth limit can never
+disagree, and a state no input can reach is a state no test can reach either.
+Two limits that always agree look thorough and measure one thing. There is also
+no cycle to guard against: `CauseNotBeforeEffect` makes every step strictly
+decrease the id, so the walk terminates whatever the data says.
+
+The six: `Root`, `NoSuchEvent`, `CauseMissing`, `CauseNotAnEvent`,
+`CauseNotBeforeEffect`, `DepthExhausted`. `History.cpp:198-211` reached four of
+them through ONE `break` and the fifth by falling out of the loop condition.
+
+**TWO ORDERING DECISIONS, AND EACH IS PINNED BY A CASE THAT CAN SEE IT.**
+
+The kind check comes BEFORE the ordering check. `IdKind` is the high byte of
+`PersistentId::Value`, so an Entity cause (kind 1) compares BELOW an Event
+effect (kind 2) and sails past the ordering guard, while a Person cause (kind
+23) compares above it and would be reported as an ordering fault. Both are the
+same mistake. Swapping the two checks makes the Person case report
+`CauseNotBeforeEffect`, and the test says so.
+
+The link is resolved BEFORE the depth is checked - **and this row exists because
+an experiment did not fail.** Moving the depth check ahead of the resolution was
+meant to break the boundary case and did not: for a WHOLE chain the two orders
+are identical, so the test was measuring nothing about the ordering. They differ
+in exactly one place, when the budget runs out on the step that would have found
+the link missing, and both facts are then true at once. THE DATA FAULT WINS:
+`CauseMissing` says the log is broken, `DepthExhausted` says the caller asked
+for less than there was, and a person shown the second when the first is true
+goes and raises the limit and learns nothing. A case for it was added, and the
+same experiment then reported `a cut on the limit must report the cut, not the
+limit: DepthExhausted`.
+
+That is the third time this session an experiment has told me about the
+instrument rather than about the guard, and the third time the fix was to make
+the instrument able to see.
+
+Three entries in one file, `Sim.CauseWalk`, 0.00 s:
+
+- eight cases, one per end plus both sides of `CauseNotAnEvent`, the depth
+  boundary at exactly the chain's length, a depth of zero, and the cut-on-the-
+  limit case above;
+- **`TodaysChainCannotTellARootFromACut`, kept permanently**: the OLD function
+  over a whole chain and a cut one must give the SAME answer - that
+  indistinguishability IS the defect - while `CauseWalk` over the same two logs
+  says `Root` and `CauseMissing`, in the same run;
+- `TheWrapperStillAnswersItsTwoCallers`: six depths, the wrapper and the walk
+  compared event by event, so 17.04 cannot have changed behaviour while
+  claiming to add a return value.
+
+The logs are hand-built. A real world's log is 98.7% roots, so five of the six
+ends would never occur and the test would be a test of AELVOR's demography.
+
+### 17.05 AS BUILT, 2026-09-24 — and the panel had measured the wrong worlds
+
+`Vaelen/Sim/Causality.h` gained `CauseCensus` and `TakeCauseCensus`: one
+forward pass for the depths - correct because a cause precedes its effect and
+the log is in id order, so no recursion and no stack to blow on a chain a
+million events long - and one sort for the fan-out. `Atlas --causes FILE`
+adopts a container from its OWN HOST section, so the wiring cannot be spelled
+wrongly on the command line, and prints the table per type through 17.02's
+names; `--census` does the same over a generated world.
+
+**Over the 17.01 corpus it reproduces the panel's figures by an independent
+instrument**: 3 of 129, 3 of 148, 7 of 577 with a cause; deepest chain one
+edge; fan-out one. `Atlas.Causes.{bare-16,played-16,full-32}` pin those lines
+whole and refuse any `?<hex>` row.
+
+**Over a fresh AELVOR 128 at 300+120 years, full wiring, 21 min 51 s:**
+
+```
+16,842,422 events, 5,211,672 with a cause (30.94%), 11,630,750 roots
+deepest chain 3 edges, median depth 0, widest fan-out 11 (event 4193697)
+0 dangling, 0 not an event, 0 not before their effect, 53 event types
+```
+
+Three ten-year worlds whose economy had barely started are what the panel
+measured, and 1.31% and one edge were true of them. The plan's "98.7% roots"
+was carried into `Causality.h` and two tests in my own hand; corrected in this
+commit. **17.09 is code, not a note: there is a third step to walk to.**
+
+**But the table per type says where the graph lives, and it is not where a
+person would look.**
+
+| type | events | with a cause |
+|---|---|---|
+| `StockAdded` | 2,636,125 | **98.8%** |
+| `StockTaken` | 2,731,702 | **95.4%** |
+| `DisasterStruck`, `RegionSettled`, `Condemned`, `Pardoned`, `ReligionFounded` | 3 – 207 | **100%** |
+| `BondEntered` / `BondLeft` | 33 / 25 | 58% / 56% |
+| `PriceChanged` | 1,784 | 11.8% |
+| `PersonDied`, `PersonBorn`, `PersonMarried`, `RulerSeated`, `HeirNamed`, `FamilyFounded`, `MigrationWave`, `Named` | 116 – 2,692 | **0.0%, every one** |
+
+5.2 million of the 5.21 million causes are the stock ledger. A deeper `why`
+explains where goods came from; it explains no death, no birth and no reign.
+The causal graph is dense in the ECONOMY and empty in the HUMAN STORY, and that
+is the measurement 17.09 and any later "fill the Cause edge" task starts from -
+the owner's question 4 is now a question about which publishers, not whether.
+
+**Also measured, and nobody asked**: `PlayerActed` is 9,147,427 of 16.8 million
+events - 54% of the log - in a world nobody played. That is the Lively wiring's
+persons acting through the command surface, and it is the single largest thing
+in every save. `HeardOf` is another 2.3 million. Phase 20's log question has
+its first figure, and it is not the one Phase 16 expected.
+
+`Sim.Causality`, four cases: the planted graph counted exactly (a chain of seven
+edges, a fan-out of five, one dangling link, one Person cause, one cause after
+its effect - eighteen events, and the parts must add up to the whole); the SAME
+eighteen with every cause cleared reporting depth 0 and fan-out 0 while the
+planted one still reports 7 in the same run; an empty log all zeros and not a
+verdict; and the census agreeing with 17.04's walk, with which it shares no
+code. **The first planting was wrong, not the code**: event 30's "dangling"
+cause was 99, which FOLLOWS it, and both instruments called it
+`NotBeforeEffect` - correctly, and in agreement. A dangling link must precede
+and be absent.
+
+### 17.06 AS BUILT, 2026-09-24
+
+`Atlas --inspect FILE` describes a container from its bytes and from nothing
+else: header, every section with kind, offset, length, share and section
+digest, the image TRAILER named as "the state digest every other tool means",
+the HOST wiring, the RUN state's shape, and the STREAM's record counts, header
+and rules - **without constructing an Aelvor**, let alone generating or
+adopting one. `ReadHostSection`, `ReadRunSection` and `ReadStreamSection` need
+no world, and that is the whole claim: a 2 GB save is described in the time it
+takes to read it. The roadmap's own words at the close of Phase 16 were "this
+phase stops there"; nothing in the tree read a container from disk except a
+test, until this.
+
+`Atlas --inspect-dir DIR` lists a directory through the host-side store from a
+process that wrote nothing - **17.03's second-process half**, and
+`Atlas.InspectDir.ColdProcess` is two writer processes at seeds 1 and 2, then a
+third that lists both with the trailers their writers printed, on the same line
+as their names, so a listing with the names right and the digests by position
+cannot pass. The first expectation said four sections; `--save-to` uses the
+two-argument build and carries no tape, so three. The tool was right.
+
+**AND THE FIRST RUN OVER THE CORPUS DIRECTORY FOUND SOMETHING.** `README.md`
+was listed as a checkpoint: tick 0, version 0, a digest of sixteen zeros - a row
+that looks like data and is not. The store is right to hand it back (it lists
+what is there, and judging bytes is not its job); a browser is wrong to show it
+as a save. `ContainerVersion` is 0 exactly when `ReadCheckpoint` refused and no
+container this build writes has version 0, so the tool now prints
+`| README.md | 7476 | - | not a container | - | - |` and counts
+`3 checkpoint(s) and 1 other file(s)`.
+
+Two refusals, as the gate asks, and both are about what is NOT printed:
+
+- an IMAGE - the inner format, what `Tests/Run/Golden` holds - is refused with
+  `BadMagic (it is a save IMAGE, the inner format, not a VAELENCP container
+  around one)`, because a reader that only said BadMagic would leave a person
+  wondering which of two magics they had;
+- a container cut at 4 KiB, which has a readable header and a table that
+  points past the end, is refused WHOLE: `Corrupt`, `4096 bytes on disk;
+  section 0 is where it stopped describing them`, and not one line of the
+  header or the table printed.
+
+Seven entries: `Atlas.Inspect.{bare-16,played-16,full-32}` (header, trailer and
+last line pinned whole, 0.01 s each), `Atlas.Inspect.RefusesAnImage`,
+`Atlas.Inspect.RefusesATruncation` (the copy is cut by the one tool every leg
+has and its size is checked before the inspector sees it),
+`Atlas.InspectDir.ColdProcess` (0.24 s), and the directory judgement above is
+exercised by the same driver.
+
+**THREE DELIBERATE FAILURES, ALL OF WHICH FIRED.** Printing the header BEFORE
+the refusal: `a refused file was described in part`. A pinned trailer bent by
+one hex digit: `WANT_TRAILER not printed`. One byte of `second` flipped in the
+listed directory: `1 checkpoint(s) and 1 other file(s)`, with `second` shown as
+`not a container` rather than with a wrong digest.
+
+### 17.07 AS BUILT, 2026-09-24
+
+Two macros in `Tests/Harness/VaelenTest.h`, beside the eight that were there.
+
+`VT_CHECK_ROUNDTRIP(Written, Read)` compares bytes - which is what a round trip
+means for plain data - and **records a failure when the WRITTEN value is
+byte-equal to `T{}` before it compares anything**, because a reader that wrote
+nothing would then pass. The type must be trivially copyable and have unique
+object representations; a type with padding or floating point is refused at
+compile time, since byte equality would not be value equality and vacuity could
+not be judged from the bytes. `Player::StartRules` - four `uint32` - qualifies.
+
+`VT_CHECK_DIGEST_EQ(A, B)` refuses `0` (what an unset field holds) and
+`EventLog::EmptyDigest` (what an EMPTY log reports) as operands before it
+compares them. The harness sits below VaelenSim and cannot include
+`EventBus.h`, so it carries the value as a literal, and
+`Tests/Sim/Test_EventLog.cpp` holds the two together with a `static_assert`.
+
+`Core.Harness` gains two cases, and the harness self-tests live in one file so
+the gate clause names that one entry rather than the `Harness.VacuityIsSeen`
+the plan wrote:
+
+- **`VacuityIsSeen`, both arms in one run.** The assertion Phase 16 committed,
+  reconstructed - two default-constructed `StartRules`, "written" and "read",
+  compared - PASSES under `VT_CHECK` with one check and no failure: that is the
+  defect, and it stays visible here. The same assertion FAILS under
+  `VT_CHECK_ROUNDTRIP`, one check and one failure, in the same test. Then the
+  control: a genuine round trip (`{0, 45, 0, 0}`, the corpus's own rules)
+  passes under both, so the witness is not simply a macro that fails; and a
+  round trip that LOST a field fails for the loss, which is reached only because
+  the write was not vacuous.
+- **`DigestsThatCompareNothingAreRefused`**: five checks, one pass and four
+  refusals - two of which would have been GREEN under `VT_CHECK_EQ`, which is
+  how nine of eighteen matrix cells once compared an empty life digest against
+  itself.
+
+**TWO DELIBERATE FAILURES, BOTH OF WHICH FIRED.** Disabling the vacuity check
+in the witness: `the witness let the vacuous round trip through (0 failures)`.
+Disabling the empty-log refusal: `Scratch.Failures` 3 against 4.
+
+What is NOT done here, on purpose: rewriting existing tests to use the new
+macros. The nine empty-against-itself cells of `Run.SaveContinue` are the open
+review finding, and converting them is a change to what that matrix claims; it
+gets its own commit with its own measurement rather than riding on the macro
+that makes it visible.
+
+### 17.08 AS BUILT, 2026-09-24 — and the first run found a door open
+
+`Run.RefusalsAreTheCachesSafety`, three cases, 0.74 s. No change to the cache,
+as the row said: guard now, fix if asked.
+
+**THE PREMISE, MEASURED RATHER THAN QUOTED.** Six 32-tile worlds at seeds 1 to
+6 have **12, 13, 12, 13, 13 and 10 regions** and differ pairwise by state
+digest: **four pairs share a region count and are different worlds.** Each such
+pair is a stale graph that `DiplomacySystem`'s key - the region COUNT,
+`Diplomacy.cpp:72` - cannot see. The danger ADR-0150 described is not
+hypothetical at 32 tiles; it is two in three seeds.
+
+**NINE DOORS SHUT, EACH NAMING THE CACHE IN ITS FAILURE TEXT.** `Adopt`'s
+`WrongSeed` and seven `*Differs` - the seed listed beside the Options fields
+because it is the OTHER way to get a different map with the same count - and
+the kernel's `SeedMismatch` through `LoadSnapshot` on a BEGUN world, which is
+the door a host would reach if it bypassed `Adopt`. The control first: the
+matching world is accepted at both doors, so a test that refused everything
+could not pass. Every refused host is checked to be still un-begun and
+un-generated.
+
+**THE TENTH DOOR IS OPEN.** Handed a 32-tile image, a begun 16-tile world of
+the same seed answers `Ok` from `LoadSnapshot` - because `WorldMap::LayoutDigest`
+folds layer names and element sizes and **no extents**. That is Phase 16's
+defect 5, still pinned by `Golden.TheLayoutDigestCannotTellTwoMapSizesApart`;
+16.08 named the six causes apart and did not put the map's size into the digest.
+After the load the map is 32 wide and the Aelvor still declares 16 - ADR-0150's
+chimera, measured: a walk recorded then names a world that does not exist. In
+production the door is reached only through `Adopt`, which refuses the size by
+the HOST section before `LoadSnapshot` sees a byte; the only other caller is
+`Atlas --withhold-run`, a test tool.
+
+**WHY IT IS NOT CLOSED HERE.** The layout digest is written INTO the image
+(`Snapshot.cpp:435`), so folding the extents changes every image's bytes, every
+trailer and every frozen state digest in the repository - gate clause (i). It
+is a re-freeze like ADR-0131 and lands as its own commit or with the v4 bump.
+So the third case, `TheTenthDoorIsOpenAndPinnedHere`, asserts the `Ok`, the
+32-wide map, the 16 declaration and the image's region count, prints whether
+the graph went stale across that load (this time the counts were 3 against 15,
+so it would have been rebuilt - "this time" is the operative phrase), and
+**fails the day the door closes**, so that whoever folds the extents finds this
+file, the golden test and ADR-0150 together and rewrites all three in the
+re-freeze commit. The same shape the golden test has had since 16.01.
+
+The plan wrote "ten refusals"; nine are guarded and the tenth is pinned. Gate
+clause (h) now says so.
+
+**THE CONTROL THE GATE ASKS FOR, RUN.** Disabling the `YearsDiffers` refusal in
+`Aelvor::Adopt` in a scratch build: `the YearsDiffers door is OPEN: Adopt
+answered Ok where YearsDiffers was required - DiplomacySystem's region graph
+(Diplomacy.cpp:72) is rebuilt only when the region COUNT changes, and this
+refusal is one of the ten that keep a same-count different map out of it
+(ADR-0150)`. Named door, named cache.
+
+**Owner's question 4 is sharper again**: it was "should a save ever load into
+a differently-generated world"; it is now "the kernel door already does, for
+the same seed at a different size, and closing it costs a re-freeze - with
+Phase 18's climate re-freeze coming, they should share the commit".
+
+### 17.09 AS BUILT, 2026-09-24 — the why says how it ended
+
+**The two-step limit was never in the kernel.** `History::Why` walked to 64 and
+`ExportWhyWithLife` printed every step; the limit was `ChronicleView::WhyLines
+= 2`, in the view leaf. So "the deep why" is three things, and none of them is
+a deeper walk:
+
+- **`History::Why` returns `WalkEnd`** (17.04's), through `CauseWalk`. Until
+  now `Root`, `CauseMissing` and `DepthExhausted` were all an empty tail, and a
+  person reading a why could not tell the beginning of the world from a hole in
+  the record. `History::WhyEndText(WalkEnd)` is the ONE place the sentence for
+  a non-root end lives - "" for `Root` and `NoSuchEvent`, a sentence each for
+  the other four, all different - and both text exports print it:
+  `ExportWhy` (kernel) and `ExportWhyWithLife` (player), the latter counting
+  it as a line because it returns lines.
+- **The view holds four lines, not two, and knows how its chain ended.**
+  `WhyLines` 2 → 4, `WhyTextBytes` 512 → 768, and `WhyEnd` (the `WalkEnd` as a
+  number, because a leaf may not include `Causality.h`) from the view's OWN
+  walk to its own depth, so a chain longer than the view holds says
+  `DepthExhausted` instead of trailing off. **Four and not eight, by two
+  measurements:** the deepest chain 17.05 found anywhere is three edges, four
+  lines; and the row says the leaf is 8 KiB - the first cut said eight lines
+  and 2048 bytes, was 9552 bytes, and the `static_assert` refused it. Four
+  lines at 192 bytes, the same per-line budget as the chronicle text (6144 for
+  32), is 8144. A `WhyReserved` keeps the `LineView`s 8-aligned; the
+  no-padding assert is what said so.
+- **Over a real world the chronicle prints what the census predicts.**
+  `View.Chronicle`: `the why is 2 line(s) deep on this world, ending at a
+  root`. The played person's why is structurally "the thing, because of what
+  they did", since a `PlayerActed` has no cause of its own (0.0% of 9.1
+  million at AELVOR 128). The old assertion `WhyCount == WhyLines` was a
+  coincidence of capacity and content, and two of them - in
+  `AWalkIsTwoLinesAndItsOwnWhy` as well - now read `== 2` with `WhyEnd == 0`.
+
+`Sim.HistoryText.WhySaysHowItEnded` plants chains into a small real world
+through `EventBus::Publish` with a cause: a whole chain of four (`Root`, four
+steps, no end sentence), the same chain walked with room for two
+(`DepthExhausted`, two steps), and one caused by a PERSON (`CauseNotAnEvent`,
+and the export ends with its sentence). `NoSuchEvent` with no steps.
+
+**A cut chain cannot be planted in a world, and the test says so instead of
+pretending.** The first version gave an event a cause one serial below the
+planted root and expected `CauseMissing`; that serial was a real event, and
+the case fell into an `else` branch and tested nothing - found when the
+deliberate failure (`Why` reporting `Root` whatever the walk said) fired on
+three checks and not four. A world's log has no holes: ids are monotonic and
+nothing is ever removed, so "a cause that precedes and is absent" exists only
+in a log that was truncated or compacted. The case now asserts that every
+serial below the planted root exists; `CauseMissing` is walked over a
+hand-built log in `Sim.CauseWalk`, and its sentence goes through the same tail
+code the person-caused case exercises. And the six
+sentences: two empty, four present and pairwise different - a renderer that
+showed the same words for a cut and a limit would be the defect this task
+removes, moved into the text.
+
+**What the roadmap row asked, answered.** The condition was "if the census
+confirms a maximum depth of one edge, this becomes a note". The census
+confirmed three edges in the ledger and zero in the human story, so this is
+code - and the code's honest shape is not a deeper walk but an END that is
+named, because the chains a person will actually see are two long and the
+question they raise is "is that all?", to which the answer is now `Root`.
+
+### The Phase 17 gate
+
+| clause | the command that decides it |
+|---|---|
+| (a) | `ctest -R '^Run\.Containers$'` — the three containers read without a world being generated, every recorded number checked against the bytes, and each regenerating byte-identically from its recorded command. |
+| (b) | `ctest -R '^Kernel\.EventTypes$'` — the generator re-run and diffed; and `Tools/Atlas --causes` over the corpus prints type NAMES, not hashes. |
+| (c) | `ctest -R '^Run\.StoreColdProcess$'` — a store that wrote nothing lists a directory somebody else filled, with the right ticks, digests and section counts; the pre-fix listing, kept in the same file, reports zero over the same three files in the same run. The second-**process** half is `Atlas.InspectDir.ColdProcess` (17.06): two writer processes, one cold reader through the store, both trailers on their names. |
+| (d) | `ctest -R '^Sim\.CauseWalk$'` — seven ends, and the kept pre-fix arm showing today's `CauseChain` cannot tell a root from a missing link. |
+| (e) | `ctest -R '^Sim\.Causality$'` — the planted census exact, and the cleared-edge arm reporting depth 0. The real figures are in this ROADMAP and dated. |
+| (f) | `ctest -R '^Atlas\.Inspect'` — the three corpus containers with their header, trailer and last line pinned whole; an image refused BY NAME; a 4 KiB truncation refused whole and not described in part; and the cold directory listing. |
+| (g) | `ctest -R '^Core\.Harness$'` — `VacuityIsSeen`: the same assertion failing under the witness macro and passing under the plain one, in one run; and `DigestsThatCompareNothingAreRefused`. The harness self-tests live in one file, so one entry. |
+| (h) | `ctest -R '^Run\.RefusalsAreTheCachesSafety$'` — nine guarded doors, each refusal by name with the cache named in its failure text; the tenth (`WorldShapeDiffers` for a different SIZE) found OPEN at the kernel door and pinned as a kept arm that fails the day it closes, because closing it re-freezes every digest. |
+| (i) | Not one frozen digest moved: `git diff <phase start>..HEAD -- Tests/ Source/ Tools/ Docs/ROADMAP.md \| grep -E '^-.*\b[0-9a-f]{16}\b'` prints nothing. **This is the clause the dropped tasks would have broken**, and it is why they were dropped. |
+| (k) | `ctest -R '^Sim\.HistoryText$|^View\.Chronicle$'` — the why says how it ended: four planted chains (whole, cut, longer than allowed, caused by a person) each named by `History::Why` and each end's sentence printed by the text export; and over a real world the chronicle's why is what the census predicts — two lines, ending at a root. |
+| (j) | `Tools/run_gates.sh linux-clang-debug` prints `GATES-DONE 0 failing`, and `Tools/verify_fast.sh` is clean. |
+
+### The Phase 17 gate, read clause by clause on 2026-09-24
+
+Nine tasks built in one session, 17.01 to 17.09, each with its controls run
+and its deliberate failures fired. The gate is a different question, and it is
+read the way Phase 16's was: the entry the clause NAMES against the entry that
+EXISTS and what it printed.
+
+| clause | state |
+|---|---|
+| (a) `Run.Containers` | **met** — three containers read with no world generated, every recorded number checked against the bytes; `Atlas.ContainersRegenerate` byte-identical |
+| (b) `Kernel.EventTypes` | **met** — generator re-run and diffed on every leg; `Atlas --causes` prints names and refuses any `?<hex>` row |
+| (c) `Run.StoreColdProcess` | **met** — a store that wrote nothing lists three; the pre-fix arm lists zero in the same run; the second **process** is `Atlas.InspectDir.ColdProcess` |
+| (d) `Sim.CauseWalk` | **met** — six ends, both sides of the kind check, the cut-on-the-limit case, and today's `CauseChain` unable to tell a root from a cut |
+| (e) `Sim.Causality` | **met** — the planted graph exact, the cleared-edge arm at 0, and the figures dated in this file: 30.94% and three edges at AELVOR 128, 1.31% and one edge in the corpus |
+| (f) `Atlas.Inspect*` | **met** — three containers pinned whole, an image refused by name, a 4 KiB truncation refused whole, the cold directory listed |
+| (g) `Core.Harness` | **met** — the vacuous round trip passing under `VT_CHECK` and failing under `VT_CHECK_ROUNDTRIP` in one run; four digest refusals |
+| (h) `Run.RefusalsAreTheCachesSafety` | **met, with a finding** — nine doors guarded by name; the tenth found OPEN at the kernel door and pinned as a kept arm that fails the day it closes |
+| (i) no frozen digest moved | **met** — `git diff 6ee00b6..HEAD -- Tests/ Source/ Tools/ Docs/ROADMAP.md \| grep -E '^-.*\b[0-9a-f]{16}\b'` prints **nothing**, over nine tasks. **AMENDED 2026-09-24 by the Phase 18 panel (section 25): that grep is BLIND to `0x…ull` literals — `\b` finds no word boundary before a suffix — and prints 0 over the ADR-0131 re-freeze itself, which removed 55. Re-measured with `grep -P '^-[^-].*0x[0-9a-fA-F]{16}(?![0-9a-fA-F])'`: 0 removed, 138 added over `6ee00b6..8c0a4e4`. The clause holds; the instrument did not, and 18.01 builds the one that can fail.** |
+| (k) `Sim.HistoryText`, `View.Chronicle` | **met** — four ends named and worded; the real world's chronicle two lines deep, ending at a root |
+| (j) `run_gates.sh linux-clang-debug` | **met** — `GATES-DONE 0 failing (of 17)` on `5032246`, 5122 s on a freshly configured `out/build/linux-clang-debug` (eighty-five minutes: the seventeen gates are the whole cost of this clause, and the reason it was read last); `verify_fast` clean at every commit |
+
+Beside the gate: the CI is ten of ten green on `65b60d4` (run 274), which carries
+17.01 to 17.04 and the fix for the two test defects the CI itself found. Run 276
+on `5032246` — the same code as 17.05 to 17.09, plus this table — is nine of ten
+green as the close is written, the clang-debug leg still testing; its result goes
+into STATUS when it lands, and the close does not wait for a leg whose nine
+siblings, and the local run of the same preset, have already answered.
+
+What the phase leaves open, all named in the notes above: the kernel door of
+defect 5 (a re-freeze, to share the commit with Phase 18's climate); the nine
+empty-against-itself matrix cells that `VT_CHECK_DIGEST_EQ` now makes visible
+(their own commit); 16.14 and every engine-side task, which are the owner's
+machine; and the owner's six questions, two of them sharper than they were.
+
+**Phase 17 is CLOSED on 2026-09-24, all eleven clauses met.** 16.14 stays outside
+every gate, and reading the tree for the close found it is more than a sitting:
+its ENGINE HALF — `Vaelen.Save`, `Vaelen.Load`, a store over `IFileManager` — was
+never written, here or on the owner's machine (`grep -rn 'Vaelen\.Save\|CheckpointStore'
+Source/VaelenGame` prints nothing). That half is written here and parsed against
+`Tools/EngineShim`, like every engine-side file since 14.07, before the sitting is
+asked for; `Docs/ENGINE_HANDOFF.md` says so now, which it did not.
+
+### What is NOT in Phase 17, and why
+
+- **Filling the `Cause` edge across the publish sites.** 27–30 of 132 publishers pass one; the rest create roots. Giving the others causes is correct work and it is a DATA change through fifteen closed phases that moves `EventLog::Digest`, the image, `ComputeStateDigest` and every frozen literal. All three judges said independently that it cannot share a commit with the corpus that is meant to pin the format. It needs a phase boundary or a dedicated commit whose only content is the re-freeze.
+- **Log tiering and compaction.** There are **49 `Log().All()` call sites**, not the five one angle assumed, and a dozen scan the whole log every tick. It buys resident memory rather than save size, and it is the one task that could move all ~178 frozen digest literals without anyone intending it. It stays where DECISIONS put it; Phase 20, the stress test, opens with the log question rather than inheriting it.
+- **A save browser, thumbnails, named slots, autosave UI.** `--inspect` is the inspector side and stops there; the player-facing side is Phase 22 POLISH, as Phase 16 already recorded.
 
 ### Still the owner's to answer, and now sharper
 
@@ -5658,120 +6445,764 @@ world was a question about `DiplomacySystem`'s cache; it is now also the questio
 edge is ever going to be filled in, because both are one-way doors through every frozen digest. They
 should be answered together or not at all.
 
-### Out of scope for Phase 16, and where it belongs
+## 24. The owner's decisions of 2026-09-24: the climate, and a world one walks
 
-- **Log truncation.** All four plans measured the same thing — the log is 83.6%
-  of the image at 256, 90.9% at 128, 93.5% at 64 and 90.6-95.6% of a 500-year
-  world; it grows 49.2/151.0/285.5 kB per simulated year without bound; only the
-  last simulated year is ever read by a running system, and that tail is 0.65%
-  of the events at 128 and 0.80% at 256, a 10.4× / 5.9× image reduction. All four
-  are also right that the evidence it can be dropped is TWO worlds run 400 day
-  turns each with the log cleared, against five systems that demonstrably read
-  `W.Log().All()` inside `Tick` — `ProductionSystem` (`Production.cpp:91`),
-  `MarketSystem` (`Markets.cpp:138`), `DecaySystem` (`Decay.cpp:56`),
-  `FactionSystem` (`Factions.cpp:284`), `RegardSystem` (`Regard.cpp:95`).
-  Truncating also moves every frozen digest, because the log is inside the image
-  the trailer hashes. **Phase 16 truncates nothing, compresses nothing, and
-  builds no truncation machinery — not even switched off.** It records the
-  numbers and the question. The SEARCH for a divergence, with the injected-event
-  control that proves the search can see the log at all, is folded into 16.12's
-  fuzzer as a reported measurement, not a shipped policy. The decision belongs to
-  **Phase 18 STRESS TEST**, which is where a 500-year AELVOR 256 — a 182 MB save
-  that takes 52 s to generate — is exercised at all, and to a phase that OPENS
-  with it rather than one that stumbles into it while shipping a save.
-- **Severing `ComputeStateDigest` from the image trailer, and any project-wide
-  re-freeze.** "adversary" 16.04 and "migration" 16.02 both proposed it, by
-  different means. Nothing in this phase requires it once the container carries
-  the new state, and doing it mid-phase destroys the only instrument that could
-  catch this phase's own regressions: afterwards the eleven gates assert new
-  numbers produced by the same changed code. If it is ever wanted, it belongs to
-  a later phase that opens with it, and migration's version/flags substitution is
-  the cheaper of the two forms.
-- **A per-field layout digest** (defect 9). "determinism" 16.09 proposed deriving
-  it "from `PlainData.h`'s existing traits"; `PlainDataTraits` carries exactly one
-  member, `static constexpr bool NoPadding`, and there is no member enumeration
-  anywhere to derive offsets or type tags from. A real fix needs a member-listing
-  macro applied across ~55 component types and every map layer and the `Event`
-  payload set. That is its own job and belongs with **Phase 19 MODDING**'s stable
-  ids and APIs. Until then the hole stands and this phase says so: a same-size
-  field reorder or retype is not caught by anything 16.08 adds.
-- **Loading a save into a world generated differently.** Explicitly refused by
-  16.10. The `DiplomacySystem` region-count cache is recorded as the thing that
-  breaks first if that refusal is ever loosened.
-- **A save browser, thumbnails, named slots, autosave UI.** `Phase 17 DEBUG
-  TOOLS` for the inspector side, `Phase 20 POLISH` for the player-facing side.
-  16.04's section table and manifest are what makes listing saves without
-  generating a world possible; this phase stops there.
-- **Compression.** If it comes, it comes as an optional section under 16.04's
-  may-ignore flag rule, in a later phase.
+Two decisions, in the owner's words, both taken while Phase 17 was open:
+
+> « oui bah du coup le but c'est de faire de la 3D qu'on puisse ZQSD, enfin
+> tout faire quoi, comme un jeu RP médiéval par exemple »
+
+> « oui, froid chaud et tout doivent s'afficher »
+
+They are recorded here the day they were said, because a decision that lives
+in a conversation is a decision nobody can find.
+
+### What exists, measured before writing this
+
+- **Climate.** `WorldGen.h`: every tile has an ANNUAL MEAN `Temperature`
+  (30 °C at the equator, −15 °C at the poles, ±2 ° of noise), a moisture, a
+  sea distance, and a `Biome` classified from them. Nothing outside `WorldGen`
+  reads the temperature layer afterwards. `SimClock` has seasons; only
+  generation and the snapshot consume them. `Needs.h`: a person's only need is
+  hunger (`HungerLine`, `HungerDamage`, `HungerPerson`). No warmth, no shelter,
+  no fuel, no exposure, no cold death, no climate in the harvest.
+- **Presentation.** A map: regions, biomes, altitude, head counts, settlements,
+  roads, a person and a colony drawn from the view leaves, a camera moving
+  region to region, a HUD of eight keys, at 100+ fps at 256 tiles. Rendered by
+  the engine; not a world one stands in. No phase of the twenty named terrain
+  in volume, characters, buildings in volume or animation.
+
+### What was decided, and where it goes
+
+- **Phase 18 CLIMATE & SEASONS**, kernel work, done here: a current
+  temperature (tile × season), a warmth need beside hunger, a winter that
+  weighs on stores and mortality, a harvest that depends on the climate, and
+  the figures carried in the view leaves. It moves every frozen digest in the
+  repository, so it lands with its own re-freeze, like ADR-0131. It is placed
+  FIRST because a 3D world that displays the climate needs a climate to
+  display, and because the stress test must measure the world we mean to ship.
+- **Phase 19 WORLD IN 3D**, engine work, half here and half on the owner's
+  machine: terrain in volume from `TileGrid` and `Hydrology`, buildings from
+  Infrastructure, persons from Population as characters, the played person
+  moved with ZQSD, a shoulder camera, the climate visible. The procedural-mesh
+  and controller C++ is written here and parsed against `Tools/EngineShim`;
+  meshes, materials, animation blueprints and SEEING IT are the owner's
+  machine. **One session on that machine per task, not per phase**, under the
+  standing rule of `ENGINE_HANDOFF.md`: report, do not repair the kernel.
+- **Stress test, modding and polish become 20, 21 and 22.** Six references in
+  this file and one in DECISIONS.md named the old numbers with the phase name
+  beside them; all seven now name the new ones.
+
+Neither phase is broken down here. Each opens the way every phase since 14 has:
+a judge-panel plan, measured before a line is written, then the rows and the
+gate in section style. Phase 17 finishes first.
+
+## 25. Phase 18 - CLIMATE & SEASONS: task breakdown
+
+Proposed by a four-angle panel on 2026-09-24 (physics-first / demography-and-economy-first / display-first / discipline-first), scored by three judges on separate lenses. **The physics angle won two lenses of three** — a current temperature that is a pure function of the mean layer, the row and the day, a region's year as a closed form, no new map layer, no new DisasterKind, no format bump, and a defect-5 door that closes at the reader with no byte moved — **and the discipline angle won the third by finding the one measurement that decides the phase.** Every proposal but one proved "no digest moved before the switch" with Phase 17's clause (i), `grep -E '^-.*\b[0-9a-f]{16}\b'`. Re-run here over the ADR-0131 re-freeze itself (`git diff be9df8d^ be9df8d -- Tests/ Source/ Tools/`), that grep prints **0** lines while the same diff holds **55** removed `0x…ull` literals: 391 of the tree's 414 sixteen-hex sites carry the `ull` suffix, which has no word boundary after the digits, so the instrument this phase would have rested on cannot see the thing it is meant to see and has never failed on purpose (ADR-0149). Phase 18 therefore opens with a classified literal census whose known answer is in git, lands the switch before the thing it switches, builds the climate in eight tasks that move nothing (proved by the census, not the grep), closes the tenth door for free, and flips in ONE commit whose footprint the census prints by class and kind — the ground digest, the fourteen generation digests and the eighty-three hash constants predicted UNMOVED by name. The owner's word is « froid chaud et tout doivent s'afficher »: the page says the weather at task 18.04, before a single person has been cold.
+
+The panel ran 116 minutes over 8 agents (four proposers, three judges, one synthesis) at HEAD `5032246`.
+The judges' scores, each on its own lens:
+
+
+- Architecture, determinism and the digest discipline: physics 7, demography 3, display 5, discipline 6.5 — winner physics; 27 claims re-read, 6 false.
+- The owner's intent and the game: physics 8, demography 7, display 6, discipline 7 — winner physics; 26 claims re-read, 11 false.
+- Tests, controls and measurements (ADR-0149): discipline 8, physics 7, display 5, demography 4.5 — winner discipline; 31 claims re-read, 11 false.
+
+Re-read here before this was written, at HEAD `c146c43`: the ADR-0131 commit `be9df8d` under Phase 17's clause (i) grep
+prints **0** lines and under `grep -P '^-[^-].*0x[0-9a-fA-F]{16}(?![0-9a-fA-F])'` prints **55**; the same suffix-aware grep over
+Phase 17 (`6ee00b6..8c0a4e4`) prints **0 removed and 138 added**, so clause (i)'s CONCLUSION stands - no frozen literal was
+removed in nine tasks - while its INSTRUMENT could not have told. The gate read in section 23 is amended to say so. The tree
+today holds 415 sixteen-hex sites (Tests 253, Source 148, Tools 14), 394 of them with the `ull` suffix; `Panel.cpp`'s
+`Number()` takes a `uint64`; `RegionView` is hashed as `sizeof(RegionView)` bytes; `LifeView` carries four reserved words;
+`GetOptions` refuses any HOST length but 24; the goldens' README says "never regenerated"; `DisasterState`'s static_assert
+is `32 + 24 * MaxPending` - each of these checked against the file the panel cited.
+
+### The measurement table (the judges' verified figures)
+
+
+| figure | value, re-read at HEAD 5032246 | evidence |
+|---|---|---|
+| Phase 17's clause (i) grep over the ADR-0131 re-freeze | **0** lines; the same diff without `\b` shows **55** removed and **50** added `0x…` literals in **19** test files (commit message: 46 constants, 44 digests + 2 counts) | `git diff be9df8d^ be9df8d -- Tests/ Source/ Tools/ \| grep -E '^-.*\b[0-9a-f]{16}\b' \| wc -l` → 0; with `grep -Po '0x[0-9a-fA-F]{16}(?![0-9a-fA-F])'` → 55 / 50; Docs/ROADMAP.md:6332, :6353 |
+| Sixteen-hex literal sites in the tree | **414** in 102 files: Tests 252, Source 148, Tools 14; suffixes 391 `ull` / 3 `ll` / 20 bare; CMake 43 tokens of 18 distinct values; README rows 19 (Containers) / 4 (Golden) / 10 (Streams) | `grep -rPo '0x[0-9a-fA-F]{16}(?![0-9a-fA-F])' Tests/ Source/ Tools/ \| wc -l`; per-tree loop; `grep -rPoh '(?<![0-9a-fA-Fx])[0-9a-f]{16}(?![0-9a-fA-F])' Tests/CMakeLists.txt Tests/Run/CMakeLists.txt Tests/Run/*.cmake` |
+| Test corpus | 710 `VAELEN_TEST` cases, 8556 `VT_` assertion sites, 83 literal `add_test` entries; 212 CTest entries in the prebuilt tree | `grep -rho '^VAELEN_TEST(' Tests/ \| wc -l`; `grep -rhoE '\bVT_(CHECK\|REQUIRE)[A-Z_]*\(' Tests/ \| wc -l`; judges' `ctest -N` |
+| SeasonalOffset exists, amplitude 4 + 16\|lat\|, +A season 1, −A season 3, 0 otherwise; called by nothing but six checks | true | Source/VaelenSim/Private/WorldGen.cpp:413-424; `grep -rn SeasonalOffset Source/ Tests/ Tools/` → WorldGen.h:136, WorldGen.cpp:413, Tests/Sim/Test_Climate.cpp:79-84 |
+| The Temperature layer is an annual mean holding band (30 − 45\|lat\|), lapse (6.5/1000 units, sea clamped at 0) and ±2 noise; nothing outside WorldGen reads it | true | WorldGen.cpp:521 (Band), :525 (`MaxOf(..., Zero)`), :526 (Lapse), :529 (write); WorldGen.h:41, :93-96; `grep -rln Temperature Source/` → WorldGen.h, WorldGen.cpp only |
+| LatitudeOfRow = (2y − (H−1))/(H−1), one Fix64 Div | true | WorldGen.cpp:388-397 |
+| Closed forms, discrete 360-term sums (triangle wave exact at days 45/135/225/315) | pole row 0: 315 frost days, 5513 degree-days, 1 growing day; row 32 of 128 (mean 7.68, A 11.94): **65 / 137 / 221**; equator 0 / 0 / 360; grassland at \|lat\| 0.489 (mean 8): 59 / 111 / 225; tundra mean −2 at \|lat\| 0.7: 203 / 1752 / 97 | computed here from WorldGen.cpp:413-424 and :388-397; the continuous form agrees within 1 day / 0.1 degree-day (the physics angle's 64/152/220 was wrong on the cold sum) |
+| AELVOR 128 region census with one year of pre-history | 99 regions, 832 living, 0.39 s; centroid winters under −5/−15/−25 °: **36 / 8 / 0** regions; biomes Tundra 20, Boreal 23, ColdSteppe 4, Temperate 15, Grassland 12, Scrub 11, Tropical 3, Savanna 2, Desert 9 → 47 cold-biome regions; no centroid beyond \|lat\| 0.717 | ran `gdbg/Tools/Atlas/VaelenAtlas --size 128 --prehistory 1 --years 1 --no-tiles --out <scratch>/p18-synth-gen128.json`, python over `regions[].tile / frame.width` |
+| Baseline the phase must keep alive | 36374 living, 65 regions peopled, 6459 land tiles at 128/420 | Docs/DECISIONS.md:7078, :7248 |
+| PersonNeeds {Food 200, Health 200, Rest 200, Hungry 0, uint32 Reserved 0}, static_assert 8; DailyRegion is a rule "because a component field joins the state digest of every world that declares the module" | true | Source/VaelenPopulation/Public/Vaelen/Population/Needs.h:36-44, :66-75; DeathCause {Natural, Famine, Starvation, Plague} :103-109 |
+| NeedSystem judges only regions carrying RegionDetail, reads blows off the log, frail ×1.3, one death path with Cause and CauseEvent; newcomers start whole | true | Source/VaelenPopulation/Private/Needs.cpp:55-63, :69-87, :123-130, :188-190, :195, :228-241; ShareOfDay :393-405; ColonyDaySystem :407-438 |
+| A fifth DisasterKind resizes DisasterState (static_assert 32 + 24·MaxPending), RegionHazard::Risk and both rule arrays, and the registry digest folds Size/Alignment | true | Source/VaelenSim/Public/Vaelen/Sim/Disasters.h:38-45, :69, :89-92, :107, :112; Source/VaelenSim/Private/ComponentType.cpp:65-74; omen loop Disasters.cpp:354-362; Kill :59-84, coarse only :279-281 |
+| The image header folds Types+Map layout; the state digest hashes the header; WorldMap::LayoutDigest folds names and element sizes and no extents; the load Resets a begun map to the image's grid after `Ar.Fail()`, and :253 answers Truncated when the archive failed | true | Source/VaelenSim/Private/Snapshot.cpp:435-437, :253, :565-569, :590-606, :657-684; Source/VaelenSim/Private/WorldMap.cpp:29-38, :111-113; Archive.h:122; WorldMap.h:98 `IsReady()` |
+| The goldens are never regenerated; V3RoundTrips pins VERSION == 3, the README digest, and a byte-identical re-save into a BEGUN world; Test_WorldMap static_asserts VERSION == 3 | true | Tests/Run/Golden/README.md:3-9, :18-21; Tests/Run/Test_Golden.cpp:68-82, :90-91, :100-118, :122-142; Tests/Sim/Test_WorldMap.cpp:18 |
+| The HOST section is four one-byte flags after Size/PreHistory/Years/Seed, refused unless exactly 24 bytes; each flag refused by name; its length 24 and digest are FROZEN three times in C++ and three in the README | true | Source/VaelenRun/Private/Checkpoint.cpp:155-186 (:173); Aelvor.cpp:853-870, :928-946; Tests/Run/Test_Containers.cpp:86, :101, :116; Tests/Run/Containers/README.md:61, :73, :86 |
+| Options and the Stream precedent; optional types declared after Polity; PreHistory's six types declared BEFORE the fifteen wiring types; the wiring guard names optional entries one by one | true | Source/VaelenRun/Public/Vaelen/Run/Aelvor.h:73-92; Aelvor.cpp:55, :62-99, :131-133; Tools/check_world_wiring.py:34-37, :62-95 |
+| View leaves: RegionView one Reserved, hashed as sizeof(RegionView) bytes; WorldView.Reserved; LifeView FOUR reserved words; TileView 8 bytes with no spare byte; the panel digest is HashBytes over the TEXT only; Number() is unsigned; the HUD draws Lines and composes nothing | true | Source/VaelenView/Public/Vaelen/View/Frame.h:49, :59-60, :71, :85; Frame.cpp:161-174; Life.h:86, :100-101, :119, :122-127; Land.h:22, :68-76; Panel.h:50-63, :108-111; Panel.cpp:85-90, :398, :503-516; Source/VaelenUI/Public/VaelenHUD.h:4-7 |
+| The harvest: drought Blow scan, Kept = 1000 − cut, coarse and Reap branches, Lose through MoveStock with the blow as cause, ration written, timber burnt at People/10, cloth worn at People/25; the three-century starvation recorded | true | Source/VaelenEconomy/Private/Production.cpp:89-112, :260, :271-273, :289-293, :344-348, :379-389, :403-404, :419-421; Production.h:67-70, :91, :94; Economy links Population (Source/VaelenEconomy/CMakeLists.txt:30) |
+| Coarse demography is capacity-driven (growth 25‰ × room, decline 300‰ of excess); capacity per tile by biome | true | Source/VaelenSim/Public/Vaelen/Sim/Population.h:120-137; Population.cpp:145, :343-369 |
+| LOD periods {1, 4, 24, 720, 8640}; a system's stream is re-derived per RunTick from (seed, name hash, tick); ties by name hash; Season = Month/3 is a pure function of the tick; <chrono>/<ctime> banned in the kernel | true | Source/VaelenSim/Public/Vaelen/Sim/System.h:37-44, :80, :143; Scheduler.cpp:92-108, :228; SimClock.h:35, :77-92, :104; Tools/check_kernel_purity.py:24-34, :118-124, :158-168 |
+| Shelter, fuel, cloth: no dwelling kind exists (Work = Granary, Mill, Smithy, Wall; FamilyInfo has none); a SettlementInfo stands per region; timber and cloth are stocks | true | Source/VaelenInfrastructure/Public/Vaelen/Infrastructure/Buildings.h:44-51; Families.h:35-46; Source/VaelenEconomy/Public/Vaelen/Economy/Trade.h:57-68; Stocks.h:39-49, :73-77 |
+| The played person pays the year AND the day: no DailyRegion is set by VaelenRun; Work hungers 12 / tires 15, Rest 40, Eat 60 | true | `grep -rn DailyRegion Source/VaelenRun/` → nothing; Source/VaelenPlayer/Private/Doings.cpp:157-168; Doings.h:52-56; Hours.h:83 (SimLod::Aggregate) |
+| Recorded streams: FOUR files; the 256 month (09-16) and the 128 lived walk (09-21) came off the engine; the 128 walk was written by `--walk`; StreamHeader carries no Options, Atlas flags are "told, not read" | true | `ls Tests/Run/Streams/`; Tests/Run/Streams/README.md:9-24, :69-71; Source/VaelenPlayer/Public/Vaelen/Player/Stream.h:110-118; Tools/Atlas/Main.cpp:556-560; Tests/Run/CMakeLists.txt:357-361 |
+| Frozen pins the flip will move: Atlas.Frozen128 frame/ground, PanelFrozen row, the three replay lines, Test_Panel, Test_ViewGate, Test_Aelvor, Test_Needs, Test_Production, the 17 gates of run_gates.sh | true | Tests/CMakeLists.txt:105-108, :132-136; Tests/Run/CMakeLists.txt:66, :180, :242; Tests/View/Test_Panel.cpp:35-36; Test_ViewGate.cpp:62-63; Tests/Run/Test_Aelvor.cpp:34-35; Tests/Population/Test_Needs.cpp:30-31; Tests/Economy/Test_Production.cpp:40-41; Tools/run_gates.sh:41-44, :52-61 |
+| Generation-stage digests that must NOT move | Test_Climate.cpp:22-24 (temperature/moisture/biome at 256) and the WorldGen/WorldPipeline/Hydrology/Regions/Deposits suites, 14 sites | Tests/Sim/Test_Climate.cpp:20-25; judges' per-file `grep -rPc` |
+| The tenth door is open at the kernel and reachable only by a direct LoadSnapshot; its test says it closes "as its own commit or with the v4 bump" | true | Tests/Run/Test_RefusalsAreTheCachesSafety.cpp:193-260 (:205-209) |
+| Tools/Atlas mentions no climate; `--panel` prints Lines and the panel digest; the checker validates four tile columns and `--expect frame=/ground=` | true | `grep -ni climate Tools/Atlas/Main.cpp` → nothing; Main.cpp:3171-3184; Tools/check_atlas_output.py:41-59, :370-380 |
+
+### The shape the panel agreed on
+
+- **18.01 first, unconditionally: the instrument, with its known answer in git** (discipline angle, grafted by all three judges). `Tools/frozen_census.py` classifies every sixteen-hex site (WORLD by kind — state, log, frame, life, panel, section, trailer — GEN, HASH, SEED, SYNTHETIC, RECORD) from an explicit table named one by one, diffs two revisions by class, and its self-test must report 55 removed / 50 added tokens in 19 test files over `be9df8d` and 0 over HEAD..HEAD. It REPLACES Phase 17's clause (i) grep in every clause of this gate, because that grep prints 0 over the commit that moved 46 constants.
+- **The switch exists before the thing it switches** (discipline angle): `Options::Climate = false`, a fifth HOST byte with a 24/25-byte reading rule, `AdoptResult::ClimateDiffers`, `--climate` in Atlas — its own small counted commit, because the 24-byte HOST length and digest are frozen at Test_Containers.cpp:86/:101/:116 (the discipline angle's own 'WORLD 0' claim for this step was false).
+- **The current temperature is a FUNCTION, the year a closed form** (physics angle, unanimous on Q1): `TemperatureOn(Mean, Latitude, DayOfYear)` = the mean layer + a triangle wave equal to `SeasonalOffset` at the four season midpoints; `ShapeYear` gives frost days, cold sum and growing days per region as arithmetic series, O(regions) a year, one Fix64 Div each; `YearVariation` is a `Noise::LatticeHash` of (seed, year, region), not a draw. No layer: a layer's name would enter `WorldMap::LayoutDigest`, the header and every state digest before a consumer exists.
+- **Display at task four** (display angle, judge 2's graft): the leaves and the page carry the figures gated on `ViewSources::HasClimate`, with a signed `Page::Tenths` writer (Panel's `Number()` is unsigned), a `RowKind::Weather` appended after `Digest`, a 4-byte-per-tile `ClimateView` for Phase 19, and the `LogVaelenClimate` line — so the owner's screenshot exists before any winter does.
+- **Warmth is CHILL, in its own component, declared only in a climate world** (discipline angle over the physics angle's carve, decided robust > simple): `PersonWarmth {Chill, ColdYears, …}` keeps every pre-phase digest still by construction (ADR-0090 point 4 rejected writing later-phase state into a VALIDATED struct's reserved words), where a carved `PersonNeeds::Reserved` keeps them still only by promise. Zero means warm.
+- **A winter has a calendar, not an omen** (physics angle, with the demography angle's two grafts): NOT a `DisasterKind` (a fifth kind resizes `DisasterState` in every world, option or not, and inserts a draw in the omen loop). One yearly `Economy::WinterSystem`: severity 0..3 from the closed form's cold sum, fuel taken from the timber stock through `Lose()` so the ledger closes, a grain cut `{50, 120, 250}‰` on the common and house stores with the winter as cause, coarse deaths per culture through the `Kill` helper made public, chill on detailed persons, and TWO sentences — 'a hard winter is coming to X' at the year's turn (the year is deterministic, so the forecast costs no draw) and 'a hard winter lay on X; N died of the cold'.
+- **The harvest takes the growing season, and the pre-history is measured alive, not assumed** (physics angle): `Grow = min(1000, GrowingDays × 1000 / 180)` multiplies `Kept` at Production.cpp:260 so both branches take it; grassland at |lat| 0.489 has 225 growing days (full), tundra at mean −2 has 97 (539‰) — a difference the page shows as 'outlook'. `Run.Climate` pins AELVOR 128/300+120 with the climate at ≥ 90 % of 36374 and with the murderous-rules control that must empty the north.
+- **The day** (physics angle + demography graft): the colony and the played person take the year's exposure in `ShareOfDay` steps on frost days, Work chills and Rest warms in `Doings.cpp`, so the number on the page moves between screenshots.
+- **The tenth door closes at the reader, for free, before the re-freeze** (physics angle, corrected by judges 1 and 3): `WorldMap::Serialize` refuses a begun map of another grid by returning false WITHOUT `Ar.Fail()`, so Snapshot.cpp:253 answers `WorldShapeDiffers` by name; no digest folds anything new. Folding extents into the digest (a v4 bump) is an owner question, not a task.
+- **ONE re-freeze commit, its footprint predicted and printed** (all three judges): the default flips, `WinterSystem` and `PersonWarmth` enter all four wirings at one position, every WORLD literal is re-frozen with counted values in the message (the be9df8d form), the containers regenerate by their recorded command, the goldens are untouched (loaded as `Climate = false`), the two engine-recorded months replay with `--no-climate`, and the census proves the ground digest, the 14 GEN digests and the 83 HASH constants unmoved by name.
+
+### The re-freeze, as one paragraph
+
+Three counted commits move literals and two of them move digests; nothing else in the phase moves either, and the instrument that says so is built first. (1) 18.01 lands Tools/frozen_census.py, classifying all 414 sixteen-hex sites (Tests 252, Source 148, Tools 14; 391 `ull`) plus 43 CMake tokens of 18 values and 33 README rows by class and kind, proven on be9df8d (55 removed / 50 added tokens in 19 test files; the `\b` regex reports 0 and is kept as the pre-fix arm) and on HEAD..HEAD = 0; it replaces Phase 17's clause (i) in every clause of this gate. (2) 18.02 lands the switch before the climate — Options::Climate = false, a fifth HOST byte with a 24/25-byte reading rule, ClimateDiffers, --climate — and regenerates the container BYTES: the census must print exactly WORLD 3 moved, all of kind SECTION (Test_Containers.cpp:86/:101/:116 and the README rows), and the three image trailers asserted unchanged by name; the old played-16.container is kept as host24-16.container. (3) 18.03-18.09 declare WarmthTypes and add WinterSystem only behind the option, named in check_world_wiring.py's OPTIONAL lists, fill view words only under ViewSources::HasClimate, pack RegionView's one Reserved word and LifeView's four, append RowKind::Weather after Digest, and close the tenth door at the reader without Ar.Fail(); each task ends with run_gates.sh at 0 failing of 17, full ctest green and a census diff of WORLD 0 / GEN 0 / HASH 0 — while each task's climate arm REQUIRES a digest to differ, so the instrument is seen moving; 18.07 pins the climate world behind the switch by its EventLog digest and counts, figures no later commit may move. (4) 18.10 is ONE commit in the be9df8d form: the default flips to true, WarmthTypes and WinterSystem enter all four wirings at one position and the OPTIONAL entries are removed, every WORLD literal is re-frozen with people at 128/420, cold deaths, hard winters, religions and bondage counted in the message, the containers regenerate by `VaelenAtlas --containers`, the goldens are NOT regenerated (OptionsOf sets Climate = false explicitly; no layer and no type enters their worlds, so Golden.V3RoundTrips is a clause, not a casualty), the two engine-recorded months and the Atlas-written walk replay with --no-climate and keep their pinned lines, a new stand-in stream pins the shipped world as Replay.Climate, and ADR-0154's prediction table — written BEFORE the run: file:line, old value, kind, why — is checked by the census after it, with the ground digest 0x8f7f4948f49b6e86, the 14 generation sites, the 83 hash sites and 18.07's log pins predicted UNMOVED by name and one gate re-run with the flag forced off on its old literal, so the diff is the climate and only the climate. Folding the map's extents into the layout digest does not share this commit and is the owner's question.
+
+### The breakdown
+
+| Task | Deliverable | Test (with its control) | Why |
+|---|---|---|---|
+| 18.01 | **The instrument, before anything moves: a classified census of every frozen literal, with the ADR-0131 re-freeze as its known answer.** `Tools/frozen_census.py` over Tests/, Source/, Tools/ (`0x[0-9a-fA-F]{16}(?![0-9a-fA-F])` in .cpp/.h/.py), Tests/CMakeLists.txt, Tests/Run/CMakeLists.txt, Tests/Run/*.cmake (bare `[0-9a-f]{16}`) and the three READMEs. Every site classified by an EXPLICIT table named one by one (the check_world_wiring.py rule, no widening pattern): WORLD sub-kinded state / log / frame / ground / life / panel / section / trailer / count, GEN (the 14 generation-stage sites: Test_WorldGen.cpp:22-24, Test_Climate.cpp:22-24, Test_WorldPipeline 3, Test_Hydrology 3, Test_Regions 1, Test_Deposits 1), HASH (Test_Hash 39, Test_Random 24, Test_Ids 6, Test_Noise 5, Test_FixedPoint 3, Test_Harness 4, Test_Assert 1, VaelenTest.h 1, Hash.h, Random.cpp, Noise, FixedPoint.h, EventBus.h, EventTypeNames.h 115, the salts, Atlas/Main.cpp splitmix, gen_event_names.py), SEED (0x000041454c564f52), SYNTHETIC (check_atlas_output.py), RECORD (README rows, VaelenViewActor.cpp:427). Modes: `--check` (an unclassified site exits 1 naming file:line; per-class totals printed), `--diff A B` (sites whose VALUE changed between `git show A:path` and `B:path`, file:line old → new, totals per class and kind), `--self-test`. CTest `Kernel.FrozenCensus` and `Kernel.FrozenCensusSelfTest` beside Kernel.WorldWiring (Tests/CMakeLists.txt:34-38). The census at the phase's start written into ROADMAP section 25. | `ctest -R '^Kernel\.FrozenCensus'`. Self-test, three arms in one run: (1) a temp tree with one planted `0x0123456789abcdefull` in a file the table does not name is REFUSED naming file:line; (2) `--diff be9df8d^ be9df8d` reports 55 removed / 50 added WORLD tokens in exactly 19 test files, GEN 0, HASH 0 — the diff's own measured figures (the commit MESSAGE's '44 digests' is a count of constants, which the diff cannot reproduce: 50 paired, 5 dropped, and the self-test says so); (3) `--diff HEAD HEAD` reports 0 in every class. CONTROL and how it fails: run arm (2) with Phase 17's `\b` regex substituted and require it to report 0 — the blind instrument shown blind, kept permanently as the pre-fix arm; strip Test_HistoryGate.cpp:28-31 from the table and `--check` must exit 1 naming those four sites; mark Test_Hash.cpp as WORLD and the self-test must refuse a table that classifies by file name alone (arm (2) would report HASH moved 0 while --check passes). | Measured here: `git diff be9df8d^ be9df8d -- Tests/ Source/ Tools/ ¦ grep -E '^-.*\b[0-9a-f]{16}\b' ¦ wc -l` → 0 over the commit that re-froze 46 constants, while the lookahead grep finds 55 removed and 50 added; 391 of the tree's 414 sites carry `ull` (histogram 20 bare / 3 ll / 391 ull). Docs/ROADMAP.md:6332 and :6353 rest Phase 17's clause (i) on that grep; three of four proposals rested this phase's clauses (g) and (i) on it. ADR-0149 (DECISIONS.md:10355+): an instrument is guilty until it has failed on purpose, and this one has a real known answer in git. The precedent for 'instrument first' is 16.01 and 17.01 (ROADMAP:5767). |
+| 18.02 | **The switch that switches nothing yet: Options::Climate in the HOST section, refused by name, in its own counted commit.** `Run::Options::Climate = false` after Stream (Aelvor.h:73-92) with Stream's comment reused; `--climate` in Tools/Atlas ParseOptions beside `--stream` (Main.cpp:689-693), told not read like it; `PutOptions` writes a fifth flag byte (Checkpoint.cpp:165-168) and `GetOptions` (:171-176) accepts 24 bytes as Climate = false and 25 as written, refusing any other length; `AdoptResult::ClimateDiffers` beside StreamDiffers (Aelvor.cpp:928-946, named at :853-870). `ViewSources::HasClimate = false` (Take.h:70-101) and `Aelvor::Sources()` leaving it false (Aelvor.cpp:595-612). The container corpus regenerated by `VaelenAtlas --containers Tests/Run/Containers/` (HOST 24 → 25 bytes, every later offset +1, README rewritten by the tool); the OLD `played-16.container` kept byte for byte as `Tests/Run/Containers/host24-16.container` with its own README row — the first real older-format instance in the tree. | `ctest -R '^Run\.Checkpoint$¦^Run\.Containers$¦^Atlas\.ContainersRegenerate$'`. `Run.Checkpoint` gains `TheClimateIsInTheHostSection`: a container written with Climate = true adopted by a Climate = false host answers `ClimateDiffers` with the target's tick and digest equal before and after (VT_CHECK_DIGEST_EQ); `host24-16.container` adopted by a Climate = false host → Ok, by a Climate = true host → ClimateDiffers; a 26-byte HOST → NoHostSection. `Run.Containers` re-frozen for the three HOST rows (length 25, new digests) and EXTENDED: the three image trailers asserted EQUAL to their old literals by name (d17d7fd9a6f09ea6, 64d11b40b612581c, 2ec516c4d275ab6f) — bytes moved, no world did. CONTROL: a scratch build that writes the byte and does not read it (GetOptions ignoring At[24]) must answer Ok in the first case — ADR-0150's silent row reproduced on purpose; `frozen_census.py --diff <18.01> <18.02>` must print exactly WORLD 3 moved (all of kind SECTION, Test_Containers.cpp:86/:101/:116), RECORD 3+, trailer 0, state 0, log 0 — a diff reporting WORLD 0 did not read the file the corpus pins. | ADR-0150 (DECISIONS.md:10434+): a host option that changes the world and is not in the save is the defect; `Options::Stream` was invisible to every guard because it declares no component type. Climate WILL declare a type (18.05), so a mismatch would be refused as `LayoutDiffers` — a fault of the state rather than the world, safe by accident. `GetOptions` refuses any Size != 24 (Checkpoint.cpp:173), so a fifth byte without the 24-byte rule turns every existing container into NoHostSection. The HOST section's length and digest are frozen three times in C++ (Test_Containers.cpp:86, :101, :116) and three in the README (:61, :73, :86), which is why this is a counted commit of its own and not a zero-literal task, and why it lands before the climate rather than inside the largest commit of the phase. |
+| 18.03 | **The current temperature is a function, and the region's year is a closed form.** `Vaelen/Sim/Climate.h` (VaelenSim; no layer, no state): `Fix64 DayOffset(Fix64 Latitude, uint32 DayOfYear, uint32 DaysPerYear)` — a triangle wave of amplitude 4 + 16¦lat¦ (WorldGen.cpp:415), equal to `SeasonalOffset` at days 45/135/225/315 (0, +A, 0, −A), linear between, integer-day breakpoints; `Fix64 TemperatureOn(Fix64 Mean, Fix64 Latitude, uint32 DayOfYear)`; `Fix64 TileTemperatureOn(const WorldMap&, const WorldLayers&, uint32 Tile, uint32 DayOfYear)` reading the mean layer and `LatitudeOfRow(Grid, Tile / Width)`; `struct YearShape {uint32 FrostDays, GrowingDays; Fix64 ColdSum, Coldest, Warmest}` from `ShapeYear(Mean, Latitude, const ClimateRules&)` as arithmetic series (days below a line = 180(c+1) clamped, c = (Line − Mean)/A; ColdSum the sum of daily deficits); `Fix64 YearVariation(uint64 Seed, uint64 Year, uint32 Region, Fix64 Amplitude)` via `Noise::LatticeHash` (WorldGen.cpp:480's precedent), ±3 °; `RegionYear(const World&, const WorldSetup&, uint32 Region, uint64 Year, const ClimateRules&)` at `RegionInfo::CentroidTile` (Regions.h:38) — the ONE function Production, Winter and the view all call; `ClimateRules {ColdLine 0, GrowLine 5, GrowFullDays 180, HardYearDegrees 3, SeverityDegreeDays {150, 600, 1500}}` (a RULE, no digest). `SeasonalOffset` stays and its comment says it is the four midpoint samples. ADR-0151. | `ctest -R '^Sim\.Climate$'` (suite exists). Cases: DayOffset(lat, 45 + 90·s) == SeasonalOffset(lat, s) exactly on the raw Fix64 for lat in {0, ½, −½, 1} and s in 0..3; consecutive days differ by exactly 2A/90 in magnitude; ShapeYear agrees with the 360-term daily sum within one day and one degree-day for twelve (mean, latitude) pairs, the sums PINNED as computed here: pole 315 frost / 5513 degree-days / 1 growing, row 32 of 128 (mean 7.68, A 11.94) 65 / 137 / 221, equator 0 / 0 / 360, tundra mean −2 at ¦lat¦ 0.7 203 / 1752 / 97, grassland mean 8 at ¦lat¦ 0.489 59 / 111 / 225; `TileTemperatureOn` over AELVOR 256 on day 315 is below 0 on every Ice and Tundra tile and never on a Tropical, Savanna or Desert tile; `YearVariation` reproduces itself, is bounded, and differs between at least two of ten years for region 1. CONTROL (ADR-0149): the 360-term sum with the day shifted by ONE must differ from the closed form by more than the tolerance at row 32 (the instrument sees a day); amplitude 0 must report 0 or 360 days and ColdSum 0 (a self-check that fails when A is not read); the frozen generation digests of Test_Climate.cpp:22-24 unchanged. Failing on purpose: flip the sign of the winter half of DayOffset → the day-315 equality fails. | `SeasonalOffset` exists (WorldGen.h:136, WorldGen.cpp:413-424) and nothing but Test_Climate.cpp:79-84 calls it; the mean layer already holds band, lapse and noise (WorldGen.cpp:521-529), so elevation is not an input. A layer would be 131072 bytes per season at 128 and 524288 at 256, serialised into every image (WorldMap.cpp:84-114), and its name would move `WorldMap::LayoutDigest` (:29-38) → the header (Snapshot.cpp:435) → every state digest (:657-684) before a consumer exists. The closed forms make the yearly systems O(regions) — one Fix64 Div per region (WorldGen.cpp:397) instead of 360 × tiles. The physics angle's hand figures were off on the cold sum (152 for 137) and its exact-equality pin would have reddened the instrument on its first run (judge 3), which is why the discrete sums are pinned and the closed form is held to a tolerance. |
+| 18.04 | **The page says the weather, the leaves carry it, the Atlas prints it — gated, so nothing moves without a climate.** Frame.h: `WorldView.Reserved` → `uint32 Season` (0 = no climate, 1..4 spring..winter); `RegionView.Reserved` → `uint32 Climate` packed int8 Now ¦ int8 Coldest<<8 ¦ int8 Warmest<<16 ¦ (Outlook% ¦ Hard<<7)<<24 with `RegionClimateOf(const RegionView&)` unpacking — twelve 32-bit words still, the static_assert at :59-60 untouched, zero without a climate. Life.h: Reserved0 → `uint32 Season`, Reserved1 → `int32 Degrees` (tenths, the played region's centroid today), Reserved2 → `uint32 Chill`, Reserved3 → `uint32 Winter` (severity), sizes unchanged. NEW leaf `Vaelen/View/Climate.h`: `TileClimate {int8 Now, int8 Winter, int8 Summer, uint8 Flags}` (Frost = 1 when Now < 0, Growing = 2 when Now ≥ GrowLine; static_assert 4), `ClimateView {Tick, Year, Day, Season, Width, Height, Reserved[2], std::vector<TileClimate>}`, `TakeClimateView` in Take.h calling `TileTemperatureOn` per tile and COPYING, `MeasureClimateView → {Tiles, Frost, Growing, Coldest, Warmest, Bytes, Digest}`; `ViewSources::HasClimate` + `ClimateRules Climate` (the HasBondage pattern, Take.h:75); Probe_ViewLeaf.cpp includes Climate.h; `Tools/check_ui_fence.py` allows it. Panel.h: `RowKind::Weather` appended after `Digest`, before `Count` (Digest keeps ordinal 9); Panel.cpp: `Page::Signed(int64)` and `Page::Tenths(int32)` (sign, integer part, '.', one digit) beside the unsigned `Number()` (:85-90); the row written after Date only when `Life.Season != 0`: `winter day 5 of 90 -12.3 deg here chill 40 coldest -21 warmest 14 outlook 54% a hard winter is coming`; the Body row (:272-280) gains ` chill N` under the same guard. Tools/Atlas: `--climate` sets HasClimate; `LogVaelenClimate: AELVOR %u seed %012llx: day %u of year %u %s; coldest %d warmest %d; frost %u of %u tiles; hard winters %u, cold deaths %u; climate %016llx` (the MeasureClimateView digest; the winter counts 0 until 18.06) and a `climate` JSON object beside `frame`/`ground`; `check_atlas_output.py` gains `--expect climate=0x…`, a rule that a `--no-climate` document carries no `climate` object and a climate one carries a non-zero digest whose frost count equals the log line's, plus two `breaks()` self-test cases; `--panel` prints the row. VaelenHUD.h untouched. | `ctest -R '^View\.Climate$¦^View\.Frame$¦^View\.Life$¦^View\.Panel$¦^View\.Leaf$¦^Atlas\.OutputSelfTest$¦^Atlas\.PanelFrozen$'`. View.Climate (new): sizeof(TileClimate) == 4 and ClimateView's header padding-free; over AELVOR 128 with HasClimate on, day 315: every Ice/Tundra tile carries Frost and no Tropical/Savanna/Desert tile does, the Frost count equals the count of tiles with Sim's `TileTemperatureOn < 0` (two instruments), Coldest ≥ −70 (the int8 floor: −15 − 20 − 2 − 6.5 × MaxElevation/1000, asserted against the MEASURED MaxElevation), a take on day 135 and one on day 315 differ on every land tile off the middle rows, the leaf survives the world's destruction. View.Panel: a hand-built LifeView {Season 4, Day 274, Degrees −123, Chill 40} composes exactly the row above at Rows[1] with Kind == Weather and the Digest row still last; Tenths(−5) prints `-0.5`, Tenths(0) `0.0`, Tenths(1234) `123.4`, Signed(−21) `-21`; the page stays ≤ 4096 bytes. CONTROL, both arms in one run: WorldView, LifeView, MapView and PanelView taken with HasClimate = false have digests EQUAL to a take by the pre-phase code path under VT_CHECK_DIGEST_EQ (a zero refused), and the frozen pins hold — frame 0xabc5a5767c6cf9dd / ground 0x8f7f4948f49b6e86 (Test_Aelvor.cpp:34-35, Tests/CMakeLists.txt:107), panel 0x54787451e65766c1 / 0x703c838ca533a095 (Test_Panel.cpp:35-36), `Atlas.PanelFrozen`'s `digest 54787451e65766c1` (Tests/CMakeLists.txt:136), view gate 0x115c2ff70a5327c4 (Test_ViewGate.cpp:62); the checker's self-test refuses a climate object with a zero digest and a `--no-climate` document carrying one. Failing on purpose: write the Weather row when Season == 0 → both frozen pages and Atlas.PanelFrozen go red (the true control — the page digest is over the TEXT, Panel.cpp:398, so renumbering RowKind would not be one); print Tenths through the unsigned Number() → the `-0.5` case fails. | The owner's words are « froid chaud et tout doivent s'afficher » and the only screen is the page; the HUD draws `Lines()` and composes nothing (VaelenHUD.h:4-7), so the row is the whole engine-side change and it lands at task four, before any winter exists, as 14.02-14.06 built the page before anyone played it. `Number()` is unsigned (Panel.cpp:85-90) and a temperature is not — only the display angle read the writer. RegionView has one Reserved word hashed as `sizeof(RegionView)` bytes (Frame.h:49, Frame.cpp:170), so growing the struct — the display angle's 72-byte RegionView — moves the frame digest of every world before the switch; packing into the word costs nothing. TileView has no spare byte (Land.h:68-76) and MapView is not per-frame (Land.h:22), so the per-tile figure Phase 19 colours by is a 4-byte leaf taken once a day (64 KiB at 128, 256 KiB at 256) fed through the same per-instance custom-data path the biome uses (VaelenViewDrawer.cpp:88-90, :154, :220). LifeView has four reserved words (Life.h:86, :100-101, :119), not three. The Atlas line is the proof Phase 19's screenshot is checked against, as `LogVaelenPlay` is (Streams/README.md:9-24). |
+| 18.05 | **Who is cold: the chill as a component declared only in a climate world, the cause, and the yearly judgement.** `Vaelen/Population/Warmth.h`: `PersonWarmth {uint8 Chill = 0; uint8 ColdYears = 0; uint8 Clad = 0 (named for cloth, unused); uint8 Reserved = 0; uint32 Reserved2 = 0}` (8 bytes, static_assert; CHILL, so zero means warm), `WarmthTypes::Declare(World&)` on person entities, declared in every wiring only when the climate is asked for, after Polity and before Colony (the position named in `check_world_wiring.py` OPTIONAL_DECLARES with its reason until the flip); `WarmthRules {ChillLine 100, ColdDamage 40, ChillRecovery 200}`; `ChillPerson / WarmPerson(World&, const PersonTypes&, const WarmthTypes&, uint32 Person, uint32 Amount)` beside FeedPerson/HungerPerson (Needs.h:184-195 pattern); `DeathCause::Cold = 4` (Needs.h:103-109) and `" of the cold"` in PersonHistory.cpp:88-105; `WinterPayload {Region, Severity, ColdSum, Deaths}` with `WinterForeseenEvent = MakeEventType<WinterPayload>("WinterForeseen")` and `WinterEvent = MakeEventType<WinterPayload>("Winter")` declared in Warmth.h (Population declares, Economy publishes, as Sim declares DisasterStruckEvent for everybody); `NeedSystem::ObserveWinter(WarmthTypes, WarmthRules)` after ObserveRation (Needs.h:123-134); in the per-person loop (Needs.cpp:182-240) after hunger and before plague: Chill > ChillLine → ColdYears++, Health −= Extra(ColdDamage + Below(deficit + 1)) through the frail lambda (:189-190), Cause = Cold, CauseEvent = the region's WinterEvent found the way Blows are (:69-87); else Chill −= ChillRecovery (floor 0), ColdYears = 0; newcomers get PersonWarmth{} where they get PersonNeeds{} (:123-130). `NeedStats` gains Cold, ColdDeaths. `Tools/gen_event_names.py` re-run (117 names). | `ctest -R '^Population\.Warmth$¦^Population\.Needs$¦^Kernel\.EventTypes$'` (new Tests/Population/Test_Warmth.cpp). Cases: a hand-built detailed region where three persons are chilled past the line and a WinterEvent is planted: every death carries `PersonPayload::Other == 4` and the winter's event id as Cause, the frail (age 3 and 70) take 40 + 30 % more, ReconcileRegion ran; a region with Chill above the line and no WinterEvent in the log dies with Cause 4 and an invalid CauseEvent (the cold is real even when unnamed); ChillPerson saturates at 255 and WarmPerson floors at 0, both returning what they moved; a NeedSystem never told ObserveWinter over the 128 cell still gives VAELEN_NEEDS_FROZEN_128 / ALIVE 1497 (Test_Needs.cpp:30-31) unchanged. CONTROL: the identical cursed run with ChillLine = 255 kills nobody and leaves every Health byte equal to the food-only run to the unit (ADR-0149 rule 2); a scratch build declaring WarmthTypes in a world NOT asked for the climate must move that world's state digest — the reason the type is optional, seen; `Kernel.EventTypes` run before regenerating the table must fail (the generator's own control, Tests/CMakeLists.txt:60-63). Failing on purpose: publish the death with Cause 3 → the cause assertion names Plague. | PersonNeeds is a Phase 04 VALIDATED 8-byte struct whose Reserved is hashed by the pool (Needs.h:36-44); ADR-0090 point 4 (DECISIONS.md:5360+) refused writing Phase 11 state into DepositInfo's reserved words because it 'makes the world-generation digest a function of Phase 11' — the physics angle's carve keeps the digest still by PROMISE (keep it zero), a type declared only with the option keeps it still by CONSTRUCTION (Aelvor.cpp:77-99), and robust beats simple. Rest is Phase 10's (Doings.cpp:158, :162). NeedSystem owns the one death path with a cause and a reconciliation (Needs.cpp:228-241) and the frail rule (:189-190); a second killer would be a second ledger. Death-cause words exist for Famine, Starvation and Plague only (PersonHistory.cpp:88-105). Events are declared by the layer below their publisher throughout (Disasters.h:140). |
+| 18.06 | **The winter, yearly, as a consequence: fuel through the ledger, grain from the stores, chill on the people, deaths where nobody is detailed, and two sentences.** `Vaelen/Economy/Winter.h`: `Economy::WinterSystem` (GetName "Winter", SimLod::World, dependencies {"Lod"}; Production RunAfter "Winter"; NeedSystem already RunAfter Production) with `WinterRules {DegreeDaysPerTimber 200, TimberPerPersons 10, ClothWarmthPerMille 300, ShelterPerMille 400, WinterGrainPerMille {50, 120, 250}, ColdDeathsPerMille {0, 2, 8, 20}, ChillPerDegreeDay …}`. At the year's turn, per region in index order, coarse and detailed alike: `RegionYear(Year − 1)` for the winter just lain (Year 0 skipped) and `RegionYear(Year)` for the one coming; Severity 0..3 by SeverityDegreeDays. STORES: fuel = ColdSum / DegreeDaysPerTimber × People / TimberPerPersons timber taken from the common stock through `Lose()` (Production.cpp:344-348's form, so Test_Ledger's Dark == 0 holds), Covered = taken / wanted; a winter of severity ≥ 1 loses WinterGrainPerMille[s] of the common grain and of every HouseStock with the WinterEvent as cause (the demography angle's graft; grain is what section 24 means by stores). EXPOSURE ‰ = (1000 − Covered) × (1000 − Shelter (a SettlementInfo stands in the region, Trade.h:57-68) − Cover (cloth stock ≥ People/ClothWearPerPersons))/1000. Detailed persons not of `NeedRules::DailyRegion` and not the played person's region: `ChillPerson(Exposure × ColdSum / 20000, capped)`. Coarse regions: `History::KillShare` (Disasters.cpp:59-84 made public, Disasters calls it too, byte-identical) removes Total × ColdDeathsPerMille[s]/1000 per culture, never in a detailed region (:279-281's rule). Publishes `WinterEvent {Region, s, ColdSum, Deaths}` for the winter lain (s ≥ 1) and `WinterForeseenEvent` for the coming one (s ≥ 2; deterministic, no draw). HistoryText.cpp after :449-465: 'a hard / a great / a terrible winter lay on <region>; N died of the cold' and 'a hard winter is coming to <region>'; the stock sentence 'the winter took N grain from the stores of <region>' by the economy chronicle. Wired behind Options::Climate in Aelvor.cpp and Tools/Atlas only, named in OPTIONAL_SYSTEMS until the flip. | `ctest -R '^Economy\.Winter$¦^Economy\.Ledger$¦^Sim\.HistoryText$'` (new Tests/Economy/Test_Winter.cpp). Hand-built 8×8 world, one region on row 0 and one on row 4: the polar region's ColdSum ≥ 10 × the equatorial one's; with 1000 timber in the polar stock, Covered == 1000, nobody chilled, the timber taken equals ColdSum/200 × People/10 to the unit and appears in the log as a Lose of Timber with the WinterEvent as cause; with 0 timber every detailed person's Chill rose by the same amount and the coarse polar population fell by Total × 20/1000 in a severity-3 year; a severity-2 winter loses exactly 120‰ of the common grain and of every house stock, cause the winter; the WinterEvent's severity equals the closed form's; `StruckAboveFreezing == 0` (no WinterEvent for a region whose Coldest ≥ 0); the text export prints the three sentences and no `?<hex>`; `Economy.Ledger`'s Dark == 0 with a winter in the year. CONTROL: swap the two regions' rows and the sums must swap (latitude is read, not index); ColdLine = −100 must take zero timber, zero grain, chill nobody, kill nobody and publish no event (the instrument measures nothing when there is no cold, rule 1); the same year twice from one snapshot gives identical logs (the variation is a hash, not a draw); rename the system 'AaWinter' (a different tie order, Scheduler.cpp:92-108) and Production must still read the same year. Failing on purpose: take the grain by writing Amount directly instead of Lose → Economy.Ledger reddens; publish Severity 0 unconditionally → the severity case fails. | Not a DisasterKind: `DisasterState::PerKind[Count]` and its 800-byte static_assert (Disasters.h:89-92), `Register`'s sizeof and the registry LayoutDigest (ComponentType.cpp:65-74) mean a fifth kind refuses every image of every world with the option OFF, and the omen loop (Disasters.cpp:354-362) would shift every RNG draw; and a winter comes every year at the same rows, which is not what an omen is (Disasters.h:107-110). Timber is already the region's fuel (Production.cpp:403-404, TimberPerPersons at Production.h:91) and cloth its cover (:419-421, :94); a settlement is the only dwelling the code has (Trade.h:57-68; Buildings.h:44-51 has no house, Families.h:35-46 none). Coarse deaths {0, 2, 8, 20}‰ stay under GrowthPerMille 25 (Population.h:136) so no region is emptied by winter alone. Measured at 128: 36 of 99 region centroids winter under −5 ° and 8 under −15 ° by the existing amplitude, 47 of 99 sit in cold biomes — the winter is not a corner case of the map. Economy links Population (Source/VaelenEconomy/CMakeLists.txt:30), so calling ChillPerson is legal; the physics angle's claim that Economy already writes a person's Food was false (no Economy file names PersonNeeds) and is not the reason. |
+| 18.07 | **The harvest has a growing season, and the pre-history is measured alive.** `ProductionSystem::ObserveClimate(const ClimateRules&)` (off = GrowFullDays 0); in Tick, per region, `Grow = GrowFullDays == 0 ? 1000 : min(1000, RegionYear(...).GrowingDays × 1000 / GrowFullDays)` from the SAME `RegionYear` 18.06 calls, and `Kept` at Production.cpp:260 becomes `(1000 − Cut) × Grow / 1000`, so the coarse branch (:271-273) and Reap (:289-293) both take it and the HarvestEvent, RegionRation (:379-389) and NeedSystem's hunger follow unchanged. `Tools/Atlas --census` prints the harvest per mille per region beside the cause table. New `Tests/Run/Test_Climate.cpp` (CTest `Run.Climate`, TIMEOUT 3600, the cost written down): AELVOR 128/300+120 built twice from one seed, Options::Climate off and on. | `ctest -R '^Economy\.Production$¦^Run\.Climate$'`. Production: a polar-row region reaps 0 and publishes a HarvestEvent of 0; an equatorial region reaps exactly the pre-phase figure; a region whose GrowingDays is 90 reaps half, to the unit, in BOTH branches. CONTROL: GrowFullDays = 0 must reproduce every frozen Production figure of the file (VAELEN_PRODUCTION_STOCKS_128 / RATIONS_128, Test_Production.cpp:40-41) to the unit — the rule off is the world before; GrowLine = +100 must reap 0 everywhere. Run.Climate (ADR-0149 rule 2: only the option differs): people at year 420 with the climate within [80 %, 110 %] of without (36374 is the baseline, both printed); no region peopled without is empty with; every region peopled at year 420 published a HarvestEvent > 0 in each of the last ten years; cold-biome regions' living ≥ 0.55 × their capacity (the demography angle's worked equilibrium, written as a PREDICTION before the run); the self-check REQUIRES ≥ 3 peopled regions whose Coldest < −15 ° (8 exist at 128 by the formula) and ≥ 1 WinterEvent of severity ≥ 2 and ≥ 1 region reaping under 1000‰, else it refuses to conclude; the EventLog digest and the counts (winters by severity, cold deaths, grain taken) FROZEN — the layout-independent pins that must survive every later commit of the phase. CONTROL: ColdDeathsPerMille {0, 250, 500, 900} and GrowFullDays 360 must empty at least one northern region and drop the total below 80 % — the instrument can see the world 06.02's first version starved. Failing on purpose: apply Grow to the coarse branch only → the half-harvest case fails in the detailed branch. | The harvest is OnLand × share × HarvestPerWorker × Kept (Production.cpp:260-293) and Kept is the drought's; moisture is in the biome and the biome in the capacity (Population.h:120-133), so the SEASON is the one climate not yet in it. By the closed form the peopled biomes reap in full — grassland at ¦lat¦ 0.489 has 225 growing days ≥ 180 — while tundra at mean −2 has 97 (539‰): a difference the page shows as 'outlook', which the display angle's summer-only factor could not (tundra summer 12.25 ° ≥ its 12 ° line gave 1000 everywhere). The 300 coarse years cannot starve from a harvest at all because PopulationSystem is capacity-driven (Population.cpp:343-369) and NeedSystem judges only detailed regions (Needs.cpp:55-63); Production.h:67-70 records the rule that reaped nothing for three centuries, and this row's control is written so that mistake shows. A two-sided bound catches a climate that does nothing (judge 3). |
+| 18.08 | **The day: the chill of the colony and of the played person, a day at a time.** `ColonyDayRules` gains `bool Climate` and the ClimateRules; ColonyDaySystem::Tick (Needs.cpp:407-438) takes, on each frost day of the region's year, `ShareOfDay(FrostDay, FrostDays, YearExposure)` as ChillPerson — the exact-sum schedule of :393-405 — and WarmPerson(ChillRecovery/360 share) on the other days; WinterSystem skips DailyRegion's persons exactly as the yearly food burn does (Needs.cpp:195). `DoingRules` gains `WorkChill = 6` (applied only when `TileTemperatureOn(centroid, today) < 0`) and `RestWarm = 20`; Doings.cpp calls ChillPerson under Work beside :157 and WarmPerson under Rest beside :162; `PlayerDaySystem` (Hours.h:83) applies the colony's ShareOfDay schedule to the played person's region since VaelenRun sets no DailyRegion; the day's temperature the person feels is what 18.04's LifeView.Degrees shows. | `ctest -R '^Population\.ColdDay$¦^Player\.Doings$¦^Player\.Hours$'` (new Tests/Population/Test_ColdDay.cpp; cases in Tests/Player/Test_Doings.cpp and Test_Hours.cpp). Over one year the sum of daily chill taken from a colony person equals the yearly pass's chill for a non-daily person of the same region to the unit; the schedule takes nothing outside the frost days; 90 winter days worked in a region at −12 ° cost exactly 90 × 6 chill, a Rest on a cold day nets −20 + 6, a summer day chills nothing; the same 90 days replayed twice from one stream give the same Chill and life digest. CONTROL: at the equator both sums are 0 AND the test asserts the polar half's FrostDays > 0 (rule 1); the same runs with Climate = false leave Chill at 0 every day and every other need byte equal to the pre-phase run (rule 2); ShareOfDay called with 91 days for a 90-day season sums to 61 and the exactness check reddens. Failing on purpose: use `Day % 360` off by one in the schedule → the two sums differ; chill every day regardless of temperature → the summer assertion fails. | Needs.h:196-215 and Needs.cpp:393-438 are the precedent: a person living at the day spends the year in 360 exact steps and the yearly pass skips them; Hours.h:12-16 and :83 say the played person's day is SimLod::Aggregate; the verbs already spend and restore the body (Doings.cpp:157-168, Doings.h:52-56) and no DailyRegion is set by VaelenRun, so the played person pays the year and the day as with food. Without this row the played person would be struck once at the year's turn by a winter they are standing in every day, and the chill on the page would hold still for 360 days between the owner's screenshots — the discipline angle's plan had exactly that defect (judge 2). |
+| 18.09 | **The tenth door closes at the reader, for free, and bisects alone.** WorldMap.cpp:100-114: before `Reset(Config)` on load, `if (IsReady() && Config.Grid() != Bounds) return false;` — returning false WITHOUT `Ar.Fail()`, so Snapshot.cpp:253 answers `WorldShapeDiffers` rather than `Truncated` (the :600-606 promotion needs LayoutDiffers, which is FALSE for two maps of the same layers — that is defect 5). A set image into a begun map of another shape is refused; an unset target still takes any image. No digest folds anything new: the layout hash (Snapshot.cpp:435) is untouched, so no image byte and no frozen literal moves. `Golden.TheLayoutDigestCannotTellTwoMapSizesApart` rewritten as `TheDoorTellsTwoMapSizesApartThoughTheDigestCannot` (the equality of the two layout digests stays asserted as a fact); `RefusalsAreTheCachesSafety.TheTenthDoorIsOpenAndPinnedHere` rewritten as `TheTenthDoorIsClosed` (Test_RefusalsAreTheCachesSafety.cpp:193-260 inverted: Got == WorldShapeDiffers by name, Width still 16, Header().Size 16, digest before == after via VT_CHECK_DIGEST_EQ, DiplomacySystem's region count unchanged); ADR-0150's 'safe by accident' paragraph and ROADMAP:6362 amended. | `ctest -R '^Run\.RefusalsAreTheCachesSafety$¦^Golden\.'` plus `python3 Tools/frozen_census.py --diff <18.08 head> <18.09 head>` printing 0 in every class. Golden.V3RoundTrips unchanged and green: the three v3 images still load Ok into BEGUN worlds of their own size and re-save byte-identical (Test_Golden.cpp:100-118). CONTROL: a raw `World` with the types declared and the map UNSET (not a never-Begun Aelvor — LoadSnapshot needs the registry, Test_Golden.cpp:100-103) still accepts the 32-tile image at the kernel door, so the check is on the map's readiness, not the declaration (the declaration is Adopt's WorldSizeDiffers, ADR-0150); a scratch build that calls `Ar.Fail()` before returning must answer Truncated, so the word is seen to depend on the omission. Failing on purpose: compare `Config.Grid() != Config.Grid()` → TheTenthDoorIsClosed fails naming WorldShapeDiffers as the expected answer. | The door was left open because closing it by folding extents into the digest re-freezes everything (Test_RefusalsAreTheCachesSafety.cpp:205-209; ROADMAP:6362 planned it into Phase 18's re-freeze). But the open door IS WorldMap.cpp:111 Resetting a begun map to the image's grid after failing the archive; refusing there is a reader-side check that moves no byte, so it lands alone and bisects alone, and Golden/README.md:4's 'never regenerated' stays true. Both judges who read the load path found the physics angle's own wording would have answered `Truncated` (Archive.h:122 `Fail()` sets Error; Snapshot.cpp:253 tests it first); this row is that correction. Whether the DIGEST should also tell sizes apart (a v4 bump, Test_Golden.cpp:90-91 and Test_WorldMap.cpp:18 both pin VERSION == 3) is the owner's question below, not this phase's task. |
+| 18.10 | **The switch and the re-freeze, in one commit, its footprint predicted and printed.** `Options::Climate = true` (Aelvor.h, a comment in the Stream register); `WarmthTypes` declared and `WinterSystem` added UNCONDITIONALLY in all four wirings at the same position — Aelvor.cpp (after Polity :76, before Colony :81), Tools/Atlas/Main.cpp, VaelenAtlasActor.cpp and VaelenViewActor.cpp (parsed against Tools/EngineShim, not built here) — with `ObserveWinter`/`ObserveClimate` told to Needs, Production and ColonyDay in all four, and the OPTIONAL entries REMOVED from check_world_wiring.py so it requires them; `bClimate` on the two actors; `--no-climate` replaces `--climate` in Atlas; `Aelvor::Sources().HasClimate = Given_.Climate`. `Test_Golden.cpp:68 OptionsOf` sets `Climate = false` explicitly and the Golden README says the images are of the pre-winter era. The three replay gates and Run.Gate/Run.Gate.Lived/SaveFuzz pass `--no-climate` in `-DMORE` (as :177/:240/:367 pass --stream/--lively), so the two engine-recorded months (Streams/README.md:9-24, 09-21) and the Atlas-written walk keep their pinned lines; a new stand-in stream on the climate world (`--stand`, 14.10's) → `Replay.Climate` with four pinned digests; `Atlas.Climate128`'s `--expect climate=0x…` frozen. The container corpus regenerated by its recorded command. EVERY WORLD-class literal re-frozen: the 17 gates of run_gates.sh:41-44, Atlas.Frozen128's frame (its ground must not move), Atlas.PanelFrozen, Test_Panel PLAYED, Test_ViewGate, Test_Aelvor, Test_Needs, Test_Production and the rest the census lists, with the counted values beside each digest in the commit message (the be9df8d form: people at 128/420, cold deaths, hard winters, religions, bondage). The PREDICTION TABLE (file:line, old value, kind, why it moves; ground digest 0x8f7f4948f49b6e86, the 14 GEN sites, the 83 HASH sites, 18.07's log digest and counts predicted UNMOVED by name) written into ADR-0154 BEFORE the run. ROADMAP section 25 with the rows AS BUILT and the gate read clause by clause; STATUS refreshed (Phase 18 VALIDATED headless, the two actors UNVERIFIED (engine) until Phase 19's first sitting). | `Tools/run_gates.sh linux-clang-debug` → `GATES-DONE 0 failing (of 17)`; `Tools/verify_fast.sh` clean; `python3 Tools/frozen_census.py --diff <18.09 head> HEAD` prints the prediction table's rows and nothing else: WORLD state/log/frame/life/panel/trailer/section/count moved, ground 0 (0x8f7f4948f49b6e86 named unmoved), GEN 0, HASH 0, SEED 0; `git show HEAD -- Tests/Sim/Test_Climate.cpp Tests/Sim/Test_WorldGen.cpp Tests/Sim/Test_WorldPipeline.cpp Tests/Sim/Test_Hydrology.cpp Tests/Sim/Test_Regions.cpp Tests/Sim/Test_Deposits.cpp ¦ grep -cP '^-.*0x[0-9a-f]{16}'` → 0 (generation untouched); `git show HEAD -- Tests/Run/Test_Climate.cpp ¦ grep -c VAELEN_CLIMATE_LOG` → 0 (18.07's layout-independent pins survive); `ctest -R '^Replay\.¦^Run\.Gate¦^Golden\.¦^Run\.Containers$¦^Atlas\.ContainersRegenerate$¦^Kernel\.WorldWiring$¦^Kernel\.EventTypes$'` green with the OLD replay lines and no golden byte changed (`git show --stat HEAD ¦ grep -c Golden/` → 0). CONTROL: `run_gates.sh --self-test` still goes red (run_gates.sh:52-61); before re-freezing, `Population.PopulationGate` is run with Options::Climate forced false and must still pass on its OLD literal (only the climate moved, ADR-0149 rule 2); the actors' wiring is committed with one of the four missing in a scratch build and `Kernel.WorldWiring` must print the position. Failing on purpose: re-freeze one gate to a digit-changed value → that gate alone is red. | Section 24 (ROADMAP:6420-6427): 'It moves every frozen digest in the repository, so it lands with its own re-freeze, like ADR-0131'; be9df8d is the form (one commit, counted values in the message), and ADR-0131 (DECISIONS.md:6801+) had to recover its 28/18 split after the fact because two changes shared that commit — this one carries ONE variable and the census prints its set, which is why the door (18.09) and the HOST byte (18.02) landed apart. ADR-0135 (DECISIONS.md:8961+, :9005): an option the actors do not share makes the engine's frame incomparable to the headless one (0xabc5a5767c6cf9dd vs 0x210a870a93735064 for one missing system), so the actors flip in the same commit. The Stream precedent (Aelvor.h:83-91) is why a flag exists and why the recorded months stay in the world they were played in: 'a world with it set is a different world from the same seed'; a .stream carries no Options (Stream.h:110-118, Tests/Run/CMakeLists.txt:357-361). The goldens are never regenerated (Golden/README.md:4) and need not be: no layer and no type enters a world loaded with Climate = false, so their layout digest still matches. |
+
+### The gate
+
+Twelve clauses, each naming a command. `frozen_census.py` is 18.01's and replaces the `\b` grep in every clause that
+counts literals; `<18.0N head>` is the commit that closes that task, written into the clause when it exists.
+
+| clause | command |
+|---|---|
+| (a) the instrument has failed on purpose: every sixteen-hex site classified, the ADR-0131 commit reported as 55/50 tokens in 19 files, the blind regex reported as 0 in the kept pre-fix arm, HEAD..HEAD reported as 0 | `ctest -R '^Kernel\.FrozenCensus'` |
+| (b) the switch is in the save: ClimateDiffers by name with the target untouched; host24-16.container reads as climate-less and is refused by a climate host; a 26-byte HOST is NoHostSection; the three containers regenerate byte for byte and their image trailers d17d7fd9a6f09ea6 / 64d11b40b612581c / 2ec516c4d275ab6f did not move through the HOST byte | `ctest -R '^Run\.Checkpoint$¦^Run\.Containers$¦^Atlas\.ContainersRegenerate$'` |
+| (c) nothing moved before the switch: WORLD 0 (after 18.02's three predicted SECTION sites), GEN 0, HASH 0 over 18.02-18.09, and the seventeen gates green at every one of those commits | `python3 Tools/frozen_census.py --diff <18.02 head> <18.09 head> && Tools/run_gates.sh linux-clang-debug` |
+| (d) the temperature is a function and its year is a closed form: DayOffset equals SeasonalOffset at the four midpoints on the raw Fix64; the pinned discrete sums (pole 315/5513, row 32 65/137/221) within a day and a degree-day of the closed form; the day-shifted control differs; amplitude 0 self-check; the generation digests of Test_Climate.cpp:22-24 unchanged | `ctest -R '^Sim\.Climate$'` |
+| (e) the page says the weather and computes nothing: TileClimate 4 bytes, leaves padding-free and World-free; Frost count == Sim's count; '-0.5' printed by the signed writer; the Weather row present with a climate and absent without; the pre-phase frame, ground, panel and view-gate digests EQUAL under VT_CHECK_DIGEST_EQ with HasClimate off | `ctest -R '^View\.Climate$¦^View\.Frame$¦^View\.Life$¦^View\.Panel$¦^View\.Leaf$¦^Atlas\.PanelFrozen$¦^Atlas\.OutputSelfTest$'` |
+| (f) the chill is a need with a cause and a zero default, and the day is cold: every cold death carries Cause 4 and the winter's event id; ChillLine 255 leaves Health equal to the food-only run; a colony's 360 daily chills sum to the yearly pass's to the unit; the equatorial half is 0 and the polar half's FrostDays > 0 asserted; 90 worked winter days cost exactly 540 chill and a summer day nothing | `ctest -R '^Population\.Warmth$¦^Population\.Needs$¦^Population\.ColdDay$¦^Player\.Doings$¦^Player\.Hours$'` |
+| (g) the winter takes fuel and grain through the ledger and the harvest takes the season: polar ColdSum ≥ 10 × equatorial; timber taken == ColdSum/200 × People/10 and grain 120‰ at severity 2, both named in the log, Dark == 0 still; StruckAboveFreezing == 0; ColdLine −100 takes nothing; GrowFullDays 0 reproduces every frozen Production figure; a 90-day region reaps half in both branches; the three sentences and no ?<hex> | `ctest -R '^Economy\.Winter$¦^Economy\.Ledger$¦^Economy\.Production$¦^Sim\.HistoryText$'` |
+| (h) the pre-history is alive with the climate on: AELVOR 128/300+120 with and without Options::Climate, nothing else differing — people within [80 %, 110 %] of 36374, no peopled region emptied, cold-biome regions ≥ 0.55 × capacity as predicted, ≥ 3 regions under −15 ° and ≥ 1 winter of severity ≥ 2 required by the self-check, the log digest and counts frozen; the murderous-rules control empties a northern region | `ctest -R '^Run\.Climate$'` |
+| (i) the headless proof line: `LogVaelenClimate` with a frost count equal to the JSON's, `--expect climate=0x<frozen>` passing, `--no-climate --empty --panel` still printing `digest 54787451e65766c1`, the checker refusing a zero climate digest and a climate object on a --no-climate document | `ctest -R '^Atlas\.Climate128$¦^Atlas\.PanelFrozen$¦^Atlas\.OutputSelfTest$¦^Atlas\.Frozen128$'` |
+| (j) the tenth door is closed at the reader and the goldens still load: a 32-tile image into a BEGUN 16-tile world answers WorldShapeDiffers by name with the target's width, header and digest unchanged; the two layout digests still equal and said so; a raw world with an unset map still takes the image; the three v3 goldens Ok and byte-identical on re-save with no golden byte changed in git | `ctest -R '^Run\.RefusalsAreTheCachesSafety$¦^Golden\.' && git show --stat <18.09 head> ¦ grep -c Golden/` |
+| (k) exactly the predicted digests moved at the flip and the rest did not: the census diff equals ADR-0154's table row for row; ground 0x8f7f4948f49b6e86, the 14 GEN sites, the 83 HASH sites and 18.07's VAELEN_CLIMATE_LOG pins unmoved by name; Population.PopulationGate with Climate forced false still passes on its old literal; the two engine-recorded months and the walk replay to their old lines under --no-climate | `python3 Tools/frozen_census.py --diff <18.09 head> <18.10 head> && ctest -R '^Replay\.¦^Run\.Gate' && Tools/run_gates.sh linux-clang-debug` |
+| (l) the four wirings, the event table, the fence and the kernel's purity: WarmthTypes and WinterSystem at the same position in Tools/Atlas, Run::Aelvor and both actors with no OPTIONAL entry naming them; 'Winter' and 'WinterForeseen' in EventTypeNames.h; Climate.h a leaf under the fence; no float, chrono or clock in Climate.h/.cpp, Winter.h/.cpp, Warmth.h/.cpp; run_gates.sh --self-test still red; verify_fast clean at every commit of the phase | `ctest -R '^Kernel\.WorldWiring$¦^Kernel\.EventTypes$¦^Kernel\.UiFence$¦^Kernel\.Purity$' && Tools/run_gates.sh linux-clang-debug --self-test; Tools/verify_fast.sh` |
+
+### What is NOT in Phase 18, and why
+
+- **Folding the map's extents into WorldMap::LayoutDigest (a v4 image, a kept v3 fold, Save.CorpusMigrates)** 18.09 closes the tenth door at the reader with no byte moved (WorldMap.cpp:111, Snapshot.cpp:253); changing what the digest folds moves every state digest through the header (Snapshot.cpp:435, :671-673), Test_Golden.cpp:90-91 and Test_WorldMap.cpp:18 both pin VERSION == 3, and the goldens' 'state digest' column would change meaning while the bytes may not (Golden/README.md:4). Two proposals planned it without naming those pins; it is an owner question below, and if wanted it is its own re-freeze commit after this phase's, so the census can prove a state-only footprint apart from the climate's.
+- **A DisasterKind::Winter with omens and strikes** Measured out: DisasterKind::Count sizes DisasterState::PerKind (static_assert at Disasters.h:92), RegionHazard::Risk (:69) and both rule arrays (:107, :112); a fifth kind moves the registry LayoutDigest (ComponentType.cpp:65-74) of every world with the option OFF and inserts a draw in the omen loop (Disasters.cpp:354-362). The chronicle gets winters through the WinterEvent and WinterForeseen sentences instead.
+- **A per-tile current-temperature map LAYER, or cached per-season layers** It is a pure function of the mean layer, the row and the day (WorldGen.h:41, :124, WorldGen.cpp:413-424); a layer's name enters WorldMap::LayoutDigest (:29-38), the header and every image byte (WorldMap.cpp:84-114); the per-tile figure Phase 19 needs is the 4-byte ClimateView leaf taken once a day.
+- **Seasonal MOISTURE, snow as precipitation, sea ice and frozen rivers as hydrology facts, a changed biome** Moisture stays the annual value of WorldGen.cpp:533+ and ClassifyBiome reads the annual MEAN (:427-462); frost on sea tiles is displayed from the temperature alone (sea tiles carry the latitude band, WorldGen.cpp:525) and Phase 19 paints snow from TileClimate.Flags without the kernel knowing. Changing CapacityPerTile or the biome thresholds moves the Phase 02 VALIDATED generation digests (Test_Climate.cpp:22-24) for no display gain.
+- **Shelter as a building kind, a hearth, cloth allocated per person, a ninth verb** No dwelling exists (Buildings.h:44-51: Granary, Mill, Smithy, Wall; Families.h:35-46 has none) and ADR-0090 point 5 says a fifth Work would raise one in every world ever made — a re-freeze of every Infrastructure digest. Shelter is the settlement (Trade.h:57-68), cover is the cloth stock read as is (Production.h:94), and the eight verbs are fixed (Panel.h:43); PersonWarmth::Clad is named for cloth and unused.
+- **The engine-side colouring of tiles by temperature, snow, the sky, the shoulder-camera weather, and SEEING the Weather row** Phase 19 WORLD IN 3D, one session per task on the owner's machine under ENGINE_HANDOFF.md:65 (report, do not repair); this phase ships the leaf (ClimateView), the row and the LogVaelenClimate line the screenshot is checked against, and the actors' wiring parsed against Tools/EngineShim.
+- **Marching, trade and sieges slowed by winter; roads closing** March.h's 'one hop a season' stays a count; each is a correct consequence and each is a re-freeze of the Military/Economy gates on its own, and none of them is displayed.
+- **Filling the Cause edge across publishers and log tiering** Phase 17's deferrals stand (ROADMAP:6378-6382); this phase adds exactly the cause edges it needs (foreseen → winter, winter → stock taken / death of cold); the WinterSystem reads the log once a year as Production does (Production.cpp:89-112).
+- **Re-recording the engine-printed replay lines with the climate on** Streams/README.md:9-24 and :69-71: the 256 month and the 128 lived walk came off the engine, the 128 walk off `--walk`; a .stream carries no Options (Stream.h:110-118), so they replay with `--no-climate` in the world they were lived in and keep their pins; the first walk recorded WITH a winter is Phase 19's first sitting.
+- **Tuning cloth or timber PRODUCTION for the cold, or a stochastic hard-winter draw beyond the ±3 ° hash variation** The stocks are read as cover and fuel with today's rules (Production.h:91-94); tuning them is a Phase 20 measurement, not a display; a drawn winter is the omen shape the owner may ask for later, in one task with its own re-freeze.
 
 ### Open questions only the owner can answer
 
-1. **Where do saves live on the Windows machine, and what are the verbs called?**
-   16.14 assumes `Vaelen.Save <name>` / `Vaelen.Load <name>` under the project's
-   saved directory. If the sitting should instead use a key like F9 (as
-   `Vaelen.Stream.Write` does), say so before 16.07 fixes the store's naming.
-2. **Does a save carry its recorded tape by default?** 16.11 says yes: four
-   kilobytes against twenty-two megabytes, and without it a restored world cannot
-   be audited or replayed. If saves are ever to be shared, that tape is a record
-   of what somebody did, and that is the owner's call and not the code's.
-3. **How many checkpoints in the ring, and is there an autosave?** 16.07 builds
-   the ring; nothing decides N, and nothing decides whether the game writes one
-   on its own. If it does, the cadence must be counted in DAY TURNS and never in
-   wall clock (ADR-0109).
-4. **Is a save ever to be loadable into a world generated differently?** Today
-   the seed check forbids it, and that is the only thing making
-   `DiplomacySystem`'s region-count cache safe. Answering "yes, one day" makes
-   fixing that cache a Phase 17 task rather than a recorded note.
-5. **What is an acceptable save size at the far end?** A 500-year AELVOR 256 is
-   182 MB today and unbounded thereafter. Phase 16 ships that and calls it
-   correct. If it is not acceptable, Phase 18 needs to open with the log question
-   rather than inherit it.
-6. **Does the MSVC leg get the corpus?** Clause (j) says yes, and the leg exists
-   (`kernel-ci.yml`, `windows-2022`, `ctest --preset windows-msvc-debug -E Shuffled`).
-   It adds a few seconds and it is the only cross-compiler witness the format
-   will ever have. Confirm it should not be excluded.
+1. Should the layout DIGEST also tell two map sizes apart (fold Width/Height under a v4 image with a kept v3 fold, Save.CorpusMigrates), now that the door itself closes for free at the reader in 18.09? It is its own re-freeze of every state digest (Snapshot.cpp:435, :671-673) and changes what the goldens' 'state digest' column means while the bytes stay (Golden/README.md:4; Test_Golden.cpp:90-91 and Test_WorldMap.cpp:18 pin VERSION == 3). Question 4 of Phase 17 (ROADMAP:6384-6390) is the same door.
+2. Should the two engine-recorded months (aelvor256-2026-09-16, aelvor128-played-2026-09-21) stay pinned forever as --no-climate replays of the world they were lived in, or be re-recorded on the owner's machine with the climate on in Phase 19's first sitting — and should StreamHeader gain a flags word so a walk can SAY which world it was lived in (a stream-format change touching the pinned reader), instead of the flags staying 'told, not read' (Main.cpp:556-560)?
+3. The sentences: the page ('winter day 5 of 90 -12.3 deg here …') and the chronicle ('a hard winter lay on X; N died of the cold', 'a hard winter is coming to X', 'the winter took N grain from the stores of X') are English prose in a French-speaking owner's project; they settle at 18.04/18.06 and every later wording change moves the panel digest and the text-export pins. Are these the words?
+4. Should a hard winter also be DRAWN (an omen-style chance of a killing winter beyond the ±3 ° hash variation), so that two identical regions can suffer differently in one year? It is one task with its own re-freeze after this phase; the deterministic winter is what this phase displays.
+5. Shelter: should a House become a building kind (a fifth Work moves every Infrastructure digest, ADR-0090 point 5) or a family's own fact, so that roof and hearth can weigh on the chill per household rather than per settlement? The settlement is the shelter until then.
+6. The Weather row's width (~90 characters at GEngine->GetSmallFont()) and its place as the page's second line: is that where the owner wants « froid chaud » on the first screen, or on the map itself first (Phase 19's colouring)?
 
-### What the probes could NOT settle, and the risks that follow
+### What this plan corrects in the record
 
-- **A death across a save was never reached.** The longest horizon measured is 60
-  day turns at the fullest wiring with the played person alive throughout. A
-  death exercises `Release`, a fresh `TakeUp`, `NearDetail`'s give-back path and
-  a recorded `TakenUp` — the machinery `Near_` feeds — and is the most likely
-  place for a fourth piece of run state to be hiding. 16.12(c) asks for one and
-  asserts its own precondition; if no workable seed reaches a death in a
-  workable horizon, the task must SAY so in its STATUS line rather than let a
-  gate that never met a death imply it did.
-- **`Detail_` and `Dug_` could not be varied in isolation.** They are private and
-  only `Begin()` writes them, so the argument for saving them is from the code
-  (`Reside` reads `Detail_` at `:532` and `:566`) and from the never-`Begin()`-ed
-  run where both read 0. Confirming needs a setter, which is a task and not a
-  probe. This is why 16.05 copies them rather than deriving them.
-- **Everything measured is gcc on Linux.** `sizeof(Event) == 112`, the
-  `static_assert`s on padding, and `WorldGenConfig` being written as raw bytes
-  through one `SerializeBytes` call are an ARGUMENT that MSVC and AppleClang
-  agree, not a run. Clause (j) is the only thing that turns it into a
-  measurement, which is why the corpus is small enough to live in git.
-- **16.06's `Adopt` sets `Begun_` without `Begin()` running.** That is provably
-  complete today — `Begin()`'s only non-world outputs are `Detail_`, `Dug_` and
-  `Begun_` — and that completeness is a property of today's `Begin()`, not of the
-  design. 16.05's single struct filled by both paths is the guard; if a later
-  phase adds a line to `Begin()` that writes a member and not the struct, a
-  restored world diverges silently again and 16.12's matrix is the only
-  instrument that would catch it.
-- **The two probes disagree by 27,565 bytes on the same wiring** (21,980,402
-  against 22,007,967 at AELVOR 128, Play+Stream, 20 played days). The walks
-  differed by a few hundred logged events. Same world, same conclusion, and
-  neither number should be quoted as a constant.
-- **The count of frozen digest literals is not a constant either.** The planners
-  quoted 249 and 252; a bare `[0-9a-f]{16}` grep over `Tests/`, `Source/` and
-  `Docs/ROADMAP.md` here returns 178. Clause (b) checks the DIFF, not a count, for
-  that reason.
-- **Fourteen tasks is above this project's range**, and 16.12 is the biggest of
-  them. If the phase has to shed weight, 16.13 goes first (it is a performance
-  task with a zero-change contract) and 16.09's forge second (the corpus alone
-  still migrates, it just stops being a witness once the schema moves twice).
-  16.01 through 16.06 are not sheddable: they are the save.
+- Section 24 said the phase "moves every frozen digest in the repository, so it lands with its own re-freeze, like ADR-0131",
+  and that the defect-5 door "should share the commit". The panel measured both: the door closes at the READER
+  (`WorldMap.cpp:111` resets a begun map to the image's grid after the archive failed) with no byte moved, so it lands alone
+  (18.09) and bisects alone; and the re-freeze is ONE commit (18.10) whose footprint a classified census predicts and prints,
+  with the ground digest, the fourteen generation digests and the hash constants named UNMOVED - not "every digest".
+- Phase 17's clause (i) rested on a grep that cannot see `0x…ull`. Its conclusion is re-established above with a suffix-aware
+  grep; 18.01 builds the instrument that makes such a claim fail on purpose, with the ADR-0131 commit as its known answer.
+- ADR-0151 to ADR-0154 are written in `Docs/DECISIONS.md` as PROPOSED, each applied by the task that names it.
 
-Next: 16.01, the goldens and the gate list, because both are one-way doors and
-neither can be recovered once another task has landed.
+### 18.01 AS BUILT, 2026-09-24
+
+`Tools/frozen_census.py`, 106 files named one by one in its table, and the
+census at the phase's start:
+
+```
+[frozen-census] 514 sites in 106 files: WORLD 170, GEN 14, HASH 244, CONST 15, SEED 11, SYNTHETIC 8, RECORD 52
+[frozen-census] by kind: WORLD/state 92, WORLD/log 23, WORLD/digest 17, WORLD/life 10, WORLD/section 10,
+                WORLD/trailer 9, WORLD/panel 7, WORLD/frame 1, WORLD/ground 1; GEN/state 14; HASH/digest 228,
+                HASH/state 10, HASH/seed 6; RECORD/note 33, RECORD/section 10, RECORD/trailer 6, RECORD/digest 3;
+                CONST/digest 13, CONST/note 2; SEED/seed 11; SYNTHETIC/digest 5, /frame 2, /ground 1
+```
+
+514 and not the panel's 414 because the panel counted `0x` tokens in code only;
+the census also reads the 43 bare tokens of the two test CMakeLists and the
+drivers, the 33 rows of the three READMEs, and the tool's own three examples -
+and it agrees with `grep -Po` token for token on every one of the 106 files
+(the reconciliation was run before this was written: 0 disagreements).
+
+THE KNOWN ANSWER. `--diff be9df8d^ be9df8d`, the ADR-0131 re-freeze:
+
+```
+[frozen-census] be9df8d^..be9df8d: 55 removed, 50 added, in 19 file(s)
+[frozen-census]   WORLD -55/+50: digest -7/+6, log -14/+14, state -34/+30
+[frozen-census]   unmoved: GEN, HASH, CONST, SEED, SYNTHETIC, RECORD
+```
+
+The panel's figure exactly, and pinned in the self-test - from a checked-in
+fixture of that commit's literal lines (`Tools/CensusFixtures/adr-0131.diff`,
+124 lines), because the CI clones at depth 1 and cannot show `be9df8d`; where
+the history IS present the fixture is regenerated from git and must be
+byte-identical, and it is. The blind `\b` regex over the same lines reports 0,
+and that arm is kept permanently.
+
+PHASE 17, RE-READ BY THE INSTRUMENT: `--diff 6ee00b6 8c0a4e4` prints 0 removed
+and 167 added in 7 files - WORLD +16 (the corpus's ten section digests and six
+trailers), HASH +120 (the event-type table and the FNV constants), SEED +10,
+CONST +5, RECORD +16 - GEN and SYNTHETIC unmoved. Clause (i) held. And today's
+three commits after the close: `--diff 8c0a4e4 HEAD`, 0 removed, 3 added, all
+HASH (the digest of no bytes, twice in the harness test and once in the harness).
+
+THE CONTROLS, ELEVEN, EVERY ONE FAILED ON PURPOSE OR SHOWN ABLE TO: the pin
+moved to 54 fails one control by name; the code regex made blind (`\b0x...\b`)
+fails six at once - the planted refusal, the known answer (-0/+0 in 0 files),
+the raw count, the fixture's regeneration, the struck-out file and the HASH
+mutation - which is the shape of an instrument that cannot see: green on a
+healthy tree and wrong about everything the moment it is asked a question.
+
+`Kernel.FrozenCensus` and `Kernel.FrozenCensusSelfTest` beside `Kernel.WorldWiring`;
+`Tools/verify_fast.sh` runs `--check` as its eighth check, so a literal in a file
+the table does not name is refused before a push. Gate clause (a) is met by the
+self-test; clause (c)'s baseline is the census above.
+
+### 18.02 AS BUILT, 2026-09-24
+
+`Options::Climate = false` after `Stream`, with Stream's own reasoning reused:
+a flag that changes the world and is not in the save is the defect (ADR-0150),
+so the flag is in the save BEFORE the world it will change exists. `PutOptions`
+appends a fifth byte (never inserts: Checkpoint.cpp's own rule), `GetOptions`
+reads 24 bytes as `Climate = false` and 25 as written and refuses any other
+length, `AdoptResult::ClimateDiffers` is the ninth refusal by name, `--climate`
+is told to Atlas at all ten sites that tell it `--stream`, `--inspect` prints
+`Climate` in the wiring, `ViewSources::HasClimate` exists and every source
+leaves it false, and the engine's headless check line adds `--climate` when
+the host was given it.
+
+THE CORPUS MOVED BY ONE BYTE EACH AND NO WORLD MOVED. `VaelenAtlas --containers`
+regenerated: 77686, 80863 and 182720 bytes (each +1), HOST 25 bytes with new
+section digests `4a4c61d69390db4b`, `d4f215b4679211f7`, `0df7628587f8e927`,
+the STREAM offset one further on, and the three image trailers exactly as they
+were - `d17d7fd9a6f09ea6`, `64d11b40b612581c`, `2ec516c4d275ab6f` - now
+`static_assert`ed in the corpus table by name, so a regeneration that moved one
+is caught by that line and not by a table quietly re-pinned.
+
+THE FIRST OLDER-FORMAT INSTANCE IN THE TREE: `played-16.container` as it was
+before the byte, kept as `host24-16.container`, never regenerated, a fourth
+row of the corpus table (HOST 24 bytes, `8616198be3fd64ad`, every offset after
+it one less, the same trailer), inspected by `Atlas.Inspect.host24-16` to the
+same header and trailer as `played-16`, and required by
+`Atlas.ContainersRegenerate` to DIFFER from the `played-16` the tool writes
+today - the day they agree, the fifth byte is gone.
+
+`Run.Checkpoint.TheClimateIsInTheHostSection`: a container of a climate world
+carries a 25-byte HOST whose fifth byte reads back; a host that did not ask for
+a climate is refused `ClimateDiffers` by name and left un-begun with its empty
+world untouched; the host it is of takes it up; the reading rule on the bytes
+alone through a hand-built view - 24 reads as the four flags and Climate false,
+25 as written, 26 and 23 as no HOST section; and THE CONTROL, ADR-0149 rule 2,
+inverted from Stream's: two worlds identical but for the flag, ten day turns,
+are THE SAME WORLD under `VT_CHECK_DIGEST_EQ` on state and log, because nothing
+reads the flag yet - the day something does, that arm turns, and 18.10 rewrites
+it into Stream's "must part". `TheHostsDeclaredWorldIsCheckedAgainstTheSave`
+gains the ninth mismatch: 9 of 9 by name, five flags carried.
+
+FAILED ON PURPOSE: `GetOptions` writing the byte and never reading it - the
+plan's own control, ADR-0150's silent row reproduced. SIX checks fire, all in
+the new case: the fifth byte does not read back, the cold host answers `Ok`
+where `ClimateDiffers` was wanted and is left BEGUN with its digest moved (the
+half-restore the refusal exists to prevent, seen), the host the save is of is
+refused, and the 25-byte reading rule fails. The ninth mismatch in the older
+case still passes under that defect - a host asking for a climate offered a
+climate-less save is refused either way - which is exactly why the new case
+exists: the silent direction is the cold host taking a warm save.
+
+26 of 26 touched entries green on gcc debug (SaveContinue, SaveFuzz, Migrate,
+the stores, the refusals, the inspector, the corpus), the corpus entries on
+gcc release; verify_fast clean, eight checks.
+
+THE CENSUS OVER THE COMMIT, `frozen_census.py --diff HEAD~1 HEAD`, and it is
+not the "WORLD 3, all SECTION" the plan predicted - it is that plus what the
+task added, and the instrument says which is which:
+
+```
+[frozen-census] HEAD~1..HEAD: 4 removed, 22 added, in 3 file(s)
+[frozen-census]   WORLD -2/+11: section -2/+6, trailer -0/+5
+[frozen-census]   SEED -0/+4: seed -0/+4
+[frozen-census]   RECORD -2/+7: section -2/+6, trailer -0/+1
+[frozen-census]   unmoved: GEN, HASH, CONST, SYNTHETIC
+```
+
+Two HOST digests removed and not three, because the third - played-16's old
+`8616198be3fd64ad` - SURVIVES in the kept older container's row; the six
+sections added are the three new HOST digests and the kept row's three that
+now stand twice; the five trailers are the three `static_assert`s and the kept
+row's; the seeds are the kept row's and its README and inspect entries. No
+trailer removed, no state, no log, no GEN, no HASH: the byte moved sections and
+nothing else, and the census is what says so rather than the commit message.
+
+### 18.03 AS BUILT, 2026-09-24
+
+`Vaelen/Sim/Climate.h` and `Climate.cpp` in VaelenSim, listed in its CMake:
+no layer, no component, no state, no draw. `SeasonalAmplitude` (4 + 16|lat|,
+SeasonalOffset's), `DayOffset` (the triangle wave, 0 at mid-spring, +A at
+mid-summer, 0, −A, linear between - EXACT ON THE RAW VALUE at the four season
+midpoints, since each quarter ends in A·q/q), `TemperatureOn`,
+`TileTemperatureOn` (the layer, the row, the day; 0 off the map),
+`ShapeYear` (frost days, growing days, cold sum, coldest, warmest),
+`YearVariation` (a lattice hash of seed, year and region, scaled; never the
+generator), `RegionYear` and `ShapeRegionYears` (the centroid tile's year,
+the world's own calendar, one pass over the region pool), `ClimateRules`
+(a rule, in no digest).
+
+THE ONE DEVIATION FROM THE ROW, recorded in ADR-0151's status: the year is the
+360-day sum and not an arithmetic series - the sum is the definition, costs
+nothing, and the panel's closed-form hand figures had been wrong once.
+
+THE PINS ARE THE PANEL'S FIGURES, computed independently in Python from the
+same wave before the test was written and then in Fix64 by the test: the pole
+315 frost / 1 growing / 5512 degree-days (the panel's 5513 was rounded, this
+is floored), row 32 of 128 65 / 221 / 136, the equator 0 / 360 / 0, tundra at
+|lat| 0.7 203 / 97 / 1751, grassland at |lat| 0.489 59 / 225 / 111; the pole's
+extremes −35 and +5 exactly; the saturations (mean +100: no frost, 360
+growing, no cold; mean −100: 360 frost, cold sum 36000 EXACTLY because the
+offsets of a year sum to zero, which is asserted for five latitudes); a
+zero-day year shapes to nothing. Over AELVOR 256 on day 315 every Ice and
+Tundra tile is below freezing and no Tropical, Savanna or Desert tile is,
+summer and winter differ on every one of the 65536 tiles, more tiles freeze
+than are ice or tundra, and the 02.04 temperature and biome digests are
+unchanged. Over a 64-tile pipeline world every region's year agrees between
+the one-pass and the single call, two years of one region differ by the
+variation and by nothing else (amplitude 0 makes them equal), region 0 and a
+region past the count are all-zero, and region 1's shape is recomputed by
+hand from the layer, the row and the hash.
+
+FAILED ON PURPOSE, twice: the winter half's sign flipped - 26 checks in three
+cases, the midpoint equality at season 3 for every latitude, the year's sum,
+every pinned shape, the saturations and the mid-winter freeze among them;
+the tile reading the mean and ignoring the day - "summer and winter differ on
+every tile" fails (the Ice/Tundra check does not, because their MEANS are
+below freezing already: the mean alone is the world before this task, and
+only the day tells them apart). 11 of 11 cases, 171 checks, on gcc debug and
+gcc release; verify_fast clean - after the census REFUSED the new file: the
+"CLIMATE" salt of `YearVariation` is a sixteen-hex literal in a file the table
+did not name, exactly the refusal 18.01 was built to make, and
+`Climate.cpp` is named HASH now.
+
+### 18.04 AS BUILT, 2026-09-25
+
+THE PAGE SAYS THE WEATHER, and it says nothing of it without a climate. The
+leaves grew inside the words they already had, so no frozen digest moved:
+`WorldView::Reserved` is `Season` (0 without a climate, 1 spring .. 4
+winter), `RegionView::Reserved` is `Climate`, a packed word - today's degrees
+at the centroid, the year's coldest and warmest, the harvest outlook in
+percent, a hard-winter bit - with `RegionClimateOf` / `PackRegionClimate`
+beside it and the padding `static_assert` untouched; `LifeView`'s four
+reserved words are `Season`, `Degrees` (tenths of a degree where the played
+person stands), `Chill` (0 until 18.05) and `Winter` (this year's severity
+there). `Vaelen/View/Climate.h` is a NEW leaf: `TileClimate` four bytes a tile
+(today, mid-winter, mid-summer, two flags), `ClimateView` taken once a day,
+`MeasureClimateView`; it passes the leaf probe and the UI fence.
+`RowKind::Weather` is appended AFTER `Digest`, so `Digest` keeps its ordinal;
+`Page::Signed` and `Page::Tenths` exist because `Number()` takes a `uint64`
+and a temperature is not one. The row, after the date and only when
+`Life.Season != 0`:
+
+```
+winter  day 5 of 90  -12.3 deg here  chill 40  coldest -21  warmest 14  outlook 54%  a hard winter lies on the land
+```
+
+- "deg here" and the region's figures only where somebody stands; a page
+  with nobody played says `spring  day 1 of 90` and no more;
+- "a hard winter is coming" in the three seasons before it and "lies on the
+  land" during it - the plan's example said "coming" of winter's fifth day,
+  and the row disagrees with the plan on purpose;
+- the body row gains `  chill N` under the same guard.
+
+The kernel gained two readers the view needed, in `Sim/Climate.h`:
+`WinterSeverity` (0..3 by the rules' three bands) and `RegionCentroidTile`.
+`ViewSources` carries `ClimateRules Climate` beside `HasClimate`, the host's,
+as `OrderRules` are. Tools/Atlas: `--climate` tells every take (the tool's
+own run through `WithClimate`, the Aelvor paths through `SourcesFor`),
+prints the proof line and writes a `climate` JSON object, absent without the
+flag:
+
+```
+LogVaelenClimate: AELVOR 128 seed 41454c564f52: day 1 of year 420, spring; coldest -26 warmest 28; frost 8381 of 16384 tiles, 6448 growing; hard winters 0, cold deaths 0; climate 59615fa1f5d24bd1
+```
+
+`Atlas.Climate128` runs it and `Atlas.ClimateFrozen128` pins `climate=` and
+the ground - the frame is NOT pinned, because 18.05-18.09 fill the words this
+task left at zero. `check_atlas_output.py` holds a climate object to its
+ground (tiles, a season the calendar has, frost and growing that fit and do
+not overlap, a non-zero digest) with six new self-test cases; a document
+without the object reads exactly as it did.
+
+MEASURED: with the flag on, the frame digest of AELVOR 128/120 is
+`a1ebd60d1d606a50` against `abc5a5767c6cf9dd` without - the view sees the
+climate - and mid-winter and mid-summer differ on every one of the 16384
+tiles; 8381 tiles freeze on the first day of spring.
+
+THE CONTROLS. `View.Climate.WithoutAClimateEveryViewIsTheWorldBeforePhase18`:
+season 0, every region word 0, the life's four words 0, no weather row, no
+chill on the body row, an empty leaf; frame, life and page taken twice with
+the flag off EQUAL under `VT_CHECK_DIGEST_EQ`; and with the flag on the same
+world reads differently, with every region carrying a word. The frozen pins
+held on every run of this task: `Test_Panel`'s two pages, `Atlas.PanelFrozen`,
+`Atlas.Frozen128`'s frame and ground, `Test_Aelvor`, `View.ViewGate`.
+`TheLeafIsFourBytesATileAndReadsTheKernel`: two instruments - the leaf's frost
+count against the kernel's `TileTemperatureOn` over every tile, every byte
+the kernel's floored, mid-winter and mid-summer differing on every tile, the
+copy outliving its world. `TheRegionWordIsTheKernelsFigures`: every region's
+word unpacked equals the kernel's five figures; the packing clamps -200 to
+-128 and 250% to 100. `Panel.TheWeatherRowIsComposedFromTheLeavesAndSaysTheSign`:
+the exact row from a hand-built life and frame; -0.5, 0.0, 123.4 through the
+row; coming in autumn, lying in winter; nobody played; no climate.
+`Climate.SeverityBandsAndTheCentroidAreTheKernels`: 149/150/599/600/1500,
+bands read, the pole a 3 and the equator a 0, region 2's centroid the pool's.
+
+TWO TEST DEFECTS OF MY OWN, both found by the tests failing on their first
+run, both in the tests: the 64-tile world took nobody up under the default
+rules, so the row rightly said only the season and the case had measured a
+page with nobody on it - it now REQUIRES a taking; and the pinned row said
+"coming" of winter's fifth day. FAILED ON PURPOSE, twice: the weather row
+written when `Season == 0` - seven instruments in three binaries go red at
+once: five cases of `Test_Panel` (the three-views page, both frozen pages, the
+page too long, and the row's own case), `Atlas.PanelFrozen`, and the
+without-a-climate control of `View.Climate`, which is the control the plan
+named as the true one (the page digest is over the TEXT); the sign dropped
+from `Tenths` - exactly the -12.3 and -0.5 checks fail, and the 0.0 and 123.4
+ones rightly hold.
+
+And the census learnt to read the `0x` tokens of the CMake drivers, which its
+bare pattern had skipped by design: the `--expect frame=0x...` pins of
+`Atlas.Frozen128` were sites it could not see, and the new `climate=` pin
+would have been another. 543 sites now.
+
+### 18.05 AS BUILT, 2026-09-25
+
+**Who is cold: the chill as a component declared only in a climate world, the
+cause, and the yearly judgement.** STATUS: PROTOTYPE (Phase 18), headless.
+
+`Vaelen/Population/Warmth.h`: `PersonWarmth {Chill, ColdYears, Clad,
+Reserved, Reserved2}`, eight bytes, static_asserted, ZERO MEANS WARM
+(ADR-0153, now APPLIED); `WarmthTypes::Declare` registers `PersonWarmth` on
+person entities; `WarmthRules {ChillLine 100, ColdDamage 40, ChillRecovery
+200}`; `WinterPayload {Region, Severity, ColdSum, Deaths}` with
+`WinterEvent = "Winter"` and `WinterForeseenEvent = "WinterForeseen"`
+declared here for Economy to publish in 18.06, as Sim declares
+`DisasterStruckEvent` for everybody; `ChillPerson` / `WarmPerson` declared
+here and defined in Needs.cpp beside `FeedPerson`, on the same living-person
+lookup - they saturate at 255, floor at 0, return what they moved, and move
+nothing for an unknown, dead or uncarried person; `MeasureWarmth` with
+`WarmthStats {WithWarmth, Cold, ChillSum, ColdDeaths}`. `DeathCause::Cold =
+4`, `" of the cold"` in PersonHistory.cpp. `NeedSystem::ObserveWinter(
+WarmthTypes, WarmthRules)`: at the year's turn newcomers get `PersonWarmth{}`
+where they get `PersonNeeds{}`; this year's `WinterEvent` of each detailed
+region is found the way the blows are (the latest within the year names the
+death; none is a valid cause too); and per person, after hunger and before
+plague, a chill above the line counts a cold year and costs `ColdDamage +
+Below(excess + 1)` through the frail lambda, the blow that ends a life naming
+the winter - then the year spends `ChillRecovery` of EVERYONE's chill.
+`NeedStats` gains `ColdDeaths`. Wired in `Run::Aelvor` and `Tools/Atlas`
+behind `Options::Climate` / `--climate`, declared after `PolityTypes` and
+BEFORE `ColonyTypes` (the KernelRun constructor now takes the flag, so the
+declaration is in the constructor where the others are), told to the need
+system beside `ObserveRation`; `check_world_wiring.py` names `Warmth`
+optional at that position with its reason (14 declarations optional now).
+`ViewSources` gains `HasWarmth` + `WarmthTypes` - separate from `HasClimate`,
+because Aelvor declares the type from this task on while its `HasClimate`
+waits for 18.10, and a take must never read a pool that was not declared -
+and `TakeLifeView` fills `LifeView::Chill`, the word 18.04 left at zero.
+`gen_event_names.py --write`: 117 names; `Test_EventTypes` pins 117.
+
+TWO DEVIATIONS FROM THE ROW, both recorded on ADR-0153. (1) The panel's row
+recovered the chill only BELOW the line (`else Chill -= ChillRecovery`).
+Nothing in the phase warms an ordinary detailed person otherwise - 18.06 only
+chills, 18.08 warms the colony and the played person by the day - so one hard
+winter's 150 of chill would have been permanent: judged cold every year,
+never spent, dead within three years of the first hard winter for everyone
+nothing warms, while the coarse rule of 18.06 kills at most 20‰ a year and
+18.07's own prediction wants cold-biome regions at ≥ 55 % of capacity. The
+year now spends the chill of everyone it judged, cold or not, as the ration
+spends hunger: a chill is the burden of the winter that gave it, and the next
+winter chills again (255 spent to 55, so a terrible winter is remembered a
+little). Deliberate failure C below is the row's rule, seen. (2) The count of
+persons above the line is `WarmthStats::Cold` from `MeasureWarmth`, not
+`NeedStats::Cold`: `MeasureNeeds(W, Persons, Needs, Region)` cannot see a
+type its caller never declared, and widening its signature would touch every
+caller for a figure the warmth measure owns anyway; `ColdDeaths` is in both,
+from the log. Also: the row's "the 128 cell never told still gives
+VAELEN_NEEDS_FROZEN_128" is `Population.Needs` itself, unchanged and green,
+rather than a second 128/300+200 run in this file.
+
+`Tests/Population/Test_Warmth.cpp`, six cases, 168 checks, AELVOR 64/120:
+`DefaultsAndTheComponentAreSane`; `TheChillSaturatesTheWarmthFloorsAndNobody
+ElseIsTouched` (before the first turn nobody carries warmth and the verbs say
+0; after it 602 of region 36 carry it warm; 250 then 5 then 0 up, 255 then 0
+down; unknown, dead, and the 464 people of region 32 promoted after the turn
+all 0; one chill is nobody else's); `TheColdKillsWithACauseAndTheWintersName`
+(ColdDamage 255 so the deaths are certain and the case is about the cause: a
+winter planted at the turn where 18.06 will publish it, three frozen through,
+three deaths of the cold each naming that winter and nothing else dying of
+anything but age; the counts reconciled; `CountCausedBy(Winter) == 3`; a year
+later three more die of the cold with NO cause event - real even unnamed - and
+the old winter still names three); `TheFrailTakeMoreAndTheYearWarmsWhomIt
+Judged` (a calm world so every person eats and heals alike: the control at
+255 stands exactly ON the line, the hale one over it ends 41 lower, the frail
+52 lower - 40 + a draw below 2, and 30 % more; ColdYears 1/1/0; every chill
+spent; the next year the streak ends and 40 comes back); `TheChillIsState
+AndSurvivesAnImage` (77 through a snapshot, three more years equal in state
+and log, and a world that never declared the type refuses the image);
+`AWinterThatChillsNobodyLeavesEveryNeedByteAsItWas` (ADR-0149 rule 2, three
+runs of six cursed years: never told, told with nobody chilled, and told with
+the line at 255 and one person frozen through every year - 364 people, 0 need
+bytes differ, both logs equal to the never-told one, the chill schedule 255 →
+55 to the unit on the three carried through alive, `Cold == 0`, and the
+state digests part on the declared type alone - the reason it is optional,
+seen).
+
+THE ARM THAT TURNED. `Run.Checkpoint`'s 18.02 control said two worlds
+identical but for the flag are THE SAME WORLD "until something reads it, when
+this arm turns". This task reads it: the arm now requires the state digests to
+PART (the layout) while the logs still agree (nothing chills anyone, no draw
+below the line), which is the shape 18.10 will finish into Stream's must-part
+control on both.
+
+THE CONTROLS FIRED. `gen_event_names.py --check` before `--write`: STALE,
+`+ Winter`, `+ WinterForeseen`, exit 1. `check_world_wiring.py` with the
+`Warmth` entry removed: "16. Warmth  -  -  Warmth", the position printed, the
+actors' columns empty, exit 1; with it, 4 wirings agree. FAILED ON PURPOSE,
+three times, each restored and the suite 6/6 after: (A) the cold death
+published with Cause 3 → "person 1 died of plague" three times, Cold 0 of 3,
+both ColdDeaths 0 of 3; (B) one draw taken below the line too → 376 people
+against 364, 348 need bytes differ, the logs part (b338f777783ac358 against
+da9844363fb37789) - the rule-2 instrument sees one wasted draw; (C) the chill
+spent only below the line, the row's rule → Chill 101 kept, ColdYears 2,
+Health 214 where 254 was due: the permanent winter.
+
+NO FROZEN DIGEST MOVED: nothing is declared without the flag, and with it
+nobody is chilled yet. Census: HASH +2 (the two table rows), WORLD 0, GEN 0.
+
+### 18.06 AS BUILT, 2026-09-25
+
+**The winter, yearly, as a consequence: fuel through the ledger, grain from
+the stores, chill on the people, deaths where nobody is detailed, and the
+words.** STATUS: PROTOTYPE (Phase 18), headless.
+
+`Vaelen/Economy/Winter.h`: `Economy::WinterSystem` ("Winter", SimLod::World,
+dependencies {"Lod"} plus `RunAfter("Stocks")` from the wirings, so the
+houses are settled before the winter takes from them; `Harvest->RunAfter(
+"Winter")` so the harvest comes after; the need system already ran after the
+harvest) with `WinterRules {DegreeDaysPerTimber 200, TimberPerPersons 10,
+ClothPerPersons 25, ClothWarmthPerMille 300, ShelterPerMille 400,
+DegreeDaysPerChill 20, WinterGrainPerMille {50, 120, 250},
+ColdDeathsPerMille {0, 2, 8, 20}, DailyRegion 0, Climate}`. At the year's
+turn, per region in index order, three passes of the ONE `ShapeRegionYears`
+everybody reads (the winter lain, the one coming, and the region's USUAL year
+with the variation off - the climate the news is measured against); then per
+region: the coarse dead by `ColdDeathsPerMille[s]` through `History::
+KillShare` - the disasters' own `Kill`, made public and byte-identical - with
+`TrimBelieversToTheLiving` (the same block, made public) so believers never
+exceed the living; the `WinterEvent {Region, Severity, ColdSum, Deaths,
+People, Usual}` for s ≥ 1 (24 bytes, two words more than the row: who lived
+there when it lay, and what its usual severity is); the fuel `ColdSum /
+DegreeDaysPerTimber × People / TimberPerPersons` taken from the common
+timber through `MoveStock` with the winter as cause, and what could not be
+taken is the exposure; the grain of severity s taken from the common stock
+and from every house, the winter as cause; the chill `Exposure × ColdSum /
+1000 / DegreeDaysPerChill` on every person of a detailed region not living
+by the day, written through the warmth pool in one pass (not `ChillPerson`
+per person, which is a pool walk each); and `WinterForeseen` for the year
+coming when it is s ≥ 2 AND harder than usual. `MeasureWinters` reads it all
+back from the log. Wired behind `Options::Climate` / `--climate` in Aelvor
+and the Atlas, named optional in `check_world_wiring.py` until the flip.
+`EconomyChronicle` subscribes to `StockTaken` and keeps the one whose cause
+resolves to a winter, from a common stock, of grain, of twenty units or more
+(`RecordWinters`, `WinterGrainFloor`): "the winter took N grain from the
+stores of <region>." HistoryText.cpp: "a hard / a great / a terrible winter
+lay on <region> and N died of the cold." and "a hard / a terrible winter is
+coming to <region>."
+
+THREE DEVIATIONS FROM THE ROW, recorded on ADR-0152 (APPLIED). (1) The two
+winter events are declared in `Vaelen/Sim/Climate.h`, not in Population:
+the row put the words in Sim's HistoryText.cpp, and Sim cannot read a type a
+higher layer declares - the Sim chronicle records only Sim events and the
+higher layers' chronicles describe their own. Population's Warmth.h keeps
+the three names by `using`, so 18.05's reader is unchanged; the event table
+is the same 117 names at the same hashes (moved, not added). (2) The
+chronicle would have recorded every yearly winter of every cold region -
+measured at 128: 43 Winter events at one turn against a chronicle of 179
+lines in 300 years - so `History::Chronicle` gained a keep-predicate
+(`Chronicle_(TypeHash, Keep)`) and PreHistory subscribes Winter with
+`WorldGen::WinterIsHistory`: a winter harder than the region's usual one, on
+a peopled region; WinterForeseen is published only under the same rule. The
+tundra's terrible winter every year is the climate; the great winter on a
+grassland is the news. (3) The yearly pass skips `WinterRules::DailyRegion`
+only; the played person's region is 18.08's to name, when the system that
+chills it by the day exists. Also: the row's 'swap the two rows' and
+'rename the system' controls are not built - the world is generated, not
+hand-built, so the latitude claim is checked as "every published winter is
+the closed form's, to the unit, and the coldest peopled region's cold sum is
+at least ten times the warmest's"; and the order Production reads the winter
+in is a declared dependency (`RunAfter("Winter")`), not a tie the scheduler
+breaks by name.
+
+`Tests/Economy/Test_Winter.cpp`, seven cases, 295 checks, AELVOR 64/120 for
+the light ones and 128/300 where the numbers need people: `DefaultsAndThe
+PayloadAreSane`; `TheColdSumFollowsTheLatitudeAndTheEventTheSeverity` (at 64
+the coldest peopled region has 370 degree-days and the warmest 0; 23 winters
+at one turn, every one the closed form's severity and cold sum, none on a
+region whose coldest day was above freezing, none on region 0; 2835 winters
+in 121 years, 1708 grain taken); `TimberCoversTheColdAndTheLedgerNamesIt`
+(128: region 9, 173 people at the winter, cold sum 1223 → 102 timber
+wanted, 102 taken, named by the winter, nobody chilled; CONTROL without
+timber: every one of 172 persons chilled by exactly 80 - (1000 − 300 of
+cloth) × 2302 / 1000 / 20 - and nothing taken); `AGreatWinterTakesItsGrain
+FromEveryStockAndTheChronicleSaysSo` (a probe learns the cold sum, the run's
+bands make the winter a great one: the common stock 1094 → 131 taken, 16
+houses to the unit at 120‰ each, 0 wrong, and the chronicle line "the winter
+took 131 grain from the stores of Ussiho."); `TheCoarseColdDieByTheShareAnd
+TheFaithsFollow` (128: 43 winters at the turn, 4 with coarse deaths, each
+payload's deaths the share of its people to the unit and believers ≤ living
+after); `NothingHappensWhereThereIsNoCold` (ADR-0149 rule 1: ColdLine −100
+takes no timber, no grain, chills nobody, kills nobody, publishes nothing,
+and is the world without the system under VT_CHECK_DIGEST_EQ on state AND
+log; the same seed with the cold is another world); `TheSameYearTwiceFrom
+OneImage`. `Sim.HistoryText` gains `TheWinterHasItsWordsAndOnlyTheUnusualOne
+IsHistory`: four winters published by hand - the usual terrible one, a great
+one where a hard one is usual, a terrible one on nobody, a hard one coming -
+exactly two records kept (the harder one and the foreseen), the five
+sentences exact, no "something happened". `Economy.Ledger` gains `TheWinter
+TakesThroughTheSameLedger`: the accounting case's body became a helper called
+twice, and on a cold region of the winter world (region 23, 357 people) the
+winter took in 2 events and Dark == 0. Two test defects of my own, both on
+first run: a region promoted by hand is let go by the bridge at the next turn
+unless it is WANTED (15.03) - the helper now asks `RequestDetail` too; and
+the fuel is judged on the people the winter FOUND (the payload's), because
+the year's births come before it in the same tick.
+
+THE CONTROLS. `NothingHappensWhereThereIsNoCold` is ADR-0149 rule 1 to the
+digest; `TheColdSumFollows...` is the latitude read (the closed form's
+figures at every region, none above freezing); the great winter's bands are
+set from the region's own cold sum so severity 2 is a fact and not a hope;
+`TheCoarseColdDie...` requires a turn with coarse deaths somewhere, else it
+refuses to conclude; the Ledger's winter case is the ledger's own instrument
+pointed at the winter. FAILED ON PURPOSE, three times, each restored and its
+suite green after: (A) the grain taken by writing `Amount` directly instead
+of through `MoveStock` → `Ledger.TheWinterTakesThroughTheSameLedger` red on
+`Dark == 0` while the old case stays green - the ledger sees the unnamed
+unit; (B) a Winter event published at severity 0 too (`if (true)`; the row's
+`Severity >= 0` does not compile under -Wtype-limits) → the severity case
+names every region it wronged, "region 14: severity 0, event published" and
+on; (C) the chronicle's predicate saying yes to the usual winter (`>=`) →
+the HistoryText case red three ways: the usual one kept, 3 records for 2,
+the record pool one too long.
+
+THE ARM TURNED AGAIN. `Run.Checkpoint`'s control on two worlds identical but
+for the flag lost its log half here: the flag now wires a winter that
+publishes and takes through the ledger from the first year, so the two LOGS
+part as the states did in 18.05. That is the Stream-style "must part"
+control on both, arrived two tasks before 18.10 planned it; and
+`Population.Warmth`'s payload pin moved from 16 to 24 for the two words.
+
+NO FROZEN DIGEST MOVED: nothing is wired without the flag, the chronicle's
+new subscriptions record nothing in a world that publishes no winter, and
+the ledger's still and living pins held. Census: 545 sites, unmoved.
+
+### 18.07 AS BUILT, 2026-09-25
+
+**The harvest has a growing season, and the pre-history is measured
+alive.** STATUS: PROTOTYPE (Phase 18), headless.
+
+`ProductionSystem::ObserveClimate(const ClimateRules&)`: per region, from the
+SAME `ShapeRegionYears` the winter and the view read, over the year just
+ended (the season the harvest grew in), `Grow = min(1000, GrowingDays × 1000
+/ GrowFullDays)`, and `Kept = (1000 − Cut) × Grow / 1000` at the one line
+both the coarse branch and `Reap` read, so the two branches cannot disagree.
+Never told, `GrowFullDays 0`, and year 0 are all a full thousand - the world
+before. Told in Aelvor and the Atlas beside the winter, behind the option.
+`Tools/Atlas --census --climate` prints a `season:` line per peopled region
+(growing days, the harvest per mille, coldest, cold sum) after the cause
+table; the `LogVaelenClimate` line now counts the great and terrible winters
+and the dead of the cold (coarse and person) instead of the two zeros 18.04
+left: at 128/120, "hard winters 12835, cold deaths 1581".
+
+`Economy.Production` gains two cases. `TheGrowingSeasonScalesTheHarvestIn
+BothBranches`: four worlds from one seed, the season told after the
+pre-history so the first turn reaps the same fields under four rules - never
+told; GrowFullDays 0, equal to it everywhere to the unit; GrowFullDays twice
+the busiest region's 265 growing days, where the busiest region (detailed,
+109 houses) reaps 3201 of 6512, half within its houses' rounding, and 28
+coarse regions reap their share to the unit; and a growing line of +100,
+where all 29 peopled regions reap nothing. `TheFrozenFiguresHoldWithThe
+SeasonOff`: told GrowFullDays 0 from the first tick, the 06.02 pins
+`VAELEN_PRODUCTION_STOCKS_128 / RATIONS_128 / GRAIN_128` hold.
+
+`Tests/Run/Test_Climate.cpp` (CTest `Run.Climate`, TIMEOUT 3600, COST 6000):
+AELVOR 128/300+120 built twice, `Options::Climate` off and on. Measured:
+36374 people without the climate, 36032 with (99 %); winters 5148 / 6933 /
+5902 by severity, 143 foreseen, 1581 dead of the cold, 60628 timber and
+38427 grain taken. By biome, with against without: tundra 1082 of 1580
+(68 %), boreal forest 3570 of 3701 (96 %), cold steppe 99 %, the temperate
+and warm biomes 97 % to 116 %.
+
+THE PANEL'S PREDICTIONS FAILED ON THE FIRST RUN, and the figures said why.
+"No region peopled without is empty with": two emptied - region 3 (26 people,
+tundra) and region 80 (32 people, boreal, a coldest of -5) - while their
+neighbours kept theirs; after the first divergence the small regions follow
+the chaos of small numbers, not the climate. "Cold-biome regions at 55 % of
+their capacity or more": the tundra sits far under its capacity WITHOUT any
+climate (57 of 234, 26 of 92), so the clause measured the pre-history, not
+the winter. And the arithmetic confirms the rest: coarse growth is logistic
+at 25 ‰ of the room left, so a yearly drain of d ‰ settles a region at
+1 − d/25 of its capacity - 92 % under hard winters, 68 % under great ones,
+20 % under terrible ones. The bounds that stand are the ones a world can
+answer: no region of a hundred or more emptied; nine tenths of the peopled
+regions still peopled; the tundra between 50 % and 90 % of its people
+without the climate (two-sided: it pays, and it survives), the boreal forest
+and the cold steppe at 80 % or more; and the harvest judged on peopled turns
+only (a region settled mid-window has fewer turns to judge) - above zero in
+at least half of them, and in all of them where ninety days or more grow.
+The world total stays within [80 %, 110 %].
+
+THE SELF-CHECK refuses to conclude over a world without cold: ≥ 3 peopled
+regions with a coldest day under −15 °, ≥ 1 great winter, ≥ 1 region reaping
+under a full harvest, grain taken > 0. THE PINS, layout-independent:
+`VAELEN_CLIMATE_LOG_128 0xc5acefba48cd0fb5`, 12835 great and terrible
+winters, 1581 dead of the cold, 38427 grain taken; a zero pin is refused.
+
+THE CONTROL, the row's: `Economy.Winter.AHarshWinterEmptiesTheNorthAndThe
+BoundSeesIt` - ColdDeathsPerMille {0, 250, 500, 900} and GrowFullDays 360 -
+leaves 10248 people against 19781 calm (51 %) and empties 8 of 29 peopled
+regions: the bound and the never-emptied claim would both go red. FAILED ON
+PURPOSE: the season applied to the coarse branch only → the season case red
+twice, "the busiest region 26 reaped 6512 in full and 6512 at half" and 28
+of 29 reaping nothing at +100 where 29 were due.
+
+NO FROZEN DIGEST MOVED: nothing is told without the flag. Census: WORLD +1
+(the `Run.Climate` log pin; its three counts are integers the census does
+not read); nothing removed.

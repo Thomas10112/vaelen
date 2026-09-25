@@ -12,11 +12,19 @@
 // disaster's event as the cause. The counts follow
 // the persons (reconciliation), so famine and disease reach the coarse world
 // through the same door as every other death.
+//
+// 18.05: in a climate world the same year judges the cold - a chill above
+// WarmthRules::ChillLine wears health down like hunger, names the winter that
+// lay this year, and is spent by the year like the ration spends hunger. The
+// chill lives in PersonWarmth (Warmth.h), a component declared only when the
+// climate is asked for, and the system reads it only when told to
+// (ObserveWinter): a world never told is the world before, draw for draw.
 #pragma once
 
 #include "Vaelen/Core/CoreTypes.h"
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Population/PopulationApi.h"
+#include "Vaelen/Population/Warmth.h"
 #include "Vaelen/Sim/Event.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/System.h"
@@ -106,6 +114,7 @@ namespace Vaelen::Population
 		Famine = 1,		///< hunger after a drought
 		Starvation = 2, ///< hunger without a drought (a region past its capacity)
 		Plague = 3,
+		Cold = 4, ///< a chill past the line at the year's judgement (18.05)
 	};
 
 	/// Yearly, for every detailed region: rations, famine, disease, deaths with
@@ -130,6 +139,15 @@ namespace Vaelen::Population
 		{
 			Ration = InRation;
 			HasRation = true;
+		}
+		/// Optional (18.05): the cold is judged, on the warmth a climate world
+		/// declared. Never told, the year judges hunger and plague alone and
+		/// consumes exactly the draws it did before this phase.
+		void ObserveWinter(const WarmthTypes& InWarmth, const WarmthRules& InWinter) noexcept
+		{
+			Warmth = InWarmth;
+			Winter = InWinter;
+			HasWarmth = true;
 		}
 		SimLod GetLod() const noexcept override { return SimLod::World; }
 		std::vector<std::string_view> GetDependencies() const override
@@ -157,6 +175,9 @@ namespace Vaelen::Population
 		bool HasStores = false;
 		ComponentType<RegionRation> Ration;
 		bool HasRation = false;
+		WarmthTypes Warmth;
+		WarmthRules Winter;
+		bool HasWarmth = false;
 	};
 
 	struct NeedStats
@@ -169,6 +190,7 @@ namespace Vaelen::Population
 		uint32 FamineDeaths = 0; ///< from the log
 		uint32 StarvationDeaths = 0;
 		uint32 PlagueDeaths = 0;
+		uint32 ColdDeaths = 0; ///< 18.05: DeathCause::Cold
 		uint32 NaturalDeaths = 0;
 		uint32 CausedDeaths = 0; ///< deaths whose event carries a cause
 	};

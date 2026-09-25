@@ -3,7 +3,10 @@
 //
 // STATUS: VALIDATED (Phase 03) - unit/deterministic/edge tests in Tests/Sim
 
+#include "Vaelen/Sim/Causality.h"
 #include "Vaelen/Sim/HistoryText.h"
+
+#include "Vaelen/Sim/Climate.h"
 
 #include "Vaelen/Sim/Disasters.h"
 #include "Vaelen/Sim/Hydrology.h"
@@ -251,7 +254,27 @@ namespace Vaelen::History
 		return Earliest != nullptr ? FindEvent(W.Log(), PersistentId{Earliest->Event}) : nullptr;
 	}
 
-	void Why(const World& W, const PreHistoryTypes& Types, PersistentId Id, std::vector<WhyStep>& Out, uint32 MaxDepth)
+	const char* WhyEndText(WalkEnd End) noexcept
+	{
+		switch (End)
+		{
+		case WalkEnd::Root:
+		case WalkEnd::NoSuchEvent:
+			return "";
+		case WalkEnd::CauseMissing:
+			return "(the story is cut here: its cause is not in the log)";
+		case WalkEnd::CauseNotAnEvent:
+			return "(the story stops here: its cause is not an event the log can tell)";
+		case WalkEnd::CauseNotBeforeEffect:
+			return "(the log disagrees with itself here: the cause comes after the effect)";
+		case WalkEnd::DepthExhausted:
+			return "... and further back than this tells";
+		}
+		return "";
+	}
+
+	WalkEnd Why(const World& W, const PreHistoryTypes& Types, PersistentId Id, std::vector<WhyStep>& Out,
+				uint32 MaxDepth)
 	{
 		Out.clear();
 		const Event* Start = FindEvent(W.Log(), Id);
@@ -261,10 +284,12 @@ namespace Vaelen::History
 		}
 		if (Start == nullptr)
 		{
-			return;
+			return WalkEnd::NoSuchEvent;
 		}
 		std::vector<const Event*> Chain;
-		CauseChain(W.Log(), Start->Id, Chain, MaxDepth);
+		WalkLimits Limits;
+		Limits.Depth = MaxDepth;
+		const WalkEnd End = CauseWalk(W.Log(), Start->Id, Chain, Limits);
 		Out.reserve(Chain.size());
 		for (const Event* E : Chain)
 		{
@@ -274,6 +299,7 @@ namespace Vaelen::History
 			Step.Region = RegionOfSubject(W, Types, E->Subject);
 			Out.push_back(Step);
 		}
+		return End;
 	}
 
 	void RegionTimeline(const World& W, const PreHistoryTypes& Types, uint32 Region, std::vector<RecordInfo>& Out)
@@ -447,6 +473,29 @@ namespace Vaelen::History
 			AppendEntity(W, Types, E.Subject, Out);
 			Append(Out, " received its name.");
 		}
+		else if (E.Is(WorldGen::WinterEvent))
+		{
+			// 18.06. The words are the page's (18.04): hard is what the
+			// weather row calls a coming winter of severity 2 or more.
+			const WorldGen::WinterPayload P = E.Get<WorldGen::WinterPayload>();
+			Append(Out, P.Severity >= 3 ? "a terrible winter lay on "
+										: (P.Severity == 2 ? "a great winter lay on " : "a hard winter lay on "));
+			AppendRegion(W, Types, P.Region, Out);
+			if (P.Deaths > 0)
+			{
+				Append(Out, " and ");
+				AppendNumber(Out, P.Deaths);
+				Append(Out, " died of the cold");
+			}
+			Append(Out, ".");
+		}
+		else if (E.Is(WorldGen::WinterForeseenEvent))
+		{
+			const WorldGen::WinterPayload P = E.Get<WorldGen::WinterPayload>();
+			Append(Out, P.Severity >= 3 ? "a terrible winter is coming to " : "a hard winter is coming to ");
+			AppendRegion(W, Types, P.Region, Out);
+			Append(Out, ".");
+		}
 		else
 		{
 			Append(Out, "something happened to ");
@@ -519,7 +568,7 @@ namespace Vaelen::History
 	uint32 ExportWhy(const World& W, const PreHistoryTypes& Types, PersistentId Id, std::string& Out)
 	{
 		std::vector<WhyStep> Steps;
-		Why(W, Types, Id, Steps);
+		const WalkEnd End = Why(W, Types, Id, Steps);
 		Out.clear();
 		std::string Line;
 		for (usize i = 0; i < Steps.size(); ++i)
@@ -527,6 +576,15 @@ namespace Vaelen::History
 			DescribeEvent(W, Types, *Steps[i].Cause, Line);
 			Out += i == 0 ? "" : "because ";
 			Out += Line;
+			Out += '\n';
+		}
+		// 17.09: a chain that did not reach a root says so, on a line of its
+		// own. The count returned is still the STEPS, as documented; the end
+		// line is not a step.
+		const char* Tail = WhyEndText(End);
+		if (Tail[0] != '\0')
+		{
+			Out += Tail;
 			Out += '\n';
 		}
 		return static_cast<uint32>(Steps.size());

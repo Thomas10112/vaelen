@@ -5,6 +5,8 @@
 // STATUS: PROTOTYPE (Phase 16 task 16.07)
 #include "Vaelen/Run/Store.h"
 
+#include <cstring>
+
 namespace Vaelen::Run
 {
 	const char* StoreResultToString(StoreResult Result) noexcept
@@ -61,6 +63,16 @@ namespace Vaelen::Run
 			{
 				return false;
 			}
+		}
+		// A WRITE IN PROGRESS. Every store of this interface writes under
+		// `<name>.writing` and moves the file into place when whole, so a name
+		// ending that way is either a temporary an interrupted write left
+		// behind - which a listing must skip - or a save that the next write
+		// of the name it hides behind would replace without a word.
+		const usize SuffixLength = std::strlen(WritingSuffix);
+		if (Length >= SuffixLength && std::strcmp(Name + (Length - SuffixLength), WritingSuffix) == 0)
+		{
+			return false;
 		}
 		return true;
 	}

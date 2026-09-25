@@ -22,12 +22,15 @@
 #include "Vaelen/Economy/Stocks.h"
 #include "Vaelen/Economy/Trade.h"
 #include "Vaelen/Economy/Wealth.h"
+#include "Vaelen/Economy/Winter.h"
 #include "Vaelen/Population/Families.h"
 #include "Vaelen/Population/Lives.h"
 #include "Vaelen/Population/Lod.h"
 #include "Vaelen/Population/Needs.h"
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Population/Traits.h"
+#include "Vaelen/Population/Warmth.h"
+#include "Vaelen/Sim/Climate.h"
 #include "Vaelen/Sim/Disasters.h"
 #include "Vaelen/Sim/History.h"
 #include "Vaelen/Sim/Population.h"
@@ -70,7 +73,8 @@ namespace
 
 	struct Run
 	{
-		explicit Run(uint64 Seed, bool Living = true) : Instance(Config(Seed)), Ages(Instance, PreHistoryRules{})
+		explicit Run(uint64 Seed, bool Living = true, bool WithWinter = false)
+			: Instance(Config(Seed)), Ages(Instance, PreHistoryRules{})
 		{
 			Persons = PersonTypes::Declare(Instance, Ages);
 			Families = FamilyTypes::Declare(Instance);
@@ -122,10 +126,27 @@ namespace
 			Harvest->ObserveStores(Stores);
 			Body->RunAfter("Production");
 			Body->ObserveRation(Production.Ration);
+			// 18.06: a winter in the year, so the ledger has to name what it
+			// took too. The warmth is declared only here, after everything
+			// else, so the still and living worlds above keep their digests.
+			if (WithWinter)
+			{
+				Warmth = WarmthTypes::Declare(Instance);
+				Body->ObserveWinter(Warmth, WarmthRules{});
+				Winters = std::make_unique<WinterSystem>(Instance, Ages.Types(), Persons, Families, Economy, Warmth,
+														 WinterRules{});
+				Winters->RunAfter("Stocks");
+				Winters->ObserveSettlements(Trade.Settlement);
+				Harvest->RunAfter("Winter");
+			}
 			Instance.Systems().Add(Lives.get());
 			Instance.Systems().Add(Houses.get());
 			Instance.Systems().Add(Bridge.get());
 			Instance.Systems().Add(Stocks.get());
+			if (Winters)
+			{
+				Instance.Systems().Add(Winters.get());
+			}
 			// A still world holds only the owners of goods: nothing is made, eaten,
 			// priced, carried or inherited, so the world's whole stock can only be
 			// moved between a region's commons and its houses.
@@ -384,6 +405,7 @@ namespace
 		NeedTypes Needs;
 		LodTypes Lod;
 		EconomyTypes Economy;
+		WarmthTypes Warmth; ///< 18.06, only when asked
 		ProductionTypes Production;
 		MarketTypes Markets;
 		TradeTypes Trade;
@@ -398,6 +420,7 @@ namespace
 		std::unique_ptr<NeedSystem> Body;
 		std::unique_ptr<LodSystem> Bridge;
 		std::unique_ptr<StockSystem> Stocks;
+		std::unique_ptr<WinterSystem> Winters; ///< 18.06, only when asked
 		std::unique_ptr<ProductionSystem> Harvest;
 		std::unique_ptr<MarketSystem> Fair;
 		std::unique_ptr<TradeSystem> Roads;
@@ -409,211 +432,253 @@ namespace
 
 } // namespace
 
+namespace
+{
+	/// The accounting of one year of one region against the log, shared by the
+	/// two cases below: the world as it was, and (18.06) the world with a
+	/// winter in the year. With RequireCold the region chosen is the busiest
+	/// one whose year has cold in it, so that the winter takes something.
+	void AccountAYear(VaelenTest::Context& Ctx, Run& W, bool RequireCold)
+	{
+		VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
+		// The busiest region, because a region with nobody in it moves nothing and
+		// a ledger of nothing balances perfectly.
+		uint32 Where = 0;
+		uint32 Most = 0;
+		W.Instance.Components()
+			.GetPool(W.Ages.Types().World.RegionTypes_.Region)
+			.ForEach(
+				[&](EntityHandle H, const RegionInfo& R)
+				{
+					const RegionPopulation* P =
+						W.Instance.Components().GetPool(W.Ages.Types().Population.Population).TryGet(H);
+					const bool Cold = !RequireCold || RegionYear(W.Instance, W.Ages.Types().World, R.Index,
+																 W.Instance.Now() / TicksPerYear, ClimateRules{})
+															  .ColdSum.FloorToInt() >= 200;
+					if (Cold && P != nullptr && (P->Total > Most || (P->Total == Most && R.Index < Where)))
+					{
+						Most = P->Total;
+						Where = R.Index;
+					}
+				});
+		VT_REQUIRE(Where != 0);
+
+		// Everything the region holds: the common stock and every house standing in
+		// it. A ledger that counted only the common stock would call a meal eaten
+		// out of a family's own granary a disappearance.
+		const auto Holdings = [&]()
+		{
+			std::array<int64, static_cast<usize>(Good::Count)> Out{};
+			const RegionStock* S = StockOf(W.Instance, W.Ages.Types(), W.Economy, Where);
+			if (S != nullptr)
+			{
+				for (usize g = 0; g < Out.size(); ++g)
+				{
+					Out[g] += static_cast<int64>(S->Amount[g]);
+				}
+			}
+			W.Instance.Components()
+				.GetPool(W.Families.Family)
+				.ForEach(
+					[&](EntityHandle H, const FamilyInfo& F)
+					{
+						if (F.Region != Where)
+						{
+							return;
+						}
+						const HouseStock* HS = W.Instance.Components().GetPool(W.Economy.House).TryGet(H);
+						if (HS == nullptr)
+						{
+							return;
+						}
+						for (usize g = 0; g < Out.size(); ++g)
+						{
+							Out[g] += static_cast<int64>(HS->Amount[g]);
+						}
+					});
+			return Out;
+		};
+
+		// Settle, and then step ONE tick off the year boundary before measuring.
+		//
+		// That single tick is the whole difference between a measurement and a
+		// mirage, and this project has now paid for the same lesson four times. The
+		// yearly systems run ON the boundary tick, so a window (From, To] whose From
+		// sits on one excludes that year's harvest while the Before snapshot was
+		// taken after it had already run - the window then contains no yearly pass
+		// at all and every good looks unaccounted for. Measured that way this test
+		// first reported "0% explained", which was true of the window and false of
+		// the world.
+		W.Instance.TickMany(TicksPerYear * 3 + 1);
+		const auto Before = Holdings();
+		const uint64 From = static_cast<uint64>(W.Instance.Now());
+		W.Instance.TickMany(TicksPerYear);
+		const auto After = Holdings();
+		const uint64 To = static_cast<uint64>(W.Instance.Now());
+
+		// What the log says moved in or out of this region during that year.
+		std::array<int64, static_cast<usize>(Good::Count)> Explained{};
+		uint32 Events = 0;
+		uint64 Carried = 0; ///< units 06.04 moved in or out, of no good in particular
+		for (const Event& E : W.Instance.Log().All())
+		{
+			const uint64 At = static_cast<uint64>(E.Tick);
+			if (At <= From || At > To)
+			{
+				continue;
+			}
+			if (E.Is(HarvestEvent) || E.Is(StockAddedEvent) || E.Is(StockTakenEvent))
+			{
+				const StockPayload& P = E.Get<StockPayload>();
+				if (P.Region != Where || P.Good >= Explained.size())
+				{
+					continue;
+				}
+				++Events;
+				// Harvest and StockAdded put goods in; StockTaken takes them out.
+				// AddStock's own two events already cover a move between a house and
+				// the common stock as a pair, so they cancel and that is right.
+				Explained[P.Good] +=
+					E.Is(StockTakenEvent) ? -static_cast<int64>(P.Amount) : static_cast<int64>(P.Amount);
+				continue;
+			}
+			if (E.Is(GoodsCarriedEvent))
+			{
+				++Events;
+				// ADR-0131 put the good in the payload and made From and To the
+				// seller and the buyer, so these finally go where they belong. The
+				// comment that stood here said they could not, and listed exactly
+				// what was missing; both halves of that list are now present.
+				const TradePayload& P = E.Get<TradePayload>();
+				if (P.Good >= Explained.size())
+				{
+					continue;
+				}
+				if (P.From == Where)
+				{
+					Explained[P.Good] -= static_cast<int64>(P.Amount);
+					Carried += P.Amount;
+				}
+				else if (P.To == Where)
+				{
+					Explained[P.Good] += static_cast<int64>(P.Amount);
+					Carried += P.Amount;
+				}
+			}
+		}
+
+		int64 Logged = 0;
+		int64 Dark = 0;
+		std::array<int64, static_cast<usize>(Good::Count)> Missing{};
+		for (usize g = 0; g < Explained.size(); ++g)
+		{
+			const int64 Net = After[g] - Before[g];
+			const int64 Miss = Net - Explained[g]; // what moved that no event names
+			Missing[g] = Miss < 0 ? -Miss : Miss;
+			Logged += Explained[g] < 0 ? -Explained[g] : Explained[g];
+			Dark += Miss < 0 ? -Miss : Miss;
+			if (Net != 0 || Explained[g] != 0)
+			{
+				VAELEN_LOG_INFO(LogLedger, "  %-8s the stores end %+lld; the log names %+lld; %lld units moved unnamed",
+								GoodName(static_cast<Good>(g)), static_cast<long long>(Net),
+								static_cast<long long>(Explained[g]), static_cast<long long>(Miss < 0 ? -Miss : Miss));
+			}
+		}
+		VAELEN_LOG_INFO(
+			LogLedger,
+			"one year of region %u (%u people): the log names %lld units in %u events, and %lld units moved "
+			"that it does not name at all",
+			Where, Most, static_cast<long long>(Logged), Events, static_cast<long long>(Dark));
+
+		// Diagnostic: what stock-shaped events exist in the whole log, anywhere.
+		uint32 Harvests = 0;
+		uint32 AddedAll = 0;
+		uint32 TakenAll = 0;
+		uint32 HarvestsHere = 0;
+		uint64 FirstHarvestTick = 0;
+		for (const Event& E : W.Instance.Log().All())
+		{
+			if (E.Is(HarvestEvent))
+			{
+				++Harvests;
+				const StockPayload& P = E.Get<StockPayload>();
+				if (P.Region == Where)
+				{
+					++HarvestsHere;
+					FirstHarvestTick = static_cast<uint64>(E.Tick); // keeps the LAST one, which is what matters here
+				}
+			}
+			AddedAll += E.Is(StockAddedEvent) ? 1u : 0u;
+			TakenAll += E.Is(StockTakenEvent) ? 1u : 0u;
+		}
+		VAELEN_LOG_INFO(LogLedger,
+						"whole log: %u harvests (%u here, LAST at tick %llu), %u added, %u taken; window (%llu, %llu]",
+						Harvests, HarvestsHere, static_cast<unsigned long long>(FirstHarvestTick), AddedAll, TakenAll,
+						static_cast<unsigned long long>(From), static_cast<unsigned long long>(To));
+
+		VT_CHECK_MSG(Logged > 0, "the log names SOMETHING, or the window missed the year's pass entirely");
+		VT_CHECK_MSG(HarvestsHere > 0, "and the region did harvest during it");
+
+		// THAT DAY CAME TWICE. This block held two assertions with a paragraph
+		// between them explaining why one line could never reach zero. Both halves
+		// of that explanation are now gone, and each went the same way: not by
+		// arguing with the test, but by making the log say the thing it could not.
+		//
+		//   ADR-0111   06.02 publishes its spoilage and its meals
+		//     before   grain  the stores end +6; the log names +7329; 7323 unnamed
+		//     after    grain  the stores end +6; the log names    +6;    0 unnamed
+		//
+		//   ADR-0131   GoodsCarried names the good it carried
+		//     before   ore    the stores end +0; the log names   -37;   37 unnamed
+		//     after    ore    the stores end +0; the log names    +0;    0 unnamed
+		//
+		// So the line that stood here - "what is still unnamed is what 06.04
+		// carried, because GoodsCarried has no Good in it" - was true when it was
+		// written and is false now. It asserted `Dark > 0`. Keeping it would have
+		// meant asserting that the world still lies about something, which is not a
+		// property worth defending; inverting it is the honest move, and it is the
+		// stronger claim of the two.
+		//
+		// A region's ledger closes. Everything that entered or left its stores in a
+		// year is named by some event, to the unit: what it grew, ate, spoilt,
+		// burnt, wove, forged and wore out (06.02), what it dug (05.03), and now
+		// what crossed its roads in either direction and which good it was (06.04).
+		//
+		// `Carried > 0` is what keeps this from being vacuous. A region that never
+		// trades would close its books trivially, and the second half of the claim
+		// would be untested. This one trades.
+		VT_CHECK_MSG(Dark == 0, "every unit that entered or left this region's stores in a year is named by the log");
+		VT_CHECK_MSG(Carried > 0, "and that is a finding, not an accident, because this region actually trades");
+		// 18.06: with a winter in the year, what it took is in the same ledger.
+		uint32 WinterTook = 0;
+		for (const Event& E : W.Instance.Log().All())
+		{
+			const uint64 At = static_cast<uint64>(E.Tick);
+			if (At <= From || At > To || !E.Is(StockTakenEvent) || E.Get<StockPayload>().Region != Where ||
+				!E.Cause.IsValid())
+			{
+				continue;
+			}
+			const Event* Cause = FindEvent(W.Instance.Log(), E.Cause);
+			WinterTook += Cause != nullptr && Cause->Is(WinterEvent) ? 1u : 0u;
+		}
+		VAELEN_LOG_INFO(LogLedger, "the winter took from these stores in %u events", WinterTook);
+		VT_CHECK_MSG((WinterTook > 0) == (W.Winters != nullptr && RequireCold),
+					 "a winter was wired: %s; it took in %u events", W.Winters != nullptr ? "yes" : "no", WinterTook);
+	}
+} // namespace
+
 VAELEN_TEST(Ledger, HowMuchOfAYearTheLogCanAccountFor)
 {
 	Run W(AelvorSeed);
-	VT_REQUIRE(W.Ages.Generate(Run::Square(128), 300));
-	// The busiest region, because a region with nobody in it moves nothing and
-	// a ledger of nothing balances perfectly.
-	uint32 Where = 0;
-	uint32 Most = 0;
-	W.Instance.Components()
-		.GetPool(W.Ages.Types().World.RegionTypes_.Region)
-		.ForEach(
-			[&](EntityHandle H, const RegionInfo& R)
-			{
-				const RegionPopulation* P =
-					W.Instance.Components().GetPool(W.Ages.Types().Population.Population).TryGet(H);
-				if (P != nullptr && (P->Total > Most || (P->Total == Most && R.Index < Where)))
-				{
-					Most = P->Total;
-					Where = R.Index;
-				}
-			});
-	VT_REQUIRE(Where != 0);
+	AccountAYear(Ctx, W, false);
+}
 
-	// Everything the region holds: the common stock and every house standing in
-	// it. A ledger that counted only the common stock would call a meal eaten
-	// out of a family's own granary a disappearance.
-	const auto Holdings = [&]()
-	{
-		std::array<int64, static_cast<usize>(Good::Count)> Out{};
-		const RegionStock* S = StockOf(W.Instance, W.Ages.Types(), W.Economy, Where);
-		if (S != nullptr)
-		{
-			for (usize g = 0; g < Out.size(); ++g)
-			{
-				Out[g] += static_cast<int64>(S->Amount[g]);
-			}
-		}
-		W.Instance.Components()
-			.GetPool(W.Families.Family)
-			.ForEach(
-				[&](EntityHandle H, const FamilyInfo& F)
-				{
-					if (F.Region != Where)
-					{
-						return;
-					}
-					const HouseStock* HS = W.Instance.Components().GetPool(W.Economy.House).TryGet(H);
-					if (HS == nullptr)
-					{
-						return;
-					}
-					for (usize g = 0; g < Out.size(); ++g)
-					{
-						Out[g] += static_cast<int64>(HS->Amount[g]);
-					}
-				});
-		return Out;
-	};
-
-	// Settle, and then step ONE tick off the year boundary before measuring.
-	//
-	// That single tick is the whole difference between a measurement and a
-	// mirage, and this project has now paid for the same lesson four times. The
-	// yearly systems run ON the boundary tick, so a window (From, To] whose From
-	// sits on one excludes that year's harvest while the Before snapshot was
-	// taken after it had already run - the window then contains no yearly pass
-	// at all and every good looks unaccounted for. Measured that way this test
-	// first reported "0% explained", which was true of the window and false of
-	// the world.
-	W.Instance.TickMany(TicksPerYear * 3 + 1);
-	const auto Before = Holdings();
-	const uint64 From = static_cast<uint64>(W.Instance.Now());
-	W.Instance.TickMany(TicksPerYear);
-	const auto After = Holdings();
-	const uint64 To = static_cast<uint64>(W.Instance.Now());
-
-	// What the log says moved in or out of this region during that year.
-	std::array<int64, static_cast<usize>(Good::Count)> Explained{};
-	uint32 Events = 0;
-	uint64 Carried = 0; ///< units 06.04 moved in or out, of no good in particular
-	for (const Event& E : W.Instance.Log().All())
-	{
-		const uint64 At = static_cast<uint64>(E.Tick);
-		if (At <= From || At > To)
-		{
-			continue;
-		}
-		if (E.Is(HarvestEvent) || E.Is(StockAddedEvent) || E.Is(StockTakenEvent))
-		{
-			const StockPayload& P = E.Get<StockPayload>();
-			if (P.Region != Where || P.Good >= Explained.size())
-			{
-				continue;
-			}
-			++Events;
-			// Harvest and StockAdded put goods in; StockTaken takes them out.
-			// AddStock's own two events already cover a move between a house and
-			// the common stock as a pair, so they cancel and that is right.
-			Explained[P.Good] += E.Is(StockTakenEvent) ? -static_cast<int64>(P.Amount) : static_cast<int64>(P.Amount);
-			continue;
-		}
-		if (E.Is(GoodsCarriedEvent))
-		{
-			++Events;
-			// ADR-0131 put the good in the payload and made From and To the
-			// seller and the buyer, so these finally go where they belong. The
-			// comment that stood here said they could not, and listed exactly
-			// what was missing; both halves of that list are now present.
-			const TradePayload& P = E.Get<TradePayload>();
-			if (P.Good >= Explained.size())
-			{
-				continue;
-			}
-			if (P.From == Where)
-			{
-				Explained[P.Good] -= static_cast<int64>(P.Amount);
-				Carried += P.Amount;
-			}
-			else if (P.To == Where)
-			{
-				Explained[P.Good] += static_cast<int64>(P.Amount);
-				Carried += P.Amount;
-			}
-		}
-	}
-
-	int64 Logged = 0;
-	int64 Dark = 0;
-	std::array<int64, static_cast<usize>(Good::Count)> Missing{};
-	for (usize g = 0; g < Explained.size(); ++g)
-	{
-		const int64 Net = After[g] - Before[g];
-		const int64 Miss = Net - Explained[g]; // what moved that no event names
-		Missing[g] = Miss < 0 ? -Miss : Miss;
-		Logged += Explained[g] < 0 ? -Explained[g] : Explained[g];
-		Dark += Miss < 0 ? -Miss : Miss;
-		if (Net != 0 || Explained[g] != 0)
-		{
-			VAELEN_LOG_INFO(LogLedger, "  %-8s the stores end %+lld; the log names %+lld; %lld units moved unnamed",
-							GoodName(static_cast<Good>(g)), static_cast<long long>(Net),
-							static_cast<long long>(Explained[g]), static_cast<long long>(Miss < 0 ? -Miss : Miss));
-		}
-	}
-	VAELEN_LOG_INFO(LogLedger,
-					"one year of region %u (%u people): the log names %lld units in %u events, and %lld units moved "
-					"that it does not name at all",
-					Where, Most, static_cast<long long>(Logged), Events, static_cast<long long>(Dark));
-
-	// Diagnostic: what stock-shaped events exist in the whole log, anywhere.
-	uint32 Harvests = 0;
-	uint32 AddedAll = 0;
-	uint32 TakenAll = 0;
-	uint32 HarvestsHere = 0;
-	uint64 FirstHarvestTick = 0;
-	for (const Event& E : W.Instance.Log().All())
-	{
-		if (E.Is(HarvestEvent))
-		{
-			++Harvests;
-			const StockPayload& P = E.Get<StockPayload>();
-			if (P.Region == Where)
-			{
-				++HarvestsHere;
-				FirstHarvestTick = static_cast<uint64>(E.Tick); // keeps the LAST one, which is what matters here
-			}
-		}
-		AddedAll += E.Is(StockAddedEvent) ? 1u : 0u;
-		TakenAll += E.Is(StockTakenEvent) ? 1u : 0u;
-	}
-	VAELEN_LOG_INFO(LogLedger,
-					"whole log: %u harvests (%u here, LAST at tick %llu), %u added, %u taken; window (%llu, %llu]",
-					Harvests, HarvestsHere, static_cast<unsigned long long>(FirstHarvestTick), AddedAll, TakenAll,
-					static_cast<unsigned long long>(From), static_cast<unsigned long long>(To));
-
-	VT_CHECK_MSG(Logged > 0, "the log names SOMETHING, or the window missed the year's pass entirely");
-	VT_CHECK_MSG(HarvestsHere > 0, "and the region did harvest during it");
-
-	// THAT DAY CAME TWICE. This block held two assertions with a paragraph
-	// between them explaining why one line could never reach zero. Both halves
-	// of that explanation are now gone, and each went the same way: not by
-	// arguing with the test, but by making the log say the thing it could not.
-	//
-	//   ADR-0111   06.02 publishes its spoilage and its meals
-	//     before   grain  the stores end +6; the log names +7329; 7323 unnamed
-	//     after    grain  the stores end +6; the log names    +6;    0 unnamed
-	//
-	//   ADR-0131   GoodsCarried names the good it carried
-	//     before   ore    the stores end +0; the log names   -37;   37 unnamed
-	//     after    ore    the stores end +0; the log names    +0;    0 unnamed
-	//
-	// So the line that stood here - "what is still unnamed is what 06.04
-	// carried, because GoodsCarried has no Good in it" - was true when it was
-	// written and is false now. It asserted `Dark > 0`. Keeping it would have
-	// meant asserting that the world still lies about something, which is not a
-	// property worth defending; inverting it is the honest move, and it is the
-	// stronger claim of the two.
-	//
-	// A region's ledger closes. Everything that entered or left its stores in a
-	// year is named by some event, to the unit: what it grew, ate, spoilt,
-	// burnt, wove, forged and wore out (06.02), what it dug (05.03), and now
-	// what crossed its roads in either direction and which good it was (06.04).
-	//
-	// `Carried > 0` is what keeps this from being vacuous. A region that never
-	// trades would close its books trivially, and the second half of the claim
-	// would be untested. This one trades.
-	VT_CHECK_MSG(Dark == 0, "every unit that entered or left this region's stores in a year is named by the log");
-	VT_CHECK_MSG(Carried > 0, "and that is a finding, not an accident, because this region actually trades");
+VAELEN_TEST(Ledger, TheWinterTakesThroughTheSameLedger)
+{
+	// 18.06: the same accounting on a cold region of a world with the winter
+	// wired - every unit the winter took is a StockTaken the log names, and
+	// Dark stays 0. Take the grain by writing Amount directly and this reddens.
+	Run W(AelvorSeed, true, true);
+	AccountAYear(Ctx, W, true);
 }

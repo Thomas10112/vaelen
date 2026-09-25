@@ -15,6 +15,25 @@
 
 #include <cstdio>
 #include <cstring>
+// 17.03: LISTING READS THE DIRECTORY, so the directory has to be readable.
+//
+// <filesystem> is used with the `error_code` overloads throughout, never the
+// throwing ones, because this tree builds with -fno-exceptions; an operation
+// that fails hands back a code and the listing goes on without that entry.
+//
+// The header this replaced said "NO <filesystem> AND NO <dirent.h>", and that
+// sentence is the defect's own explanation: the rule it was obeying belongs to
+// the KERNEL, where <filesystem> is banned because the simulation must not know
+// what a path is. This file is not the kernel - its first line says so - and a
+// host-side store that cannot enumerate the directory it was handed is a store
+// that cannot do the one thing a save browser needs.
+//
+// Chosen over #ifdef'd <dirent.h> and FindFirstFileW deliberately: two platform
+// paths means the Windows one is compiled by one CI leg and exercised by none,
+// and this is the file whose whole point is being trusted about what is on a
+// disk.
+#include <algorithm>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -32,7 +51,12 @@ namespace VaelenHost
 	/// renaming makes the replacement atomic on every filesystem this project
 	/// targets - and same-directory matters, because a rename across devices is
 	/// a copy, which can fail halfway just like the write did.
-	class StdioCheckpointStore final : public Run::ICheckpointStore
+	/// NOT `final` since 17.03: Tests/Run/Test_StoreColdProcess.cpp derives the
+	/// PRE-FIX listing from it, so that the defect this task removed stays
+	/// visible in a test after the code is gone. A subclass that overrides
+	/// `List` and `Write` and inherits everything else differs from the fixed
+	/// store in exactly the defect and in nothing else.
+	class StdioCheckpointStore : public Run::ICheckpointStore
 	{
 	public:
 		explicit StdioCheckpointStore(std::string InDirectory) : Directory(std::move(InDirectory))
@@ -54,7 +78,7 @@ namespace VaelenHost
 				return Run::StoreResult::CannotWrite;
 			}
 			const std::string Final = Directory + Name;
-			const std::string Temp = Final + ".writing";
+			const std::string Temp = Final + Run::WritingSuffix;
 
 			std::FILE* F = std::fopen(Temp.c_str(), "wb");
 			if (F == nullptr)
@@ -79,7 +103,8 @@ namespace VaelenHost
 				std::remove(Temp.c_str());
 				return Run::StoreResult::CannotWrite;
 			}
-			Remember(Name);
+			// The rename IS the record. Nothing else needs telling: `List`
+			// reads the directory, so what is on the disk is what is listed.
 			return Run::StoreResult::Ok;
 		}
 
@@ -116,16 +141,88 @@ namespace VaelenHost
 			return Run::StoreResult::Ok;
 		}
 
+		/// Since 16.14 the reading itself is `Run::ImageTrailer`, in the kernel,
+		/// so that the engine-side store of that task could not read it a THIRD
+		/// way; this is kept as the name the tests call. What follows is the
+		/// record of why one reader matters.
+		///
+		/// 17.03: THE IMAGE'S OWN TRAILER, and the reason this is a function.
+		///
+		/// What stood here was `View.Sections.front().Digest`, reported after
+		/// the result of `View.Find(SectionKind::State, Length)` had been
+		/// called and THROWN AWAY. Two faults in one line, and the ORDER of
+		/// their seriousness is the opposite of what I first wrote down.
+		///
+		/// The one I called secondary is the real one: the SECTION digest is
+		/// not the image TRAILER. They are different numbers over the same
+		/// bytes, on every container, whatever the section order - measured on
+		/// an ordinary one, e0614906cb8a5676 against `ComputeStateDigest`'s
+		/// 0f6fa26b35d09a70. So a host comparing a listed digest against a
+		/// logged one was told two identical saves were different worlds, and
+		/// it was told that ALWAYS.
+		///
+		/// The one I called primary, reading by POSITION rather than by the
+		/// `Find` whose answer was discarded, is ADR-0150's "safe by accident"
+		/// and would have started mattering the day a writer put a cheap
+		/// section first. It had not started mattering yet.
+		///
+		/// 0 when there is no STATE section or it is too short to hold one,
+		/// which is the same answer the field's default gives and is not
+		/// mistakable for a digest.
+		static uint64 TrailerOf(const Run::CheckpointView& View) noexcept { return Run::ImageTrailer(View); }
+
 		std::vector<Run::StoreEntry> List() override
 		{
-			// NO <filesystem> AND NO <dirent.h>: this store knows what it has
-			// written and is asked to list it, which is all the tests and Atlas
-			// need. A host that must enumerate a directory it did not fill -
-			// Unreal's, in 16.14 - has its own platform call for that and its
-			// own implementation of this interface.
+			// 17.03: THE DIRECTORY, NOT THE `Written` VECTOR.
+			//
+			// This method used to iterate a private vector that only `Write`
+			// and `Remember` fill, so a process which had written nothing
+			// listed nothing - and a host started fresh and pointed at a
+			// directory full of saves was told it was empty. Run.Store passed
+			// because it wrote and listed in ONE process: an instrument blind
+			// to the only dimension that matters.
+			//
+			// Names are sorted, so two hosts listing the same directory agree
+			// on the order. `directory_iterator` gives no order at all.
 			std::vector<Run::StoreEntry> Out;
-			Out.reserve(Written.size());
-			for (const std::string& Name : Written)
+
+			std::error_code Code;
+			const std::filesystem::path Where(Directory.empty() ? std::string(".") : Directory);
+			std::filesystem::directory_iterator It(Where, Code);
+			if (Code)
+			{
+				// A directory that cannot be read is an EMPTY listing and not a
+				// crash: a host may point this at a save folder the player has
+				// not created yet.
+				return Out;
+			}
+
+			std::vector<std::string> Names;
+			for (const std::filesystem::directory_entry& Entry : It)
+			{
+				const std::string Name = Entry.path().filename().string();
+				// The name rule is the store's, so a stray file somebody
+				// dropped in the folder is skipped rather than reported as a
+				// save - and `.writing` temporaries from an interrupted write
+				// are skipped by the same rule. TRUE SINCE 16.14, which gave
+				// the rule `Run::WritingSuffix`; before that this sentence was
+				// a claim the rule did not keep, and such a leftover was
+				// listed as a save of tick 0.
+				if (!Run::IsUsableCheckpointName(Name.c_str()))
+				{
+					continue;
+				}
+				if (!Entry.is_regular_file(Code) || Code)
+				{
+					Code.clear();
+					continue;
+				}
+				Names.push_back(Name);
+			}
+			std::sort(Names.begin(), Names.end());
+
+			Out.reserve(Names.size());
+			for (const std::string& Name : Names)
 			{
 				std::vector<uint8> Bytes;
 				if (Read(Name.c_str(), Bytes) != Run::StoreResult::Ok)
@@ -140,11 +237,8 @@ namespace VaelenHost
 				{
 					Entry.Tick = View.Tick;
 					Entry.ContainerVersion = View.Version;
-					uint64 Length = 0;
-					if (View.Find(Run::SectionKind::State, Length) != nullptr && !View.Sections.empty())
-					{
-						Entry.Digest = View.Sections.front().Digest;
-					}
+					Entry.SectionCount = static_cast<uint32>(View.Sections.size());
+					Entry.Digest = TrailerOf(View);
 				}
 				Out.push_back(std::move(Entry));
 			}
@@ -162,33 +256,17 @@ namespace VaelenHost
 			{
 				return Run::StoreResult::NotFound;
 			}
-			for (usize Index = 0; Index < Written.size(); ++Index)
-			{
-				if (Written[Index] == Name)
-				{
-					Written.erase(Written.begin() + static_cast<long>(Index));
-					break;
-				}
-			}
 			return Run::StoreResult::Ok;
 		}
 
-		/// Tells the store a name exists without writing it - for a host that
-		/// enumerated a directory by some other means.
-		void Remember(const char* Name)
-		{
-			for (const std::string& Had : Written)
-			{
-				if (Had == Name)
-				{
-					return;
-				}
-			}
-			Written.emplace_back(Name);
-		}
-
+		// 17.03 DELETED `Written` AND `Remember`. The vector was the store's own
+		// idea of what the directory held, and `Remember` existed so a caller
+		// could correct it - a seam whose only purpose was to patch up a list
+		// that was wrong by construction. `List` reads the directory now, so a
+		// cache of names can only ever disagree with it, and the one thing
+		// worse than a store that lists nothing is a store that lists something
+		// that is not there.
 	private:
 		std::string Directory;
-		std::vector<std::string> Written;
 	};
 } // namespace VaelenHost

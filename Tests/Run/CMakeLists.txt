@@ -10,8 +10,12 @@ add_executable(VaelenRunTests
 target_include_directories(VaelenRunTests PRIVATE ${PROJECT_SOURCE_DIR}/Tests/Harness)
 # 16.01: where the golden corpus lives, handed in rather than guessed from the
 # working directory, because the CI presets run ctest from the build tree.
+# 17.01: and where the CONTAINER corpus lives, which is a different format
+# from the one above and the distinction is the point - Run.Containers hands a
+# .snapshot to ReadCheckpoint on purpose and requires BadMagic.
 target_compile_definitions(VaelenRunTests PRIVATE
-  VAELEN_GOLDEN_DIR="${PROJECT_SOURCE_DIR}/Tests/Run/Golden")
+  VAELEN_GOLDEN_DIR="${PROJECT_SOURCE_DIR}/Tests/Run/Golden"
+  VAELEN_CONTAINER_DIR="${PROJECT_SOURCE_DIR}/Tests/Run/Containers")
 target_link_libraries(VaelenRunTests PRIVATE Vaelen::Run Vaelen::View Vaelen::Gameplay Vaelen::Player Vaelen::Colony Vaelen::Infrastructure Vaelen::Military Vaelen::Politics Vaelen::Economy Vaelen::Society Vaelen::Population Vaelen::Sim Vaelen::Core Threads::Threads)
 
 set(VAELEN_RUN_TEST_NAMES "")
@@ -31,6 +35,9 @@ set_tests_properties(Run.Shuffled PROPERTIES TIMEOUT 5400)
 # Run.Aelvor holds the 128/120 world of the frozen pair and a day measured at
 # 256 with the colony; it is the long pole of this module after Shuffled.
 set_tests_properties(Run.Aelvor PROPERTIES TIMEOUT 3600)
+# 18.07: two AELVOR 128/300+120 worlds, the climate off and on; the cost is
+# the gate's, written down.
+set_tests_properties(Run.Climate PROPERTIES TIMEOUT 3600)
 
 # ── 14.10: a month played by hand, replayed by no hand ───────────────────────
 # Tools/Atlas replays the checked-in stream into a fresh world of the STREAM's
@@ -75,6 +82,7 @@ set_tests_properties(Replay.Played PROPERTIES TIMEOUT 1800)
 # last. The numbers are relative, not seconds.
 set_tests_properties(Run.Shuffled PROPERTIES COST 10000)
 set_tests_properties(Run.Aelvor PROPERTIES COST 6000)
+set_tests_properties(Run.Climate PROPERTIES COST 6000)
 set_tests_properties(Replay.Played PROPERTIES COST 4000)
 set_tests_properties(Run.Door PROPERTIES COST 3000)
 # Phase 16's gate cell lives in Run.Checkpoint: 128 tiles with the full Play,
@@ -133,6 +141,9 @@ set_tests_properties(Run.SaveFuzz.SixtyFour PROPERTIES TIMEOUT 1800 COST 3000)
 # in Tools/Store because WHERE a save goes is not the simulation's business.
 target_include_directories(VaelenRunTests PRIVATE ${PROJECT_SOURCE_DIR}/Tools/Store)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/store)
+# 17.03's cold listing gets a directory of its own, so that Run.Store's files
+# cannot be counted by it and a stale run cannot make it pass.
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/store/cold)
 target_compile_definitions(VaelenRunTests PRIVATE VAELEN_STORE_DIR="${CMAKE_CURRENT_BINARY_DIR}/store")
 
 # VAELEN - Phase 15 task 15.10, HEADLESS HALF.
@@ -362,3 +373,100 @@ add_test(NAME Run.SaveFuzz.Death
           "-DEXPECT=18aec14e39a68a8c"
           -P ${CMAKE_CURRENT_LIST_DIR}/SaveFuzz.cmake)
 set_tests_properties(Run.SaveFuzz.Death PROPERTIES TIMEOUT 1800 COST 3600)
+
+# 17.01's CONTROL: the corpus regenerates byte for byte from the command its
+# README records.
+#
+# Run.Containers reads the three files and checks every recorded number against
+# the bytes - and it would go on passing if today's build had quietly stopped
+# being able to WRITE them. This runs `--containers` into a scratch directory
+# and compares byte for byte, which is the only thing that says the recorded
+# command is still the command that produces these files. It generates three
+# worlds and Run.Containers generates none, which is why they are two entries
+# and not one.
+add_test(NAME Atlas.ContainersRegenerate
+  COMMAND ${CMAKE_COMMAND}
+          -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DCORPUS=${PROJECT_SOURCE_DIR}/Tests/Run/Containers
+          -DSCRATCH=${CMAKE_CURRENT_BINARY_DIR}/containers-regenerated
+          -P ${CMAKE_CURRENT_LIST_DIR}/Containers.cmake)
+set_tests_properties(Atlas.ContainersRegenerate PROPERTIES TIMEOUT 1800 COST 700)
+
+# 17.05: the cause census over the corpus, three entries, one per container.
+# The figures are the roadmap's, pinned whole; Docs/ROADMAP.md section 23
+# carries the same three lines and says what they mean for 17.09.
+foreach(Pair
+    "bare-16;causes: 129 events, 3 with a cause (2.33%), 126 roots"
+    "played-16;causes: 148 events, 3 with a cause (2.03%), 145 roots"
+    "full-32;causes: 577 events, 7 with a cause (1.21%), 570 roots")
+  list(GET Pair 0 Name)
+  list(GET Pair 1 Headline)
+  add_test(NAME Atlas.Causes.${Name}
+    COMMAND ${CMAKE_COMMAND}
+            -DATLAS=$<TARGET_FILE:VaelenAtlas>
+            -DFILE=${PROJECT_SOURCE_DIR}/Tests/Run/Containers/${Name}.container
+            "-DHEADLINE=${Headline}"
+            "-DDEPTH=causes: deepest chain 1 edge(s), median depth 0, widest fan-out 1 (event 1)"
+            -P ${CMAKE_CURRENT_LIST_DIR}/Causes.cmake)
+  set_tests_properties(Atlas.Causes.${Name} PROPERTIES TIMEOUT 600)
+endforeach()
+
+# 17.06: the inspector, over the corpus, with the two refusals the gate asks
+# for and the second-process listing 17.03 deferred to it.
+#
+# Nothing here generates a world except the two writers of the cold-directory
+# entry, and those are separate processes whose output the listing process is
+# judged against.
+set(InspectDrv ${CMAKE_CURRENT_LIST_DIR}/Inspect.cmake)
+add_test(NAME Atlas.Inspect.bare-16
+  COMMAND ${CMAKE_COMMAND} -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DFILE=${PROJECT_SOURCE_DIR}/Tests/Run/Containers/bare-16.container
+          "-DWANT_HEADER=inspect: container v2, image v3, flags 00000000, seed 000041454c564f52, tick 95040, 129 events, 14464 log bytes"
+          "-DWANT_TRAILER=inspect: image trailer d17d7fd9a6f09ea6 (this is the state digest every other tool means)"
+          "-DWANT_LAST=inspect: no STREAM section - this save does not carry its own tape"
+          -P ${InspectDrv})
+add_test(NAME Atlas.Inspect.played-16
+  COMMAND ${CMAKE_COMMAND} -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DFILE=${PROJECT_SOURCE_DIR}/Tests/Run/Containers/played-16.container
+          "-DWANT_HEADER=inspect: container v2, image v3, flags 00000000, seed 000041454c564f52, tick 95184, 148 events, 16592 log bytes"
+          "-DWANT_TRAILER=inspect: image trailer 64d11b40b612581c (this is the state digest every other tool means)"
+          "-DWANT_LAST=inspect: stream 6 day(s), 0 command(s), 1 taking(s), 6 look(s); header 16 tiles 10+1 seed 000041454c564f52 v1; rules ages 0-45 bound 0 ore 0"
+          -P ${InspectDrv})
+# 18.02: the kept 24-byte-HOST container reads through the same inspector,
+# with the same header and trailer as played-16 - the world did not move, the
+# section did.
+add_test(NAME Atlas.Inspect.host24-16
+  COMMAND ${CMAKE_COMMAND} -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DFILE=${PROJECT_SOURCE_DIR}/Tests/Run/Containers/host24-16.container
+          "-DWANT_HEADER=inspect: container v2, image v3, flags 00000000, seed 000041454c564f52, tick 95184, 148 events, 16592 log bytes"
+          "-DWANT_TRAILER=inspect: image trailer 64d11b40b612581c (this is the state digest every other tool means)"
+          "-DWANT_LAST=inspect: stream 6 day(s), 0 command(s), 1 taking(s), 6 look(s); header 16 tiles 10+1 seed 000041454c564f52 v1; rules ages 0-45 bound 0 ore 0"
+          -P ${InspectDrv})
+add_test(NAME Atlas.Inspect.full-32
+  COMMAND ${CMAKE_COMMAND} -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DFILE=${PROJECT_SOURCE_DIR}/Tests/Run/Containers/full-32.container
+          "-DWANT_HEADER=inspect: container v2, image v3, flags 00000000, seed 000041454c564f52, tick 95184, 577 events, 64640 log bytes"
+          "-DWANT_TRAILER=inspect: image trailer 2ec516c4d275ab6f (this is the state digest every other tool means)"
+          "-DWANT_LAST=inspect: run begun, detail 6, dug 6, eyes on region 1 reach 1 most 0, 3 near, 4 watched"
+          -P ${InspectDrv})
+# The mistake the whole phase turns on, made on purpose: the inner format
+# handed to the container reader must be refused BY NAME.
+add_test(NAME Atlas.Inspect.RefusesAnImage
+  COMMAND ${CMAKE_COMMAND} -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DFILE=${PROJECT_SOURCE_DIR}/Tests/Run/Golden/bare-16.snapshot
+          -DREFUSE=image -P ${InspectDrv})
+# A container cut at 4 KiB has a readable header and a table that points past
+# the end; it must be refused WHOLE, not described in part.
+add_test(NAME Atlas.Inspect.RefusesATruncation
+  COMMAND ${CMAKE_COMMAND} -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DFILE=${PROJECT_SOURCE_DIR}/Tests/Run/Containers/played-16.container
+          -DREFUSE=truncated -DSCRATCH=${CMAKE_CURRENT_BINARY_DIR}
+          -P ${InspectDrv})
+# 17.03's second-process half: two writers, one cold reader.
+add_test(NAME Atlas.InspectDir.ColdProcess
+  COMMAND ${CMAKE_COMMAND} -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DDIR=${CMAKE_CURRENT_BINARY_DIR}/inspect-dir
+          -P ${CMAKE_CURRENT_LIST_DIR}/InspectDir.cmake)
+set_tests_properties(Atlas.Inspect.bare-16 Atlas.Inspect.played-16 Atlas.Inspect.full-32
+                     Atlas.Inspect.RefusesAnImage Atlas.Inspect.RefusesATruncation PROPERTIES TIMEOUT 600)
+set_tests_properties(Atlas.InspectDir.ColdProcess PROPERTIES TIMEOUT 1800 COST 500)

@@ -27,6 +27,7 @@
 #include "Vaelen/Population/Needs.h"
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Population/Traits.h"
+#include "Vaelen/Sim/Climate.h"
 #include "Vaelen/Sim/Event.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/System.h"
@@ -171,6 +172,17 @@ namespace Vaelen::Economy
 			Bonds = InBonds;
 			HasBonds = true;
 		}
+		/// Optional (18.07): the harvest has a growing season. With the rules,
+		/// a region reaps GrowingDays / GrowFullDays of what its fields and
+		/// hands give, capped at a full harvest, from the SAME RegionYear the
+		/// winter (18.06) and the view (18.04) read - the year just ended, the
+		/// one the season grew in. GrowFullDays 0 is the world before this
+		/// task, to the unit; so is never being told.
+		void ObserveClimate(const WorldGen::ClimateRules& InClimate) noexcept
+		{
+			Climate = InClimate;
+			HasClimate = true;
+		}
 		void Tick(TickContext& Context) override;
 
 	private:
@@ -194,6 +206,8 @@ namespace Vaelen::Economy
 		bool HasMined = false;
 		ComponentType<Society::BondState> Bonds;
 		bool HasBonds = false;
+		WorldGen::ClimateRules Climate;
+		bool HasClimate = false;
 	};
 
 	/// Declares the mined mark. Called by whoever works ground for what is under

@@ -803,6 +803,12 @@ VAELEN_TEST(Checkpoint, TheHostsDeclaredWorldIsCheckedAgainstTheSave)
 		return O;
 	};
 
+	const auto WithClimate = [](Options O)
+	{
+		O.Climate = true;
+		return O;
+	};
+
 	const Options Source = Declaring(32u, 6u, 6u, false, true, false, true);
 	Aelvor A(Source);
 	VT_REQUIRE(A.Begin());
@@ -819,8 +825,8 @@ VAELEN_TEST(Checkpoint, TheHostsDeclaredWorldIsCheckedAgainstTheSave)
 	VT_REQUIRE(ReadHostSection(View, Carried));
 	VT_CHECK_MSG(Carried.Size == 32u && Carried.PreHistory == 6u && Carried.Years == 6u,
 				 "and it is the world the host declared");
-	VT_CHECK_MSG(Carried.Play && Carried.Stream && !Carried.Lively && !Carried.Colony,
-				 "including every one of the four flags");
+	VT_CHECK_MSG(Carried.Play && Carried.Stream && !Carried.Lively && !Carried.Colony && !Carried.Climate,
+				 "including every one of the five flags");
 	VT_CHECK_MSG(View.Version == CheckpointVersion, "and the container version did not have to move");
 
 	const auto Offer = [&Image](const Options& Host)
@@ -848,6 +854,9 @@ VAELEN_TEST(Checkpoint, TheHostsDeclaredWorldIsCheckedAgainstTheSave)
 		{"nobody played", Declaring(32u, 6u, 6u, false, false, false, true), Aelvor::AdoptResult::PlayDiffers},
 		{"a lively region", Declaring(32u, 6u, 6u, false, true, true, true), Aelvor::AdoptResult::LivelyDiffers},
 		{"another cadence", Declaring(32u, 6u, 6u, false, true, false, false), Aelvor::AdoptResult::StreamDiffers},
+		// 18.02: the fifth flag, before the climate exists to differ by.
+		{"a climate", WithClimate(Declaring(32u, 6u, 6u, false, true, false, true)),
+		 Aelvor::AdoptResult::ClimateDiffers},
 	};
 	uint32 Named = 0;
 	for (const Case& C : Wrong)
@@ -857,7 +866,7 @@ VAELEN_TEST(Checkpoint, TheHostsDeclaredWorldIsCheckedAgainstTheSave)
 					 Aelvor::AdoptResultToString(C.Want));
 		Named += Got == C.Want ? 1u : 0u;
 	}
-	VT_CHECK_MSG(Named == 8u, "every mismatch refuses under its OWN name, %u of 8", Named);
+	VT_CHECK_MSG(Named == 9u, "every mismatch refuses under its OWN name, %u of 9", Named);
 
 	// AND THE HOST STILL HAS ITS OWN WORLD. A refusal that left the target
 	// half-loaded would be worse than the silence it replaced.
@@ -1328,4 +1337,117 @@ VAELEN_TEST(Checkpoint, AViewFromARefusedContainerFindsNothingRatherThanGarbage)
 	Player::StartRules Rules;
 	VT_CHECK_MSG(!ReadStreamSection(Refused, Tape, Rules), "and ReadStreamSection, whose own null check was the one "
 														   "the wild pointer walked straight past");
+}
+
+VAELEN_TEST(Checkpoint, TheClimateIsInTheHostSection)
+{
+	// 18.02: THE SWITCH BEFORE THE THING IT SWITCHES. Options::Climate is a
+	// fifth byte of the HOST section and a refusal by name, and nothing in
+	// the kernel reads the flag yet - so this case pins the reading rule and
+	// the refusal, and the control below pins that the flag changes NOTHING
+	// of the world today, which is the property 18.03-18.09 build behind.
+	const auto Declaring = [](bool Climate)
+	{
+		Options O;
+		O.Size = 32u;
+		O.PreHistory = 6u;
+		O.Years = 6u;
+		O.Play = true;
+		O.Stream = true;
+		O.Climate = Climate;
+		return O;
+	};
+
+	// A container of a climate world, and what carries it.
+	Aelvor Warm(Declaring(true));
+	VT_REQUIRE(Warm.Begin());
+	std::vector<uint8> Image;
+	VT_REQUIRE(BuildCheckpoint(Warm, Image) == CheckpointResult::Ok);
+	CheckpointView View;
+	VT_REQUIRE(ReadCheckpoint(Image.data(), Image.size(), View).Result == CheckpointResult::Ok);
+	uint64 HostLength = 0;
+	VT_REQUIRE(View.Find(SectionKind::Host, HostLength) != nullptr);
+	VT_CHECK_MSG(HostLength == 25u, "a HOST section written since 18.02 is 25 bytes, this one is %llu",
+				 static_cast<unsigned long long>(HostLength));
+	Options Carried;
+	VT_REQUIRE(ReadHostSection(View, Carried));
+	VT_CHECK_MSG(Carried.Climate, "and the fifth byte reads back as the flag it was written from");
+
+	// Adopted by a host that did not ask for a climate: refused BY NAME, and
+	// the host is exactly as it was found.
+	{
+		Aelvor Cold(Declaring(false));
+		const Hash64 Before = ComputeStateDigest(Cold.Instance());
+		const Aelvor::AdoptResult Got = Cold.Adopt(Image.data(), Image.size());
+		VT_CHECK_MSG(Got == Aelvor::AdoptResult::ClimateDiffers, "%s, wanted ClimateDiffers",
+					 Aelvor::AdoptResultToString(Got));
+		VT_CHECK_MSG(!Cold.Begun() && Cold.Instance().Now() == 0u, "the refused host is still un-begun");
+		VT_CHECK_MSG(ComputeStateDigest(Cold.Instance()) == Before, "and its (empty) world is untouched");
+	}
+	// And by the host it is of: taken up.
+	{
+		Aelvor Same(Declaring(true));
+		VT_CHECK(Same.Adopt(Image.data(), Image.size()) == Aelvor::AdoptResult::Ok);
+	}
+
+	// THE READING RULE, on the bytes alone: 24 reads as Climate = false (every
+	// container written before 18.02), 25 as written, anything else is not a
+	// HOST section this build reads. Through a hand-built view, because the
+	// rule is the reader's and needs no world.
+	{
+		uint64 Length = 0;
+		const uint8* Host = View.Find(SectionKind::Host, Length);
+		VT_REQUIRE(Host != nullptr && Length == 25u);
+		std::vector<uint8> Bytes(Host, Host + 26u); // one byte past the section, whatever it holds
+		const auto ReadAs = [&Bytes](uint64 Len, Options& Out)
+		{
+			CheckpointView Hand;
+			Hand.Base = Bytes.data();
+			SectionEntry E;
+			E.Kind = static_cast<uint16>(SectionKind::Host);
+			E.Offset = 0;
+			E.Length = Len;
+			Hand.Sections.push_back(E);
+			return ReadHostSection(Hand, Out);
+		};
+		Options Old;
+		VT_CHECK_MSG(ReadAs(24u, Old) && !Old.Climate && Old.Play && Old.Stream && Old.Size == 32u,
+					 "24 bytes: the four flags, and Climate false");
+		Options New;
+		VT_CHECK_MSG(ReadAs(25u, New) && New.Climate, "25 bytes: the fifth flag as written");
+		Options Odd;
+		VT_CHECK_MSG(!ReadAs(26u, Odd), "26 bytes: not a HOST section this build reads");
+		VT_CHECK_MSG(!ReadAs(23u, Odd), "23 bytes: nor this");
+	}
+
+	// THE CONTROL, ADR-0149 rule 2. From 18.02 to 18.04 two worlds identical
+	// but for the flag were THE SAME WORLD - nothing read it. 18.05 turned
+	// the state half: the flag declares PersonWarmth after Polity (ADR-0153),
+	// so the two part by their LAYOUT. 18.06 turned the log half: the flag
+	// wires the winter, which publishes and takes through the ledger from the
+	// first year, so the two LOGS part too. This is the Stream-style "must
+	// part" control on both (Aelvor.h:83-91), arrived two tasks before 18.10
+	// planned it; the refusal by the HOST byte is a refusal on a fact.
+	{
+		Aelvor Steady(Declaring(false));
+		Aelvor Asked(Declaring(true));
+		VT_REQUIRE(Steady.Begin());
+		VT_REQUIRE(Asked.Begin());
+		for (uint32 Step = 0; Step < 10u; ++Step)
+		{
+			Attention At;
+			At.Region = static_cast<uint32>(1u + (Step % 5u));
+			At.Reach = 1u;
+			Steady.LookAt(At);
+			Steady.Day();
+			Asked.LookAt(At);
+			Asked.Day();
+		}
+		VT_CHECK_MSG(ComputeStateDigest(Steady.Instance()) != ComputeStateDigest(Asked.Instance()),
+					 "the flag declares a type since 18.05, and the two state digests still agree at %016llx",
+					 static_cast<unsigned long long>(ComputeStateDigest(Asked.Instance())));
+		VT_CHECK_MSG(Steady.Instance().Log().Digest() != Asked.Instance().Log().Digest(),
+					 "the flag wires the winter since 18.06, and the two logs still agree at %016llx",
+					 static_cast<unsigned long long>(Asked.Instance().Log().Digest()));
+	}
 }

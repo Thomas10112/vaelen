@@ -55,8 +55,30 @@ namespace Vaelen::Run
 		/// From the container's own header, so a chooser can show a save's tick
 		/// and version without loading two gigabytes to find out.
 		uint64 Tick = 0;
+		/// THE IMAGE'S TRAILER: the last eight bytes of the STATE section, which
+		/// is what `ComputeStateDigest` returns and what every frozen digest in
+		/// this repository is.
+		///
+		/// It is NOT the STATE row's section digest from the table beside it -
+		/// a different number over the same bytes. 16.07 reported that one, by
+		/// POSITION, after discarding the result of the `Find` it had just
+		/// called.
+		///
+		/// AND IT WAS WRONG ALWAYS, not only for an unusual layout. I first
+		/// wrote this down as "right today because STATE happens to be section
+		/// 0"; measuring it says otherwise. On an ORDINARY container the old
+		/// code reported e0614906cb8a5676 where `ComputeStateDigest` returns
+		/// 0f6fa26b35d09a70. Position was the second fault; the first was that
+		/// the section digest is simply not the number every other instrument
+		/// in this repository means by a save's digest. A host comparing a
+		/// listed digest against a logged one was told two identical saves were
+		/// different worlds. 17.03.
 		uint64 Digest = 0;
 		uint32 ContainerVersion = 0;
+		/// How many sections the container has, so a caller can see its SHAPE -
+		/// whether a save carries its own input tape, above all - without
+		/// opening the file a second time.
+		uint32 SectionCount = 0;
 	};
 
 	/// Somewhere checkpoints are kept. Implementations live OUTSIDE the kernel.
@@ -89,9 +111,21 @@ namespace Vaelen::Run
 		virtual StoreResult Forget(const char* Name) = 0;
 	};
 
+	/// The suffix EVERY store of this interface writes under while a checkpoint
+	/// is being written: `<name>.writing`, in the same directory, moved into
+	/// place only when whole (Tools/Store/StdioCheckpointStore.h and the
+	/// engine's Source/VaelenGame/Private/VaelenCheckpointStore.cpp). Named
+	/// HERE so that `IsUsableCheckpointName` can refuse it, which is what keeps
+	/// a temporary an interrupted write left behind out of every listing. The
+	/// stdio store's comment said the name rule already did that; it did not,
+	/// and 16.14 found so while writing the second store (a listing reported
+	/// such a leftover as a save of tick 0).
+	inline constexpr const char* WritingSuffix = ".writing";
+
 	/// A name this interface will accept: not empty, no separator, no parent
-	/// directory, and nothing a shell or a filesystem would read as a path.
-	/// Checked HERE so that every implementation refuses the same names, rather
-	/// than each one inventing its own idea of what is safe.
+	/// directory, nothing a shell or a filesystem would read as a path, and
+	/// not the name of a write in progress (`WritingSuffix`). Checked HERE so
+	/// that every implementation refuses the same names, rather than each one
+	/// inventing its own idea of what is safe.
 	VAELEN_RUN_API bool IsUsableCheckpointName(const char* Name) noexcept;
 } // namespace Vaelen::Run

@@ -89,8 +89,11 @@ namespace Vaelen::Run
 		/// Declared here, filled by 16.05.
 		Run = 2,
 		/// The `Options` the saving host DECLARED - size, pre-history, years,
-		/// seed and the four wiring flags. 16.10, and it cost no container
-		/// version because the table is variable-length.
+		/// seed and the wiring flags. 16.10, and it cost no container version
+		/// because the table is variable-length. FIVE flags since 18.02, one
+		/// byte each: a 24-byte HOST written before then reads as
+		/// Climate = false, a 25-byte one as written, any other length is
+		/// refused as no HOST section at all.
 		Host = 3,
 		/// The recorded input stream, when a save is asked to carry its own
 		/// tape. 16.07, and it is one of the questions still open for the owner.
@@ -265,4 +268,20 @@ namespace Vaelen::Run
 	/// anything to a world - that is 16.06's `Adopt`, which is the only caller
 	/// entitled to decide what a section means.
 	VAELEN_RUN_API CheckpointRefusal ReadCheckpoint(const uint8* Bytes, usize Size, CheckpointView& Out);
+
+	/// THE IMAGE'S OWN TRAILER: the last eight bytes of the STATE section,
+	/// little-endian - what `ComputeStateDigest` returns and what every frozen
+	/// digest in this repository is. NOT the STATE row's section digest, which
+	/// is a different number over the same bytes (17.03 measured
+	/// e0614906cb8a5676 against 0f6fa26b35d09a70 on one ordinary container).
+	///
+	/// 0 when there is no STATE section or it is too short to hold one - the
+	/// same answer a default field gives, and not mistakable for a digest.
+	///
+	/// In the kernel since 16.14, because that task's engine-side store needs
+	/// the same eight bytes read the same way as the host-side one, and the
+	/// store's first version got this number wrong by reading it its own way.
+	/// One reader; Tests/Run/Test_Containers.cpp keeps an independent one and
+	/// requires the two to agree on every file of the corpus.
+	VAELEN_RUN_API uint64 ImageTrailer(const CheckpointView& View) noexcept;
 } // namespace Vaelen::Run

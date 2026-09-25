@@ -59,6 +59,8 @@ namespace Vaelen::View
 		Company,   ///< who is here
 		Chronicle, ///< a line of the life
 		Digest,	   ///< the page's own digest, always last
+		Weather,   ///< 18.04: the season, the day's temperature and the year where the played person stands - appended
+				   ///< AFTER Digest so its ordinal stays 9
 		Count
 	};
 

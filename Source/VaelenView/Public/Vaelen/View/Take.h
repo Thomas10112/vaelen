@@ -43,11 +43,14 @@
 #include "Vaelen/Population/Families.h"
 #include "Vaelen/Population/Needs.h"
 #include "Vaelen/Population/Persons.h"
+#include "Vaelen/Population/Warmth.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/Regions.h"
 #include "Vaelen/Society/Bondage.h"
 #include "Vaelen/Society/Organizations.h"
+#include "Vaelen/Sim/Climate.h"
 #include "Vaelen/View/Chronicle.h"
+#include "Vaelen/View/Climate.h"
 #include "Vaelen/View/Delta.h"
 #include "Vaelen/View/Eye.h"
 #include "Vaelen/View/Folk.h"
@@ -98,6 +101,22 @@ namespace Vaelen::View
 		bool HasGoods = false;
 		Economy::MarketTypes Markets;
 		Society::OrganizationTypes Organizations;
+		/// 18.02: whether the world has a climate to read. False from every
+		/// source until 18.10 makes it the run's own flag; a take with it false
+		/// is byte for byte the take of the world before Phase 18. 18.04 reads
+		/// it: with it true the frame carries the season and every region's
+		/// climate word, the life the day's degrees where the played person
+		/// stands, and TakeClimateView fills a tile leaf; the rules are the
+		/// host's, as OrderRules are.
+		bool HasClimate = false;
+		WorldGen::ClimateRules Climate;
+		/// 18.05: the warmth a climate world declared (Population::WarmthTypes,
+		/// after Polity and before Colony), read by TakeLifeView for the
+		/// played person's chill. Separate from HasClimate because Aelvor
+		/// declares the type from 18.05 on while its HasClimate waits for
+		/// 18.10, and a take must never read a pool that was not declared.
+		bool HasWarmth = false;
+		Population::WarmthTypes Warmth;
 	};
 
 	/// Takes the frame. Const world in, numbers out: the signature is the
@@ -108,6 +127,11 @@ namespace Vaelen::View
 	/// the same promise as TakeView, and the reason both live in this module.
 	/// Out is left empty when the world's map has not been generated.
 	VAELEN_VIEW_API void TakeMapView(const World& W, const ViewSources& From, MapView& Out);
+
+	/// 18.04: the climate of every tile today. Empty, with Season 0, when the
+	/// sources carry no climate. Once a day, like the map: a quarter of a
+	/// megabyte at 256 is not a per-frame structure.
+	VAELEN_VIEW_API void TakeClimateView(const World& W, const ViewSources& From, ClimateView& Out);
 
 	/// Takes the network. Const world in, numbers out. Out is left empty when
 	/// the sources carry neither trade nor a colony - a world with no economy

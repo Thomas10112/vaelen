@@ -183,6 +183,21 @@ namespace Vaelen::Economy
 				MinedHere[R] = !RH.IsNull() && W.Components().GetPool(Mined).TryGet(RH) != nullptr ? 1u : 0u;
 			}
 		}
+		// 18.07: the growing season of the year just ended, per region, from
+		// the one function the winter and the view read too. A full thousand
+		// everywhere without a climate, with GrowFullDays 0, and in year 0,
+		// when no season has grown yet.
+		std::vector<uint32> GrowPerMille(N, 1000u);
+		if (HasClimate && Climate.GrowFullDays > 0u && Context.Tick / History::TicksPerYear > 0u)
+		{
+			std::vector<WorldGen::YearShape> Grown;
+			WorldGen::ShapeRegionYears(W, Types.World, Context.Tick / History::TicksPerYear - 1u, Climate, Grown);
+			for (uint32 R = 1; R < N && R < Grown.size(); ++R)
+			{
+				GrowPerMille[R] = static_cast<uint32>(
+					std::min<uint64>(1000u, uint64{Grown[R].GrowingDays} * 1000u / Climate.GrowFullDays));
+			}
+		}
 		std::vector<uint32> Alive(N, 0u), Workers(N, 0u), Unhoused(N, 0u), Crafters(N, 0u);
 		std::vector<uint64> UnhousedYield(N, 0u), CraftSum(N, 0u);
 		W.Components()
@@ -257,7 +272,10 @@ namespace Vaelen::Economy
 			{
 				continue;
 			}
-			const uint64 Kept = 1000u - Blows[Region].CutPerMille;
+			// What the drought left, and (18.07) what the season let grow: the
+			// coarse branch and Reap below both take it, so the two branches
+			// cannot disagree about the year.
+			const uint64 Kept = (1000u - Blows[Region].CutPerMille) * GrowPerMille[Region] / 1000u;
 			// 1. The harvest.
 			// What the region has built lifts what the same fields and the same
 			// hands give (09.02). Nothing built means a factor of one, to the unit.

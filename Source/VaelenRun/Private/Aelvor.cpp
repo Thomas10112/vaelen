@@ -17,6 +17,7 @@
 #include "Vaelen/Economy/EconomyHistory.h"
 #include "Vaelen/Gameplay/Judgement.h"
 #include "Vaelen/Player/Doings.h"
+#include "Vaelen/Economy/Winter.h"
 #include "Vaelen/Population/Lives.h"
 #include "Vaelen/Sim/Deposits.h"
 #include "Vaelen/Sim/Population.h"
@@ -78,6 +79,14 @@ namespace Vaelen::Run
 			// so a world not asked for them carries no trace and its digests are
 			// the digests it had. ColonyTypes::Declare also declares
 			// Economy::RegionMined, which is why the Atlas keeps it optional too.
+			// 18.05: the warmth, only in a climate world, and before the
+			// colony - so a climate world's Colony/Play/Lively ids sit one
+			// higher, which is why the actors flip in 18.10's commit
+			// (ADR-0153), and a world without one carries no trace.
+			if (Given.Climate)
+			{
+				W.Warmth = WarmthTypes::Declare(Instance);
+			}
 			if (Given.Colony)
 			{
 				W.Pit = ColonyTypes::Declare(Instance);
@@ -157,6 +166,17 @@ namespace Vaelen::Run
 													  MiningRules{});
 				Rock->ObserveTraits(W.Traits.Traits);
 			}
+			// 18.06: the winter, only in a climate world - after the stocks are
+			// settled and before the harvest, which is told to wait for it.
+			if (Given.Climate)
+			{
+				Winters = std::make_unique<WinterSystem>(Instance, Ages.Types(), W.Persons, W.Families, W.Economy_,
+														 W.Warmth, WinterRules{});
+				Winters->RunAfter("Stocks");
+				Winters->ObserveSettlements(W.Trade.Settlement);
+				Harvest->RunAfter("Winter");
+				Harvest->ObserveClimate(WorldGen::ClimateRules{}); // 18.07: the growing season
+			}
 			if (Given.Play)
 			{
 				// Phase 10, as Test_PlayerGate wires it: somebody to be, a day at
@@ -224,6 +244,10 @@ namespace Vaelen::Run
 			Harvest->ObserveTraits(W.Traits.Traits);
 			Body->RunAfter("Production");
 			Body->ObserveRation(W.Production.Ration);
+			if (Given.Climate)
+			{
+				Body->ObserveWinter(W.Warmth, WarmthRules{});
+			}
 			Rulers->RunAfter("Lod");
 
 			Instance.Systems().Add(Lives.get());
@@ -238,6 +262,10 @@ namespace Vaelen::Run
 			Instance.Systems().Add(Orgs.get());
 			Instance.Systems().Add(Customs.get());
 			Instance.Systems().Add(Stocks.get());
+			if (Winters != nullptr)
+			{
+				Instance.Systems().Add(Winters.get());
+			}
 			Instance.Systems().Add(Harvest.get());
 			Instance.Systems().Add(Fair.get());
 			Instance.Systems().Add(Roads.get());
@@ -361,6 +389,7 @@ namespace Vaelen::Run
 		std::unique_ptr<OrganizationSystem> Orgs;
 		std::unique_ptr<NormSystem> Customs;
 		std::unique_ptr<StockSystem> Stocks;
+		std::unique_ptr<WinterSystem> Winters; ///< only with Options::Climate (18.06)
 		std::unique_ptr<ProductionSystem> Harvest;
 		std::unique_ptr<MarketSystem> Fair;
 		std::unique_ptr<TradeSystem> Roads;
@@ -603,6 +632,13 @@ namespace Vaelen::Run
 		S.HasFame = Given_.Lively;
 		S.Fame = K->W.Fame;
 		S.HasLife = Given_.Play;
+		// 18.02: false whatever Given_.Climate says, until 18.04 gives the view
+		// something to read; 18.10 makes it Given_.Climate.
+		S.HasClimate = false;
+		// 18.05: the warmth the climate world declared, read by the life view
+		// for the chill; HasClimate above stays false until 18.10.
+		S.HasWarmth = Given_.Climate;
+		S.Warmth = K->W.Warmth;
 		S.Hour = K->W.Hour;
 		S.Order = K->W.Order;
 		S.Regard = K->W.Regard;
@@ -866,6 +902,8 @@ namespace Vaelen::Run
 			return "LivelyDiffers";
 		case AdoptResult::StreamDiffers:
 			return "StreamDiffers";
+		case AdoptResult::ClimateDiffers:
+			return "ClimateDiffers";
 		}
 		return "Unknown";
 	}
@@ -943,6 +981,13 @@ namespace Vaelen::Run
 		if (Declared.Stream != Given_.Stream)
 		{
 			return AdoptResult::StreamDiffers;
+		}
+		// 18.02: refused by name BEFORE the climate exists, so that the day it
+		// does, a host without one cannot adopt a world with one and find out
+		// as LayoutDiffers - a fault of the state, not of the world.
+		if (Declared.Climate != Given_.Climate)
+		{
+			return AdoptResult::ClimateDiffers;
 		}
 
 		uint64 StateLength = 0;

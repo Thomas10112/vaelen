@@ -89,6 +89,19 @@ namespace Vaelen::Run
 		/// it. Turning it on for the played world is 15.10's business, together
 		/// with a month replayed against it.
 		bool Stream = false;
+		/// Phase 18: the climate - a current temperature, a warmth need, a
+		/// winter, a harvest that takes the season (ROADMAP section 25).
+		///
+		/// 18.02 LANDS THE SWITCH BEFORE THE THING IT SWITCHES. Nothing reads
+		/// this flag yet: it is a fifth byte of the HOST section and a refusal
+		/// (`AdoptResult::ClimateDiffers`), so that when 18.03-18.09 build the
+		/// climate behind it, a save of a climate world is already refused by
+		/// a host that did not ask for one, BY NAME, rather than by the
+		/// kernel's `LayoutDiffers` after the fact (ADR-0150's lesson with
+		/// Stream, which declared no type and was invisible to every guard).
+		/// Every frozen digest this project has belongs to a world without it;
+		/// 18.10 flips the default and re-freezes, in one commit.
+		bool Climate = false;
 	};
 
 	/// The component type sets of the wiring, for a test or a subsystem that
@@ -110,8 +123,9 @@ namespace Vaelen::Run
 		Economy::TradeTypes Trade;
 		Economy::WealthTypes Wealth;
 		Politics::PolityTypes Polities;
-		Colony::ColonyTypes Pit;	///< only with Options::Colony
-		Player::PlayerTypes Played; ///< only with Options::Play, and the five below
+		Population::WarmthTypes Warmth; ///< only with Options::Climate (18.05), declared before Pit
+		Colony::ColonyTypes Pit;		///< only with Options::Colony
+		Player::PlayerTypes Played;		///< only with Options::Play, and the five below
 		Player::StartTypes Start;
 		Player::HourTypes Hour;
 		Player::OrderTypes Order;
@@ -295,6 +309,10 @@ namespace Vaelen::Run
 			PlayDiffers,
 			LivelyDiffers,
 			StreamDiffers,
+			/// 18.02: the fifth flag, refused under its own name like the four
+			/// before it. A 24-byte HOST section (every container written
+			/// before 18.02) reads as Climate = false.
+			ClimateDiffers,
 		};
 		VAELEN_RUN_API static const char* AdoptResultToString(AdoptResult Result) noexcept;
 

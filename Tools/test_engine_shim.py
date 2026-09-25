@@ -47,6 +47,11 @@ HEADER = os.path.join("Source", MODULE, "Public", "VaelenViewDrawer.h")
 # change when they became real - only the lines the mutations name did.
 HUD = os.path.join("Source", "VaelenUI", "Private", "VaelenHUD.cpp")
 KEYS = os.path.join("Source", "VaelenUI", "Private", "VaelenPlayerController.cpp")
+# 16.14's three files: the store over the engine's file manager, the host that
+# saves and loads through it, and the commands that print the lines.
+STORE = os.path.join("Source", "VaelenGame", "Private", "VaelenCheckpointStore.cpp")
+HOST = os.path.join("Source", "VaelenGame", "Private", "VaelenWorldSubsystem.cpp")
+PLAY = os.path.join("Source", "VaelenGame", "Private", "VaelenPlayCommands.cpp")
 
 # (name, file, text to find, text to put there). A mutation whose "find" text
 # is no longer present is a FAILURE of this file, not a pass: it means the
@@ -129,6 +134,24 @@ MUTATIONS = [
         KEYS,
         "Press(Page, Kind, Target, 1, What)",
         "Press(Page, Kind, 1, What)",
+    ),
+    (
+        "16.14: a store calling a file-manager verb the engine does not have",
+        STORE,
+        "Files.FindFiles(Found, *Directory, nullptr);",
+        "Files.FindFile(Found, *Directory, nullptr);",
+    ),
+    (
+        "16.14: a load that restores through a verb the run does not have",
+        HOST,
+        "Fresh->Adopt(Bytes.data(), Bytes.size())",
+        "Fresh->Restore(Bytes.data(), Bytes.size())",
+    ),
+    (
+        "16.14: a save command that forgot the check line the host hands back",
+        PLAY,
+        "World->Save(Args[0], Where, Check)",
+        "World->Save(Args[0], Where)",
     ),
 ]
 

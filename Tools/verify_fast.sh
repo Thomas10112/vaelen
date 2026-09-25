@@ -16,6 +16,7 @@
 #   parse          the engine modules, against Tools/EngineShim
 #   wiring         the four wirings of AELVOR agree
 #   ui fence       the UI includes no kernel header and names no world
+#   frozen census  every sixteen-hex literal is in a file the table names (18.01)
 #   compiles       every TU the change can reach, syntax-only, the build's flags
 #
 # THE LAST ONE WAS ADDED ON 2026-09-21, and it is the reason this comment is
@@ -72,6 +73,16 @@ python3 Tools/check_world_wiring.py | tail -1
 
 echo "[verify] ui fence"
 python3 Tools/check_ui_fence.py | tail -2 | head -1
+echo "[verify] frozen census"
+# 18.01. Here and not only in ctest because a literal added in a file the
+# table does not name is exactly the kind of thing a person notices before a
+# push and nobody notices after; --diff A B is the other half, run by hand
+# when a commit is meant to move a digest and never otherwise. Captured, not
+# piped into head: under pipefail a `| head -1` can close the pipe before the
+# script's second line is written, and the census would go red for a reason
+# that is not a literal (seen once, 18.04).
+Census="$(python3 Tools/frozen_census.py --check)" || { printf '%s\n' "$Census" | head -3; exit 1; }
+printf '%s\n' "$Census" | head -1
 
 echo "[verify] compiles"
 # NOT piped through tail, unlike every check above it. The others answer with a

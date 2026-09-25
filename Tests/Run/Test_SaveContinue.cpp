@@ -17,13 +17,33 @@
 // actually ended up.
 //
 // AND EACH ARM IS WEIGHED, NOT JUST COMPARED. Three digests per cell read like
-// three independent claims and were not: the life arm was vacuous in twelve of
-// the original eighteen cells, six of them comparing HashBytes(nullptr, 0)
-// against itself. Every cell now declares what its life digest is worth
-// (LifeArm) and the declaration is measured, so the matrix can state its
-// coverage instead of assuming it. See SaveMatrix.h.
+// three independent claims and were not. The life arm was found vacuous twice
+// over, by two people counting differently, and BOTH counts are kept here
+// because they catch different things:
+//
+//   WHO IS PLAYED (17.07, the nine). Nine of the original eighteen cells
+//   carried nobody, so their life digests were equal for a reason that had
+//   nothing to do with restoring. Two kinds: six with no Play at all, whose
+//   Life() is the empty story, and three where Play is on and the world
+//   offers nobody, whose Life() is the constant text "nobody". Each such cell
+//   now asserts what it IS and is counted, and the harness refuses the digest
+//   of no bytes outright (VT_CHECK_DIGEST_EQ).
+//
+//   WHETHER THE DIGEST MOVES (LifeArm, the twelve). Being played is not
+//   enough. "stream, no lively" at 128 plays person 11 and writes its whole
+//   chronicle at TakeUp, then stands still for the entire horizon - a PLAYED
+//   cell whose life digest any restore lands on, which the count above passes
+//   as genuine. Measured across the span the matrix restores over, only six
+//   of eighteen cells had a life digest that moved, and all six sat in the
+//   Stream rows: the agreeing half of the control had none.
+//
+// So a fourth wiring was added rather than the claim softened, every cell
+// declares what its life digest is worth, and the declaration is measured on
+// every run. The nine are still nine - the new row plays somebody at both
+// sizes. See SaveMatrix.h.
 //
 // STATUS: PROTOTYPE (Phase 16) - ctest Run.SaveContinue
+#include "Vaelen/Core/Hash.h"
 #include "Vaelen/Run/Aelvor.h"
 #include "Vaelen/Run/Checkpoint.h"
 #include "Vaelen/Run/Door.h"
@@ -31,16 +51,28 @@
 #include "SaveMatrix.h"
 #include "VaelenTest.h"
 
+#include <cstring>
 #include <vector>
 
 using namespace Vaelen;
 using namespace Vaelen::Run;
+
+namespace
+{
+	/// The digest of NO story: what `Where::Life` reads as when nobody is
+	/// played, on both sides of every cell that carries nobody. Comparing it
+	/// against itself was green for nine cells until 17.07 built a witness
+	/// that refuses it; those cells now say what they are, and are counted.
+	constexpr Hash64 EmptyStory = HashBytes(nullptr, 0);
+	static_assert(EmptyStory == ::VaelenTest::Detail::EmptyBytesDigest, "the harness refuses this very value");
+} // namespace
 
 VAELEN_TEST(SaveContinue, EveryDayIsASavePointAcrossTheMatrix)
 {
 	uint32 Moving = 0;
 	uint32 Fixed = 0;
 	uint32 None = 0;
+	uint32 EmptyCells = 0;
 	for (const Wiring& W : Wirings)
 	{
 		for (usize S = 0; S < SizeCount; ++S)
@@ -140,9 +172,41 @@ VAELEN_TEST(SaveContinue, EveryDayIsASavePointAcrossTheMatrix)
 				VT_CHECK_MSG(Landed.Log == Truth.Log, "%s at %u saved on day %u: log %016llx, straight run %016llx",
 							 W.Name, Size, From, static_cast<unsigned long long>(Landed.Log),
 							 static_cast<unsigned long long>(Truth.Log));
-				VT_CHECK_MSG(Landed.Life == Truth.Life, "%s at %u saved on day %u: life %016llx, straight run %016llx",
-							 W.Name, Size, From, static_cast<unsigned long long>(Landed.Life),
-							 static_cast<unsigned long long>(Truth.Life));
+				if (W.Who[S] != 0u)
+				{
+					// A played life is a story, and a story is not the empty
+					// string: without this line a cell whose life export broke
+					// to "" on both sides would be green, and 17.07 measured
+					// that nine cells were exactly that.
+					VT_CHECK_MSG(Truth.Life != EmptyStory, "%s at %u: a played life reads as no story at all", W.Name,
+								 Size);
+					VT_CHECK_MSG(Landed.Life == Truth.Life,
+								 "%s at %u saved on day %u: life %016llx, straight run %016llx", W.Name, Size, From,
+								 static_cast<unsigned long long>(Landed.Life),
+								 static_cast<unsigned long long>(Truth.Life));
+				}
+				else
+				{
+					// NOBODY IS PLAYED HERE, and comparing the two lives
+					// measures nothing: the cell asserts what it IS instead,
+					// and the count below pins how many there are. Two kinds,
+					// found by asserting the wrong one first: the plain wiring
+					// has no Play and its Life() is the EMPTY story; the stream
+					// wiring at 64 has Play and the world offers nobody, so
+					// ExportLife writes the story of "nobody" - a constant
+					// text, the same on both sides of every save, which is
+					// exactly as vacuous and not the empty string.
+					VT_CHECK_MSG(Source.Played() == 0u && Restored.Played() == 0u,
+								 "%s at %u saved on day %u: this cell is pinned to nobody and somebody is played (%u "
+								 "straight, %u restored)",
+								 W.Name, Size, From, static_cast<unsigned>(Source.Played()),
+								 static_cast<unsigned>(Restored.Played()));
+					VT_CHECK_MSG(W.Play ? Truth.Life != EmptyStory : Truth.Life == EmptyStory,
+								 "%s at %u: a wiring %s Play should export %s (life %016llx)", W.Name, Size,
+								 W.Play ? "with" : "without", W.Play ? "the story of nobody" : "no story",
+								 static_cast<unsigned long long>(Truth.Life));
+					++EmptyCells;
+				}
 			}
 		}
 	}
@@ -160,6 +224,13 @@ VAELEN_TEST(SaveContinue, EveryDayIsASavePointAcrossTheMatrix)
 	VT_CHECK_MSG(Moving == 4u, "four worlds carry a moving chronicle, got %u", Moving);
 	VT_CHECK_MSG(Fixed == 2u, "two carry one that never moves after TakeUp, got %u", Fixed);
 	VT_CHECK_MSG(None == 2u, "two carry none at all, got %u", None);
+
+	// AND THE NINE THAT CARRY NOBODY, 17.07's count, which the fourth wiring
+	// leaves untouched: the row added above plays somebody at both sizes, so
+	// the cells carrying nobody are still the two plain ones and "stream, no
+	// lively" at 64. A tenth means a played cell stopped playing; an eighth
+	// means a cell that carries nobody claims to.
+	VT_CHECK_MSG(EmptyCells == 9u, "%u of the twenty-four cells carry nobody, pinned at 9", EmptyCells);
 }
 
 VAELEN_TEST(SaveContinue, TheLifeArmIsWorthWhatTheMatrixSaysItIs)
@@ -282,19 +353,28 @@ VAELEN_TEST(SaveContinue, TheLifeArmCanTellVacuousFromMeasured)
 	VT_CHECK_MSG(ArmOf(Empty, Empty) == LifeArm::None, "no chronicle at all is None, got %s",
 				 ArmName(ArmOf(Empty, Empty)));
 
-	// Non-empty and IDENTICAL at both ends - the "stream, no lively" shape.
-	Where Still;
-	Still.LifeBytes = 42u;
-	Still.Life = 0x0123456789abcdefull;
+	// The stories are HASHED RATHER THAN INVENTED. A hand-written sixteen-hex
+	// digest here would be a frozen constant this file has no business
+	// carrying - Tools/frozen_census.py says so, and it is right: a sentinel
+	// that looks like a world digest is one grep away from being read as one.
+	// These are what Where::Life actually holds, which is HashBytes over the
+	// text ExportLife wrote.
+	const auto StoryOf = [](const char* Text)
+	{
+		Where R;
+		R.LifeBytes = std::strlen(Text);
+		R.Life = HashBytes(Text, R.LifeBytes);
+		return R;
+	};
+
+	// Non-empty and IDENTICAL at both ends - the "stream, no lively" shape,
+	// whose chronicle is written at TakeUp and never touched again.
+	const Where Still = StoryOf("nobody");
 	VT_CHECK_MSG(ArmOf(Still, Still) == LifeArm::Fixed, "a chronicle that never moves is Fixed, got %s",
 				 ArmName(ArmOf(Still, Still)));
 
-	Where Early;
-	Early.LifeBytes = 2837u;
-	Early.Life = 0x1111111111111111ull;
-	Where Late;
-	Late.LifeBytes = 2843u;
-	Late.Life = 0x2222222222222222ull;
+	const Where Early = StoryOf("Ekde of Edavaken, the house of Unvarderdu");
+	const Where Late = StoryOf("Ekde of Edavaken, the house of Unvarderdu\nand then a day was lived");
 	VT_CHECK_MSG(ArmOf(Early, Late) == LifeArm::Moving, "one that differs across the span is Moving, got %s",
 				 ArmName(ArmOf(Early, Late)));
 
@@ -303,7 +383,7 @@ VAELEN_TEST(SaveContinue, TheLifeArmCanTellVacuousFromMeasured)
 	// chronicle behind either; length is what settles it, which is why Where
 	// carries LifeBytes beside the digest at all.
 	Where Nothing;
-	Nothing.Life = 0x3333333333333333ull;
+	Nothing.Life = Late.Life;
 	VT_CHECK_MSG(ArmOf(Early, Nothing) == LifeArm::None, "an empty chronicle is None whatever the digest says, got %s",
 				 ArmName(ArmOf(Early, Nothing)));
 }

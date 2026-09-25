@@ -28,6 +28,7 @@
 #include "Vaelen/Economy/Wealth.h"
 #include "Vaelen/Player/Stream.h"
 #include "Vaelen/Politics/Polities.h"
+#include "Vaelen/Economy/Winter.h"
 #include "Vaelen/Population/Families.h"
 #include "Vaelen/Population/Lives.h"
 #include "Vaelen/Population/Lod.h"
@@ -36,10 +37,13 @@
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Population/Traits.h"
 #include "Vaelen/Run/Aelvor.h"
+#include "StdioCheckpointStore.h"
 #include "Vaelen/Run/Checkpoint.h"
 #include "Vaelen/Run/Door.h"
 #include "Vaelen/Core/Version.h"
 #include "Vaelen/Sim/PreHistory.h"
+#include "Vaelen/Sim/Causality.h"
+#include "Vaelen/Sim/EventTypeNames.h"
 #include "Vaelen/Sim/Snapshot.h"
 #include "Vaelen/Sim/Deposits.h"
 #include "Vaelen/Sim/HistoryText.h"
@@ -89,9 +93,9 @@ namespace
 	/// the premise of the game turns on.
 	struct KernelRun
 	{
-		KernelRun(uint64 InSeed, bool InWithColony, bool InWithChronicle)
-			: WithColony(InWithColony), WithChronicle(InWithChronicle), Instance(Config(InSeed)),
-			  Ages(Instance, PreHistoryRules{})
+		KernelRun(uint64 InSeed, bool InWithColony, bool InWithChronicle, bool InWithClimate)
+			: WithColony(InWithColony), WithChronicle(InWithChronicle), WithClimate(InWithClimate),
+			  Instance(Config(InSeed)), Ages(Instance, PreHistoryRules{})
 		{
 			Persons = PersonTypes::Declare(Instance, Ages);
 			Families = FamilyTypes::Declare(Instance);
@@ -108,6 +112,12 @@ namespace
 			Trade = TradeTypes::Declare(Instance);
 			Wealth = WealthTypes::Declare(Instance);
 			Polities = PolityTypes::Declare(Instance);
+			// 18.05: the warmth, only in a climate world, before the colony -
+			// the position every wiring keeps (ADR-0153).
+			if (WithClimate)
+			{
+				Warmth = WarmthTypes::Declare(Instance);
+			}
 			// Declared only when asked. ColonyTypes::Declare also declares
 			// Economy::RegionMined, so a world that is not told to have a colony
 			// carries no trace of one and its digests are the digests it had
@@ -157,6 +167,17 @@ namespace
 													  MiningRules{});
 				Rock->ObserveTraits(Traits.Traits);
 			}
+			// 18.06: the winter, only in a climate world - after the stocks are
+			// settled and before the harvest, which is told to wait for it.
+			if (WithClimate)
+			{
+				Winters = std::make_unique<WinterSystem>(Instance, Ages.Types(), Persons, Families, Economy_, Warmth,
+														 WinterRules{});
+				Winters->RunAfter("Stocks");
+				Winters->ObserveSettlements(Trade.Settlement);
+				Harvest->RunAfter("Winter");
+				Harvest->ObserveClimate(WorldGen::ClimateRules{}); // 18.07: the growing season
+			}
 			if (WithChronicle)
 			{
 				// Three listeners, one describer. The economy's text speaks for
@@ -189,6 +210,10 @@ namespace
 			Harvest->ObserveTraits(Traits.Traits);
 			Body->RunAfter("Production");
 			Body->ObserveRation(Production.Ration);
+			if (WithClimate)
+			{
+				Body->ObserveWinter(Warmth, WarmthRules{});
+			}
 			Rulers->RunAfter("Lod");
 
 			Instance.Systems().Add(Lives.get());
@@ -199,6 +224,10 @@ namespace
 			Instance.Systems().Add(Orgs.get());
 			Instance.Systems().Add(Customs.get());
 			Instance.Systems().Add(Stocks.get());
+			if (Winters != nullptr)
+			{
+				Instance.Systems().Add(Winters.get());
+			}
 			Instance.Systems().Add(Harvest.get());
 			Instance.Systems().Add(Fair.get());
 			Instance.Systems().Add(Roads.get());
@@ -237,6 +266,11 @@ namespace
 			S.Trade = Trade;
 			S.HasColony = WithColony;
 			S.Colony_ = Pit;
+			// 18.04: told, not read, like --stream (Options::Climate): the host
+			// asked for a climate on the command line, and the view is the host's.
+			S.HasClimate = WithClimate;
+			S.HasWarmth = WithClimate;
+			S.Warmth = Warmth;
 			return S;
 		}
 
@@ -265,6 +299,8 @@ namespace
 
 		bool WithColony = false;
 		bool WithChronicle = false;
+		bool WithClimate = false; ///< 18.04: --climate, told to the view sources like --stream is told to the run
+		WarmthTypes Warmth;		  ///< 18.05: only with --climate
 		/// The peopled region with the most people that has ORE under it.
 		///
 		/// A colony is people put on rock. Put on ground with no seam it lifts
@@ -352,6 +388,7 @@ namespace
 		std::unique_ptr<OrganizationSystem> Orgs;
 		std::unique_ptr<NormSystem> Customs;
 		std::unique_ptr<StockSystem> Stocks;
+		std::unique_ptr<WinterSystem> Winters; ///< 18.06: only with --climate
 		std::unique_ptr<ProductionSystem> Harvest;
 		std::unique_ptr<MarketSystem> Fair;
 		std::unique_ptr<TradeSystem> Roads;
@@ -476,12 +513,28 @@ namespace
 		/// reading it. Replaying a walk without it is replaying it into a world
 		/// that pays attention on a different schedule, and the digests say so.
 		bool Stream = false;
+		bool Climate = false; ///< 18.02: told, not read, exactly like --stream
 		/// 15.10's gate: a walk recorded elsewhere, replayed here and asked the
 		/// six clauses of the phase gate. The streaming cadence is forced on
 		/// for it - RunGate says why.
 		std::string Gate;
 		/// 16.01: write the golden corpus to this directory.
 		std::string Golden;
+		/// 17.01: write the container corpus to this directory.
+		std::string Containers;
+		/// 17.05: the cause census over a container read from this file. The
+		/// world is adopted from the container's own HOST section, so nothing
+		/// about its wiring has to be spelled out on the command line and
+		/// nothing can be spelled out wrongly.
+		std::string Causes;
+		/// 17.05: the same census over a world GENERATED from --size and the
+		/// rest, for the figure over a fresh AELVOR the roadmap records.
+		bool Census = false;
+		/// 17.06: describe a container WITHOUT generating or adopting a world.
+		std::string Inspect;
+		/// 17.06: list a directory of containers through the host-side store,
+		/// from a process that wrote none of them.
+		std::string InspectDir;
 		/// The four digests the host printed, as `state %016llx, log %016llx,
 		/// life %016llx, panel %016llx` - the tail of the line
 		/// Vaelen.Stream.Write logs. Given, the gate JUDGES clause (b)'s other
@@ -604,11 +657,19 @@ namespace
 					 "  --replay FILE   replay a vaelen-stream into a fresh played Run and write what it came to\n"
 					 "  --empty         the empty play: the Play wiring with nobody taken up, no stream\n"
 					 "  --panel         with --replay or --empty: print the first screen it came to (14.06)\n"
+					 "  --climate       18.04: the view carries the climate (a season, degrees, a climate leaf); told, "
+					 "not read\n"
 					 "  --want-bound N  StartRules::WantBound for a replay (0 or 1, default 1; the engine host "
 					 "uses 0)\n"
 					 "  --stand FILE    write a stand-in stream: thirty days played by nobody (14.10)\n"
 					 "  --walk FILE     write a stand-in WALK: looks, takings and the streaming cadence (15.10)\n"
 					 "  --golden DIR    write the golden save corpus of 16.01 to this directory\n"
+					 "  --containers DIR  write the container corpus of 17.01 to this directory\n"
+					 "  --causes FILE   17.05: the cause census over a container, per event type\n"
+					 "  --census        the same over a world generated from --size and the rest\n"
+					 "  --inspect FILE  17.06: header, sections, host wiring, run shape and stream of a\n"
+					 "                  container, without generating a world\n"
+					 "  --inspect-dir DIR  list every container in a directory through the store\n"
 					 "  --gate FILE     replay a walk and report the six clauses of the 15.10 gate\n"
 					 "  --expect \"...\"  with --gate: the four digests the host printed, judged rather than "
 					 "printed\n");
@@ -667,6 +728,10 @@ namespace
 			else if (std::strcmp(Arg, "--stream") == 0)
 			{
 				Out.Stream = true;
+			}
+			else if (std::strcmp(Arg, "--climate") == 0)
+			{
+				Out.Climate = true;
 			}
 			else if (std::strcmp(Arg, "--stand") == 0 && HasValue)
 			{
@@ -749,6 +814,26 @@ namespace
 			else if (std::strcmp(Arg, "--golden") == 0 && HasValue)
 			{
 				Out.Golden = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--containers") == 0 && HasValue)
+			{
+				Out.Containers = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--causes") == 0 && HasValue)
+			{
+				Out.Causes = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--census") == 0)
+			{
+				Out.Census = true;
+			}
+			else if (std::strcmp(Arg, "--inspect") == 0 && HasValue)
+			{
+				Out.Inspect = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--inspect-dir") == 0 && HasValue)
+			{
+				Out.InspectDir = Argv[++I];
 			}
 			else if (std::strcmp(Arg, "--want-bound") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
 			{
@@ -866,6 +951,7 @@ namespace
 		RO.Seed = Opt.Seed;
 		RO.Play = true;
 		RO.Stream = true; // the whole point: the daily cadence and the warden
+		RO.Climate = Opt.Climate;
 		Vaelen::Run::Aelvor A(RO);
 		if (!A.Begin())
 		{
@@ -1175,6 +1261,16 @@ namespace
 		S.SlotSumWrong = Books.SlotSumWrong > S.SlotSumWrong ? Books.SlotSumWrong : S.SlotSumWrong;
 	}
 
+	/// 18.04: the run's sources with the climate the host asked for. Aelvor's
+	/// own Sources() leaves HasClimate false until 18.10 makes it the run's
+	/// flag; until then the view is TOLD, exactly as the run is told --stream.
+	ViewSources SourcesFor(const Vaelen::Run::Aelvor& A, const Options& Opt)
+	{
+		ViewSources S = A.Sources();
+		S.HasClimate = Opt.Climate;
+		return S;
+	}
+
 	int RunGate(const Options& Opt)
 	{
 		std::string Text;
@@ -1199,6 +1295,7 @@ namespace
 		RO.Seed = S.Header.Seed;
 		RO.Play = true;
 		RO.Stream = true; // see the note above: forced, not asked
+		RO.Climate = Opt.Climate;
 		Vaelen::Run::Aelvor A(RO);
 		if (!A.Begin())
 		{
@@ -1237,9 +1334,9 @@ namespace
 		LifeView Life;
 		ChronicleView Told;
 		PanelView Page;
-		TakeView(A.Instance(), A.Sources(), Frame);
-		TakeLifeView(A.Instance(), A.Sources(), Ways, Life);
-		TakeChronicleView(A.Instance(), A.Sources(), Told);
+		TakeView(A.Instance(), SourcesFor(A, Opt), Frame);
+		TakeLifeView(A.Instance(), SourcesFor(A, Opt), Ways, Life);
+		TakeChronicleView(A.Instance(), SourcesFor(A, Opt), Told);
 		TakePanel(Frame, Life, Told, Page);
 		const std::string Story = A.Life();
 
@@ -1627,6 +1724,7 @@ namespace
 		RO.Colony = Opt.Colony;
 		RO.Play = true;
 		RO.Stream = Opt.Stream;
+		RO.Climate = Opt.Climate;
 		RO.Lively = Opt.Lively;
 
 		const std::vector<uint32> Wanted = WhichDays(Opt.Seed, Opt.Points, static_cast<uint32>(S.Days.size()));
@@ -1911,6 +2009,7 @@ namespace
 		RO.Seed = Opt.Seed;
 		RO.Play = true;
 		RO.Stream = true;
+		RO.Climate = Opt.Climate;
 		// Declared by the caller and printed below, because whoever replays
 		// this walk has to be told the same thing: the file cannot carry it.
 		RO.Lively = Opt.Lively;
@@ -2027,6 +2126,7 @@ namespace
 		RO.Colony = Opt.Colony;
 		RO.Play = true;
 		RO.Stream = Opt.Stream;
+		RO.Climate = Opt.Climate;
 		RO.Lively = Opt.Lively;
 		Vaelen::Run::Aelvor A(RO);
 		if (!A.Begin())
@@ -2111,6 +2211,7 @@ namespace
 		RO.Colony = Opt.Colony;
 		RO.Play = true;
 		RO.Stream = Opt.Stream;
+		RO.Climate = Opt.Climate;
 		RO.Lively = Opt.Lively;
 		// CONSTRUCTED, NOT BEGUN: this process never generates the world.
 		Vaelen::Run::Aelvor A(RO);
@@ -2153,6 +2254,7 @@ namespace
 			{
 				RO.Play = true;
 				RO.Stream = true;
+				RO.Climate = Opt.Climate;
 				RO.Lively = true;
 				RO.Colony = true;
 			}
@@ -2200,6 +2302,659 @@ namespace
 		return 0;
 	}
 
+	// ------------------------------------------------------------------
+	// 17.01: THE CONTAINER CORPUS.
+	//
+	// Phase 16 built VAELENCP and closed without a single one checked in.
+	// `Tests/Run/Golden/` holds `.snapshot` IMAGES, which is the inner format
+	// and a different thing: a reader handed one says BadMagic. So every tool
+	// Phase 17 plans - the inspector, the store's cold listing, the census -
+	// was written against files that do not exist.
+	//
+	// THREE CONTAINERS, chosen so that the SHAPE differs and not only the
+	// contents, because a corpus where every file has the same section table
+	// cannot catch a reader that assumes one:
+	//   bare-16     three sections, from a world with no play wiring at all
+	//   played-16   FOUR sections - the four-argument build carries the tape
+	//   full-32     three sections from a world that WAS played, saved through
+	//               the two-argument form. A container with no STREAM section
+	//               is not the same as a world that was never played, and the
+	//               corpus has to be able to tell a reader so.
+	//
+	// AND THE RECORD IS READ BACK, not asserted. Every number the README
+	// carries comes out of `ReadCheckpoint` over the bytes that were just
+	// written, so what is recorded is what a reader SEES rather than what the
+	// writer meant. The two differing is exactly the class of defect 17.03
+	// found in the store.
+	struct Container
+	{
+		const char* Name;
+		const char* What;
+		uint32 Size;
+		uint32 PreHistory;
+		uint32 Years;
+		bool Play;	 ///< the play wiring, so a person can be taken up
+		bool Played; ///< a Door walks it before the save
+		bool Tape;	 ///< the four-argument build, so a STREAM section exists
+	};
+
+	constexpr Container Containers[] = {
+		{"bare-16.container", "no play wiring at all: three sections, and nobody was ever offered", 16, 10, 1, false,
+		 false, false},
+		{"played-16.container", "walked six days and carrying its own tape: four sections", 16, 10, 1, true, true,
+		 true},
+		{"full-32.container",
+		 "walked six days and saved WITHOUT its tape: three sections, and the difference from the"
+		 " one above is the whole point",
+		 32, 10, 1, true, true, false},
+	};
+
+	const char* KindName(uint16 Kind) noexcept
+	{
+		switch (static_cast<Vaelen::Run::SectionKind>(Kind))
+		{
+		case Vaelen::Run::SectionKind::State:
+			return "STATE";
+		case Vaelen::Run::SectionKind::Run:
+			return "RUN";
+		case Vaelen::Run::SectionKind::Host:
+			return "HOST";
+		case Vaelen::Run::SectionKind::Stream:
+			return "STREAM";
+		default:
+			return "?";
+		}
+	}
+
+	/// The image's own trailer: the last eight bytes of the STATE section,
+	/// which is what `ComputeStateDigest` returns and what every frozen digest
+	/// in this repository is. NOT the section digest beside it in the table,
+	/// which is a different number over the same bytes - confusing the two is
+	/// defect 17.03.
+	bool TrailerOf(const Vaelen::Run::CheckpointView& View, Vaelen::Hash64& Out) noexcept
+	{
+		// The reading is the kernel's since 16.14 (Run::ImageTrailer); this
+		// keeps the "is there one" answer the callers here want.
+		uint64 Length = 0;
+		if (View.Find(Vaelen::Run::SectionKind::State, Length) == nullptr || Length < sizeof(uint64))
+		{
+			return false;
+		}
+		Out = Vaelen::Run::ImageTrailer(View);
+		return true;
+	}
+
+	int RunContainers(const Options& Opt)
+	{
+		std::string Where = Opt.Containers;
+		if (!Where.empty() && Where.back() != '/')
+		{
+			Where += '/';
+		}
+		std::string Rows;
+		std::string Tables;
+		for (const Container& C : Containers)
+		{
+			Vaelen::Run::Options RO;
+			RO.Size = C.Size;
+			RO.PreHistory = C.PreHistory;
+			RO.Years = C.Years;
+			if (C.Play)
+			{
+				RO.Play = true;
+				RO.Stream = true;
+				RO.Climate = Opt.Climate;
+				RO.Lively = true;
+				RO.Colony = true;
+			}
+			Vaelen::Run::Aelvor A(RO);
+			if (!A.Begin())
+			{
+				std::fprintf(stderr, "containers: %s would not generate at %u\n", C.Name, C.Size);
+				return 1;
+			}
+
+			// THE RULES ARE ALL FOUR NON-DEFAULT, deliberately, and two reasons
+			// meet here.
+			//
+			// The first is measured, and it is a fact about a young world
+			// rather than about the rules. Sweeping the window at 16 and at 32
+			// tiles, ten years of pre-history and one of history:
+			//
+			//   bound 1, any window at all ...... nobody
+			//   bound 0, ages 0-10 .............. person 1
+			//   bound 0, ages 12-120 ............ nobody
+			//
+			// NOBODY IN A TEN-YEAR WORLD IS TWELVE. Everyone alive was born
+			// inside it, and nobody in it is bound to anything yet. So
+			// `StartRules{}`, which asks for a bound life aged 16 to 40, is
+			// offered nobody - which is why `full-16.snapshot` next door was
+			// never played, and why this corpus could not have a played
+			// container until the window was opened. The window is 0-45 and
+			// not 0-11 on purpose: a superset outlives the day these ages
+			// move, and pinning the boundary would make the corpus a test of
+			// demography.
+			//
+			// The second is 17.07's: a round trip that compares two
+			// default-constructed structs passes even when the reader wrote
+			// nothing, and this phase committed exactly that assertion. A
+			// corpus whose STREAM section carries `StartRules{}` would hand
+			// every later test the same vacuous comparison. These four values
+			// are in the README, and a reader that drops the section cannot
+			// agree with them.
+			//
+			// The walk itself is the SAME for both played containers, so that
+			// played-16 and full-32 differ only in map size and in whether the
+			// tape travels.
+			Player::StartRules Rules;
+			Rules.FromAge = 0u;
+			Rules.ToAge = 45u;
+			Rules.WantBound = 0u;
+			Rules.PreferOre = 0u;
+			Player::InputStream Tape;
+			if (C.Played)
+			{
+				Vaelen::Run::Door D(A, Rules);
+				if (D.TakeUp() == 0)
+				{
+					std::fprintf(stderr, "containers: %s offered nobody to take up\n", C.Name);
+					return 1;
+				}
+				for (uint32 Day = 0; Day < 6u; ++Day)
+				{
+					Vaelen::Run::Attention At;
+					At.Region = 1u + (Day % 5u);
+					At.Reach = 1u;
+					D.Look(At);
+					D.Day();
+				}
+				Tape = D.Stream();
+			}
+
+			std::vector<uint8> Bytes;
+			const Vaelen::Run::CheckpointResult Built =
+				C.Tape ? Vaelen::Run::BuildCheckpoint(A, Tape, Rules, Bytes) : Vaelen::Run::BuildCheckpoint(A, Bytes);
+			if (Built != Vaelen::Run::CheckpointResult::Ok)
+			{
+				std::fprintf(stderr, "containers: %s was refused - %s\n", C.Name,
+							 Vaelen::Run::CheckpointResultToString(Built));
+				return 1;
+			}
+
+			const std::string Path = Where + C.Name;
+			std::FILE* File = std::fopen(Path.c_str(), "wb");
+			if (File == nullptr)
+			{
+				std::fprintf(stderr, "containers: cannot write %s\n", Path.c_str());
+				return 1;
+			}
+			const usize Wrote = std::fwrite(Bytes.data(), 1, Bytes.size(), File);
+			const bool Closed = std::fclose(File) == 0;
+			if (Wrote != Bytes.size() || !Closed)
+			{
+				std::fprintf(stderr, "containers: could not write all of %s\n", Path.c_str());
+				return 1;
+			}
+
+			// READ BACK, and every recorded number comes from the view.
+			Vaelen::Run::CheckpointView View;
+			const Vaelen::Run::CheckpointRefusal Read = Vaelen::Run::ReadCheckpoint(Bytes.data(), Bytes.size(), View);
+			if (Read.Result != Vaelen::Run::CheckpointResult::Ok)
+			{
+				std::fprintf(stderr, "containers: %s did not read back - %s\n", C.Name,
+							 Vaelen::Run::CheckpointResultToString(Read.Result));
+				return 1;
+			}
+			Vaelen::Hash64 Trailer = 0;
+			if (!TrailerOf(View, Trailer))
+			{
+				std::fprintf(stderr, "containers: %s has no STATE section to take a trailer from\n", C.Name);
+				return 1;
+			}
+			// The corpus is worth nothing if the trailer it records is not the
+			// digest the rest of the repository means by one.
+			const Vaelen::Hash64 Live = Vaelen::ComputeStateDigest(A.Instance());
+			if (Trailer != Live)
+			{
+				std::fprintf(stderr, "containers: %s trailer %016llx is not ComputeStateDigest %016llx\n", C.Name,
+							 static_cast<unsigned long long>(Trailer), static_cast<unsigned long long>(Live));
+				return 1;
+			}
+
+			char Row[640];
+			std::snprintf(
+				Row, sizeof(Row), "| `%s` | %u | %u | %u | %s | %u | %u | %llu | %llu | %llu | %zu | `%016llx` |\n",
+				C.Name, C.Size, C.PreHistory, C.Years, C.Play ? "Play+Stream+Lively+Colony" : "none", View.Version,
+				View.InnerFormat, static_cast<unsigned long long>(View.Tick),
+				static_cast<unsigned long long>(View.LogEvents), static_cast<unsigned long long>(View.LogBytes),
+				Bytes.size(), static_cast<unsigned long long>(Trailer));
+			Rows += Row;
+
+			// 640 and CHECKED, because the first cut of this printed a table
+			// header sliced in half at `|---|---|--` and the corpus looked
+			// fine: the files were right and only the record was truncated,
+			// which is the same class of defect as a README that agrees with
+			// nothing. snprintf returns what it WOULD have written.
+			char Head[640];
+			const int Want = std::snprintf(Head, sizeof(Head),
+										   "\n### `%s`\n\n%s\n\nSeed `%016llx`, flags `%08x`, %zu sections.\n\n"
+										   "| kind | offset | length | section digest |\n|---|---|---|---|\n",
+										   C.Name, C.What, static_cast<unsigned long long>(View.Seed), View.Flags,
+										   View.Sections.size());
+			if (Want < 0 || static_cast<usize>(Want) >= sizeof(Head))
+			{
+				std::fprintf(stderr, "containers: %s - the record does not fit in %zu bytes\n", C.Name, sizeof(Head));
+				return 1;
+			}
+			Tables += Head;
+			for (const Vaelen::Run::SectionEntry& E : View.Sections)
+			{
+				char Line[256];
+				std::snprintf(Line, sizeof(Line), "| %s (%u) | %llu | %llu | `%016llx` |\n", KindName(E.Kind), E.Kind,
+							  static_cast<unsigned long long>(E.Offset), static_cast<unsigned long long>(E.Length),
+							  static_cast<unsigned long long>(E.Digest));
+				Tables += Line;
+			}
+
+			std::printf("container %-20s %8zu bytes, %zu sections, tick %llu, trailer %016llx - %s\n", C.Name,
+						Bytes.size(), View.Sections.size(), static_cast<unsigned long long>(View.Tick),
+						static_cast<unsigned long long>(Trailer), C.What);
+		}
+		std::printf("containers: %zu written to %s\n", sizeof(Containers) / sizeof(Containers[0]), Where.c_str());
+		std::printf("%s%s", Rows.c_str(), Tables.c_str());
+		return 0;
+	}
+
+	// ------------------------------------------------------------------
+	// 17.05: THE CAUSE CENSUS, printed for a person.
+	//
+	// The kernel's `TakeCauseCensus` counts the whole log; this adds the table
+	// per event TYPE, which is the form a person needs - "which publishers
+	// pass a cause and which do not" is a question about types - and it is
+	// the first consumer of 17.02's name table. Without that table every row
+	// here would be sixteen hex digits.
+	/// 18.07: the growing season of every peopled region in the year just
+	/// ended, beside the cause table - the per-mille the harvest took.
+	void PrintGrowingSeason(const Vaelen::Run::Aelvor& A)
+	{
+		const Vaelen::World& W = A.Instance();
+		const Vaelen::History::PreHistoryTypes& Types = A.Ages();
+		const WorldGen::ClimateRules Rules;
+		const uint64 Year = W.Now() / History::TicksPerYear;
+		std::vector<WorldGen::YearShape> Years;
+		WorldGen::ShapeRegionYears(W, Types.World, Year > 0u ? Year - 1u : 0u, Rules, Years);
+		const WinterStats Winters_ = MeasureWinters(W, 0u);
+		std::printf("season: year %llu, %u great and %u terrible winters in the log, %u coarse dead of the cold\n",
+					static_cast<unsigned long long>(Year), Winters_.Winters[2], Winters_.Winters[3],
+					Winters_.ColdDeaths);
+		W.Components()
+			.GetPool(Types.World.RegionTypes_.Region)
+			.ForEach(
+				[&](EntityHandle H, const RegionInfo& R)
+				{
+					const RegionPopulation* P = W.Components().GetPool(Types.Population.Population).TryGet(H);
+					if (P == nullptr || P->Total == 0u || R.Index >= Years.size())
+					{
+						return;
+					}
+					const uint32 Grow = static_cast<uint32>(std::min<uint64>(
+						1000u, Rules.GrowFullDays > 0u ? uint64{Years[R.Index].GrowingDays} * 1000u / Rules.GrowFullDays
+													   : 1000u));
+					std::string Name;
+					NameRegion(W, Types, R.Index, Name);
+					std::printf("season: region %u %s: %u people, growing %u of %u days, harvest %u per mille, "
+								"coldest %d, cold sum %d\n",
+								R.Index, Name.c_str(), P->Total, Years[R.Index].GrowingDays, Rules.GrowFullDays, Grow,
+								Years[R.Index].Coldest.FloorToInt(), Years[R.Index].ColdSum.FloorToInt());
+				});
+	}
+
+	int PrintCensus(const Vaelen::World& W, const char* What)
+	{
+		const Vaelen::EventLog& Log = W.Log();
+		const Vaelen::History::CauseCensus C = Vaelen::History::TakeCauseCensus(Log);
+
+		std::printf("causes: %s\n", What);
+		std::printf("causes: %llu events, %llu with a cause (%.2f%%), %llu roots\n",
+					static_cast<unsigned long long>(C.Events), static_cast<unsigned long long>(C.WithCause),
+					C.Events == 0u ? 0.0 : 100.0 * static_cast<double>(C.WithCause) / static_cast<double>(C.Events),
+					static_cast<unsigned long long>(C.RootCauses));
+		std::printf("causes: deepest chain %u edge(s), median depth %u, widest fan-out %u", C.MaxDepth, C.MedianDepth,
+					C.MaxFanOut);
+		if (C.Busiest.IsValid())
+		{
+			std::printf(" (event %llu)", static_cast<unsigned long long>(C.Busiest.Serial()));
+		}
+		std::printf("\n");
+		std::printf("causes: faults - %llu dangling, %llu not an event, %llu not before their effect\n",
+					static_cast<unsigned long long>(C.Dangling), static_cast<unsigned long long>(C.NotAnEvent),
+					static_cast<unsigned long long>(C.NotBeforeEffect));
+
+		// PER TYPE. Sorted by hash so two runs print the same order, then the
+		// name looked up - and an unknown hash prints as `?<hex>` rather than
+		// as nothing, which is 17.02's whole promise.
+		struct Row
+		{
+			Vaelen::Hash64 Type = 0;
+			uint64 Events = 0;
+			uint64 WithCause = 0;
+		};
+		std::vector<Row> Rows;
+		for (const Vaelen::Event& E : Log.All())
+		{
+			Row* Found = nullptr;
+			for (Row& R : Rows)
+			{
+				if (R.Type == E.TypeHash)
+				{
+					Found = &R;
+					break;
+				}
+			}
+			if (Found == nullptr)
+			{
+				Rows.push_back(Row{E.TypeHash, 0u, 0u});
+				Found = &Rows.back();
+			}
+			++Found->Events;
+			if (E.Cause.IsValid())
+			{
+				++Found->WithCause;
+			}
+		}
+		std::sort(Rows.begin(), Rows.end(), [](const Row& A, const Row& B) { return A.Type < B.Type; });
+
+		std::printf("causes: %zu event type(s)\n", Rows.size());
+		std::printf("| type | events | with a cause | share |\n|---|---|---|---|\n");
+		for (const Row& R : Rows)
+		{
+			char Unknown[18];
+			std::printf("| %s | %llu | %llu | %.1f%% |\n", Vaelen::NameOfEventType(R.Type, Unknown),
+						static_cast<unsigned long long>(R.Events), static_cast<unsigned long long>(R.WithCause),
+						100.0 * static_cast<double>(R.WithCause) / static_cast<double>(R.Events));
+		}
+		return 0;
+	}
+
+	int RunCauses(const Options& Opt)
+	{
+		std::FILE* F = std::fopen(Opt.Causes.c_str(), "rb");
+		if (F == nullptr)
+		{
+			std::fprintf(stderr, "causes: cannot read %s\n", Opt.Causes.c_str());
+			return 1;
+		}
+		std::fseek(F, 0, SEEK_END);
+		const long Len = std::ftell(F);
+		std::fseek(F, 0, SEEK_SET);
+		std::vector<Vaelen::uint8> Bytes(static_cast<usize>(Len > 0 ? Len : 0));
+		const usize Got = Bytes.empty() ? 0u : std::fread(Bytes.data(), 1, Bytes.size(), F);
+		std::fclose(F);
+		if (Bytes.empty() || Got != Bytes.size())
+		{
+			std::fprintf(stderr, "causes: short read of %s\n", Opt.Causes.c_str());
+			return 1;
+		}
+
+		// THE WIRING COMES FROM THE FILE. A container carries the Options its
+		// host declared (16.10's HOST section), so the world it is adopted into
+		// is the world it was saved from, and a `--lively` forgotten on the
+		// command line cannot make this a census of a different world.
+		Vaelen::Run::CheckpointView View;
+		const Vaelen::Run::CheckpointRefusal Read = Vaelen::Run::ReadCheckpoint(Bytes.data(), Bytes.size(), View);
+		if (Read.Result != Vaelen::Run::CheckpointResult::Ok)
+		{
+			std::fprintf(stderr, "causes: %s is not a container this build reads - %s\n", Opt.Causes.c_str(),
+						 Vaelen::Run::CheckpointResultToString(Read.Result));
+			return 1;
+		}
+		Vaelen::Run::Options RO;
+		if (!Vaelen::Run::ReadHostSection(View, RO))
+		{
+			std::fprintf(stderr, "causes: %s has no HOST section, so its wiring is unknown\n", Opt.Causes.c_str());
+			return 1;
+		}
+		Vaelen::Run::Aelvor A(RO);
+		const Vaelen::Run::Aelvor::AdoptResult R = A.Adopt(Bytes.data(), Bytes.size());
+		if (R != Vaelen::Run::Aelvor::AdoptResult::Ok)
+		{
+			std::fprintf(stderr, "causes: REFUSED, %s\n", Vaelen::Run::Aelvor::AdoptResultToString(R));
+			return 1;
+		}
+		char What[512];
+		std::snprintf(What, sizeof(What), "%s (adopted, Generations %u, %u tiles, %u+%u years)", Opt.Causes.c_str(),
+					  A.Generations(), RO.Size, RO.PreHistory, RO.Years);
+		return PrintCensus(A.Instance(), What);
+	}
+
+	int RunCensus(const Options& Opt)
+	{
+		Vaelen::Run::Options RO;
+		RO.Size = Opt.Size;
+		RO.PreHistory = Opt.PreHistory;
+		RO.Years = Opt.Years;
+		RO.Seed = Opt.Seed;
+		RO.Colony = Opt.Colony;
+		RO.Play = true;
+		RO.Stream = Opt.Stream;
+		RO.Climate = Opt.Climate;
+		RO.Lively = Opt.Lively;
+		Vaelen::Run::Aelvor A(RO);
+		if (!A.Begin())
+		{
+			std::fprintf(stderr, "census: generation failed at %u\n", RO.Size);
+			return 1;
+		}
+		char What[256];
+		std::snprintf(What, sizeof(What), "a fresh world, %u tiles, %u+%u years, seed %016llx%s%s%s%s", RO.Size,
+					  RO.PreHistory, RO.Years, static_cast<unsigned long long>(RO.Seed), RO.Stream ? ", stream" : "",
+					  RO.Lively ? ", lively" : "", RO.Colony ? ", colony" : "", RO.Climate ? ", climate" : "");
+		const int Rc = PrintCensus(A.Instance(), What);
+		if (RO.Climate)
+		{
+			PrintGrowingSeason(A);
+		}
+		return Rc;
+	}
+
+	// ------------------------------------------------------------------
+	// 17.06: THE INSPECTOR. What a container says about itself, read from
+	// its bytes and from nothing else.
+	//
+	// The roadmap's own words at the close of Phase 16: "16.04's section table
+	// and manifest are what makes listing saves without generating a world
+	// possible; this phase stops there." `--save --sections` generates a world
+	// FIRST and never opens a file, so until now nothing in the tree read a
+	// container from disk except a test. This does, and it is the first thing
+	// a person would reach for when a save misbehaves.
+	//
+	// NO WORLD IS CONSTRUCTED, let alone generated or adopted. `ReadHostSection`
+	// decodes Options, `ReadRunSection` decodes a RunState and
+	// `ReadStreamSection` decodes a tape, and none of the three needs an
+	// Aelvor. That is the whole claim, and it is why a 2 GB save can be
+	// described in the time it takes to read it.
+	bool ReadWholeFile(const std::string& Path, std::vector<Vaelen::uint8>& Out, const char* Who)
+	{
+		std::FILE* F = std::fopen(Path.c_str(), "rb");
+		if (F == nullptr)
+		{
+			std::fprintf(stderr, "%s: cannot read %s\n", Who, Path.c_str());
+			return false;
+		}
+		std::fseek(F, 0, SEEK_END);
+		const long Len = std::ftell(F);
+		std::fseek(F, 0, SEEK_SET);
+		Out.assign(static_cast<usize>(Len > 0 ? Len : 0), 0u);
+		const usize Got = Out.empty() ? 0u : std::fread(Out.data(), 1, Out.size(), F);
+		std::fclose(F);
+		if (Out.empty() || Got != Out.size())
+		{
+			std::fprintf(stderr, "%s: short read of %s\n", Who, Path.c_str());
+			return false;
+		}
+		return true;
+	}
+
+	int RunInspect(const Options& Opt)
+	{
+		std::vector<Vaelen::uint8> Bytes;
+		if (!ReadWholeFile(Opt.Inspect, Bytes, "inspect"))
+		{
+			return 1;
+		}
+
+		Vaelen::Run::CheckpointView View;
+		const Vaelen::Run::CheckpointRefusal Read = Vaelen::Run::ReadCheckpoint(Bytes.data(), Bytes.size(), View);
+		if (Read.Result != Vaelen::Run::CheckpointResult::Ok)
+		{
+			// REFUSED WHOLE, never described in part. A truncated container
+			// has a readable header and a table that points past the end, and
+			// printing the header would look like a description of a save.
+			//
+			// And the one mistake this whole phase turns on gets its own
+			// sentence: an IMAGE - the inner format, what Tests/Run/Golden
+			// holds - begins "VAELEN" too, and a reader that only said BadMagic
+			// would leave a person wondering which of two magics they had.
+			const bool LooksLikeAnImage = Bytes.size() >= 8u && std::memcmp(Bytes.data(), "VAELEN", 6) == 0 &&
+										  std::memcmp(Bytes.data(), Vaelen::Run::CheckpointMagic, 8) != 0;
+			std::fprintf(stderr, "inspect: %s is not a container this build reads - %s%s\n", Opt.Inspect.c_str(),
+						 Vaelen::Run::CheckpointResultToString(Read.Result),
+						 LooksLikeAnImage ? " (it is a save IMAGE, the inner format, not a VAELENCP container "
+											"around one)"
+										  : "");
+			if (Read.Result == Vaelen::Run::CheckpointResult::BadSectionTable ||
+				Read.Result == Vaelen::Run::CheckpointResult::Truncated ||
+				Read.Result == Vaelen::Run::CheckpointResult::Corrupt)
+			{
+				std::fprintf(stderr, "inspect: %zu bytes on disk; section %u is where it stopped describing them\n",
+							 Bytes.size(), Read.Section);
+			}
+			return 1;
+		}
+
+		std::printf("inspect: %s, %zu bytes\n", Opt.Inspect.c_str(), Bytes.size());
+		std::printf("inspect: container v%u, image v%u, flags %08x, seed %016llx, tick %llu, %llu events, %llu log "
+					"bytes\n",
+					View.Version, View.InnerFormat, View.Flags, static_cast<unsigned long long>(View.Seed),
+					static_cast<unsigned long long>(View.Tick), static_cast<unsigned long long>(View.LogEvents),
+					static_cast<unsigned long long>(View.LogBytes));
+
+		std::printf("inspect: %zu section(s)\n", View.Sections.size());
+		std::printf("| kind | offset | length | share | section digest |\n|---|---|---|---|---|\n");
+		for (const Vaelen::Run::SectionEntry& E : View.Sections)
+		{
+			std::printf("| %s (%u) | %llu | %llu | %.1f%% | %016llx |\n", KindName(E.Kind), E.Kind,
+						static_cast<unsigned long long>(E.Offset), static_cast<unsigned long long>(E.Length),
+						100.0 * static_cast<double>(E.Length) / static_cast<double>(Bytes.size()),
+						static_cast<unsigned long long>(E.Digest));
+		}
+
+		Vaelen::Hash64 Trailer = 0;
+		if (TrailerOf(View, Trailer))
+		{
+			std::printf("inspect: image trailer %016llx (this is the state digest every other tool means)\n",
+						static_cast<unsigned long long>(Trailer));
+		}
+		else
+		{
+			std::printf("inspect: no STATE section, so no image trailer\n");
+		}
+
+		Vaelen::Run::Options Host;
+		if (Vaelen::Run::ReadHostSection(View, Host))
+		{
+			std::printf("inspect: host %u tiles, %u+%u years, seed %016llx, wiring:%s%s%s%s%s%s\n", Host.Size,
+						Host.PreHistory, Host.Years, static_cast<unsigned long long>(Host.Seed),
+						Host.Play ? " Play" : "", Host.Stream ? " Stream" : "", Host.Lively ? " Lively" : "",
+						Host.Colony ? " Colony" : "", Host.Climate ? " Climate" : "",
+						(Host.Play || Host.Stream || Host.Lively || Host.Colony || Host.Climate) ? "" : " none");
+		}
+		else
+		{
+			std::printf("inspect: no HOST section - the wiring this was saved under is not recorded\n");
+		}
+
+		Vaelen::Run::Aelvor::RunState Run;
+		if (Vaelen::Run::ReadRunSection(View, Run))
+		{
+			std::printf("inspect: run %s, detail %u, dug %u, eyes on region %u reach %u most %u, %zu near, %zu "
+						"watched\n",
+						Run.Begun ? "begun" : "not begun", Run.Detail, Run.Dug, Run.Eyes.Region, Run.Eyes.Reach,
+						Run.Eyes.Most, Run.Near.size(), Run.Watched.size());
+		}
+		else
+		{
+			std::printf("inspect: no RUN section - a world restored from this parts company at the first look\n");
+		}
+
+		uint64 StreamLength = 0;
+		if (View.Find(Vaelen::Run::SectionKind::Stream, StreamLength) == nullptr)
+		{
+			std::printf("inspect: no STREAM section - this save does not carry its own tape\n");
+		}
+		else
+		{
+			Player::InputStream Tape;
+			Player::StartRules Rules;
+			if (Vaelen::Run::ReadStreamSection(View, Tape, Rules))
+			{
+				std::printf("inspect: stream %zu day(s), %zu command(s), %zu taking(s), %zu look(s); header %u tiles "
+							"%u+%u seed %016llx v%u; rules ages %u-%u bound %u ore %u\n",
+							Tape.Days.size(), Tape.Commands.size(), Tape.Takings.size(), Tape.Looks.size(),
+							Tape.Header.Size, Tape.Header.PreHistory, Tape.Header.Years,
+							static_cast<unsigned long long>(Tape.Header.Seed), Tape.Header.Version, Rules.FromAge,
+							Rules.ToAge, Rules.WantBound, Rules.PreferOre);
+			}
+			else
+			{
+				std::printf("inspect: a STREAM section of %llu bytes that this build cannot decode\n",
+							static_cast<unsigned long long>(StreamLength));
+			}
+		}
+		return 0;
+	}
+
+	int RunInspectDir(const Options& Opt)
+	{
+		// THROUGH THE STORE, and from a process that wrote nothing: this is
+		// 17.03's second-process half. Run.StoreColdProcess proves a second
+		// OBJECT lists what another wrote; this proves a second PROCESS does,
+		// which is the thing a save browser actually is.
+		VaelenHost::StdioCheckpointStore Store(Opt.InspectDir);
+		const std::vector<Vaelen::Run::StoreEntry> Entries = Store.List();
+
+		// THE STORE LISTS WHAT IS THERE; THE TOOL SAYS WHAT IT IS. Pointed at
+		// the corpus directory, the first version of this printed README.md as
+		// a checkpoint with tick 0, version 0 and a digest of sixteen zeros -
+		// a row that looks like data and is not. The store is right to hand
+		// the file back (it is not its job to judge bytes, Run.Store says so);
+		// a browser is wrong to show it as a save. `ContainerVersion` is 0
+		// exactly when `ReadCheckpoint` refused, and no container this build
+		// writes has version 0.
+		usize Checkpoints = 0;
+		usize Others = 0;
+		for (const Vaelen::Run::StoreEntry& E : Entries)
+		{
+			(E.ContainerVersion == 0u ? Others : Checkpoints) += 1u;
+		}
+		std::printf("inspect-dir: %zu checkpoint(s) and %zu other file(s) in %s\n", Checkpoints, Others,
+					Opt.InspectDir.c_str());
+		std::printf("| name | bytes | tick | container v | sections | image trailer |\n|---|---|---|---|---|---|\n");
+		for (const Vaelen::Run::StoreEntry& E : Entries)
+		{
+			if (E.ContainerVersion == 0u)
+			{
+				std::printf("| %s | %llu | - | not a container | - | - |\n", E.Name.c_str(),
+							static_cast<unsigned long long>(E.Bytes));
+				continue;
+			}
+			std::printf("| %s | %llu | %llu | %u | %u | %016llx |\n", E.Name.c_str(),
+						static_cast<unsigned long long>(E.Bytes), static_cast<unsigned long long>(E.Tick),
+						E.ContainerVersion, E.SectionCount, static_cast<unsigned long long>(E.Digest));
+		}
+		return 0;
+	}
+
 	int RunStand(const Options& Opt)
 	{
 		Vaelen::Run::Options RO;
@@ -2232,9 +2987,9 @@ namespace
 		PanelView Page;
 		const auto Look = [&]()
 		{
-			TakeView(A.Instance(), A.Sources(), Frame);
-			TakeLifeView(A.Instance(), A.Sources(), Ways, Life);
-			TakeChronicleView(A.Instance(), A.Sources(), Told);
+			TakeView(A.Instance(), SourcesFor(A, Opt), Frame);
+			TakeLifeView(A.Instance(), SourcesFor(A, Opt), Ways, Life);
+			TakeChronicleView(A.Instance(), SourcesFor(A, Opt), Told);
 			TakePanel(Frame, Life, Told, Page);
 		};
 
@@ -2454,6 +3209,7 @@ namespace
 		RO.Colony = Opt.Colony;
 		RO.Play = true;
 		RO.Stream = Opt.Stream; // told, not read: see Options::Stream
+		RO.Climate = Opt.Climate;
 		if (!Opt.Replay.empty())
 		{
 			std::string Text;
@@ -2495,9 +3251,9 @@ namespace
 		WorldView Frame;
 		MapView Ground;
 		NetView Net;
-		TakeView(A.Instance(), A.Sources(), Frame);
-		TakeNetView(A.Instance(), A.Sources(), Net);
-		TakeMapView(A.Instance(), A.Sources(), Ground);
+		TakeView(A.Instance(), SourcesFor(A, Opt), Frame);
+		TakeNetView(A.Instance(), SourcesFor(A, Opt), Net);
+		TakeMapView(A.Instance(), SourcesFor(A, Opt), Ground);
 		const ViewStats FrameStats = MeasureView(Frame);
 		const MapStats GroundStats = MeasureMapView(Ground);
 		const NetStats NetStats_ = MeasureNetView(Net);
@@ -2512,8 +3268,8 @@ namespace
 			LifeView Life;
 			ChronicleView Told;
 			PanelView Page;
-			TakeLifeView(A.Instance(), A.Sources(), Ways, Life);
-			TakeChronicleView(A.Instance(), A.Sources(), Told);
+			TakeLifeView(A.Instance(), SourcesFor(A, Opt), Ways, Life);
+			TakeChronicleView(A.Instance(), SourcesFor(A, Opt), Told);
 			TakePanel(Frame, Life, Told, Page);
 			std::vector<char> Rows(PanelTextBytes, '\0');
 			Lines(Page, Rows.data(), PanelTextBytes);
@@ -2663,6 +3419,26 @@ namespace
 		{
 			return RunGolden(Opt);
 		}
+		if (!Opt.Containers.empty())
+		{
+			return RunContainers(Opt);
+		}
+		if (!Opt.Causes.empty())
+		{
+			return RunCauses(Opt);
+		}
+		if (Opt.Census)
+		{
+			return RunCensus(Opt);
+		}
+		if (!Opt.Inspect.empty())
+		{
+			return RunInspect(Opt);
+		}
+		if (!Opt.InspectDir.empty())
+		{
+			return RunInspectDir(Opt);
+		}
 		if (!Opt.Gate.empty())
 		{
 			return RunGate(Opt);
@@ -2682,7 +3458,7 @@ namespace
 
 		const auto Started = std::chrono::steady_clock::now();
 		std::vector<Kept> Timeline;
-		KernelRun Run(Opt.Seed, Opt.Colony, Opt.Chronicle);
+		KernelRun Run(Opt.Seed, Opt.Colony, Opt.Chronicle, Opt.Climate);
 		WorldGenConfig Gen;
 		Gen.Width = Opt.Size;
 		Gen.Height = Opt.Size;
@@ -2733,6 +3509,30 @@ namespace
 		if (Opt.Tiles)
 		{
 			TakeMapView(Run.Instance, Run.Sources(), Ground);
+		}
+		// 18.04: the climate of every tile today, only when asked for - the
+		// leaf is empty otherwise, and the line and the JSON object are absent
+		// so that a --no-climate document reads exactly as it did.
+		ClimateView Climate;
+		ClimateViewStats ClimateStats_;
+		if (Opt.Climate)
+		{
+			TakeClimateView(Run.Instance, Run.Sources(), Climate);
+			ClimateStats_ = MeasureClimateView(Climate);
+			// 18.07: what the winters did, from the log - the great and
+			// terrible ones, and the dead of the cold, coarse and person alike.
+			const WinterStats Winters_ = MeasureWinters(Run.Instance, 0u);
+			const uint32 ColdDead =
+				Winters_.ColdDeaths + MeasureNeeds(Run.Instance, Run.Persons, Run.Needs, 0u).ColdDeaths;
+			static const char* const Seasons[] = {"none", "spring", "summer", "autumn", "winter"};
+			std::printf(
+				"LogVaelenClimate: AELVOR %u seed %012llx: day %u of year %u, %s; coldest %d warmest %d; frost %u "
+				"of %u tiles, %u growing; hard winters %u, cold deaths %u; climate %016llx\n",
+				Opt.Size, static_cast<unsigned long long>(Opt.Seed), Climate.Day + 1u, Climate.Year,
+				Seasons[Climate.Season < 5u ? Climate.Season : 0u], ClimateStats_.Coldest, ClimateStats_.Warmest,
+				ClimateStats_.Frost, ClimateStats_.Tiles, ClimateStats_.Growing,
+				Winters_.Winters[2] + Winters_.Winters[3], ColdDead,
+				static_cast<unsigned long long>(ClimateStats_.Digest));
 		}
 		// The chronicle, as lines with a year and a place on them. The kernel's
 		// own ExportChronicleWithEconomy writes the same sentences as one block
@@ -2877,6 +3677,27 @@ namespace
 			J.Number(GroundStats.Biomes[b]);
 		}
 		J.Put("]");
+		if (Opt.Climate)
+		{
+			J.Put("},\n\"climate\":{");
+			J.Field("tiles", ClimateStats_.Tiles);
+			J.Put(",");
+			J.Field("frost", ClimateStats_.Frost);
+			J.Put(",");
+			J.Field("growing", ClimateStats_.Growing);
+			J.Put(",\"coldest\":");
+			J.Number(ClimateStats_.Coldest);
+			J.Put(",\"warmest\":");
+			J.Number(ClimateStats_.Warmest);
+			J.Put(",");
+			J.Field("season", Climate.Season);
+			J.Put(",");
+			J.Field("day", Climate.Day);
+			J.Put(",");
+			J.Field("bytes", ClimateStats_.Bytes);
+			J.Put(",\"digest\":");
+			J.Hex(ClimateStats_.Digest);
+		}
 		J.Put("},\n\"network\":{");
 		J.Field("routes", NetStats_.Routes);
 		J.Put(",");

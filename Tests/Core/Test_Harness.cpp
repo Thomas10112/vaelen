@@ -3,7 +3,11 @@
 // STATUS: VALIDATED (Phase 00)
 #include "VaelenTest.h"
 
+#include "Vaelen/Core/Hash.h"
+
+#include <cstring>
 #include <limits>
+#include <type_traits>
 
 VAELEN_TEST(Harness, ChecksPass)
 {
@@ -94,3 +98,133 @@ VAELEN_TEST(Harness, NestedCapturesRestoreTheOuterHandler)
 	VT_CHECK(UserData == static_cast<void*>(&Outer));
 }
 #endif
+
+// ── 17.07: a harness that can see a vacuous assertion ────────────────────────
+namespace
+{
+	/// `Player::StartRules`, byte for byte - four uint32 with these defaults -
+	/// reconstructed here because the harness self-test sits below VaelenPlayer
+	/// and may not include it. What matters to the macro is the shape and the
+	/// defaults, and both are pinned by the static_asserts below.
+	struct StartRulesAsWritten
+	{
+		Vaelen::uint32 FromAge = 16;
+		Vaelen::uint32 ToAge = 40;
+		Vaelen::uint32 WantBound = 1;
+		Vaelen::uint32 PreferOre = 1;
+	};
+	static_assert(sizeof(StartRulesAsWritten) == 16, "four uint32, no padding");
+	static_assert(std::has_unique_object_representations_v<StartRulesAsWritten>, "byte equality is value equality");
+
+	/// THE ASSERTION PHASE 16 COMMITTED, reconstructed: two default-constructed
+	/// values, "written" and "read", compared with the plain macro.
+	void TheVacuousRoundTripUnderPlainCheck(::VaelenTest::Context& Ctx)
+	{
+		const StartRulesAsWritten Written;
+		const StartRulesAsWritten Read; // a reader that wrote nothing leaves this at its defaults
+		VT_CHECK(std::memcmp(&Written, &Read, sizeof(Written)) == 0);
+	}
+
+	/// The same assertion under the witness macro.
+	void TheVacuousRoundTripUnderTheWitness(::VaelenTest::Context& Ctx)
+	{
+		const StartRulesAsWritten Written;
+		const StartRulesAsWritten Read;
+		VT_CHECK_ROUNDTRIP(Written, Read);
+	}
+
+	/// A GENUINE round trip: something non-default was written and the same
+	/// thing came back. Must pass under both macros, or the witness is just a
+	/// macro that fails.
+	void TheGenuineRoundTrip(::VaelenTest::Context& Ctx)
+	{
+		StartRulesAsWritten Written;
+		Written.FromAge = 0;
+		Written.ToAge = 45;
+		Written.WantBound = 0;
+		Written.PreferOre = 0;
+		const StartRulesAsWritten Read = Written; // what a working reader hands back
+		VT_CHECK(std::memcmp(&Written, &Read, sizeof(Written)) == 0);
+		VT_CHECK_ROUNDTRIP(Written, Read);
+	}
+
+	/// A round trip that genuinely LOST something: non-default written, a
+	/// field dropped on the way back. Must fail under the witness for the
+	/// second reason, not the first.
+	void TheLossyRoundTrip(::VaelenTest::Context& Ctx)
+	{
+		StartRulesAsWritten Written;
+		Written.ToAge = 45;
+		StartRulesAsWritten Read = Written;
+		Read.ToAge = 40; // the reader restored the default instead of the value
+		VT_CHECK_ROUNDTRIP(Written, Read);
+	}
+
+	void TheDigestChecks(::VaelenTest::Context& Ctx)
+	{
+		VT_CHECK_DIGEST_EQ(0x609253a29361ec5full, 0x609253a29361ec5full); // passes: real, equal
+		VT_CHECK_DIGEST_EQ(0x609253a29361ec5full, 0x18aec14e39a68a8cull); // fails: differ
+		VT_CHECK_DIGEST_EQ(0ull, 0ull);									  // fails: unset against unset
+		VT_CHECK_DIGEST_EQ(0x609253a29361ec5full, 0ull);				  // fails: one side unset
+		VT_CHECK_DIGEST_EQ(0x5641454c454e2d45ull, 0x5641454c454e2d45ull); // fails: an empty log against itself
+		VT_CHECK_DIGEST_EQ(0xcbf29ce484222325ull, 0xcbf29ce484222325ull); // fails: no bytes against no bytes
+	}
+
+	// The harness carries the kernel's two "nothing" values as literals; here
+	// is where they are held to the kernel.
+	static_assert(::VaelenTest::Detail::EmptyBytesDigest == Vaelen::HashConstants::Fnv1a64Offset,
+				  "the harness's digest of no bytes must be the kernel's FNV-1a offset basis");
+	static_assert(::VaelenTest::Detail::EmptyBytesDigest == Vaelen::HashBytes(nullptr, 0),
+				  "the harness's digest of no bytes must be what HashBytes answers for none");
+} // namespace
+
+VAELEN_TEST(Harness, VacuityIsSeen)
+{
+	// BOTH ARMS IN ONE RUN. The reconstructed default-vs-default assertion
+	// PASSES under VT_CHECK - that is the defect, and it stays visible here -
+	// and FAILS under VT_CHECK_ROUNDTRIP, in the same test, so that a witness
+	// which had stopped witnessing could not pass this file.
+	::VaelenTest::Context Plain;
+	Plain.Silent = true;
+	TheVacuousRoundTripUnderPlainCheck(Plain);
+	VT_CHECK_MSG(Plain.Failures == 0,
+				 "the plain check no longer passes the vacuous round trip (%d failures); the "
+				 "arm that shows the defect has stopped showing it",
+				 Plain.Failures);
+	VT_CHECK_EQ(Plain.Checks, 1);
+
+	::VaelenTest::Context Witness;
+	Witness.Silent = true;
+	TheVacuousRoundTripUnderTheWitness(Witness);
+	VT_CHECK_MSG(Witness.Failures == 1, "the witness let the vacuous round trip through (%d failures)",
+				 Witness.Failures);
+	VT_CHECK_EQ(Witness.Checks, 1);
+
+	// THE CONTROL: a genuine round trip passes under both, so the witness is
+	// not simply a macro that fails.
+	::VaelenTest::Context Genuine;
+	Genuine.Silent = true;
+	TheGenuineRoundTrip(Genuine);
+	VT_CHECK_MSG(Genuine.Failures == 0, "a genuine round trip failed (%d failures)", Genuine.Failures);
+	VT_CHECK_EQ(Genuine.Checks, 2);
+
+	// And a round trip that lost a field fails - for the loss, which is the
+	// second check in the helper, and is reached only because the write was
+	// not vacuous.
+	::VaelenTest::Context Lossy;
+	Lossy.Silent = true;
+	TheLossyRoundTrip(Lossy);
+	VT_CHECK_EQ(Lossy.Failures, 1);
+}
+
+VAELEN_TEST(Harness, DigestsThatCompareNothingAreRefused)
+{
+	::VaelenTest::Context Scratch;
+	Scratch.Silent = true;
+	TheDigestChecks(Scratch);
+	VT_CHECK_EQ(Scratch.Checks, 6);
+	// One genuine pass, five refusals: three of them would have been GREEN
+	// under VT_CHECK_EQ, and the last is the one nine cells of a matrix once
+	// passed on - an empty life, hashed, against the same empty life, hashed.
+	VT_CHECK_EQ(Scratch.Failures, 5);
+}

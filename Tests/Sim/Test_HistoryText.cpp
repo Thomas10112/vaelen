@@ -4,6 +4,8 @@
 // STATUS: VALIDATED (Phase 03)
 
 #include "Vaelen/Sim/Disasters.h"
+#include "Vaelen/Sim/Causality.h"
+#include "Vaelen/Sim/Climate.h"
 #include "Vaelen/Sim/HistoryText.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/Religion.h"
@@ -316,4 +318,177 @@ VAELEN_TEST(HistoryText, TextIsDeterministicAcrossWorldsSnapshotsAndPlatforms)
 	std::string TextC;
 	ExportChronicle(C.Instance, C.Ages.Types(), TextC);
 	VT_CHECK(TextC != TextA);
+}
+
+VAELEN_TEST(HistoryText, WhySaysHowItEnded)
+{
+	// 17.09. Four chains planted into a small real world, and the why must
+	// name each end - and the two text exports must print the end's sentence,
+	// which lives in ONE place so this is a test of both.
+	Run W(AelvorSeed);
+	VT_REQUIRE(W.Ages.Generate(Run::Square(32), 10));
+	EventBus& Bus = W.Instance.Events();
+	const SimTick Now = W.Instance.Now();
+	const EraPayload Era{};
+
+	// A WHOLE chain of four: D <- C <- B <- A, and A is a root.
+	const PersistentId A = Bus.Publish(Now + 1, EraOpenedEvent, Era);
+	const PersistentId B = Bus.Publish(Now + 2, EraOpenedEvent, Era, PersistentId{}, A);
+	const PersistentId C = Bus.Publish(Now + 3, EraOpenedEvent, Era, PersistentId{}, B);
+	const PersistentId D = Bus.Publish(Now + 4, EraOpenedEvent, Era, PersistentId{}, C);
+	{
+		std::vector<WhyStep> Steps;
+		const WalkEnd End = Why(W.Instance, W.Ages.Types(), D, Steps);
+		VT_CHECK_MSG(End == WalkEnd::Root, "%s", WalkEndToString(End));
+		VT_CHECK_EQ(static_cast<uint32>(Steps.size()), 4u);
+		std::string Text;
+		VT_CHECK_EQ(ExportWhy(W.Instance, W.Ages.Types(), D, Text), 4u);
+		VT_CHECK_MSG(Text.find(WhyEndText(WalkEnd::CauseMissing)) == std::string::npos,
+					 "a whole chain must not say it was cut:\n%s", Text.c_str());
+		VT_CHECK_MSG(Text.find("further back") == std::string::npos, "nor that it ran out of room:\n%s", Text.c_str());
+	}
+
+	// A CUT CHAIN CANNOT BE PLANTED IN A WORLD, and that is worth asserting.
+	// The first version of this case gave F a cause one serial below A and
+	// expected CauseMissing; the serial below A was a real event, because a
+	// world's log has no holes - ids are monotonic and nothing is ever removed
+	// - and the case fell into an else branch and tested nothing. The hole
+	// only exists in a log that was truncated or compacted, which is why
+	// CauseMissing is walked over a hand-built log in Sim.CauseWalk and its
+	// sentence is printed through the same tail code the NotAnEvent case
+	// below exercises. Here: every serial below A exists.
+	{
+		uint32 Holes = 0;
+		for (uint64 Serial = 1; Serial < A.Serial(); ++Serial)
+		{
+			if (FindEvent(W.Instance.Log(), PersistentId::Make(IdKind::Event, Serial)) == nullptr)
+			{
+				++Holes;
+			}
+		}
+		VT_CHECK_MSG(Holes == 0u, "%u hole(s) below serial %llu in a world's log", Holes,
+					 static_cast<unsigned long long>(A.Serial()));
+	}
+
+	// A chain LONGER THAN THE CALLER ALLOWED: D again, with room for two.
+	{
+		std::vector<WhyStep> Steps;
+		const WalkEnd End = Why(W.Instance, W.Ages.Types(), D, Steps, 2u);
+		VT_CHECK_MSG(End == WalkEnd::DepthExhausted, "%s", WalkEndToString(End));
+		VT_CHECK_EQ(static_cast<uint32>(Steps.size()), 2u);
+	}
+
+	// A cause that is not an event: a PERSON caused G.
+	const PersistentId G =
+		Bus.Publish(Now + 6, EraOpenedEvent, Era, PersistentId{}, PersistentId::Make(IdKind::Person, 7));
+	{
+		std::vector<WhyStep> Steps;
+		const WalkEnd End = Why(W.Instance, W.Ages.Types(), G, Steps);
+		VT_CHECK_MSG(End == WalkEnd::CauseNotAnEvent, "%s", WalkEndToString(End));
+		std::string Text;
+		ExportWhy(W.Instance, W.Ages.Types(), G, Text);
+		VT_CHECK_MSG(Text.find(WhyEndText(WalkEnd::CauseNotAnEvent)) != std::string::npos, "%s", Text.c_str());
+	}
+
+	// And nothing: an id that is not there says NoSuchEvent with no steps.
+	{
+		std::vector<WhyStep> Steps;
+		VT_CHECK(Why(W.Instance, W.Ages.Types(), PersistentId{0xffffffffffffull}, Steps) == WalkEnd::NoSuchEvent);
+		VT_CHECK(Steps.empty());
+	}
+
+	// Root and NoSuchEvent have no sentence; every other end has one, and they
+	// differ - a renderer that showed the same words for a cut and a limit
+	// would be the defect this task removes, moved into the text.
+	VT_CHECK(WhyEndText(WalkEnd::Root)[0] == '\0');
+	VT_CHECK(WhyEndText(WalkEnd::NoSuchEvent)[0] == '\0');
+	VT_CHECK(WhyEndText(WalkEnd::CauseMissing)[0] != '\0');
+	VT_CHECK(std::string(WhyEndText(WalkEnd::CauseMissing)) != WhyEndText(WalkEnd::DepthExhausted));
+	VT_CHECK(std::string(WhyEndText(WalkEnd::CauseNotAnEvent)) != WhyEndText(WalkEnd::CauseNotBeforeEffect));
+}
+
+VAELEN_TEST(HistoryText, TheWinterHasItsWordsAndOnlyTheUnusualOneIsHistory)
+{
+	// 18.06. The two winter events are Sim's (Climate.h) so that this file
+	// can put them into words; the chronicle keeps a Winter only when it is
+	// harder than the region's usual one, on a peopled region, and keeps
+	// every WinterForeseen, which is published only when it is news.
+	Run W(AelvorSeed);
+	VT_REQUIRE(W.Ages.Generate(Run::Square(32), 40));
+	uint32 Region = 0;
+	EntityHandle RH;
+	W.Instance.Components()
+		.GetPool(W.Ages.Types().World.RegionTypes_.Region)
+		.ForEach(
+			[&](EntityHandle H, const RegionInfo& R)
+			{
+				if (Region == 0 || R.Index < Region)
+				{
+					Region = R.Index;
+					RH = H;
+				}
+			});
+	VT_REQUIRE(Region != 0 && !RH.IsNull());
+	const PersistentId Subject = W.Instance.Entities().GetId(RH);
+	const SimTick Tick = W.Instance.Now();
+	const uint32 RecordsBefore =
+		static_cast<uint32>(W.Instance.Components().GetPool(W.Ages.Types().History.Record).Size());
+	// Four winters: the usual terrible one (climate), a great one where a
+	// hard one is usual (history), a terrible one on nobody (not history),
+	// and a hard one coming where none is usual (published, so history).
+	const PersistentId Usual =
+		W.Instance.Events().Publish(Tick, WinterEvent, WinterPayload{Region, 3u, 5512u, 12u, 600u, 3u}, Subject);
+	const PersistentId Harder =
+		W.Instance.Events().Publish(Tick, WinterEvent, WinterPayload{Region, 2u, 700u, 3u, 600u, 1u}, Subject);
+	const PersistentId Nobody =
+		W.Instance.Events().Publish(Tick, WinterEvent, WinterPayload{Region, 3u, 5512u, 0u, 0u, 1u}, Subject);
+	const PersistentId Coming =
+		W.Instance.Events().Publish(Tick, WinterForeseenEvent, WinterPayload{Region, 2u, 700u, 0u, 600u, 0u}, Subject);
+	W.Instance.TickMany(2); // delivered
+	VT_CHECK(WinterIsHistory(*FindEvent(W.Instance.Log(), Harder)));
+	VT_CHECK(!WinterIsHistory(*FindEvent(W.Instance.Log(), Usual)));
+	VT_CHECK(!WinterIsHistory(*FindEvent(W.Instance.Log(), Nobody)));
+	VT_CHECK(!WinterIsHistory(*FindEvent(W.Instance.Log(), Coming))); // not a Winter: the predicate says no
+	uint32 Kept = 0;
+	uint32 KeptHarder = 0;
+	uint32 KeptComing = 0;
+	W.Instance.Components()
+		.GetPool(W.Ages.Types().History.Record)
+		.ForEach(
+			[&](EntityHandle, const RecordInfo& R)
+			{
+				if (R.Tick != Tick)
+				{
+					return;
+				}
+				++Kept;
+				KeptHarder += R.Event == Harder.Value ? 1u : 0u;
+				KeptComing += R.Event == Coming.Value ? 1u : 0u;
+				VT_CHECK_EQ(R.Region, Region);
+			});
+	VT_CHECK_EQ(Kept, 2u);
+	VT_CHECK_EQ(KeptHarder, 1u);
+	VT_CHECK_EQ(KeptComing, 1u);
+	VT_CHECK(W.Instance.Components().GetPool(W.Ages.Types().History.Record).Size() == RecordsBefore + 2u);
+	// The words.
+	std::string Name;
+	NameRegion(W.Instance, W.Ages.Types(), Region, Name);
+	std::string Out;
+	DescribeEvent(W.Instance, W.Ages.Types(), *FindEvent(W.Instance.Log(), Usual), Out);
+	VT_CHECK_MSG(Out.find("a terrible winter lay on " + Name + " and 12 died of the cold.") != std::string::npos, "%s",
+				 Out.c_str());
+	DescribeEvent(W.Instance, W.Ages.Types(), *FindEvent(W.Instance.Log(), Harder), Out);
+	VT_CHECK_MSG(Out.find("a great winter lay on " + Name + " and 3 died of the cold.") != std::string::npos, "%s",
+				 Out.c_str());
+	DescribeEvent(W.Instance, W.Ages.Types(), *FindEvent(W.Instance.Log(), Nobody), Out);
+	VT_CHECK_MSG(Out.find("a terrible winter lay on " + Name + ".") != std::string::npos, "%s", Out.c_str());
+	DescribeEvent(W.Instance, W.Ages.Types(), *FindEvent(W.Instance.Log(), Coming), Out);
+	VT_CHECK_MSG(Out.find("a hard winter is coming to " + Name + ".") != std::string::npos, "%s", Out.c_str());
+	const Event* Hard = FindEvent(W.Instance.Log(), Harder);
+	Event One = *Hard;
+	One.Set(WinterPayload{Region, 1u, 200u, 0u, 600u, 0u});
+	DescribeEvent(W.Instance, W.Ages.Types(), One, Out);
+	VT_CHECK_MSG(Out.find("a hard winter lay on " + Name + ".") != std::string::npos, "%s", Out.c_str());
+	VT_CHECK(Out.find("something happened") == std::string::npos);
+	VAELEN_LOG_INFO(LogHistoryText, "%s", Out.c_str());
 }

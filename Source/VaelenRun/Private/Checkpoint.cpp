@@ -180,11 +180,21 @@ namespace Vaelen::Run
 			Out.push_back(O.Play ? uint8{1} : uint8{0});
 			Out.push_back(O.Lively ? uint8{1} : uint8{0});
 			Out.push_back(O.Stream ? uint8{1} : uint8{0});
+			// 18.02: the fifth flag, appended - never inserted, for the reason
+			// the comment above gives.
+			Out.push_back(O.Climate ? uint8{1} : uint8{0});
 		}
+
+		/// 24 bytes is a HOST section written before 18.02 and reads as
+		/// Climate = false; 25 is one written since. Any other length is not a
+		/// HOST section this build reads, and the caller answers
+		/// NoHostSection rather than guessing which flags it has.
+		constexpr usize HostLengthBefore18_02 = 4u + 4u + 4u + 8u + 4u;
+		constexpr usize HostLength = HostLengthBefore18_02 + 1u;
 
 		bool GetOptions(const uint8* At, usize Size, Options& Out)
 		{
-			if (At == nullptr || Size != 4u + 4u + 4u + 8u + 4u)
+			if (At == nullptr || (Size != HostLengthBefore18_02 && Size != HostLength))
 			{
 				return false;
 			}
@@ -196,6 +206,7 @@ namespace Vaelen::Run
 			Out.Play = At[21] != 0u;
 			Out.Lively = At[22] != 0u;
 			Out.Stream = At[23] != 0u;
+			Out.Climate = Size == HostLength && At[24] != 0u;
 			return true;
 		}
 
@@ -684,5 +695,21 @@ namespace Vaelen::Run
 
 		Out.Base = Bytes;
 		return Refusal;
+	}
+
+	uint64 ImageTrailer(const CheckpointView& View) noexcept
+	{
+		uint64 Length = 0;
+		const uint8* State = View.Find(SectionKind::State, Length);
+		if (State == nullptr || Length < sizeof(uint64))
+		{
+			return 0;
+		}
+		uint64 Value = 0;
+		for (usize Index = 0; Index < sizeof(uint64); ++Index)
+		{
+			Value |= static_cast<uint64>(State[Length - sizeof(uint64) + Index]) << (8u * Index);
+		}
+		return Value;
 	}
 } // namespace Vaelen::Run

@@ -7,8 +7,8 @@
 // char buffer - each line NUL-terminated, packed from the front, oldest first
 // - and a LineView per line saying when it was, what kind of thing it says,
 // which verb and which refusal, and where its bytes are. Plus the why of the
-// newest thing that happened because of the played person: two steps, the
-// thing and its cause (deeper is Phase 17). No std::string, no handle, no
+// newest thing that happened because of the played person: up to WhyLines
+// steps, and how the chain ended (17.09). No std::string, no handle, no
 // pointer: a leaf, like the seven before it. It includes Core, ViewApi and
 // the command surface of 14.01, and nothing that names the World. Taking one
 // - TakeChronicleView(const World&, ...) - is declared in Take.h.
@@ -37,8 +37,18 @@ namespace Vaelen::View
 {
 	inline constexpr uint32 ChronicleLines = 32;	   ///< lines kept, the newest
 	inline constexpr uint32 ChronicleTextBytes = 6144; ///< bytes of those lines, terminators included
-	inline constexpr uint32 WhyLines = 2;			   ///< the thing and its cause
-	inline constexpr uint32 WhyTextBytes = 512;
+	/// 17.09: four, from two - and four because of two measurements, not a
+	/// guess. The deepest chain 17.05 found anywhere is three edges, four
+	/// lines, in the stock ledger of AELVOR 128; the played person's own why
+	/// is structurally "the thing, because of what they did", since a
+	/// PlayerActed has no cause of its own (0.0% of 9.1 million). And the row
+	/// says this leaf is 8 KiB: the first cut of this said eight lines and
+	/// 2048 bytes and was 9552 bytes, so the static_assert below refused it.
+	/// Four lines at 192 bytes each - the same per-line budget the chronicle
+	/// text has, 6144 for 32 - is 8144. A chain deeper than four no longer
+	/// trails off in silence: `WhyEnd` says DepthExhausted.
+	inline constexpr uint32 WhyLines = 4;
+	inline constexpr uint32 WhyTextBytes = 768;
 
 	/// What kind of thing a line says. The text says it too; this is for a
 	/// panel that greys or colours a row without parsing it.
@@ -82,13 +92,22 @@ namespace Vaelen::View
 		uint32 WhyCount = 0;	 ///< Why lines held, at most WhyLines
 		uint32 WhyUsed = 0;		 ///< bytes of WhyText in use
 		uint32 WhyTruncated = 0; ///< why lines cut short, of the why held now
+		/// 17.09: how the why's chain ended - `History::WalkEnd` as a number,
+		/// because this is a leaf and may not include Causality.h. 0 is Root,
+		/// the beginning of a story; anything else is a story that stops for a
+		/// reason the renderer should show rather than trail off. See
+		/// Causality.h for the values; View.Chronicle pins that 0 is Root.
+		uint32 WhyEnd = 0;
+		/// Zero, always. Eleven uint32 before an 8-byte-aligned LineView would
+		/// be four bytes of padding, and the assert below is what said so.
+		uint32 WhyReserved = 0;
 		uint32 Reserved = 0;
 		LineView Lines[ChronicleLines];
 		LineView Why[WhyLines];
 		char Text[ChronicleTextBytes] = {};
 		char WhyText[WhyTextBytes] = {};
 	};
-	static_assert(sizeof(ChronicleView) == 4 * sizeof(uint64) + 10 * sizeof(uint32) +
+	static_assert(sizeof(ChronicleView) == 4 * sizeof(uint64) + 12 * sizeof(uint32) +
 											   (ChronicleLines + WhyLines) * sizeof(LineView) + ChronicleTextBytes +
 											   WhyTextBytes,
 				  "ChronicleView must have no padding: MeasureChronicleView hashes it and a renderer copies it");

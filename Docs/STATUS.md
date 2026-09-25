@@ -1,6 +1,6 @@
 # VAELEN — Build status
 
-STATUS: VALIDATED for the state it reports, checked on 2026-09-18 against the sources on
+STATUS: VALIDATED for the state it reports, checked on 2026-09-25 against the sources on
 branch `claude/vaelen-master-prompt-aw7zqj`. This is the living status
 document: it is refreshed at the end of every task (section "How to refresh"). The
 per-phase breakdowns below are the record of each phase as it closed and are not
@@ -13,9 +13,650 @@ rewritten afterwards; this block is the only part that tracks today.
 VAELEN BUILD STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PHASE       : 16 — SAVE/PERSISTENCE, opened 2026-09-21
-              (15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
-TASK        : 16.02 — DONE 2026-09-21. SaveSnapshot can fail, and says so.
+PHASE       : 17 — DEBUG TOOLS, CLOSED 2026-09-24: all eleven clauses of its gate
+              met, read clause by clause in Docs/ROADMAP.md section 23. Clause (j):
+              Tools/run_gates.sh linux-clang-debug printed GATES-DONE 0 failing (of 17)
+              in 5122 s on 5032246; clause (i): no frozen digest moved over nine tasks.
+              CI run 276 on 5032246: nine of ten legs green, the clang-debug leg still
+              testing when this was written (run 274 on 65b60d4 was ten of ten).
+              NEXT: Phase 18 CLIMATE & SEASONS, PLANNED 2026-09-24 — ten tasks and a
+              twelve-clause gate in Docs/ROADMAP.md section 25, ADR-0151 to ADR-0154
+              proposed. The panel found clause (i) of Phase 17's gate measured with a
+              grep blind to `0x…ull` literals (0 over the ADR-0131 re-freeze that
+              removed 55); re-measured suffix-aware, Phase 17 removed 0 and added 138,
+              so the clause holds and section 23 says how. 18.01 is the instrument.
+              (16 SAVE/PERSISTENCE: fourteen tasks built, its GATE still open —
+               clause (j)'s migration half deferred to the v4 bump; and 16.14, whose
+               sitting is the owner's Windows machine AND whose engine half —
+               Vaelen.Save/Load, a store over IFileManager — is not written anywhere
+               yet: it is written here and parsed against the shim before that
+               sitting. Section 22 has the clause-by-clause read.
+               15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
+TASK        : 18.07 — DONE 2026-09-25. The harvest has a growing season; the world is alive.
+
+              ProductionSystem::ObserveClimate: a region reaps min(1000, GrowingDays x
+              1000 / 180) of its harvest, from the same RegionYear the winter reads, in
+              both branches at one line. Economy.Production: busiest region 26 reaps 3201
+              of 6512 at half its season, 28 coarse regions exact, all 29 reap nothing at
+              a growing line of +100, and the 06.02 frozen figures hold with the season
+              off. Run.Climate (AELVOR 128/300+120, off and on): 36032 people with the
+              climate against 36374 (99 %); tundra 68 %, boreal 96 %, steppe 99 %; 12835
+              great and terrible winters, 1581 dead of the cold, 38427 grain taken; log
+              c5acefba48cd0fb5 pinned. The panel's two regional predictions failed on the
+              first run for reasons the figures showed (tiny regions diverging; the
+              tundra under capacity before any climate); the bounds were re-drawn by
+              biome and two-sided, and the logistic equilibrium 1 - d/25 written down.
+              Control: harsh rules leave 51 % and empty 8 regions - the bound sees it.
+              Failed on purpose: the season in the coarse branch only.
+
+TASK (18.06): 18.06 — DONE 2026-09-25. The winter, yearly, as a consequence.
+
+              Vaelen/Economy/Winter.h: Economy::WinterSystem behind Options::Climate /
+              --climate (after Stocks, before the harvest): per region at the year's
+              turn, the coarse dead by ColdDeathsPerMille[s] through History::KillShare
+              (the disasters' own, made public) with the faiths trimmed to the living;
+              the WinterEvent {Region, Severity, ColdSum, Deaths, People, Usual} for
+              s >= 1; the fuel ColdSum/200 x People/10 timber from the common stock
+              through MoveStock with the winter as cause, and what is not covered is the
+              exposure; WinterGrainPerMille {50, 120, 250} of the common grain and of
+              every house's; the chill Exposure x ColdSum / 20000 on every person of a
+              detailed region (a settlement shelters 400‰, a cloth stock 300‰); the
+              WinterForeseen only when the coming winter is s >= 2 and harder than
+              usual. Words: "a terrible winter lay on X and N died of the cold.", "a
+              hard winter is coming to X.", "the winter took N grain from the stores
+              of X." (the economy chronicle, from a StockTaken whose cause is a winter).
+              ADR-0152 APPLIED with three deviations: the events live in Sim/Climate.h
+              (the words are Sim's); the Sim chronicle keeps a winter only when harder
+              than the region's usual (a keep-predicate on Chronicle, else 35 lines a
+              year); the played region's skip is 18.08's. Test_Winter, seven cases,
+              295 checks: 102 timber wanted and taken for 173 people at cold sum 1223,
+              172 persons chilled by exactly 80 without it; a great winter took 131 of
+              1094 and 16 houses to the unit; 43 winters at a turn at 128, 4 with
+              coarse deaths by the share; ColdLine -100 is the world without the
+              system to the digest. HistoryText: the five sentences and exactly two
+              records kept of four winters. Ledger: the winter took in 2 events on
+              region 23 and Dark == 0. NO FROZEN DIGEST MOVED (census 545, unmoved).
+
+TASK (18.05): 18.05 — DONE 2026-09-25. Who is cold.
+
+              Vaelen/Population/Warmth.h: PersonWarmth {Chill, ColdYears, Clad, Reserved,
+              Reserved2}, eight bytes, zero means warm (ADR-0153 APPLIED, two deviations
+              recorded on it); WarmthTypes declared only in a climate world, after Polity
+              and BEFORE Colony in Aelvor and the Atlas (the actors take it at 18.10;
+              check_world_wiring.py names it optional at that position); WarmthRules
+              {ChillLine 100, ColdDamage 40, ChillRecovery 200}; ChillPerson/WarmPerson
+              beside FeedPerson; WinterEvent and WinterForeseenEvent declared here for
+              18.06 to publish (117 event names); DeathCause::Cold = 4, "of the cold".
+              NeedSystem::ObserveWinter: after hunger and before plague, a chill above the
+              line counts a cold year, costs ColdDamage + a draw below the excess through
+              the frail rule, and the blow that kills names this year's winter (or nothing:
+              the cold is real unnamed); then the year spends ChillRecovery of EVERYONE's
+              chill (the panel's row spent it only below the line, which made one hard
+              winter permanent and fatal - deliberate failure C shows it). LifeView::Chill
+              filled through ViewSources::HasWarmth. Test_Warmth: six cases, 168 checks at
+              AELVOR 64/120 - the verbs saturate and floor and touch nobody else (602 carry
+              warmth after the turn, 464 promoted after it none yet); three frozen through
+              die of the cold naming the planted winter and nothing else dies of anything
+              but age, then three more die unnamed; control 255 / hale 214 / frail 203
+              after one chill of 101; 77 of chill through an image; RULE 2: 364 people, 0
+              need bytes differ between never-told, told and frozen-at-the-line, both logs
+              equal, the state digests parting on the declared type alone. Run.Checkpoint's
+              18.02 arm turned: the flag now parts the state digests (layout) and still
+              not the logs. Controls fired: the event table STALE (+Winter, +WinterForeseen)
+              before --write; the wiring check names "16. Warmth" with the entry removed.
+              Failed on purpose, three times: Cause 3 → "person 1 died of plague"; a draw
+              below the line → 348 need bytes differ and the logs part; the chill spent
+              only below the line → Chill 101 kept, ColdYears 2, Health 214 for 254. NO
+              FROZEN DIGEST MOVED (census: HASH +2 for the two table rows, WORLD 0).
+
+TASK (18.04): 18.04 — DONE 2026-09-25. The page says the weather.
+
+              The leaves grew inside their reserved words: WorldView::Season,
+              RegionView::Climate (a packed word: today's degrees, coldest, warmest,
+              outlook, a hard-winter bit), LifeView::Season/Degrees/Chill/Winter; a new
+              leaf Vaelen/View/Climate.h (four bytes a tile, once a day); RowKind::Weather
+              after Digest; Page::Signed and Tenths. The row, only with a climate:
+              "winter  day 5 of 90  -12.3 deg here  chill 40  coldest -21  warmest 14
+              outlook 54%  a hard winter lies on the land"; "coming" before winter,
+              "deg here" only where somebody stands; the body row gains chill. Kernel:
+              WinterSeverity and RegionCentroidTile. Atlas --climate tells every take,
+              prints LogVaelenClimate and writes a climate JSON object; Atlas.Climate128
+              and ClimateFrozen128 pin climate 59615fa1f5d24bd1 and the ground; the
+              checker holds a climate object with six new self-test cases. NO FROZEN
+              DIGEST MOVED: every pin held (Test_Panel's two pages, PanelFrozen,
+              Frozen128, Test_Aelvor, ViewGate), and the without-a-climate control holds
+              frame, life and page equal under VT_CHECK_DIGEST_EQ. Failed on purpose: the
+              row written without a climate (seven instruments in three binaries red at
+              once: five Panel cases, PanelFrozen, the View.Climate control), the sign
+              dropped from Tenths (exactly the -12.3 and -0.5 checks). The census now reads the 0x tokens of the CMake
+              drivers it had skipped.
+
+TASK (18.03): 18.03 — DONE 2026-09-24. The temperature is a function; the year is a shape.
+
+              Vaelen/Sim/Climate.h: SeasonalAmplitude, DayOffset (a triangle wave equal
+              to SeasonalOffset at the four midpoints, exact on the raw), TemperatureOn,
+              TileTemperatureOn, ShapeYear (the 360-day sum: frost days, growing days,
+              cold sum, coldest, warmest - the sum, not the panel's arithmetic series;
+              ADR-0151 APPLIED with that deviation), YearVariation (a lattice hash, never
+              a draw), RegionYear / ShapeRegionYears at the centroid with the world's own
+              calendar, ClimateRules (a rule, no digest). No layer, no component, no
+              state. The panel's figures pinned as computed: pole 315/1/5512, row 32 of
+              128 65/221/136, equator 0/360/0, tundra 203/97/1751, grassland 59/225/111;
+              AELVOR 256 on day 315 freezes every Ice/Tundra tile and no Tropical/
+              Savanna/Desert one, and the 02.04 digests did not move. Failed on purpose:
+              the winter sign flipped, the tile ignoring the day. 11 of 11, 171 checks.
+
+TASK (18.02): 18.02 — DONE 2026-09-24. The switch that switches nothing yet.
+
+              Options::Climate = false, a fifth HOST byte appended (24 bytes reads as
+              Climate false, 25 as written, anything else is no HOST section),
+              AdoptResult::ClimateDiffers the ninth refusal by name, --climate told to
+              Atlas at every site --stream is, ViewSources::HasClimate false from every
+              source, the inspector saying Climate. The corpus regenerated: +1 byte each,
+              HOST 25 with new section digests, the three image trailers UNMOVED and
+              static_asserted by name. played-16 as it was is kept as host24-16.container
+              - the first older-format instance in the tree, a fourth corpus row, its own
+              inspect entry, and required to differ from today's played-16. Run.Checkpoint
+              pins the 24/25/26 reading rule on the bytes alone, the refusal with the
+              host untouched, and the CONTROL inverted from Stream's: two worlds identical
+              but for the flag are the same world for ten days under VT_CHECK_DIGEST_EQ,
+              because nothing reads it yet. Failed on purpose: the byte written and never
+              read - six checks fire, the cold host taking the warm save among them.
+              Census over the commit: WORLD/section -3/+3 and RECORD rows, else 0.
+
+TASK (18.01): 18.01 — DONE 2026-09-24. The instrument, before anything moves.
+
+              Tools/frozen_census.py: every sixteen-hex literal classified from a table
+              of 106 files named one by one (WORLD 170, GEN 14, HASH 244, CONST 15, SEED
+              11, SYNTHETIC 8, RECORD 52 = 514 sites, token for token with grep), with a
+              KIND read off its line (state, log, life, panel, frame, ground, trailer,
+              section, seed, digest, note); --diff A B prints what moved by class and
+              kind; --check refuses a literal in a file the table does not name. THE
+              KNOWN ANSWER: the ADR-0131 re-freeze reads as WORLD -55/+50 in 19 files and
+              nothing else, pinned in the self-test from a checked-in fixture (the CI
+              clones at depth 1), regenerated byte-identical where git can; Phase 17's
+              `\b` grep over the same lines reports 0 and is kept as the pre-fix arm.
+              Phase 17 re-read: 0 removed, 167 added (WORLD +16 corpus, HASH +120 the
+              event table) - clause (i) held. Eleven controls; the pin one off fails one
+              by name, the regex made blind fails six. Kernel.FrozenCensus and its
+              SelfTest beside Kernel.WorldWiring; verify_fast's EIGHTH check.
+
+TASK (16.14): 16.14 (engine half) — WRITTEN and PARSED 2026-09-24, UNVERIFIED (engine).
+
+              Found at the Phase 17 close by reading the tree: no Vaelen.Save, no
+              Vaelen.Load, no store over IFileManager existed anywhere. Written here
+              and parsed against the shim, which grew FFileHelper's byte pair,
+              FPaths::GetCleanFilename and HAL/FileManager.h (six verbs, the engine's
+              defaults): FVaelenCheckpointStore (the stdio store's twin - <name>.writing
+              moved into place whole, a listing that reads the directory), the
+              subsystem's Save/Load/Saves, three console commands, three shim
+              mutations (16 of 16 caught). Save prints the four digests the way
+              Stream.Write does and then the exact VaelenAtlas --load-from command
+              that must come back to the same state; Load builds the host from the
+              container's HOST section, adopts into a FRESH Aelvor, hands the tape
+              back to the door. Docs/ENGINE_HANDOFF.md has the sitting, step by step.
+
+              TWO KERNEL FINDINGS, fixed with tests and no digest moved: the image
+              trailer had THREE readers (store, Atlas, corpus test) and the engine
+              store would have been a fourth - Run::ImageTrailer is the one now and
+              Run.Containers keeps its own as the independent reader and requires
+              agreement on every file; and `.writing` leftovers of an interrupted
+              write were LISTED AS SAVES (tick 0) because the stdio store's comment
+              claimed a rule the name rule did not keep - Run::WritingSuffix is the
+              interface's now, IsUsableCheckpointName refuses it, Run.Store and
+              Run.StoreColdProcess pin it with the half-file-under-a-plain-name
+              control.
+
+TASK (17.gate): Phase 17 gate — READ 2026-09-24, eleven of eleven. Last built: 17.09.
+
+TASK (17.09): 17.09 — DONE 2026-09-24. The why says how it ended.
+
+              THE TWO-STEP LIMIT WAS NEVER IN THE KERNEL: History::Why walked to 64 and
+              ExportWhyWithLife printed every step; the limit was ChronicleView::WhyLines
+              = 2 in the view leaf. So the deep why is three things and none is a deeper
+              walk. History::Why returns WalkEnd through CauseWalk — until now Root,
+              CauseMissing and DepthExhausted were all an empty tail. WhyEndText is the
+              ONE place a non-root end's sentence lives, and both text exports print it.
+              The view holds FOUR lines (not two) and a WhyEnd field from its own walk, so
+              a longer chain says DepthExhausted instead of trailing off.
+
+              FOUR AND NOT EIGHT, by two measurements: the deepest chain 17.05 found
+              anywhere is three edges, and the row says the leaf is 8 KiB — the first cut
+              (eight lines, 2048 bytes) was 9552 and the static_assert refused it. Four
+              lines at 192 bytes, the chronicle text's own per-line budget, is 8144.
+
+              OVER A REAL WORLD THE CHRONICLE PRINTS WHAT THE CENSUS PREDICTS: "the why
+              is 2 line(s) deep on this world, ending at a root" — a PlayerActed has no
+              cause of its own. The old `WhyCount == WhyLines` was a coincidence of
+              capacity and content; it reads == 2 with WhyEnd == 0 now, in two tests.
+
+              Sim.HistoryText.WhySaysHowItEnded plants chains through EventBus::Publish
+              with a cause — whole, longer than allowed, caused by a person — and each is
+              named, each end's sentence printed, the six sentences two empty and four
+              pairwise different. A CUT CHAIN CANNOT BE PLANTED IN A WORLD: the first
+              version tried, the serial below the root was a real event, and the case
+              fell into an else branch — found when the deliberate failure fired on
+              three checks and not four. A world's log has no holes; the test asserts
+              that now, and CauseMissing stays with Sim.CauseWalk's hand-built log.
+
+              The row's condition, answered: the census said three edges in the ledger
+              and zero in the human story, so this is code — and its honest shape is an
+              END that is named, because the chains a person will actually see are two
+              long and the question they raise is "is that all?", answered Root.
+
+TASK (17.08): 17.08 — DONE 2026-09-24. The cache that is safe by accident, its nine
+              doors guarded, and a tenth found OPEN on the first run.
+
+              No change to DiplomacySystem's cache, as the row said: guard now, fix if
+              asked. Run.RefusalsAreTheCachesSafety, three cases, 0.74 s.
+
+              THE PREMISE MEASURED. Six 32-tile worlds at seeds 1-6 have 12, 13, 12, 13,
+              13 and 10 regions and differ pairwise by digest: FOUR PAIRS share a count
+              and are different worlds — each a stale graph the cache's key
+              (Diplomacy.cpp:72, the region COUNT) cannot see. Two in three seeds.
+
+              NINE DOORS SHUT, each failure text naming the door AND the cache: Adopt's
+              WrongSeed and seven *Differs, and the kernel's SeedMismatch through
+              LoadSnapshot on a BEGUN world. The control first — the matching world is
+              accepted at both doors — and every refused host still un-begun.
+
+              THE TENTH DOOR IS OPEN. A begun 16-tile world of the same seed takes a
+              32-tile image and LoadSnapshot answers Ok, because WorldMap::LayoutDigest
+              folds layer names and element sizes and NO EXTENTS — Phase 16's defect 5,
+              still pinned by Golden.TheLayoutDigestCannotTellTwoMapSizesApart; 16.08 did
+              not touch it. After the load the map is 32 wide and the Aelvor declares 16:
+              ADR-0150's chimera, measured. In production the door is reached only
+              through Adopt, which refuses the size by the HOST section first.
+
+              NOT CLOSED HERE because the layout digest is written INTO the image
+              (Snapshot.cpp:435): folding the extents moves every frozen digest — clause
+              (i). It is a re-freeze like ADR-0131. So the third case pins the door OPEN
+              and FAILS THE DAY IT CLOSES, so whoever closes it finds this file, the golden
+              test and ADR-0150 together. The counts were 3 against 15 this time, so the
+              graph would have been rebuilt — "this time" is the operative phrase.
+
+              THE GATE'S CONTROL, RUN: YearsDiffers disabled in a scratch build — "the
+              YearsDiffers door is OPEN: Adopt answered Ok where YearsDiffers was
+              required - DiplomacySystem's region graph (Diplomacy.cpp:72) ...". Named
+              door, named cache.
+
+              Owner's question 4, sharper again: the kernel door already loads a
+              differently-sized world of the same seed, and closing it costs a re-freeze
+              — Phase 18's climate re-freeze is coming, and they should share the commit.
+
+TASK (17.07): 17.07 — DONE 2026-09-24. A harness that can see a vacuous assertion.
+
+              VT_CHECK_ROUNDTRIP(Written, Read) records a failure when the WRITTEN value
+              is byte-equal to T{} BEFORE it compares anything, because a reader that
+              wrote nothing would then pass; the type must be trivially copyable with
+              unique object representations or it is refused at compile time.
+              VT_CHECK_DIGEST_EQ(A, B) refuses 0 and EventLog::EmptyDigest as operands —
+              the harness sits below VaelenSim, so it carries the value as a literal and
+              Tests/Sim/Test_EventLog.cpp holds the two together with a static_assert.
+
+              Core.Harness, two new cases. VacuityIsSeen, BOTH ARMS IN ONE RUN: the
+              assertion Phase 16 committed — two default-constructed StartRules compared —
+              PASSES under VT_CHECK (the defect, kept visible) and FAILS under
+              VT_CHECK_ROUNDTRIP in the same test; a genuine round trip passes under both,
+              so the witness is not simply a macro that fails; a lossy round trip fails
+              for the loss. DigestsThatCompareNothingAreRefused: five checks, one pass and
+              four refusals, two of which would have been green under VT_CHECK_EQ — which
+              is how nine matrix cells once compared an empty life against itself.
+
+              TWO DELIBERATE FAILURES, BOTH FIRED: the vacuity check disabled — "the
+              witness let the vacuous round trip through (0 failures)"; the empty-log
+              refusal disabled — Failures 3 against 4.
+
+              NOT done here, on purpose: converting existing tests. The nine
+              empty-against-itself cells of Run.SaveContinue are the open review finding
+              and get their own commit with their own measurement.
+
+TASK (17.06): 17.06 — DONE 2026-09-24. The inspector: a container described from its
+              bytes, and a directory listed by a process that wrote nothing.
+
+              Atlas --inspect FILE prints the header, every section with kind, offset,
+              length, share and digest, the image TRAILER named as "the state digest
+              every other tool means", the HOST wiring, the RUN state's shape and the
+              STREAM's counts, header and rules — WITHOUT CONSTRUCTING AN AELVOR.
+              ReadHostSection, ReadRunSection and ReadStreamSection need no world, and
+              that is the claim: a 2 GB save described in the time it takes to read it.
+              Until this, nothing in the tree read a container from disk except a test.
+
+              Atlas --inspect-dir DIR is 17.03's second-process half.
+              Atlas.InspectDir.ColdProcess: two writer processes at seeds 1 and 2, a
+              third that lists both with the trailers their writers printed ON THE SAME
+              LINE AS THEIR NAMES, so a listing right by name and wrong by position
+              cannot pass. The first expectation said four sections; --save-to carries no
+              tape, so three. The tool was right and the expectation wrong.
+
+              AND THE FIRST RUN OVER THE CORPUS DIRECTORY FOUND SOMETHING: README.md was
+              listed as a checkpoint with tick 0, version 0 and sixteen zeros for a digest
+              — a row that looks like data and is not. The store is right to hand it back;
+              a browser is wrong to show it as a save. ContainerVersion is 0 exactly when
+              ReadCheckpoint refused, so the tool prints "not a container" and counts
+              "3 checkpoint(s) and 1 other file(s)".
+
+              TWO REFUSALS, both about what is NOT printed. An image is refused BY NAME —
+              "BadMagic (it is a save IMAGE, the inner format, not a VAELENCP container
+              around one)". A container cut at 4 KiB, whose header is readable and whose
+              table points past the end, is refused WHOLE: "Corrupt, 4096 bytes on disk;
+              section 0 is where it stopped describing them", and not one header or table
+              line printed.
+
+              THREE DELIBERATE FAILURES, ALL FIRED. Header printed before the refusal:
+              "a refused file was described in part". A pinned trailer bent by one hex
+              digit: "WANT_TRAILER not printed". One byte of a listed file flipped:
+              "1 checkpoint(s) and 1 other file(s)", shown as "not a container".
+
+TASK (17.05): 17.05 — DONE 2026-09-24. The census, and it concluded the phase is about
+              something else — just not the something the plan expected.
+
+              THE PANEL MEASURED 7 CAUSES IN 535 EVENTS (1.31%) with a deepest chain of
+              ONE EDGE, and three of its four angles designed a walker, an index and a
+              renderer over that. TakeCauseCensus over the 17.01 corpus reproduces those
+              figures by an independent instrument: 3/129, 3/148, 7/577, depth 1, fan-out
+              1. Then it ran over a FRESH AELVOR 128 at 300+120 years, 21 min 51 s:
+
+                16,842,422 events, 5,211,672 with a cause (30.94%), 11,630,750 roots
+                deepest chain 3 edges, median depth 0, widest fan-out 11 (event 4193697)
+                0 dangling, 0 not an event, 0 not before their effect, 53 event types
+
+              THE PANEL HAD MEASURED THE WRONG WORLDS. Three ten-year worlds whose economy
+              had barely started. The plan's "98.7% roots" was true of the corpus and
+              false of the world, and my own comments in Causality.h and two tests carried
+              it; corrected here. 17.09 is therefore CODE and not a note: there IS a third
+              step to walk to.
+
+              BUT THE TABLE PER TYPE SAYS WHERE THE GRAPH LIVES, and it is not where a
+              person would look. StockTaken 95.4% and StockAdded 98.8% with a cause —
+              5.2 million of the 5.21 million causes are the stock ledger. DisasterStruck,
+              RegionSettled, Condemned, Pardoned, ReligionFounded: 100%, in the hundreds.
+              And PersonDied, PersonBorn, PersonMarried, RulerSeated, HeirNamed,
+              FamilyFounded, MigrationWave: 0.0%, every one. A deeper why explains where
+              goods came from. It explains no death, no birth and no reign. The causal
+              graph is dense in the ECONOMY and empty in the HUMAN STORY, and that is the
+              measurement 17.09 and any later "fill the Cause edge" task must start from.
+
+              ALSO MEASURED, and nobody asked: PlayerActed is 9,147,427 of 16.8 million
+              events — 54% of the log — in a world nobody played. That is the Lively
+              wiring's persons acting through the command surface, and it is the single
+              largest thing in every save. HeardOf is another 2.3 million. Phase 18's log
+              question has its first figure.
+
+              Vaelen/Sim/Causality.h gained CauseCensus and TakeCauseCensus: one forward
+              pass for the depths, correct because causes precede effects and the log is
+              in id order — no recursion, no stack to blow on a chain a million long — and
+              a sort for the fan-out. Atlas --causes FILE adopts a container from its own
+              HOST section so the wiring cannot be spelled wrongly on the command line,
+              and prints the table per type through 17.02's names; --census generates.
+
+              Sim.Causality, four cases: the planted graph counted exactly (chain of
+              seven, fan-out of five, one dangling, one Person cause, one cause after its
+              effect — eighteen events, and the parts must add up to the whole); the SAME
+              eighteen with every cause cleared reporting depth 0 and fan-out 0 while the
+              planted one still reports 7 in the same run; an empty log all zeros and not
+              a verdict; and the census agreeing with 17.04's walk, which shares no code
+              with it. Atlas.Causes.{bare-16,played-16,full-32} pin the corpus lines whole
+              and refuse any `?<hex>` row.
+
+              AND THE FIRST PLANTING WAS WRONG, not the code: event 30's "dangling" cause
+              was 99, which FOLLOWS it, and both instruments called it NotBeforeEffect —
+              correctly, and in agreement. A dangling link must precede and be absent.
+
+TASK (17.04): 17.04 — DONE 2026-09-24. A causal walk that says how it ended, and an
+              experiment that told me about the test instead.
+
+              History::CauseChain walks the cause edge backwards and hands back a vector.
+              It has SIX ways to stop and the caller can tell them apart in none of them:
+              History.cpp:198-211 reached four through ONE break and the fifth by falling
+              out of the loop. A tool that walks backwards and stops cannot say whether it
+              reached the BEGINNING OF THE WORLD or FELL OFF THE END OF A LOG — and this
+              is the phase whose job is telling a person why something happened.
+
+              Vaelen/Sim/Causality.h declares WalkEnd { Root, NoSuchEvent, CauseMissing,
+              CauseNotAnEvent, CauseNotBeforeEffect, DepthExhausted } and CauseWalk.
+              CauseChain stays, reimplemented as a wrapper that discards the end, so its
+              TWO callers do not churn — HistoryText.cpp:267 and Atlas --why. The plan
+              said five.
+
+              SIX ENDS AND NOT SEVEN, dropped on purpose. The plan wrote
+              WalkLimits{Depth, Nodes} with a BudgetExhausted beside it. A backwards walk
+              is LINEAR, one node per step, so the two limits can never disagree — and a
+              state no input can reach is a state no test can reach either. No cycle guard
+              is needed either: CauseNotBeforeEffect makes every step strictly decrease
+              the id.
+
+              TWO ORDERING DECISIONS, EACH PINNED BY A CASE THAT CAN SEE IT. The kind
+              check comes BEFORE the ordering check, because IdKind is the high byte of
+              the id: an Entity cause (kind 1) compares BELOW an Event effect (kind 2) and
+              sails past the ordering guard, while a Person cause (kind 23) compares above
+              and would be called an ordering fault. Both are the same mistake. Swapping
+              them makes the Person case report CauseNotBeforeEffect, and the test says so.
+
+              AND THE SECOND EXPERIMENT DID NOT FAIL, which is why the second decision has
+              a row of its own. Moving the depth check ahead of the link resolution was
+              meant to break the boundary case; for a WHOLE chain the two orders are
+              identical, so the test was measuring nothing about the ordering. They differ
+              in exactly one place — when the budget runs out on the step that would have
+              found the link missing — and both facts are then true at once. THE DATA
+              FAULT WINS: CauseMissing says the log is broken, DepthExhausted says the
+              caller asked for less than there was, and a person shown the second when the
+              first is true raises the limit and learns nothing. A case for it was added
+              and the same experiment then reported "a cut on the limit must report the
+              cut, not the limit: DepthExhausted".
+
+              That is the THIRD time this session an experiment has told me about the
+              instrument rather than the guard, and the third time the fix was to make the
+              instrument able to see.
+
+              Sim.CauseWalk, three entries, 0.00 s: eight cases (one per end, both sides
+              of CauseNotAnEvent, the depth boundary at exactly the chain's length, a
+              depth of zero, and the cut-on-the-limit case); the PRE-FIX ARM KEPT
+              PERMANENTLY — today's CauseChain over a whole chain and a cut one must give
+              the SAME answer, that indistinguishability IS the defect, while CauseWalk
+              over the same two logs says Root and CauseMissing in the same run; and six
+              depths comparing the wrapper against the walk event by event, so 17.04
+              cannot have changed behaviour while claiming to add a return value.
+
+              The logs are hand-built. A real world's log is 98.7% roots, so five of the
+              six ends would never occur and the test would be a test of demography.
+
+              36/36 green under Sim., Sim.Shuffled included.
+
+TASK (17.03): 17.03 — DONE 2026-09-24. The store reads a directory, and reports the
+              digest it says it reports. Both defects were mine, from 16.07.
+
+              THE FIRST: List() iterated a private vector that only Write() and
+              Remember() ever filled, so a host started fresh and pointed at a folder
+              full of saves was told it was empty — which defeats the one thing a save
+              browser is for. Run.Store passed the whole time because it wrote and listed
+              in ONE process with ONE object: an instrument blind to the only dimension
+              that matters. List() reads the DIRECTORY now (<filesystem>, error_code
+              overloads throughout, never the throwing ones, because this tree builds
+              -fno-exceptions), sorted so two hosts agree on order, skipping anything
+              IsUsableCheckpointName refuses — which also skips a .writing temporary left
+              by an interrupted write. Written and Remember are DELETED: a cache of names
+              can now only disagree with the disk, and worse than a store that lists
+              nothing is a store that lists something that is not there.
+
+              THE SECOND, AND MAKING THE TEST FAIL ON PURPOSE REVERSED WHICH FAULT
+              MATTERS. The entry's digest was Sections.front().Digest, reported after the
+              result of Find(State, Length) had been called and thrown away. I wrote in
+              the plan, and repeated it in 17.01's README, that this was "right today
+              because STATE happens to be section 0". MEASURED: on an ORDINARY container
+              the old code reports e0614906cb8a5676 where ComputeStateDigest returns
+              0f6fa26b35d09a70. The section digest and the image trailer are different
+              numbers over the same bytes, on every container, whatever the order. So
+              position was the SECOND fault — ADR-0150's safe-by-accident, which had not
+              started mattering yet — and the first was reporting a number no other
+              instrument in this repository means by a save's digest. A host comparing a
+              listed digest against a logged one was told two identical saves were
+              different worlds, and it was told that ALWAYS. All three places carrying my
+              wrong account are corrected in the same commit.
+
+              StoreEntry also gained SectionCount, so a caller can see a save's SHAPE —
+              above all whether it carries its own input tape — without opening it twice.
+
+              AND THE SECOND CONTROL FOUND SOMETHING ABOUT THE FORMAT. The gate asks for
+              a container in which STATE is not first. Rotating the table ROWS is refused
+              BadSectionTable, correctly: ReadCheckpoint requires ascending offsets, no
+              overlap, and every payload byte claimed. A legal container with STATE second
+              needs the PAYLOADS moved with the rows, which the test now does before
+              recomputing the trailer. It reads Ok, its first section is RUN, its STATE
+              bytes are memcmp-identical to the original's — and the fixed store reports
+              the same trailer while the pre-fix one reports RUN's section digest.
+
+              Run.StoreColdProcess, two cases, 0.10 s. THE PRE-FIX LISTING IS KEPT, as
+              AWrittenOnlyStore, deriving from the real store so it differs from it in the
+              defect and in nothing else (StdioCheckpointStore is no longer final for
+              exactly this). It lists ZERO of the same three files in the same run, then
+              lists the one file it writes itself — so the arm is about coldness and not
+              about the class being broken outright.
+
+              TWO DELIBERATE FAILURES AGAINST THE FIXED CODE, BOTH FIRED. Sections.front()
+              put back: "alpha: listed e0614906cb8a5676, ComputeStateDigest
+              0f6fa26b35d09a70". List returning before it reads the directory: "a cold
+              store listed 0 of 3".
+
+              THE SECOND-PROCESS HALF of the gate clause rides on 17.06's --inspect-dir,
+              which is the tool that does it. The defect itself is per-INSTANCE, so a
+              second object over the same directory is the evidence that distinguishes it.
+
+              AND THE CI FOUND TWO DEFECTS IN THE TESTS THEMSELVES on 4340938 — four of
+              ten legs red — that no Linux debug build could see. The serious one: a
+              pointer INTO a temporary vector, `Named(Cold.List(), "swapped")`, read after
+              the vector died. gcc's allocator left the bytes in place and every Linux leg
+              passed; AppleClang read 0000000000000000 and MSVC read dddddddddddddddd, its
+              freed-memory fill. AddressSanitizer sees it deterministically —
+              heap-use-after-free at Test_StoreColdProcess.cpp:360 on the pre-fix file,
+              clean on the fixed one — and that probe is now the local instrument for this
+              class. The other: gcc -O2 -Wnull-dereference refuses a vector index on a
+              copy, and -Werror made both gcc release legs fail to BUILD; a RelWithDebInfo
+              tree matching the CI preset is configured beside the debug one so this can
+              be seen before a push. Neither defect was in the store; both were in the
+              instruments that judge it, and both were found by the only thing that runs
+              them on four compilers.
+
+TASK (17.02): 17.02 — DONE 2026-09-24. The event-type name table, generated from the
+              115 declarations and checked against the kernel's own hash.
+
+              AN EVENT CARRIES A HASH AND NOTHING ELSE about its identity: Event.h stores
+              Hash64 TypeHash, and the name lives at the declaration site in the
+              EventType<T> constant. The moment an event is in a log, an image or a
+              container, the word is gone. Grepping this tree for EventTypeName,
+              NameOfEvent or TypeName( returned NOTHING, so every census, inspector and
+              causal walk this phase plans would have printed sixteen hex digits at a
+              person.
+
+              Source/VaelenSim/Public/Vaelen/Sim/EventTypeNames.h is generated by
+              Tools/gen_event_names.py from 115 MakeEventType call sites across nine
+              modules — 115 distinct names, no duplicates, no hash collisions, all checked
+              before it writes a byte. THE COUNT IN THE PLAN WAS WRONG BY ONE AND IN MY
+              OWN HANDWRITING: grep -c returns 116, and the 116th is the template's own
+              definition in Event.h, which has no name to read. The generator's regex
+              matches a string LITERAL and its self-test requires it NOT to match that
+              definition, so the off-by-one cannot come back.
+
+              GENERATED AND NOT CONSTEXPR because a compile-time table needs every
+              module's headers in one translation unit and VaelenSim may not know
+              VaelenMilitary exists. The header knows hashes and string literals and
+              depends on CoreTypes.h, Hash.h and <cstdio>, which purity allows.
+
+              NameOfEventType(Hash64, char (&)[18]) is a binary search over a hash-sorted
+              table, and an unknown hash is answered with ?<16 hex digits> IN THE CALLER'S
+              BUFFER — not an empty string, not a static, not a crash. A log written by a
+              build carrying a type this one lacks is what a save format exists to make
+              possible; the three wrong answers are a crash, a blank row that looks like a
+              bug in the census, and a plausible name belonging to something else.
+
+              FOUR ENTRIES. Kernel.EventTypes re-runs the generator and diffs — the only
+              thing that notices a type added, renamed or deleted. Kernel.EventTypesSelfTest
+              runs the generator's own controls, including that the empty string hashes to
+              the FNV-1a offset basis, the one value the arithmetic cannot get right by
+              accident. Run.EventTypes (five cases) re-hashes every one of the 115 names
+              with the KERNEL's HashString, checks the table is strictly sorted, finds
+              every row by its own hash, samples one real declaration from each of seven
+              modules, and requires an unknown hash to answer ?<hex> while a known one
+              still answers its name in the same run.
+
+              FOUR DELIBERATE FAILURES, ALL OF WHICH FIRED. Renaming ArmyRetreated to
+              ArmyWithdrew: the check reports + ArmyWithdrew and - ArmyRetreated BY NAME,
+              because a diff of a 115-row table is unreadable and the answer is almost
+              always one name. Adding a type: 116 declarations found. Hashing with a
+              trailing NUL — the classic way to build a table that is self-consistent,
+              compiles, round-trips against itself and agrees with the running world about
+              nothing — makes the generated text differ AND, when that header is built,
+              makes Run.EventTypes report 129 failures.
+
+              THE ROWS CARRY NO // path:line COMMENT, after seeing the alternative:
+              clang-format aligns 115 trailing comments into one column whose position is
+              set by the longest line in the block, so one long event name would reformat
+              the whole table. The site is one grep away and the header says so.
+
+TASK (17.01): 17.01 — DONE 2026-09-24. A real container corpus, before anything reads one.
+
+              PHASE 16 BUILT VAELENCP AND CLOSED WITHOUT ONE CHECKED IN. Tests/Run/Golden
+              holds .snapshot IMAGES — the inner format, magic VAELEN\0\0\0, version 3 —
+              and a reader handed one says BadMagic. So every instrument Phase 17 plans
+              (the inspector, the store's cold listing, the census) was specified against
+              files that did not exist, and three of the four planning angles wrote gate
+              clauses over them.
+
+              Tests/Run/Containers/ now holds three v2 containers whose SHAPE differs and
+              not only their contents, because a corpus where every file has the same
+              section table cannot catch a reader that assumes one: bare-16 (three
+              sections, no play wiring, 77685 bytes), played-16 (FOUR, with STREAM, 80862)
+              and full-32 (three — played, but saved without its tape, 182719). The README
+              records every header field, every section row and the image TRAILER, which
+              is the last eight bytes of the STATE section and is what ComputeStateDigest
+              returns — as distinct from the STATE row's section digest beside it, a
+              different number over the same bytes. Both are recorded because confusing
+              them is a live defect in Tools/Store/StdioCheckpointStore.h and 17.03 is the
+              fix.
+
+              bare-16's trailer is d17d7fd9a6f09ea6, which is the golden bare-16.snapshot's
+              state digest, and its STATE section is 77478 bytes, that file's exact size.
+              The container carries the image VERBATIM and that is now checkable by memcmp
+              rather than by argument.
+
+              AND THE CORPUS COULD NOT HAVE A PLAYED CONTAINER AT ALL until something was
+              measured. TakeUp was offered nobody at 16, 24 or 32 tiles. Sweeping the
+              rules at ten years of pre-history: WantBound 1 offers nobody under any age
+              window; WantBound 0 offers person 1 at ages 0-10 and nobody at 12-120.
+              NOBODY IN A TEN-YEAR WORLD IS TWELVE, and nobody in it is bound to anything —
+              everyone alive was born inside it. StartRules{}, a bound life aged 16 to 40,
+              is offered nobody, which is also why full-16.snapshot next door was never
+              played. The two played containers carry {0, 45, 0, 0}: all four fields
+              non-default, which guards 17.07's vacuous-assertion defect a task early, by
+              the corpus rather than by a macro.
+
+              TWO ENTRIES MAKING OPPOSITE CLAIMS. Run.Containers generates NO WORLD — there
+              is no Aelvor in the file — and has five cases: the record against the bytes;
+              the STREAM rules against the defaults and then against their values; every
+              recorded field bent in turn with the comparison required to name it; edited
+              bytes refused (section count 3/5/0/64, a flipped payload byte, a truncation)
+              with the untouched bytes still reading in the same run; and a .snapshot
+              handed to ReadCheckpoint required to say BadMagic. Atlas.ContainersRegenerate
+              generates three worlds and requires byte equality, because Run.Containers
+              would go on passing on the day this build lost the ability to WRITE one.
+
+              THREE DELIBERATE FAILURES, ALL OF WHICH FIRED (ADR-0149). Flipping byte 40000
+              of bare-16: the regeneration entry says "no longer regenerates" and
+              Run.Containers names the refusal. Deleting one field's comparison from
+              FirstDisagreement: "bending log bytes was not seen at all". The first run
+              also found a real defect in the recorder — a 256-byte snprintf had sliced a
+              table header in half at |---|---|-- while the FILES were correct, so only
+              the record was truncated. The buffer is 640 now and its return value is
+              checked, because a README that agrees with nothing is the same class of
+              defect as a store that reports a digest by position.
+
+              Run.Containers 0.01 s, Atlas.ContainersRegenerate 0.17 s, corpus 341 kB.
+
+              AND THIS BLOCK HAD BEEN LEFT AT 16.02 while Phase 16 ran to 16.13. That is a
+              gap in this document and not in the work: the thirteen tasks are in
+              Docs/ROADMAP.md section 22 with their as-built notes and their measurements.
+              They are not backfilled here, because a status block reconstructed after the
+              fact from a roadmap is a status block nobody checked.
 
               It returned void. A failing body went into a [[maybe_unused]] and was
               reported by VAELEN_CHECKF, which Assert.h compiles to ((void)0) under
@@ -49,6 +690,10 @@ TASK        : 16.02 — DONE 2026-09-21. SaveSnapshot can fail, and says so.
               75 per cent the target world is left a CHIMERA after LoadSnapshot has
               honestly refused — neither the world it was nor the world in the image.
               16.03 is the task for it.
+
+TASK (16.02): 16.02 — DONE 2026-09-21. SaveSnapshot can fail, and says so. Its full
+              narrative is the block this one displaced; Docs/ROADMAP.md section 22 keeps
+              the measurements.
 
 TASK (16.01): 16.01 — DONE 2026-09-21. The golden corpus and the gate list, both of
               them one-way doors, which is why they are the phase's first commit.

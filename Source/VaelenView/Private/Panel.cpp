@@ -102,6 +102,31 @@ namespace Vaelen::View
 				}
 			}
 
+			/// 18.04: a signed whole number. Number() takes a uint64 and a
+			/// temperature is not one; this is the writer a degree goes through.
+			void Signed(int64 N)
+			{
+				if (N < 0)
+				{
+					Char('-');
+					N = -N;
+				}
+				Number(static_cast<uint64>(N));
+			}
+
+			/// 18.04: tenths, as a person reads a thermometer: -12.3, 0.0, 123.4.
+			void Tenths(int32 T)
+			{
+				if (T < 0)
+				{
+					Char('-');
+					T = -T;
+				}
+				Number(static_cast<uint64>(T) / 10u);
+				Char('.');
+				Number(static_cast<uint64>(T) % 10u);
+			}
+
 			void Hex(uint64 N)
 			{
 				static const char Figures[] = "0123456789abcdef";
@@ -241,6 +266,46 @@ namespace Vaelen::View
 			P.End();
 		}
 
+		// 18.04: THE WEATHER, and only where there is a climate to say. A page
+		// of a world without one is byte for byte the page it was, which is
+		// what keeps the two frozen pages and Atlas.PanelFrozen where they
+		// are; a page that wrote this row when Season == 0 would move all
+		// three. The day of the season is the calendar's: 90 days a season
+		// (Life.cpp asserts the 360-day year this leaf has no clock to ask).
+		if (Life.Season != 0 && P.Begin(RowKind::Weather))
+		{
+			static const char* const Seasons[] = {"", "spring", "summer", "autumn", "winter"};
+			P.Put(Seasons[Life.Season < 5u ? Life.Season : 0u]);
+			P.Put("  day ");
+			P.Number(uint64{Out.Day % 90u} + 1);
+			P.Put(" of 90");
+			// The degrees are where the played person STANDS; a page with
+			// nobody played says the season and the day and no more.
+			if (Life.Region != 0)
+			{
+				P.Put("  ");
+				P.Tenths(Life.Degrees);
+				P.Put(" deg here  chill ");
+				P.Number(Life.Chill);
+			}
+			if (const RegionView* R = Life.Region != 0 ? RegionIn(World_, Life.Region) : nullptr)
+			{
+				const RegionClimate C = RegionClimateOf(*R);
+				P.Put("  coldest ");
+				P.Signed(C.Coldest);
+				P.Put("  warmest ");
+				P.Signed(C.Warmest);
+				P.Put("  outlook ");
+				P.Number(C.Outlook);
+				P.Put("%");
+			}
+			if (Life.Winter >= 2u)
+			{
+				P.Put(Out.Day < 270u ? "  a hard winter is coming" : "  a hard winter lies on the land");
+			}
+			P.End();
+		}
+
 		if (P.Begin(RowKind::Self))
 		{
 			if (Out.Person == 0)
@@ -277,6 +342,11 @@ namespace Vaelen::View
 			P.Number(Life.Health);
 			P.Put("  rest ");
 			P.Number(Life.Rest);
+			if (Life.Season != 0)
+			{
+				P.Put("  chill ");
+				P.Number(Life.Chill);
+			}
 			P.End();
 		}
 
