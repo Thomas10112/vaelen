@@ -33,7 +33,7 @@ sys.path.insert(0, os.path.join(ROOT, "Tools"))
 # the day a second module was added there, this file still copied one, the
 # parser found "no translation units" for the other, and the CONTROL failed -
 # which is the control doing its job, and the reason it runs first.
-from parse_engine_modules import ENGINE_MODULES, module_root  # noqa: E402
+from parse_engine_modules import ENGINE_MODULES, PROBE_MODULES, module_root  # noqa: E402
 
 MODULE = "VaelenPresentation"
 
@@ -52,6 +52,11 @@ KEYS = os.path.join("Source", "VaelenUI", "Private", "VaelenPlayerController.cpp
 STORE = os.path.join("Source", "VaelenGame", "Private", "VaelenCheckpointStore.cpp")
 HOST = os.path.join("Source", "VaelenGame", "Private", "VaelenWorldSubsystem.cpp")
 PLAY = os.path.join("Source", "VaelenGame", "Private", "VaelenPlayCommands.cpp")
+
+# 19.02's contract probe (Tools/ShimProbe/README.md): the APIs the walk will use.
+WALKER = os.path.join("Tools", "ShimProbe", "Private", "ShimProbeWalker.cpp")
+INPUT = os.path.join("Tools", "ShimProbe", "Private", "ShimProbeController.cpp")
+LAND = os.path.join("Tools", "ShimProbe", "Private", "ShimProbeLand.cpp")
 
 # (name, file, text to find, text to put there). A mutation whose "find" text
 # is no longer present is a FAILURE of this file, not a pass: it means the
@@ -153,6 +158,42 @@ MUTATIONS = [
         "World->Save(Args[0], Where, Check)",
         "World->Save(Args[0], Where)",
     ),
+    (
+        "19.02: a mesh section made with seven arguments - collision left to a default there is none of",
+        LAND,
+        "Colours, Tangents, true);",
+        "Colours, Tangents);",
+    ),
+    (
+        "19.02: an input action bound to a method of the wrong shape",
+        INPUT,
+        "this, &AShimProbeController::OnLook);",
+        "this, &AShimProbeController::Aim);",
+    ),
+    (
+        "19.02: a movement field misspelt",
+        WALKER,
+        "Legs->MaxWalkSpeed = 500.0f;",
+        "Legs->MaxWalkingSpeed = 500.0f;",
+    ),
+    (
+        "19.02: a key mapped into a context held const",
+        INPUT,
+        "Keys->MapKey(MoveAction, EKeys::D);",
+        "static_cast<const UInputMappingContext*>(Keys)->MapKey(MoveAction, EKeys::D);",
+    ),
+    (
+        "19.02: a trigger event the engine does not have",
+        INPUT,
+        "ETriggerEvent::Triggered, this, &AShimProbeController::OnMove",
+        "ETriggerEvent::Pressed, this, &AShimProbeController::OnMove",
+    ),
+    (
+        "19.02: a class whose GENERATED_BODY() has no .generated.h to define it",
+        os.path.join("Tools", "ShimProbe", "Public", "ShimProbeLand.h"),
+        '#include "ShimProbeLand.generated.h"',
+        "",
+    ),
 ]
 
 
@@ -174,6 +215,8 @@ def main():
             # copy always looks like Source/, so a mutation below names a path
             # that will still be right the day the real modules land.
             shutil.copytree(module_root(ROOT, name), os.path.join(pristine, "Source", name))
+        for name in PROBE_MODULES:
+            shutil.copytree(module_root(ROOT, name), os.path.join(pristine, "Tools", name))
 
         # THE CONTROL, FIRST. If an untouched copy does not parse, every result
         # below is meaningless and saying so now is the only honest option.
@@ -227,11 +270,21 @@ def main():
             else:
                 print(f"[shim-test] caught  {name}")
 
+        # 19.02: Super made exact is load-bearing. AShimProbeWalker::Jump calls
+        # Super::Jump(), which ACharacter has and AActor does not: the healthy
+        # tree must parse with the exact Super and be REFUSED with the old,
+        # inherited one - otherwise the exactness is decoration.
+        if parses(pristine, ("--super", "inherited")):
+            missed.append("the inherited Super accepted a call only the exact Super can resolve")
+            print("[shim-test] MISSED  inherited Super accepted Super::Jump on an ACharacter", file=sys.stderr)
+        else:
+            print("[shim-test] caught  Super::Jump on an ACharacter under the inherited Super (19.02)")
+
         if missed or stale:
             print(f"[shim-test] {len(missed)} missed, {len(stale)} stale of "
                   f"{len(MUTATIONS)} mutations", file=sys.stderr)
             return 1
-        print(f"[shim-test] {len(MUTATIONS)} mutations, all caught, control clean")
+        print(f"[shim-test] {len(MUTATIONS) + 1} mutations, all caught, control clean")
         return 0
 
 

@@ -110,7 +110,21 @@ namespace VaelenShim
 #define UFUNCTION(...)
 #define USTRUCT(...)
 #define UENUM(...)
+// 19.02: GENERATED_BODY() expands as UnrealHeaderTool's does - to a macro the
+// class's own .generated.h defines for the LINE it stands on - and the stub
+// Tools/parse_engine_modules.py writes defines it as `using Super = <the
+// class's real base>; using ThisClass = <the class>;`. Until 19.02 it was a
+// no-op and every actor inherited AActor's Super, which is right only for a
+// class derived straight from a shim base; ACharacter's walker is not one.
+// -DVAELEN_SHIM_INHERITED_SUPER restores the old behaviour, for the self-test
+// that shows the difference is load-bearing.
+#define VAELEN_SHIM_PASTE(ShimA, ShimB, ShimC, ShimD) ShimA##ShimB##ShimC##ShimD
+#define VAELEN_SHIM_BODY(ShimFile, ShimLine) VAELEN_SHIM_PASTE(ShimFile, _, ShimLine, _GENERATED_BODY)
+#ifdef VAELEN_SHIM_INHERITED_SUPER
 #define GENERATED_BODY(...)
+#else
+#define GENERATED_BODY(...) VAELEN_SHIM_BODY(CURRENT_FILE_ID, __LINE__)
+#endif
 #define GENERATED_UCLASS_BODY(...)
 #define meta(...)
 
@@ -300,6 +314,30 @@ private:
 /// controller with. The engine's carries a UClass*; this carries the same and
 /// nothing else, because what this file is for is catching the day somebody
 /// assigns the wrong kind of class to one.
+// 19.02 BELIEF: a multicast delegate, which the subsystem's OnViewsTaken is
+// (19.06). The engine's is a macro family over TMulticastDelegate; narrowed to
+// the three uses Phase 19 plans - a member function, a lambda, a broadcast.
+struct FDelegateHandle
+{
+	uint64 Id = 0;
+};
+
+template <typename... ParamTypes>
+class TMulticastDelegate
+{
+public:
+	template <typename UserClass>
+	FDelegateHandle AddUObject(UserClass* Object, void (UserClass::*Method)(ParamTypes...));
+	template <typename FunctorType>
+	FDelegateHandle AddLambda(FunctorType&& Functor);
+	bool Remove(FDelegateHandle Handle);
+	void Broadcast(ParamTypes... Params) const;
+};
+
+#define DECLARE_MULTICAST_DELEGATE(DelegateName) using DelegateName = TMulticastDelegate<>
+#define DECLARE_MULTICAST_DELEGATE_OneParam(DelegateName, Param1Type, Param1Name)                              \
+	using DelegateName = TMulticastDelegate<Param1Type>
+
 class UClass;
 
 template <typename T>

@@ -27,3 +27,5 @@ TCHAR_TO_UTF8     16.14  a listed file name handed to the kernel's checkpoint na
 begin             16.14  std::sort over the store's std::vector of names - a name the shim's TArray also has
 end               16.14  std::sort over the store's std::vector of names - a name the shim's TArray also has
 push_back         16.14  the kernel's std::vector of names, filled from the listing
+None              19.02  NOT a shim use: the engine code's own Refusal::None and friends, which 19.02's ETriggerEvent::None also spells
+Started           19.02  NOT a shim use: the atlas actor's own clock variable, which 19.02's ETriggerEvent::Started also spells

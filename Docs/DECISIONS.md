@@ -10712,7 +10712,7 @@ MapView already carries elevation in metres and the hydrology flags (Land.h:44-8
 
 ## ADR-0157 — The engine side draws and presses keys and nothing else: a fenced actor module, the controller as the only door caller, an asset-free contract, and an exact `Super`
 
-**Status:** PROPOSED (2026-09-25, Phase 19 plan; applied by 19.02 and 19.06).
+**Status:** PROPOSED (2026-09-25, Phase 19 plan; applied by 19.02 and 19.06) **19.02's part APPLIED 2026-09-25**: the exact Super, the shim's contract headers (beliefs), the contract probe and the module-list check.
 
 ### Context
 

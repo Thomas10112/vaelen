@@ -7699,3 +7699,79 @@ The row's "SEEN naming an unknown build" has no place to occur; its
 counterpart, a BUILD naming no ledger row, is refused.
 
 Census: 0 in every class (no literal of the classified kinds added).
+
+### 19.02 AS BUILT, 2026-09-25
+
+**The shim grows to the engine contract, Super becomes exact, and the module
+lists are held together.** STATUS: VALIDATED headless (the parse, the probe,
+the lists); every new shim entry is a BELIEF until sitting S2 compiles a use.
+
+THE SHIM. Twenty-four new headers, each naming the UE 5.6 header it stands for
+and saying it is a belief: Pawn, Character, CharacterMovementComponent,
+CapsuleComponent, SpringArmComponent, CameraComponent, ProceduralMeshComponent
+(with FProcMeshTangent), InstancedStaticMeshComponent (split from the HISM
+header, which now includes it), the six Enhanced Input headers
+(EnhancedInputComponent with three handler shapes and ETriggerEvent,
+EnhancedInputSubsystems, InputAction, InputActionValue with Get<T>,
+InputMappingContext with a non-const MapKey, InputModifiers with Negate and
+SwizzleAxis), LocalPlayer, the light, sun, sky-light, atmosphere and fog
+components, EngineTypes (ECollisionChannel), HitResult, CollisionQueryParams
+and Material. Existing headers gained, each line marked 19.02 BELIEF:
+SetupAttachment's socket name and two rotation setters, the controller's
+GetLocalPlayer/GetPawn/Possess/control rotation, DefaultPawnClass, FKey from an
+FName and the walk's keys (Z Q D F, the arrows, Mouse2D), UEngine's
+VertexColorMaterial, UWorld::LineTraceSingleByChannel, Cast<To, From>, and a
+multicast delegate with DECLARE_MULTICAST_DELEGATE.
+
+EXACT SUPER. GENERATED_BODY() now pastes CURRENT_FILE_ID, its line and
+_GENERATED_BODY, as UnrealHeaderTool's does, and the stub
+parse_engine_modules.py writes for each .generated.h defines that name per
+class from the header's own text: `public: using Super = <base as written>;
+using ThisClass = <class>; private:` for a UCLASS, Super alone for a USTRUCT
+with a base. Read back from the stubs: AVaelenHUD's Super is AHUD, the
+subsystem's UGameInstanceSubsystem, the controller's APlayerController - no
+longer an inherited AActor. `--super inherited` keeps the old behaviour for
+the test that shows the difference.
+
+THE CONTRACT PROBE, not in the row and needed by it: `Tools/ShimProbe` -
+a walker (ACharacter, capsule, movement at 44.76 deg and 500 cm/s, a 300 cm
+spring arm, a camera on its socket, `Jump` calling `Super::Jump()`), a
+controller that makes its actions and its Z/Q/S/D + mouse mapping context at
+run time and binds them with Enhanced Input, and a land actor (a procedural
+mesh section with collision, the vertex-colour material, an ISM, the sun, sky,
+atmosphere and fog in C++, a line trace, a delegate broadcast). Parsed with the
+engine modules (17 TUs), never built, and outside ENGINE_MODULES, so the STATUS
+check and the ledger do not count it: a name only the probe uses becomes a
+belief the day 19.06's engine code uses it.
+
+MODULE LISTS. `Tools/check_modules.py` (`Kernel.ModuleLists`, `…SelfTest`):
+every Build.cs in the uproject and both targets, kernel_modules.txt iff a
+CMakeLists.txt, ENGINE_MODULES iff not, every plugin module a Build.cs names
+enabled. KNOWN ANSWER, met on the first run at HEAD: exactly "VaelenPresentation
+absent from ExtraModuleNames" at Vaelen.Target.cs:15 and
+VaelenEditor.Target.cs:15. Both targets now name it - an engine configuration
+change nothing here can build, first compiled at S1 (19.03).
+
+FAILED ON PURPOSE. test_engine_shim.py: 23 mutations, each refused - the 16
+before, plus a mesh section with seven arguments, a Triggered action bound to a
+method of the wrong shape, MaxWalkingSpeed, MapKey into a const context,
+ETriggerEvent::Pressed, a class whose GENERATED_BODY() has no .generated.h, and
+the healthy tree under the inherited Super (refused exactly at
+`Super::Jump()`: "no member named 'Jump' in 'AActor'"). check_modules.py: the
+known answer, a plugin module not enabled, a kernel module missing from
+kernel_modules.txt, an engine module nothing parses, a Build.cs listed nowhere
+(four refusals). CONTROL: the healthy tree parses first in every run.
+
+THE LEDGER SAW THE SHIM GROW. The first run after the new headers refused
+seven names - C, File, Line, To, Options, None, Started - the engine code's
+own, which the shim had just started to spell. Five were parameter names of
+mine (a paste macro, Cast's template parameters, AddMappingContext's options)
+and were renamed; None and Started are ETriggerEvent's own enumerators and are
+listed as what they are, NOT shim uses. 17 beliefs. The instrument did its
+job on its own authors on the first day.
+
+DEVIATIONS. Shim entries are not tagged `// BELIEF 19.02` one by one: each new
+header says it, and the ledger (19.01) counts a belief when engine code uses it.
+The probe and two mutations (Pressed, a missing .generated.h) are additions.
+
+Census: 0 in every class.

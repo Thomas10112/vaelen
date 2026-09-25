@@ -88,10 +88,18 @@ if(Python3_Interpreter_FOUND)
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_shim_ledger.py)
   add_test(NAME Kernel.ShimLedgerSelfTest
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_shim_ledger.py --self-test)
+  # 19.02, ADR-0157: a module is named in six places and nothing held any two
+  # of them together; VaelenPresentation had already fallen out of both
+  # targets. ModuleLists refuses any disagreement, and its self-test has the
+  # targets as the Phase 19 plan found them as its known answer.
+  add_test(NAME Kernel.ModuleLists
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_modules.py)
+  add_test(NAME Kernel.ModuleListsSelfTest
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_modules.py --self-test)
   set_tests_properties(Kernel.Purity Kernel.PuritySelfTest Kernel.WorldWiring Kernel.UiFence
                        Kernel.UiFenceSelfTest Kernel.EventTypes Kernel.EventTypesSelfTest
                        Kernel.EngineStatus Kernel.EngineStatusSelfTest Kernel.ShimLedger
-                       Kernel.ShimLedgerSelfTest
+                       Kernel.ShimLedgerSelfTest Kernel.ModuleLists Kernel.ModuleListsSelfTest
                        PROPERTIES TIMEOUT 120)
 elseif(VAELEN_REQUIRE_PURITY_CHECK)
   message(FATAL_ERROR "Python 3 is required for the Kernel.Purity test. Install it or configure with -DVAELEN_REQUIRE_PURITY_CHECK=OFF (the purity check is then NOT run).")

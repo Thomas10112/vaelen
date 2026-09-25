@@ -28,15 +28,28 @@ PHASE       : 18 — CLIMATE & SEASONS, CLOSED headless 2026-09-25, read clause 
               The two actors wire the climate unconditionally - parsed against the
               shim, UNVERIFIED (engine) until Phase 19's first sitting.
               NOW: Phase 19 WORLD IN 3D (ROADMAP section 26, ADR-0155 to ADR-0159):
-              twelve tasks, four sittings on the owner's machine. 19.01 DONE; NEXT
-              19.02, the shim grows to the engine contract and the module lists are
-              checked; 19.03 is the first sitting (S1). Ten owner questions, the tile
+              twelve tasks, four sittings on the owner's machine. 19.01 and 19.02
+              DONE; NEXT 19.03, the first sitting (S1): the tree as it stands, built
+              once, before any Phase 19 engine line. Ten owner questions, the tile
               scale first.
               (17 CLOSED 2026-09-24; 16 SAVE/PERSISTENCE: fourteen tasks built, its
                GATE still open - clause (j)'s migration half deferred to the v4 bump,
                and 16.14's sitting on the owner's Windows machine. Section 22.
                15 CLOSED 2026-09-21; 14 CLOSED 2026-09-16)
-TASK        : 19.01 — DONE 2026-09-25. The instruments first, each with a known answer in git.
+TASK        : 19.02 — DONE 2026-09-25. The shim grows to the engine contract; Super is exact.
+
+              Twenty-four shim headers the walk needs (character, movement, spring
+              arm, camera, procedural mesh, Enhanced Input, lights, sky, fog, trace,
+              delegates), each a BELIEF until sitting S2. GENERATED_BODY() now pastes
+              file and line as UHT's does and each stub gives the class its real
+              Super. Tools/ShimProbe uses every new API as 19.06 will; 23 mutations
+              refused, among them Super::Jump under the old inherited Super.
+              Kernel.ModuleLists: known answer met - VaelenPresentation was missing
+              from both targets' ExtraModuleNames; it is now named (unbuilt until S1).
+              The ledger refused seven names the grown shim newly spelt; five renamed,
+              two listed as coincidences: 17 beliefs.
+
+TASK (19.01): 19.01 — DONE 2026-09-25. The instruments first, each with a known answer in git.
 
               Tools/engine_builds.txt (five past builds, RECONSTRUCTED) and records
               derived from git: every engine file's STATUS is now held to a named

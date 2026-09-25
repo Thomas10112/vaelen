@@ -22,7 +22,10 @@ enum class ECollisionEnabled : uint8
 class USceneComponent : public UObject
 {
 public:
-	void SetupAttachment(USceneComponent* Parent);
+	/// 19.02 BELIEF: the socket name, which a spring arm's camera is attached by.
+	void SetupAttachment(USceneComponent* Parent, FName SocketName = FName());
+	void SetRelativeRotation(const FRotator& How);
+	void SetWorldRotation(const FRotator& How);
 	void SetMobility(EComponentMobility Mobility);
 	void SetCollisionEnabled(ECollisionEnabled Enabled);
 	void SetCastShadow(bool bCast);
