@@ -16,7 +16,7 @@ target_include_directories(VaelenRunTests PRIVATE ${PROJECT_SOURCE_DIR}/Tests/Ha
 target_compile_definitions(VaelenRunTests PRIVATE
   VAELEN_GOLDEN_DIR="${PROJECT_SOURCE_DIR}/Tests/Run/Golden"
   VAELEN_CONTAINER_DIR="${PROJECT_SOURCE_DIR}/Tests/Run/Containers")
-target_link_libraries(VaelenRunTests PRIVATE Vaelen::Run Vaelen::View Vaelen::Gameplay Vaelen::Player Vaelen::Colony Vaelen::Infrastructure Vaelen::Military Vaelen::Politics Vaelen::Economy Vaelen::Society Vaelen::Population Vaelen::Sim Vaelen::Core Threads::Threads)
+target_link_libraries(VaelenRunTests PRIVATE Vaelen::Run Vaelen::Scene Vaelen::View Vaelen::Gameplay Vaelen::Player Vaelen::Colony Vaelen::Infrastructure Vaelen::Military Vaelen::Politics Vaelen::Economy Vaelen::Society Vaelen::Population Vaelen::Sim Vaelen::Core Threads::Threads)
 
 set(VAELEN_RUN_TEST_NAMES "")
 foreach(TestSource IN LISTS VAELEN_RUN_TEST_SOURCES)
@@ -83,6 +83,9 @@ set_tests_properties(Replay.Played PROPERTIES TIMEOUT 1800)
 set_tests_properties(Run.Shuffled PROPERTIES COST 10000)
 set_tests_properties(Run.Aelvor PROPERTIES COST 6000)
 set_tests_properties(Run.Climate PROPERTIES COST 6000)
+# 19.07: four 90-day walks of a 128/100 world, one of them replayed: about
+# 4.5 minutes on a debug leg, one of this directory's long poles.
+set_tests_properties(Run.Walk PROPERTIES TIMEOUT 3600 COST 3000)
 set_tests_properties(Replay.Played PROPERTIES COST 4000)
 set_tests_properties(Run.Door PROPERTIES COST 3000)
 # Phase 16's gate cell lives in Run.Checkpoint: 128 tiles with the full Play,

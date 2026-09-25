@@ -7921,3 +7921,43 @@ ratio 1/250 as the default -> the pair and the triangle counts go red; a
 DEVIATIONS. No `scene_preview.py`: the Atlas writes the PGM itself, which any
 viewer opens. The lake surface is the lowest land SHORE's raw height; the
 kernel keeps no spill level (owner question: a water leaf).
+
+### 19.07 AS BUILT, 2026-09-25
+
+**The fence and the walk contract, proven headless: the body is not an
+input.** STATUS: VALIDATED headless.
+
+`Vaelen/Scene/Fence.h`: `IsWalkable` (the region's own land and river tiles,
+not sea, not lake), `RegionAt`, `Inside`, `BuildFence` (unit edges between a
+walkable tile and what is not, wound one way), `CrossingOf(Ground, Life,
+Ahead)` (Crossing only towards a region in `Life.Near`; otherwise Home,
+OffMap, Water or NotNear, and nothing is sent), `Arrival` (the nearest
+walkable tile of the region, ties by index), `PlaceAfterDay`.
+
+Scene.Fence, every region at 128 and 256: every edge walkable on one side and
+not the other, every corner met an even number of times (closed loops), the
+length equal to an independent row-and-column scan (4132 edges over 99 regions
+at 128, 9214 over 126 at 256; 348 and 1142 against a lake - the walker does not
+walk on water), Inside exactly on the walkable tiles, an arrival from a border
+tile always four-adjacent to it, and CrossingOf's five answers.
+
+Run.Walk, an engine-free host in the controller's and the subsystem's order,
+90 days at AELVOR 128/100 in the climate world: 13 Moves sent at the fence, 13
+crossings at the turn, 13 put-backs, 89 looks all equal to that day's region
+of the life (one day skipped for a taking, 15.10's rule), and the stream
+replays with no position to the recorded state (90a0ba18ecbec67f).
+CONTROLS: another wandering with the same crossings records the SAME stream,
+byte for byte; facing a region the life does not list, the fence refuses and
+the stream is unchanged; and the fence is what does it - a host that sends
+that Move anyway records it, and the world refuses it TooFar 13 times.
+
+CORRECTED IN THE PLAN: the row said the PAGE answers TooFar for a non-Near
+region. It does not: `Press` checks the verb and the hours, never the target
+(Panel.cpp); TooFar is the world's, at the turn. The fence is the only thing
+that keeps such a Move out of the stream, and the test now shows it.
+FAILED ON PURPOSE: no put-back after the day -> a look off the life's region;
+a look taken from where the body happens to be -> the looks and the two
+wanderings' streams differ. Both restored.
+DEFERRED: Atlas `--walk3d` (a stand-in stream written by the Atlas) - Run.Walk
+holds the contract; the stand-in lands with 19.11 when there is a scene to
+replay it against.

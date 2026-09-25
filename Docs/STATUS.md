@@ -39,7 +39,16 @@ PHASE       : 18 — CLIMATE & SEASONS, CLOSED headless 2026-09-25, read clause 
                GATE still open - clause (j)'s migration half deferred to the v4 bump,
                and 16.14's sitting on the owner's Windows machine. Section 22.
                15 CLOSED 2026-09-21; 14 CLOSED 2026-09-16)
-TASK        : 19.05 — DONE 2026-09-25. The ground, in integers, in a pure module.
+TASK        : 19.07 — DONE 2026-09-25. The body is not an input, proven headless.
+
+              Vaelen/Scene/Fence.h fences the walker to its region's walkable tiles and
+              lets it cross only towards a Near region; Run.Walk walks 90 days in the
+              engine's order: 13 crossings, every look the life's region, the stream
+              replaying with no position, two wanderings -> one stream byte for byte,
+              and a host without the fence recording a Move the world refuses TooFar.
+              The plan's "the page answers TooFar" was wrong: the fence does.
+
+TASK (19.05): 19.05 — DONE 2026-09-25. The ground, in integers, in a pure module.
 
               VaelenScene (the fourteenth kernel module, fenced like the UI) builds the
               ground from the map leaf: one height per tile, a lattice between them, 16-
