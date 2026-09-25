@@ -7,11 +7,14 @@ set(VAELEN_SCENE_PUBLIC_HEADERS
   Public/Vaelen/Scene/SceneApi.h
   Public/Vaelen/Scene/Terrain.h
   Public/Vaelen/Scene/Fence.h
+  Public/Vaelen/Scene/Layout.h
 )
 
 set(VAELEN_SCENE_SOURCES
   Private/Terrain.cpp
   Private/Fence.cpp
+  Private/Layout.cpp
+  Private/Vaelen/Scene/LineWriter.h
 )
 
 add_library(VaelenScene STATIC ${VAELEN_SCENE_SOURCES} ${VAELEN_SCENE_PUBLIC_HEADERS})

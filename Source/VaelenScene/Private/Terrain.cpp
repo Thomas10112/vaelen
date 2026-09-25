@@ -5,6 +5,8 @@
 // STATUS: VALIDATED headless (Phase 19 task 19.05)
 #include "Vaelen/Scene/Terrain.h"
 
+#include "Vaelen/Scene/LineWriter.h"
+
 namespace Vaelen::Scene
 {
 	namespace
@@ -531,72 +533,13 @@ namespace Vaelen::Scene
 		Into.Triangles += static_cast<uint32>(M.Triangles.size() / 3u);
 	}
 
-	namespace
-	{
-		struct Line
-		{
-			char* Out;
-			uint32 Bytes;
-			uint32 At = 0;
-			bool Full = false;
-			void Char(char C)
-			{
-				if (At + 1u >= Bytes)
-				{
-					Full = true;
-					return;
-				}
-				Out[At++] = C;
-			}
-			void Put(const char* S)
-			{
-				while (*S != '\0')
-				{
-					Char(*S++);
-				}
-			}
-			void Unsigned(uint64 N)
-			{
-				char D[20];
-				uint32 C = 0;
-				do
-				{
-					D[C++] = static_cast<char>('0' + N % 10u);
-					N /= 10u;
-				} while (N != 0u);
-				while (C > 0u)
-				{
-					Char(D[--C]);
-				}
-			}
-			void Signed(int64 N)
-			{
-				if (N < 0)
-				{
-					Char('-');
-					Unsigned(static_cast<uint64>(0) - static_cast<uint64>(N));
-					return;
-				}
-				Unsigned(static_cast<uint64>(N));
-			}
-			void Hex(uint64 N, uint32 Width)
-			{
-				static const char Nibbles[] = "0123456789abcdef";
-				for (uint32 Shift = Width; Shift > 0u; --Shift)
-				{
-					Char(Nibbles[(N >> ((Shift - 1u) * 4u)) & 0xFu]);
-				}
-			}
-		};
-	} // namespace
-
 	uint32 TerrainLine(uint32 Size, uint64 Seed, uint32 Region, const TerrainStats& S, char* Out, uint32 Bytes)
 	{
 		if (Out == nullptr || Bytes == 0u)
 		{
 			return 0u;
 		}
-		Line W{Out, Bytes};
+		Detail::LineWriter W{Out, Bytes};
 		W.Put("LogVaelenScene: AELVOR ");
 		W.Unsigned(Size);
 		W.Put(" seed ");
@@ -626,12 +569,6 @@ namespace Vaelen::Scene
 		W.Unsigned(S.Triangles);
 		W.Put("; terrain ");
 		W.Hex(S.Digest, 16u);
-		if (W.Full)
-		{
-			Out[0] = '\0';
-			return 0u;
-		}
-		Out[W.At] = '\0';
-		return W.At;
+		return W.Finish();
 	}
 } // namespace Vaelen::Scene

@@ -7961,3 +7961,40 @@ wanderings' streams differ. Both restored.
 DEFERRED: Atlas `--walk3d` (a stand-in stream written by the Atlas) - Run.Walk
 holds the contract; the stand-in lands with 19.11 when there is a scene to
 replay it against.
+
+### 19.08 AS BUILT, 2026-09-25
+
+**Towns, houses, roads and figures: what the scene invents, from what the
+views hold.** STATUS: VALIDATED headless on gcc and clang.
+
+`Vaelen/Scene/Layout.h` (`BuildLayout(Ground, WorldView, NetView, PeopleView,
+LifeView, Day, SceneLayout&)`), its header saying in capitals what is invented:
+a square near the centroid of a region with a settlement; one 8 m house per
+living family of a detailed region and ceil(people / 5) in a coarse one, each
+plotted from a hash of its key and re-tried (64 plots) away from water, other
+regions, slopes over 20 deg and the houses of lower-indexed families; a road
+per open route by integer A* over land and river tiles; a pit where a colony
+works; a figure for every living person of a detailed region but the played
+one, at a slot hashed from their identity and the day. `AimAt` picks the
+nearest companion within 3 m and 30 deg. `MeasureLayout`, `LayoutLine`, Atlas
+`--scene-layout DAY`; the scene's line writer is now one private header.
+
+MEASURED at AELVOR 128 after 60+10 years, day 100: 3 squares, 565 houses
+(0 unplaced), 779 figures, 16 roads over 282 tiles, layout 8542fca56e445402 -
+the same digest from Scene.Layout (Run::Aelvor's wiring), from the Atlas's own
+wiring and from the clang build; with --colony, 1 pit. Pinned by
+Atlas.SceneLayout128. Scene.Layout, 6 cases: nothing on water or in another
+region (every house's four corners on its tile's land), no two houses
+overlapping, every road step a neighbour on land or river; houses + unplaced
+equal to the families and coarse shares counted independently, figures equal
+to the living of the detailed regions; day 100 twice identical and day 101
+moving at least 90 % of the figures and no house; the highest family of the
+fullest region struck and no other house moved. CONTROL: no people, no
+family house and no figure; no settlement, no square. AimAt: the nearer of
+two companions ahead, one behind, one at 90 deg, none out of reach or out of
+company.
+
+FAILED ON PURPOSE, each restored: water tiles allowed -> 531 failures; a
+figure's slot from its identity alone -> the day case red; a house plotted
+from its region's family count -> 152 houses moved by one death. Census kind
+WORLD/layout.

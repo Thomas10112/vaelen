@@ -227,6 +227,8 @@ KIND_WORDS = [
     (re.compile(r"(?i)\bstate\b|FROZEN|STILL|LIVING|EXPECT=|RIGHT="), "state"),
     # 19.05: the ground one walks on, VaelenScene's digest.
     (re.compile(r"(?i)\bterrain\b"), "terrain"),
+    # 19.08: what the scene invents on a day.
+    (re.compile(r"(?i)\blayout\b"), "layout"),
 ]
 
 

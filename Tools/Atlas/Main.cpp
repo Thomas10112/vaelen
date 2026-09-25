@@ -58,6 +58,7 @@
 #include "Vaelen/View/Frame.h"
 #include "Vaelen/View/Panel.h"
 #include "Vaelen/View/Proof.h"
+#include "Vaelen/Scene/Layout.h"
 #include "Vaelen/Scene/Terrain.h"
 #include "Vaelen/View/Land.h"
 #include "Vaelen/View/Net.h"
@@ -526,6 +527,8 @@ namespace
 		std::string SceneTerrain;
 		/// 19.05: write the ground as a hill-shaded greyscale picture (PGM) to this file.
 		std::string SceneDump;
+		/// 19.08: print the layout's LogVaelenScene line for this day (-1: none).
+		int64 SceneLayoutDay = -1;
 		/// 17.01: write the container corpus to this directory.
 		std::string Containers;
 		/// 17.05: the cause census over a container read from this file. The
@@ -673,6 +676,7 @@ namespace
 					 "  --scene-terrain R|all  print the ground's LogVaelenScene line (19.05): one region's\n"
 					 "                  chunks, or the whole map\n"
 					 "  --scene-dump FILE  write the ground, hill-shaded, as a greyscale PGM picture (19.05)\n"
+					 "  --scene-layout DAY  print the layout's LogVaelenScene line for that day (19.08)\n"
 					 "  --containers DIR  write the container corpus of 17.01 to this directory\n"
 					 "  --causes FILE   17.05: the cause census over a container, per event type\n"
 					 "  --census        the same over a world generated from --size and the rest\n"
@@ -737,6 +741,17 @@ namespace
 			else if (std::strcmp(Arg, "--scene-dump") == 0 && HasValue)
 			{
 				Out.SceneDump = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--scene-layout") == 0 && HasValue)
+			{
+				char* End = nullptr;
+				const unsigned long Day = std::strtoul(Argv[++I], &End, 10);
+				if (*End != '\0' || Day > 0xFFFFFFFFul)
+				{
+					std::fprintf(stderr, "AELVOR: --scene-layout takes a day number, not %s\n", Argv[I]);
+					return false;
+				}
+				Out.SceneLayoutDay = static_cast<int64>(Day);
 			}
 			else if (std::strcmp(Arg, "--walk") == 0 && HasValue)
 			{
@@ -3699,6 +3714,28 @@ namespace
 			if (!PrintSceneTerrain(Map, Opt))
 			{
 				return 1;
+			}
+		}
+		// 19.08: what the scene invents on that day, from the views alone.
+		if (Opt.SceneLayoutDay >= 0)
+		{
+			MapView Map;
+			PeopleView Folk;
+			TakeMapView(Run.Instance, Run.Sources(), Map);
+			TakePeopleView(Run.Instance, Run.Sources(), Folk);
+			Scene::Ground G;
+			if (!Scene::BuildGround(Map, Scene::SceneScale{}, G))
+			{
+				return 1;
+			}
+			Scene::SceneLayout Laid;
+			const uint32 Day = static_cast<uint32>(Opt.SceneLayoutDay);
+			Scene::BuildLayout(G, Frame, Net, Folk, LifeView{}, Day, Laid);
+			char Line[Scene::LayoutLineBytes];
+			if (Scene::LayoutLine(Opt.Size, Opt.Seed, Day, Scene::MeasureLayout(Laid), Line, Scene::LayoutLineBytes) !=
+				0u)
+			{
+				std::printf("%s\n", Line);
 			}
 		}
 		// The chronicle, as lines with a year and a place on them. The kernel's

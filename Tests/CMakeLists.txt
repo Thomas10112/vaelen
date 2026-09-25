@@ -184,6 +184,15 @@ if(Python3_Interpreter_FOUND)
   set_tests_properties(Atlas.SceneTerrain128Before PROPERTIES TIMEOUT 900
     PASS_REGULAR_EXPRESSION "; terrain 105208c54e3c6ea9\n")
 
+  # 19.08: what the scene invents - squares, houses, figures, roads - from the
+  # views of a sixty-year world, on day 100. Scene.Layout computes the same
+  # digest by another wiring (Run::Aelvor against the Atlas's own).
+  add_test(NAME Atlas.SceneLayout128
+    COMMAND VaelenAtlas --size 128 --prehistory 60 --years 10 --scene-layout 100
+            --out ${CMAKE_CURRENT_BINARY_DIR}/atlas-scene-layout.json)
+  set_tests_properties(Atlas.SceneLayout128 PROPERTIES TIMEOUT 900
+    PASS_REGULAR_EXPRESSION "layout day 100: squares 3, houses 565 \\(unplaced 0\\), figures 779 \\(company 0\\), roads 16 over 282 tiles \\(unrouted 0\\), pits 0; layout 8542fca56e445402\n")
+
   # 14.03: the empty play - the Play wiring with nobody taken up and no
   # stream, written as a replay document. Running it is the test; what the
   # document says is read by 14.10's checker.

@@ -39,7 +39,16 @@ PHASE       : 18 — CLIMATE & SEASONS, CLOSED headless 2026-09-25, read clause 
                GATE still open - clause (j)'s migration half deferred to the v4 bump,
                and 16.14's sitting on the owner's Windows machine. Section 22.
                15 CLOSED 2026-09-21; 14 CLOSED 2026-09-16)
-TASK        : 19.07 — DONE 2026-09-25. The body is not an input, proven headless.
+TASK        : 19.08 — DONE 2026-09-25. Towns, houses, roads, figures - invented, and said so.
+
+              Vaelen/Scene/Layout.h: a square per settlement, a house per living family
+              (stable under a later death), a road per open route, a pit per colony, a
+              figure per living person at a slot of the day. At 128 (60+10 years, day
+              100): 565 houses, 779 figures, 16 roads, layout 8542fca56e445402 - the same
+              from two wirings and two compilers, pinned by Atlas.SceneLayout128. Three
+              failures on purpose.
+
+TASK (19.07): 19.07 — DONE 2026-09-25. The body is not an input, proven headless.
 
               Vaelen/Scene/Fence.h fences the walker to its region's walkable tiles and
               lets it cross only towards a Near region; Run.Walk walks 90 days in the
