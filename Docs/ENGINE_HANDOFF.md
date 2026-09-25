@@ -324,6 +324,13 @@ on every leg, and one new module, `VaelenScene` (a `Build.cs`, a module file
 and integer code). A first error in VaelenScene is therefore a possible
 second cause: report which module a first error is in.
 
+THE RETAKE COMPILED on 2026-09-25 (`Result: Succeeded` on `9d1f81b`, step 2's
+digests printed: `frame ec18241b89c3d246, ground 8f7f4948f49b6e86`, the first
+engine ever to print them). NO REBUILD IS NEEDED: steps 3-6 below are typed on
+that build as it stands, and the log they leave is the one to bring back. The
+grey ground is `/Game/M_VaelenTile` missing from the disk (VaelenViewActor.cpp
+draws colourless rather than not at all); nothing in S1 depends on colour.
+
 0. Check out THE COMMIT OF 19.03b, not the branch's head - the branch goes on
    with headless work that this build must not see:
    ```
@@ -347,6 +354,14 @@ second cause: report which module a first error is in.
 5. `stat unit` twice, the camera at ground level: over `Vaelen.View 128 120`
    and during `Vaelen.Play`. Bring back the Frame / Game / Draw / GPU figures.
    They are the baseline Phase 19's frame-time question is measured against.
+   5b. THE RENDERER A/B, zero code, over the same ground-level view of
+   `Vaelen.View`: `stat gpu`, then type `r.DynamicGlobalIlluminationMethod 0`,
+   `r.ReflectionMethod 0`, `r.VolumetricCloud 0`, `sg.PostProcessQuality 1`,
+   and read `stat unit` again. Bring back both readings. DefaultEngine.ini
+   still carries Phase 00's provisional Lumen, Nanite and virtual textures,
+   never revisited by an ADR; if the second reading is the better one, the
+   config line is written here, with the ADR, in the one counted commit
+   before S3 (ROADMAP section 27, step 5).
 6. THE CONTROL. Copy `Tests/Run/Containers/host24-16.container` from the
    repository into `Saved/Vaelen/`, then `Vaelen.Load host24-16`. Its `check
    it headless` line must end with `--no-climate`: the world before the winter,

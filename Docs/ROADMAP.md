@@ -8316,3 +8316,82 @@ vertices red; the far-edge guard removed (the variable kept, so it builds:
 the first attempt did not, and an unbuilt sabotage proves nothing) -> the
 refusal red; the row clamp removed -> the domain case red. Scene: 26 cases,
 1 494 145 checks.
+
+## 27. The path to a first sale, judged on 2026-09-25 - PROPOSED, the owner decides
+
+Asked by the owner on 2026-09-25 ("le but est de pouvoir produire le jeu et
+le mettre commercial"), a read-only fleet wrote three proposals from three
+stances and one judge re-read the repository before deciding. The whole text
+is `Docs/Reviews/commercial-path-2026-09-25.md` (116 kB, unedited: data, not a
+decision). What it says, compressed, and what it changes about sections
+20-22 if the owner takes it:
+
+THE THESIS: the owner is the critical path, not the code - one sitting per
+~3 days, each a build-report-fix loop - so every sitting from here carries a
+product check, and the headless side prepares the next sitting rather than
+the next phase.
+
+THE ORDER (owner sittings in capitals):
+0. Today, headless: the S1-close kit (session file, ledger row, the reader's
+   entry the day the log lands) and ENGINE_HANDOFF amended - NO REBUILD,
+   steps 2-6 on the 19.03b already compiled, plus a renderer A/B typed at
+   the console over the same view (`stat unit` before and after
+   `r.DynamicGlobalIlluminationMethod 0`, `r.ReflectionMethod 0`,
+   `r.VolumetricCloud 0`, `sg.PostProcessQuality 1`): DefaultEngine.ini
+   still carries Phase 00's provisional Lumen, Nanite and VT, and the T400
+   reads 28 ms with the HUD alone.
+1. S1-CLOSE (~1 h, no build): steps 2-6 + the A/B; the log adopted the same
+   day; the seven files to VALIDATED; the clause (n) baseline written down.
+2. Headless: the bound start as the world offers it today
+   (`Rules.WantBound = 1`, falling back to 0 with a printed line), a
+   `Replay.Bound` stand-in; the colony question timeboxed to a day with the
+   40-second Atlas cell (why Play+Colony offers nobody bound at 128).
+3. S2 (19.06 at its commit, exactly as written, budget 2 sittings) plus one
+   report-only step: the Game target's first link ever.
+4. Headless while S2 waits: 19.11/19.12's headless halves (scenery ISMs from
+   /Engine/BasicShapes, WalkKeys with M -> CrossingOf, the one-a-day
+   LogVaelenWalk line, `Replay.OnFoot`, `Run.Gate.OnFoot`, gates 19-20).
+5. ONE counted world-moving commit before S3, in the 18.10 form: the scale
+   (Q1, decided from S2's walk), WalkKeys (Q2), the game mode by config (Q9),
+   the renderer config S1 measured, LivelyFrom = play as a host-asked option
+   with a written prediction (Begin <= 1.2x Play-only, RSS <= 200 MiB,
+   hearsay reaching the played person within 90 days).
+6. S3 (19.11 as written, budget 2): a bound life, the scene from the played
+   world, both seasons, the frame reading in a settlement - clause (n).
+7. Headless for S4: the front end as Canvas text pages (title, pause, a
+   loading page before a BLOCKING Begin), F5/F8 autosave every ten day turns,
+   the `.previous` rename-aside in both stores with `Run.SaveAside`,
+   `check_cook.py`, the UAT Development line, `Run.Soak` (3 years at 128:
+   ms/day, RSS, container size).
+8. S4 (19.12 + the product, budget 2): the first packaged Development build,
+   a 30-day life on foot from the title page, Save/Quit/Continue.
+9. In parallel from S2, the owner's hours: Steamworks account, store page
+   that says exactly what the build is, CompanyName, EULA, the name checked;
+   after S4, 2-3 strangers play the package - the only evidence for "would a
+   stranger pay".
+10. S5: the Shipping package (console gone: the front end must suffice; the
+    noasserts CI presets already model the kernel under it), a second Windows
+    machine, a 30-minute life replayed headless, the upload, Early Access.
+
+THE CUTS: Phase 20 reduced to `Run.Soak`; Phase 21 (modding) entirely;
+Phase 22 reduced to the four ship items above; Phase 16's migration half
+("saves are per build until 1.0"); Lively over the pre-play years, never
+(20.3 min, 3.3 GB at 128); no audio, no animated characters, no
+localisation, no controller, no 256 worlds in the shipped build, no UMG, no
+LFS unless a playtest names the look as the blocker.
+
+THE RISKS, first three: 24 engine files never compiled and 112 beliefs (the
+sittings, pinned by subject, REPORT not repair); the premise not in the
+world as measured (WantBound=1 with the colony offers nobody at 128 - a
+measured timebox, then the cheapest fix); the fun unproven (a page that
+reads "X ate" sixteen times after 30 days - LivelyFrom with a prediction,
+then strangers).
+
+THE ESTIMATE: 5-8 owner sittings (median 6-7), S1-close..S4 inside Phase 19's
+budget of six, S5 outside it; ~15 headless days on this side, most of them
+inside the sittings' fix loops.
+
+WHAT IS DECIDED HERE, on this side, without waiting: step 0 (this commit).
+Everything from step 2 on that moves a pin, a HOST byte or a config line is
+the owner's, and section 26's questions Q1, Q2, Q9 are answered by the
+proposal, not by the owner, until the owner says so.

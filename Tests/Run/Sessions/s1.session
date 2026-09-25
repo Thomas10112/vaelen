@@ -1,0 +1,15 @@
+# VAELEN - sitting S1 (19.03, build of 19.03b = 9d1f81b), 2026-09-25. 19.01, ADR-0159.
+#
+# Written BEFORE the log landed (ROADMAP section 27, step 0), so that the log is adopted the day
+# it does: the owner compiled 9d1f81b on 2026-09-25 and printed step 2's digests; steps 3-6 are
+# typed on that build and the whole Saved/Logs/Vaelen.log comes back with `git rev-parse HEAD`
+# as its first line. Until the log is committed under the name below, no CTest entry names this
+# file; Session.P19S1 is added with it (Tests/CMakeLists.txt, beside Session.SelfTest).
+#
+# Step 4's lines are read against the stream step 4 wrote, replayed by the host's own rules
+# (--want-bound 0, the daily cadence given by `Vaelen.Play 128 120 1`).
+log s1-2026-09-25.log
+head 9d1f81b65f211205ab1cb0d2698a481915c1da7b
+run --gate {streams}/aelvor128-s1-2026-09-25.stream --want-bound 0
+line LogVaelenPlay: AELVOR 128
+line LogVaelenPlay: verbs

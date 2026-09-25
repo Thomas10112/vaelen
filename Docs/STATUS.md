@@ -39,6 +39,14 @@ PHASE       : 18 — CLIMATE & SEASONS, CLOSED headless 2026-09-25, read clause 
                GATE still open - clause (j)'s migration half deferred to the v4 bump,
                and 16.14's sitting on the owner's Windows machine. Section 22.
                15 CLOSED 2026-09-21; 14 CLOSED 2026-09-16)
+TASK        : PATH  — PROPOSED 2026-09-25: the path to a first sale, judged by the fleet (ROADMAP 27).
+
+              Three proposals, one judge, the repository re-read: 5-8 owner sittings
+              from S1-close to a Steam Early Access upload, Phase 20 reduced to a soak,
+              21 cut, 22 reduced to the ship items (front end as text pages, autosave,
+              rename-aside, cook config). Full text in Docs/Reviews/. The owner decides;
+              step 0 (the S1-close kit, no rebuild) is done here.
+
 TASK        : 19.06 — WRITTEN 2026-09-25, UNVERIFIED (engine): the walk, parsed and fenced; sitting S2 builds it.
 
               Source/VaelenWalk: AVaelenLand (the scene's chunks as PMC sections, the
