@@ -78,6 +78,7 @@ OPTIONAL_DECLARES = {
 }
 OPTIONAL_SYSTEMS = {
     "MiningSystem": "Tools/Atlas and Run::Aelvor, behind --colony / Options::Colony",
+    "WinterSystem": "Tools/Atlas and Run::Aelvor, behind --climate / Options::Climate (18.06), added after Stocks; the actors take it at the flip (18.10), when this entry goes",
     "DetailSystem": "Run::Aelvor only, behind Options::Stream (15.02); the bridge keeps the crossings, this decides detail on a day",
     "PlayerDaySystem": "Run::Aelvor only, behind Options::Play",
     "PlayerOrderSystem": "Run::Aelvor only, behind Options::Play",

@@ -9,6 +9,7 @@ set(VAELEN_ECONOMY_PUBLIC_HEADERS
   Public/Vaelen/Economy/Trade.h
   Public/Vaelen/Economy/Wealth.h
   Public/Vaelen/Economy/EconomyHistory.h
+  Public/Vaelen/Economy/Winter.h
 )
 
 set(VAELEN_ECONOMY_SOURCES
@@ -18,6 +19,7 @@ set(VAELEN_ECONOMY_SOURCES
   Private/Trade.cpp
   Private/Wealth.cpp
   Private/EconomyHistory.cpp
+  Private/Winter.cpp
 )
 
 add_library(VaelenEconomy STATIC ${VAELEN_ECONOMY_SOURCES} ${VAELEN_ECONOMY_PUBLIC_HEADERS})

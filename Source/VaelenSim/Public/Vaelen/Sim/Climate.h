@@ -31,6 +31,7 @@
 #pragma once
 
 #include "Vaelen/Core/CoreTypes.h"
+#include "Vaelen/Sim/Event.h"
 #include "Vaelen/Sim/FixedPoint.h"
 #include "Vaelen/Sim/SimApi.h"
 #include "Vaelen/Sim/WorldGen.h"
@@ -126,4 +127,29 @@ namespace Vaelen::WorldGen
 	/// region the world does not have, or a map that is not ready. 18.04's
 	/// view reads today's temperature there.
 	VAELEN_SIM_API uint32 RegionCentroidTile(const World& W, const WorldSetup& Setup, uint32 Region);
+
+	/// What a winter did to a region (18.06): the payload of Winter, the one
+	/// just lain, and WinterForeseen, the one coming. DECLARED HERE, in the
+	/// layer that owns the climate, for the reason Sim declares
+	/// DisasterStruckEvent for everybody: the chronicle's words for it live in
+	/// HistoryText.cpp, and Sim cannot read a type a higher layer declares.
+	/// Economy's WinterSystem publishes both; Population's need system reads
+	/// Winter to name the deaths of the cold.
+	struct WinterPayload
+	{
+		uint32 Region = 0;
+		uint32 Severity = 0; ///< 0..3 by ClimateRules::SeverityDegreeDays
+		uint32 ColdSum = 0;	 ///< degree-days below the cold line, floored
+		uint32 Deaths = 0;	 ///< coarse deaths of the cold; 0 in a detailed region and for the one foreseen
+		uint32 People = 0;	 ///< who lived there when it lay
+		uint32 Usual = 0;	 ///< the region's severity in a year without variation: the climate, not the news
+	};
+	inline constexpr EventType<WinterPayload> WinterEvent = MakeEventType<WinterPayload>("Winter");
+	inline constexpr EventType<WinterPayload> WinterForeseenEvent = MakeEventType<WinterPayload>("WinterForeseen");
+
+	/// Whether a Winter event is history rather than climate: a winter harder
+	/// than the region's usual one, on a peopled region. The chronicle keeps
+	/// these and lets the yearly winters of the tundra pass, which at AELVOR
+	/// 128 is the difference between a line a year and thirty-five.
+	VAELEN_SIM_API bool WinterIsHistory(const Event& E) noexcept;
 } // namespace Vaelen::WorldGen

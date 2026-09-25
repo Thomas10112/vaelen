@@ -40,7 +40,10 @@ block, and the sections below Phase 14 stay the record they are.
   world, after `PolityTypes` and BEFORE `ColonyTypes` - the position both
   actors must take at the flip, because it shifts the Colony/Play/Lively type
   ids by one (ADR-0153); `Tools/check_world_wiring.py` names it optional until
-  then. Nothing changes on screen until 18.10 flips
+  then. 18.06 added `Economy::WinterSystem` behind the same option, built
+  after the stock system with `RunAfter("Stocks")`, `ObserveSettlements(
+  Trade.Settlement)`, and the harvest told `RunAfter("Winter")` - the four
+  lines both actors add at the flip. Nothing changes on screen until 18.10 flips
   `Options::Climate` in all four wirings; the page then carries a weather row
   and the HUD draws it through `View::Lines` as it draws the rest, with no
   engine change. The engine files of 16.14 and the actors are parsed against

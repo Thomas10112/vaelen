@@ -28,6 +28,7 @@
 #include "Vaelen/Economy/Wealth.h"
 #include "Vaelen/Player/Stream.h"
 #include "Vaelen/Politics/Polities.h"
+#include "Vaelen/Economy/Winter.h"
 #include "Vaelen/Population/Families.h"
 #include "Vaelen/Population/Lives.h"
 #include "Vaelen/Population/Lod.h"
@@ -166,6 +167,16 @@ namespace
 													  MiningRules{});
 				Rock->ObserveTraits(Traits.Traits);
 			}
+			// 18.06: the winter, only in a climate world - after the stocks are
+			// settled and before the harvest, which is told to wait for it.
+			if (WithClimate)
+			{
+				Winters = std::make_unique<WinterSystem>(Instance, Ages.Types(), Persons, Families, Economy_, Warmth,
+														 WinterRules{});
+				Winters->RunAfter("Stocks");
+				Winters->ObserveSettlements(Trade.Settlement);
+				Harvest->RunAfter("Winter");
+			}
 			if (WithChronicle)
 			{
 				// Three listeners, one describer. The economy's text speaks for
@@ -212,6 +223,10 @@ namespace
 			Instance.Systems().Add(Orgs.get());
 			Instance.Systems().Add(Customs.get());
 			Instance.Systems().Add(Stocks.get());
+			if (Winters != nullptr)
+			{
+				Instance.Systems().Add(Winters.get());
+			}
 			Instance.Systems().Add(Harvest.get());
 			Instance.Systems().Add(Fair.get());
 			Instance.Systems().Add(Roads.get());
@@ -372,6 +387,7 @@ namespace
 		std::unique_ptr<OrganizationSystem> Orgs;
 		std::unique_ptr<NormSystem> Customs;
 		std::unique_ptr<StockSystem> Stocks;
+		std::unique_ptr<WinterSystem> Winters; ///< 18.06: only with --climate
 		std::unique_ptr<ProductionSystem> Harvest;
 		std::unique_ptr<MarketSystem> Fair;
 		std::unique_ptr<TradeSystem> Roads;

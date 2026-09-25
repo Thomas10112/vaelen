@@ -5,6 +5,8 @@
 
 #include "Vaelen/Economy/EconomyHistory.h"
 
+#include "Vaelen/Sim/Climate.h"
+
 #include "Vaelen/Sim/HistoryText.h"
 #include "Vaelen/Sim/World.h"
 
@@ -96,6 +98,14 @@ namespace Vaelen::Economy
 			return Found;
 		}
 
+		/// 18.06: whether a stock event's cause is a winter (the cause is resolved
+		/// in the log, which is where the winter is).
+		bool WinterTook(const World& W, const Event& E)
+		{
+			const Event* Cause = History::FindEvent(W.Log(), E.Cause);
+			return Cause != nullptr && Cause->Is(WorldGen::WinterEvent);
+		}
+
 		void AppendRegion(const World& W, const History::PreHistoryTypes& Types, uint32 Region, std::string& Out)
 		{
 			std::string Name;
@@ -121,6 +131,9 @@ namespace Vaelen::Economy
 		Bus.Subscribe(SettlementAbandonedEvent.TypeHash, this);
 		Bus.Subscribe(PriceChangedEvent.TypeHash, this);
 		Bus.Subscribe(ShortfallEvent.TypeHash, this);
+		// 18.06: the winter takes grain through the ledger, so the line is a
+		// StockTaken whose cause is a Winter. Matters resolves the cause.
+		Bus.Subscribe(StockTakenEvent.TypeHash, this);
 		Bus.Subscribe(FortuneChangedEvent.TypeHash, this);
 		Bus.Subscribe(StockInheritedEvent.TypeHash, this);
 	}
@@ -178,6 +191,20 @@ namespace Vaelen::Economy
 		{
 			Region = E.Get<StockPayload>().Region;
 			return Rules.RecordInheritances != 0;
+		}
+		if (E.Is(StockTakenEvent))
+		{
+			// 18.06: of everything taken from a stock, only what a winter took
+			// from a region's common grain is history, once per region.
+			const StockPayload P = E.Get<StockPayload>();
+			Region = P.Region;
+			if (Rules.RecordWinters == 0 || P.Good != static_cast<uint32>(Good::Grain) || P.House != 0 ||
+				P.Amount < Rules.WinterGrainFloor || !E.Cause.IsValid())
+			{
+				return false;
+			}
+			const Event* Cause = History::FindEvent(Owner->Log(), E.Cause);
+			return Cause != nullptr && Cause->Is(WorldGen::WinterEvent);
 		}
 		return false;
 	}
@@ -436,6 +463,18 @@ namespace Vaelen::Economy
 			Population::NameFamily(W, Types, Context.Persons, Context.Families, P.House, Text, Index);
 			Capitalise(Out, Text);
 			Append(Out, " died out and its goods returned to ");
+			AppendRegion(W, Types, P.Region, Out);
+			Append(Out, ".");
+		}
+		else if (E.Is(StockTakenEvent) && E.Cause.IsValid() && WinterTook(W, E))
+		{
+			// 18.06: the stock sentence of a winter, in the words the chronicle
+			// keeps (the house-by-house takings get the plain line below).
+			const StockPayload P = E.Get<StockPayload>();
+			Append(Out, "the winter took ");
+			AppendNumber(Out, P.Amount);
+			Append(Out, P.Good == static_cast<uint32>(Good::Grain) ? " grain from the stores of "
+																   : " timber from the stores of ");
 			AppendRegion(W, Types, P.Region, Out);
 			Append(Out, ".");
 		}

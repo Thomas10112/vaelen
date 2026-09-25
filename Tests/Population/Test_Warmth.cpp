@@ -305,7 +305,7 @@ namespace
 VAELEN_TEST(Warmth, DefaultsAndTheComponentAreSane)
 {
 	VT_CHECK_EQ(static_cast<uint32>(sizeof(PersonWarmth)), 8u);
-	VT_CHECK_EQ(static_cast<uint32>(sizeof(WinterPayload)), 16u);
+	VT_CHECK_EQ(static_cast<uint32>(sizeof(WinterPayload)), 24u); // 18.06: People and Usual joined it
 	const PersonWarmth Warm;
 	VT_CHECK_EQ(Warm.Chill, 0u);
 	VT_CHECK_EQ(Warm.ColdYears, 0u);

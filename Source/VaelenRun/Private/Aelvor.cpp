@@ -17,6 +17,7 @@
 #include "Vaelen/Economy/EconomyHistory.h"
 #include "Vaelen/Gameplay/Judgement.h"
 #include "Vaelen/Player/Doings.h"
+#include "Vaelen/Economy/Winter.h"
 #include "Vaelen/Population/Lives.h"
 #include "Vaelen/Sim/Deposits.h"
 #include "Vaelen/Sim/Population.h"
@@ -165,6 +166,16 @@ namespace Vaelen::Run
 													  MiningRules{});
 				Rock->ObserveTraits(W.Traits.Traits);
 			}
+			// 18.06: the winter, only in a climate world - after the stocks are
+			// settled and before the harvest, which is told to wait for it.
+			if (Given.Climate)
+			{
+				Winters = std::make_unique<WinterSystem>(Instance, Ages.Types(), W.Persons, W.Families, W.Economy_,
+														 W.Warmth, WinterRules{});
+				Winters->RunAfter("Stocks");
+				Winters->ObserveSettlements(W.Trade.Settlement);
+				Harvest->RunAfter("Winter");
+			}
 			if (Given.Play)
 			{
 				// Phase 10, as Test_PlayerGate wires it: somebody to be, a day at
@@ -250,6 +261,10 @@ namespace Vaelen::Run
 			Instance.Systems().Add(Orgs.get());
 			Instance.Systems().Add(Customs.get());
 			Instance.Systems().Add(Stocks.get());
+			if (Winters != nullptr)
+			{
+				Instance.Systems().Add(Winters.get());
+			}
 			Instance.Systems().Add(Harvest.get());
 			Instance.Systems().Add(Fair.get());
 			Instance.Systems().Add(Roads.get());
@@ -373,6 +388,7 @@ namespace Vaelen::Run
 		std::unique_ptr<OrganizationSystem> Orgs;
 		std::unique_ptr<NormSystem> Customs;
 		std::unique_ptr<StockSystem> Stocks;
+		std::unique_ptr<WinterSystem> Winters; ///< only with Options::Climate (18.06)
 		std::unique_ptr<ProductionSystem> Harvest;
 		std::unique_ptr<MarketSystem> Fair;
 		std::unique_ptr<TradeSystem> Roads;

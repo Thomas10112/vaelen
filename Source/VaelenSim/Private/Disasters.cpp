@@ -56,33 +56,54 @@ namespace Vaelen::History
 			return Value > 1000u ? 1000u : static_cast<uint32>(Value);
 		}
 
-		// Kills People of a region, per culture in proportion. Returns the deaths.
-		uint32 Kill(RegionPopulation& P, uint32 Deaths) noexcept
-		{
-			const uint32 TotalBefore = P.Total;
-			if (TotalBefore == 0 || Deaths == 0)
-			{
-				return 0;
-			}
-			Deaths = Deaths > TotalBefore ? TotalBefore : Deaths;
-			uint32 Killed = 0;
-			for (uint32 S = 0; S < RegionPopulation::MaxCultures; ++S)
-			{
-				if (P.Culture[S] != 0 && P.Count[S] > 0)
-				{
-					const uint32 Share = static_cast<uint32>(uint64{Deaths} * P.Count[S] / TotalBefore);
-					Killed += P.Remove(P.Culture[S], Share);
-				}
-			}
-			// Rounding leaves a few alive; take them from the majority.
-			if (Killed < Deaths && P.Majority != 0)
-			{
-				Killed += P.Remove(P.Majority, Deaths - Killed);
-			}
-			P.Recount();
-			return Killed;
-		}
 	} // namespace
+
+	uint32 KillShare(RegionPopulation& P, uint32 Deaths) noexcept
+	{
+		const uint32 TotalBefore = P.Total;
+		if (TotalBefore == 0 || Deaths == 0)
+		{
+			return 0;
+		}
+		Deaths = Deaths > TotalBefore ? TotalBefore : Deaths;
+		uint32 Killed = 0;
+		for (uint32 S = 0; S < RegionPopulation::MaxCultures; ++S)
+		{
+			if (P.Culture[S] != 0 && P.Count[S] > 0)
+			{
+				const uint32 Share = static_cast<uint32>(uint64{Deaths} * P.Count[S] / TotalBefore);
+				Killed += P.Remove(P.Culture[S], Share);
+			}
+		}
+		// Rounding leaves a few alive; take them from the majority.
+		if (Killed < Deaths && P.Majority != 0)
+		{
+			Killed += P.Remove(P.Majority, Deaths - Killed);
+		}
+		P.Recount();
+		return Killed;
+	}
+
+	void TrimBelieversToTheLiving(RegionFaith& F, uint32 Living) noexcept
+	{
+		const uint32 Believers = F.Total();
+		if (Believers <= Living)
+		{
+			return;
+		}
+		const uint32 Excess = Believers - Living;
+		for (uint32 K = 0; K < RegionFaith::MaxFaiths; ++K)
+		{
+			if (F.Religion[K] != 0)
+			{
+				F.Remove(F.Religion[K], static_cast<uint32>(uint64{Excess} * F.Adherents[K] / Believers));
+			}
+		}
+		while (F.Total() > Living && F.Majority != 0)
+		{
+			F.Remove(F.Majority, F.Total() - Living);
+		}
+	}
 
 	const char* DisasterName(DisasterKind Kind) noexcept
 	{
@@ -278,7 +299,7 @@ namespace Vaelen::History
 			const uint32 Wanted =
 				static_cast<uint32>(uint64{PeopleBefore} * Rules.DeathsPerMille[O.Kind][Severity - 1] / 1000u);
 			// A detailed region has persons: its deaths belong to the life systems.
-			const uint32 Deaths = P != nullptr && !IsDetailed(Regions[O.Region]) ? Kill(*P, Wanted) : 0u;
+			const uint32 Deaths = P != nullptr && !IsDetailed(Regions[O.Region]) ? KillShare(*P, Wanted) : 0u;
 
 			DisasterInfo D;
 			D.Index = ++S->Count;
@@ -303,24 +324,7 @@ namespace Vaelen::History
 				{
 					// The dead were believers too: every faith loses its share of the
 					// deaths, so believers never exceed the living.
-					const uint32 Living = PeopleBefore > Deaths ? PeopleBefore - Deaths : 0u;
-					const uint32 Believers = F->Total();
-					if (Believers > Living)
-					{
-						const uint32 Excess = Believers - Living;
-						for (uint32 K = 0; K < RegionFaith::MaxFaiths; ++K)
-						{
-							if (F->Religion[K] != 0)
-							{
-								F->Remove(F->Religion[K],
-										  static_cast<uint32>(uint64{Excess} * F->Adherents[K] / Believers));
-							}
-						}
-						while (F->Total() > Living && F->Majority != 0)
-						{
-							F->Remove(F->Majority, F->Total() - Living);
-						}
-					}
+					TrimBelieversToTheLiving(*F, PeopleBefore > Deaths ? PeopleBefore - Deaths : 0u);
 				}
 				if (F != nullptr && F->Majority != 0)
 				{

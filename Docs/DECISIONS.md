@@ -10537,7 +10537,7 @@ O(regions) a year with one Fix64 Div each, O(1) per tile per day for the display
 
 ## ADR-0152 — A winter has a calendar, not an omen: why the hard winter is not a DisasterKind, and what it weighs on
 
-**Status:** PROPOSED 2026-09-24 by the Phase 18 panel (`Docs/ROADMAP.md` section 25); applied by task 18.06, which changes this line.
+**Status:** APPLIED 2026-09-25 by task 18.06 (proposed 2026-09-24 by the Phase 18 panel, `Docs/ROADMAP.md` section 25), with three deviations the as-built note records: the two winter events are declared in `Vaelen/Sim/Climate.h` and not in Population, because the chronicle's words for them live in Sim's HistoryText.cpp and Sim cannot read a type a higher layer declares (Economy still publishes them, Population still reads Winter to name the deaths of the cold); the Sim chronicle keeps a Winter only when it is harder than the region's usual one on a peopled region (`WinterIsHistory`, through a keep-predicate the chronicle gained), since every cold region's yearly winter would otherwise add some thirty-five lines a year to a chronicle that has 0.6, and the WinterForeseen event is published only under the same rule; and the yearly pass skips only `WinterRules::DailyRegion` - the played person's region is 18.08's to name, when the system that chills it by the day exists.
 
 ### Context
 

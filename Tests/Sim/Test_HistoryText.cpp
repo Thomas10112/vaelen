@@ -5,6 +5,7 @@
 
 #include "Vaelen/Sim/Disasters.h"
 #include "Vaelen/Sim/Causality.h"
+#include "Vaelen/Sim/Climate.h"
 #include "Vaelen/Sim/HistoryText.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/Religion.h"
@@ -404,4 +405,90 @@ VAELEN_TEST(HistoryText, WhySaysHowItEnded)
 	VT_CHECK(WhyEndText(WalkEnd::CauseMissing)[0] != '\0');
 	VT_CHECK(std::string(WhyEndText(WalkEnd::CauseMissing)) != WhyEndText(WalkEnd::DepthExhausted));
 	VT_CHECK(std::string(WhyEndText(WalkEnd::CauseNotAnEvent)) != WhyEndText(WalkEnd::CauseNotBeforeEffect));
+}
+
+VAELEN_TEST(HistoryText, TheWinterHasItsWordsAndOnlyTheUnusualOneIsHistory)
+{
+	// 18.06. The two winter events are Sim's (Climate.h) so that this file
+	// can put them into words; the chronicle keeps a Winter only when it is
+	// harder than the region's usual one, on a peopled region, and keeps
+	// every WinterForeseen, which is published only when it is news.
+	Run W(AelvorSeed);
+	VT_REQUIRE(W.Ages.Generate(Run::Square(32), 40));
+	uint32 Region = 0;
+	EntityHandle RH;
+	W.Instance.Components()
+		.GetPool(W.Ages.Types().World.RegionTypes_.Region)
+		.ForEach(
+			[&](EntityHandle H, const RegionInfo& R)
+			{
+				if (Region == 0 || R.Index < Region)
+				{
+					Region = R.Index;
+					RH = H;
+				}
+			});
+	VT_REQUIRE(Region != 0 && !RH.IsNull());
+	const PersistentId Subject = W.Instance.Entities().GetId(RH);
+	const SimTick Tick = W.Instance.Now();
+	const uint32 RecordsBefore =
+		static_cast<uint32>(W.Instance.Components().GetPool(W.Ages.Types().History.Record).Size());
+	// Four winters: the usual terrible one (climate), a great one where a
+	// hard one is usual (history), a terrible one on nobody (not history),
+	// and a hard one coming where none is usual (published, so history).
+	const PersistentId Usual =
+		W.Instance.Events().Publish(Tick, WinterEvent, WinterPayload{Region, 3u, 5512u, 12u, 600u, 3u}, Subject);
+	const PersistentId Harder =
+		W.Instance.Events().Publish(Tick, WinterEvent, WinterPayload{Region, 2u, 700u, 3u, 600u, 1u}, Subject);
+	const PersistentId Nobody =
+		W.Instance.Events().Publish(Tick, WinterEvent, WinterPayload{Region, 3u, 5512u, 0u, 0u, 1u}, Subject);
+	const PersistentId Coming =
+		W.Instance.Events().Publish(Tick, WinterForeseenEvent, WinterPayload{Region, 2u, 700u, 0u, 600u, 0u}, Subject);
+	W.Instance.TickMany(2); // delivered
+	VT_CHECK(WinterIsHistory(*FindEvent(W.Instance.Log(), Harder)));
+	VT_CHECK(!WinterIsHistory(*FindEvent(W.Instance.Log(), Usual)));
+	VT_CHECK(!WinterIsHistory(*FindEvent(W.Instance.Log(), Nobody)));
+	VT_CHECK(!WinterIsHistory(*FindEvent(W.Instance.Log(), Coming))); // not a Winter: the predicate says no
+	uint32 Kept = 0;
+	uint32 KeptHarder = 0;
+	uint32 KeptComing = 0;
+	W.Instance.Components()
+		.GetPool(W.Ages.Types().History.Record)
+		.ForEach(
+			[&](EntityHandle, const RecordInfo& R)
+			{
+				if (R.Tick != Tick)
+				{
+					return;
+				}
+				++Kept;
+				KeptHarder += R.Event == Harder.Value ? 1u : 0u;
+				KeptComing += R.Event == Coming.Value ? 1u : 0u;
+				VT_CHECK_EQ(R.Region, Region);
+			});
+	VT_CHECK_EQ(Kept, 2u);
+	VT_CHECK_EQ(KeptHarder, 1u);
+	VT_CHECK_EQ(KeptComing, 1u);
+	VT_CHECK(W.Instance.Components().GetPool(W.Ages.Types().History.Record).Size() == RecordsBefore + 2u);
+	// The words.
+	std::string Name;
+	NameRegion(W.Instance, W.Ages.Types(), Region, Name);
+	std::string Out;
+	DescribeEvent(W.Instance, W.Ages.Types(), *FindEvent(W.Instance.Log(), Usual), Out);
+	VT_CHECK_MSG(Out.find("a terrible winter lay on " + Name + " and 12 died of the cold.") != std::string::npos, "%s",
+				 Out.c_str());
+	DescribeEvent(W.Instance, W.Ages.Types(), *FindEvent(W.Instance.Log(), Harder), Out);
+	VT_CHECK_MSG(Out.find("a great winter lay on " + Name + " and 3 died of the cold.") != std::string::npos, "%s",
+				 Out.c_str());
+	DescribeEvent(W.Instance, W.Ages.Types(), *FindEvent(W.Instance.Log(), Nobody), Out);
+	VT_CHECK_MSG(Out.find("a terrible winter lay on " + Name + ".") != std::string::npos, "%s", Out.c_str());
+	DescribeEvent(W.Instance, W.Ages.Types(), *FindEvent(W.Instance.Log(), Coming), Out);
+	VT_CHECK_MSG(Out.find("a hard winter is coming to " + Name + ".") != std::string::npos, "%s", Out.c_str());
+	const Event* Hard = FindEvent(W.Instance.Log(), Harder);
+	Event One = *Hard;
+	One.Set(WinterPayload{Region, 1u, 200u, 0u, 600u, 0u});
+	DescribeEvent(W.Instance, W.Ages.Types(), One, Out);
+	VT_CHECK_MSG(Out.find("a hard winter lay on " + Name + ".") != std::string::npos, "%s", Out.c_str());
+	VT_CHECK(Out.find("something happened") == std::string::npos);
+	VAELEN_LOG_INFO(LogHistoryText, "%s", Out.c_str());
 }

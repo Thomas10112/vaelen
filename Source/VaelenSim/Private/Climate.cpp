@@ -178,6 +178,16 @@ namespace Vaelen::WorldGen
 		return Severity;
 	}
 
+	bool WinterIsHistory(const Event& E) noexcept
+	{
+		if (!E.Is(WinterEvent))
+		{
+			return false;
+		}
+		const WinterPayload P = E.Get<WinterPayload>();
+		return P.People > 0 && P.Severity > P.Usual;
+	}
+
 	uint32 RegionCentroidTile(const World& W, const WorldSetup& Setup, uint32 Region)
 	{
 		if (Region == 0u || !W.Map().IsReady())

@@ -129,13 +129,24 @@ namespace Vaelen::History
 								Owner->Entities().GetId(H), PersistentId(Cause));
 	}
 
-	bool Chronicle::Chronicle_(Hash64 TypeHash)
+	bool Chronicle::Chronicle_(Hash64 TypeHash, KeepEvent Keep)
 	{
+		if (Keep != nullptr)
+		{
+			Keeps.emplace_back(TypeHash, Keep);
+		}
 		return Owner->Events().Subscribe(TypeHash, this);
 	}
 
 	void Chronicle::OnEvent(const Event& E)
 	{
+		for (const auto& [TypeHash, Keep] : Keeps)
+		{
+			if (TypeHash == E.TypeHash && !Keep(E))
+			{
+				return;
+			}
+		}
 		HistoryState* S = FindState(*Owner, Types);
 		if (S == nullptr)
 		{

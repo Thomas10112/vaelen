@@ -21,6 +21,7 @@
 #include "Vaelen/Sim/SimApi.h"
 #include "Vaelen/Sim/System.h"
 
+#include <utility>
 #include <vector>
 
 namespace Vaelen
@@ -128,13 +129,19 @@ namespace Vaelen::History
 		}
 		const char* GetListenerName() const noexcept override { return "Chronicle"; }
 		void OnEvent(const Event& E) override;
-		/// Subscribes to a type; every event of it becomes a record.
-		bool Chronicle_(Hash64 TypeHash);
+		/// Whether one event of a subscribed type is history. A plain function,
+		/// not a closure: the chronicle is built once and reads nothing else.
+		using KeepEvent = bool (*)(const Event&);
+		/// Subscribes to a type; every event of it becomes a record - or, with
+		/// Keep, only the events Keep says yes to (18.06: the winter is a
+		/// yearly fact and history only when it is harder than usual).
+		bool Chronicle_(Hash64 TypeHash, KeepEvent Keep = nullptr);
 
 	private:
 		World* Owner;
 		HistoryTypes Types;
 		WorldGen::RegionTypes Regions;
+		std::vector<std::pair<Hash64, KeepEvent>> Keeps;
 	};
 
 	// ── Queries ──────────────────────────────────────────────────────────────

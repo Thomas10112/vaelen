@@ -1251,12 +1251,12 @@ VAELEN_TEST(Checkpoint, TheClimateIsInTheHostSection)
 
 	// THE CONTROL, ADR-0149 rule 2. From 18.02 to 18.04 two worlds identical
 	// but for the flag were THE SAME WORLD - nothing read it. 18.05 turned
-	// this arm: the flag now declares PersonWarmth after Polity (ADR-0153), so
-	// the two are different worlds by their LAYOUT - the state digests must
-	// part - while their LOGS stay equal, because nothing chills anyone and
-	// the judgement takes no draw below the line, until 18.06 publishes a
-	// winter and 18.10 rewrites this into the Stream-style "must part" control
-	// on both. The refusal by the HOST byte is thus a refusal on a fact.
+	// the state half: the flag declares PersonWarmth after Polity (ADR-0153),
+	// so the two part by their LAYOUT. 18.06 turned the log half: the flag
+	// wires the winter, which publishes and takes through the ledger from the
+	// first year, so the two LOGS part too. This is the Stream-style "must
+	// part" control on both (Aelvor.h:83-91), arrived two tasks before 18.10
+	// planned it; the refusal by the HOST byte is a refusal on a fact.
 	{
 		Aelvor Steady(Declaring(false));
 		Aelvor Asked(Declaring(true));
@@ -1275,6 +1275,8 @@ VAELEN_TEST(Checkpoint, TheClimateIsInTheHostSection)
 		VT_CHECK_MSG(ComputeStateDigest(Steady.Instance()) != ComputeStateDigest(Asked.Instance()),
 					 "the flag declares a type since 18.05, and the two state digests still agree at %016llx",
 					 static_cast<unsigned long long>(ComputeStateDigest(Asked.Instance())));
-		VT_CHECK_DIGEST_EQ(Steady.Instance().Log().Digest(), Asked.Instance().Log().Digest());
+		VT_CHECK_MSG(Steady.Instance().Log().Digest() != Asked.Instance().Log().Digest(),
+					 "the flag wires the winter since 18.06, and the two logs still agree at %016llx",
+					 static_cast<unsigned long long>(Asked.Instance().Log().Digest()));
 	}
 }

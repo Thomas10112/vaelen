@@ -32,7 +32,35 @@ PHASE       : 17 — DEBUG TOOLS, CLOSED 2026-09-24: all eleven clauses of its g
                yet: it is written here and parsed against the shim before that
                sitting. Section 22 has the clause-by-clause read.
                15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
-TASK        : 18.05 — DONE 2026-09-25. Who is cold.
+TASK        : 18.06 — DONE 2026-09-25. The winter, yearly, as a consequence.
+
+              Vaelen/Economy/Winter.h: Economy::WinterSystem behind Options::Climate /
+              --climate (after Stocks, before the harvest): per region at the year's
+              turn, the coarse dead by ColdDeathsPerMille[s] through History::KillShare
+              (the disasters' own, made public) with the faiths trimmed to the living;
+              the WinterEvent {Region, Severity, ColdSum, Deaths, People, Usual} for
+              s >= 1; the fuel ColdSum/200 x People/10 timber from the common stock
+              through MoveStock with the winter as cause, and what is not covered is the
+              exposure; WinterGrainPerMille {50, 120, 250} of the common grain and of
+              every house's; the chill Exposure x ColdSum / 20000 on every person of a
+              detailed region (a settlement shelters 400‰, a cloth stock 300‰); the
+              WinterForeseen only when the coming winter is s >= 2 and harder than
+              usual. Words: "a terrible winter lay on X and N died of the cold.", "a
+              hard winter is coming to X.", "the winter took N grain from the stores
+              of X." (the economy chronicle, from a StockTaken whose cause is a winter).
+              ADR-0152 APPLIED with three deviations: the events live in Sim/Climate.h
+              (the words are Sim's); the Sim chronicle keeps a winter only when harder
+              than the region's usual (a keep-predicate on Chronicle, else 35 lines a
+              year); the played region's skip is 18.08's. Test_Winter, seven cases,
+              295 checks: 102 timber wanted and taken for 173 people at cold sum 1223,
+              172 persons chilled by exactly 80 without it; a great winter took 131 of
+              1094 and 16 houses to the unit; 43 winters at a turn at 128, 4 with
+              coarse deaths by the share; ColdLine -100 is the world without the
+              system to the digest. HistoryText: the five sentences and exactly two
+              records kept of four winters. Ledger: the winter took in 2 events on
+              region 23 and Dark == 0. NO FROZEN DIGEST MOVED (census 545, unmoved).
+
+TASK (18.05): 18.05 — DONE 2026-09-25. Who is cold.
 
               Vaelen/Population/Warmth.h: PersonWarmth {Chill, ColdYears, Clad, Reserved,
               Reserved2}, eight bytes, zero means warm (ADR-0153 APPLIED, two deviations

@@ -7006,3 +7006,129 @@ Health 214 where 254 was due: the permanent winter.
 
 NO FROZEN DIGEST MOVED: nothing is declared without the flag, and with it
 nobody is chilled yet. Census: HASH +2 (the two table rows), WORLD 0, GEN 0.
+
+### 18.06 AS BUILT, 2026-09-25
+
+**The winter, yearly, as a consequence: fuel through the ledger, grain from
+the stores, chill on the people, deaths where nobody is detailed, and the
+words.** STATUS: PROTOTYPE (Phase 18), headless.
+
+`Vaelen/Economy/Winter.h`: `Economy::WinterSystem` ("Winter", SimLod::World,
+dependencies {"Lod"} plus `RunAfter("Stocks")` from the wirings, so the
+houses are settled before the winter takes from them; `Harvest->RunAfter(
+"Winter")` so the harvest comes after; the need system already ran after the
+harvest) with `WinterRules {DegreeDaysPerTimber 200, TimberPerPersons 10,
+ClothPerPersons 25, ClothWarmthPerMille 300, ShelterPerMille 400,
+DegreeDaysPerChill 20, WinterGrainPerMille {50, 120, 250},
+ColdDeathsPerMille {0, 2, 8, 20}, DailyRegion 0, Climate}`. At the year's
+turn, per region in index order, three passes of the ONE `ShapeRegionYears`
+everybody reads (the winter lain, the one coming, and the region's USUAL year
+with the variation off - the climate the news is measured against); then per
+region: the coarse dead by `ColdDeathsPerMille[s]` through `History::
+KillShare` - the disasters' own `Kill`, made public and byte-identical - with
+`TrimBelieversToTheLiving` (the same block, made public) so believers never
+exceed the living; the `WinterEvent {Region, Severity, ColdSum, Deaths,
+People, Usual}` for s ≥ 1 (24 bytes, two words more than the row: who lived
+there when it lay, and what its usual severity is); the fuel `ColdSum /
+DegreeDaysPerTimber × People / TimberPerPersons` taken from the common
+timber through `MoveStock` with the winter as cause, and what could not be
+taken is the exposure; the grain of severity s taken from the common stock
+and from every house, the winter as cause; the chill `Exposure × ColdSum /
+1000 / DegreeDaysPerChill` on every person of a detailed region not living
+by the day, written through the warmth pool in one pass (not `ChillPerson`
+per person, which is a pool walk each); and `WinterForeseen` for the year
+coming when it is s ≥ 2 AND harder than usual. `MeasureWinters` reads it all
+back from the log. Wired behind `Options::Climate` / `--climate` in Aelvor
+and the Atlas, named optional in `check_world_wiring.py` until the flip.
+`EconomyChronicle` subscribes to `StockTaken` and keeps the one whose cause
+resolves to a winter, from a common stock, of grain, of twenty units or more
+(`RecordWinters`, `WinterGrainFloor`): "the winter took N grain from the
+stores of <region>." HistoryText.cpp: "a hard / a great / a terrible winter
+lay on <region> and N died of the cold." and "a hard / a terrible winter is
+coming to <region>."
+
+THREE DEVIATIONS FROM THE ROW, recorded on ADR-0152 (APPLIED). (1) The two
+winter events are declared in `Vaelen/Sim/Climate.h`, not in Population:
+the row put the words in Sim's HistoryText.cpp, and Sim cannot read a type a
+higher layer declares - the Sim chronicle records only Sim events and the
+higher layers' chronicles describe their own. Population's Warmth.h keeps
+the three names by `using`, so 18.05's reader is unchanged; the event table
+is the same 117 names at the same hashes (moved, not added). (2) The
+chronicle would have recorded every yearly winter of every cold region -
+measured at 128: 43 Winter events at one turn against a chronicle of 179
+lines in 300 years - so `History::Chronicle` gained a keep-predicate
+(`Chronicle_(TypeHash, Keep)`) and PreHistory subscribes Winter with
+`WorldGen::WinterIsHistory`: a winter harder than the region's usual one, on
+a peopled region; WinterForeseen is published only under the same rule. The
+tundra's terrible winter every year is the climate; the great winter on a
+grassland is the news. (3) The yearly pass skips `WinterRules::DailyRegion`
+only; the played person's region is 18.08's to name, when the system that
+chills it by the day exists. Also: the row's 'swap the two rows' and
+'rename the system' controls are not built - the world is generated, not
+hand-built, so the latitude claim is checked as "every published winter is
+the closed form's, to the unit, and the coldest peopled region's cold sum is
+at least ten times the warmest's"; and the order Production reads the winter
+in is a declared dependency (`RunAfter("Winter")`), not a tie the scheduler
+breaks by name.
+
+`Tests/Economy/Test_Winter.cpp`, seven cases, 295 checks, AELVOR 64/120 for
+the light ones and 128/300 where the numbers need people: `DefaultsAndThe
+PayloadAreSane`; `TheColdSumFollowsTheLatitudeAndTheEventTheSeverity` (at 64
+the coldest peopled region has 370 degree-days and the warmest 0; 23 winters
+at one turn, every one the closed form's severity and cold sum, none on a
+region whose coldest day was above freezing, none on region 0; 2835 winters
+in 121 years, 1708 grain taken); `TimberCoversTheColdAndTheLedgerNamesIt`
+(128: region 9, 173 people at the winter, cold sum 1223 → 102 timber
+wanted, 102 taken, named by the winter, nobody chilled; CONTROL without
+timber: every one of 172 persons chilled by exactly 80 - (1000 − 300 of
+cloth) × 2302 / 1000 / 20 - and nothing taken); `AGreatWinterTakesItsGrain
+FromEveryStockAndTheChronicleSaysSo` (a probe learns the cold sum, the run's
+bands make the winter a great one: the common stock 1094 → 131 taken, 16
+houses to the unit at 120‰ each, 0 wrong, and the chronicle line "the winter
+took 131 grain from the stores of Ussiho."); `TheCoarseColdDieByTheShareAnd
+TheFaithsFollow` (128: 43 winters at the turn, 4 with coarse deaths, each
+payload's deaths the share of its people to the unit and believers ≤ living
+after); `NothingHappensWhereThereIsNoCold` (ADR-0149 rule 1: ColdLine −100
+takes no timber, no grain, chills nobody, kills nobody, publishes nothing,
+and is the world without the system under VT_CHECK_DIGEST_EQ on state AND
+log; the same seed with the cold is another world); `TheSameYearTwiceFrom
+OneImage`. `Sim.HistoryText` gains `TheWinterHasItsWordsAndOnlyTheUnusualOne
+IsHistory`: four winters published by hand - the usual terrible one, a great
+one where a hard one is usual, a terrible one on nobody, a hard one coming -
+exactly two records kept (the harder one and the foreseen), the five
+sentences exact, no "something happened". `Economy.Ledger` gains `TheWinter
+TakesThroughTheSameLedger`: the accounting case's body became a helper called
+twice, and on a cold region of the winter world (region 23, 357 people) the
+winter took in 2 events and Dark == 0. Two test defects of my own, both on
+first run: a region promoted by hand is let go by the bridge at the next turn
+unless it is WANTED (15.03) - the helper now asks `RequestDetail` too; and
+the fuel is judged on the people the winter FOUND (the payload's), because
+the year's births come before it in the same tick.
+
+THE CONTROLS. `NothingHappensWhereThereIsNoCold` is ADR-0149 rule 1 to the
+digest; `TheColdSumFollows...` is the latitude read (the closed form's
+figures at every region, none above freezing); the great winter's bands are
+set from the region's own cold sum so severity 2 is a fact and not a hope;
+`TheCoarseColdDie...` requires a turn with coarse deaths somewhere, else it
+refuses to conclude; the Ledger's winter case is the ledger's own instrument
+pointed at the winter. FAILED ON PURPOSE, three times, each restored and its
+suite green after: (A) the grain taken by writing `Amount` directly instead
+of through `MoveStock` → `Ledger.TheWinterTakesThroughTheSameLedger` red on
+`Dark == 0` while the old case stays green - the ledger sees the unnamed
+unit; (B) a Winter event published at severity 0 too (`if (true)`; the row's
+`Severity >= 0` does not compile under -Wtype-limits) → the severity case
+names every region it wronged, "region 14: severity 0, event published" and
+on; (C) the chronicle's predicate saying yes to the usual winter (`>=`) →
+the HistoryText case red three ways: the usual one kept, 3 records for 2,
+the record pool one too long.
+
+THE ARM TURNED AGAIN. `Run.Checkpoint`'s control on two worlds identical but
+for the flag lost its log half here: the flag now wires a winter that
+publishes and takes through the ledger from the first year, so the two LOGS
+part as the states did in 18.05. That is the Stream-style "must part"
+control on both, arrived two tasks before 18.10 planned it; and
+`Population.Warmth`'s payload pin moved from 16 to 24 for the two words.
+
+NO FROZEN DIGEST MOVED: nothing is wired without the flag, the chronicle's
+new subscriptions record nothing in a world that publishes no winter, and
+the ledger's still and living pins held. Census: 545 sites, unmoved.

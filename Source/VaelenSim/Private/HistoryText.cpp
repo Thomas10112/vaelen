@@ -6,6 +6,8 @@
 #include "Vaelen/Sim/Causality.h"
 #include "Vaelen/Sim/HistoryText.h"
 
+#include "Vaelen/Sim/Climate.h"
+
 #include "Vaelen/Sim/Disasters.h"
 #include "Vaelen/Sim/Hydrology.h"
 #include "Vaelen/Sim/Naming.h"
@@ -470,6 +472,29 @@ namespace Vaelen::History
 		{
 			AppendEntity(W, Types, E.Subject, Out);
 			Append(Out, " received its name.");
+		}
+		else if (E.Is(WorldGen::WinterEvent))
+		{
+			// 18.06. The words are the page's (18.04): hard is what the
+			// weather row calls a coming winter of severity 2 or more.
+			const WorldGen::WinterPayload P = E.Get<WorldGen::WinterPayload>();
+			Append(Out, P.Severity >= 3 ? "a terrible winter lay on "
+										: (P.Severity == 2 ? "a great winter lay on " : "a hard winter lay on "));
+			AppendRegion(W, Types, P.Region, Out);
+			if (P.Deaths > 0)
+			{
+				Append(Out, " and ");
+				AppendNumber(Out, P.Deaths);
+				Append(Out, " died of the cold");
+			}
+			Append(Out, ".");
+		}
+		else if (E.Is(WorldGen::WinterForeseenEvent))
+		{
+			const WorldGen::WinterPayload P = E.Get<WorldGen::WinterPayload>();
+			Append(Out, P.Severity >= 3 ? "a terrible winter is coming to " : "a hard winter is coming to ");
+			AppendRegion(W, Types, P.Region, Out);
+			Append(Out, ".");
 		}
 		else
 		{

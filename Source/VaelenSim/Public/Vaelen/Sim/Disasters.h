@@ -45,6 +45,16 @@ namespace Vaelen::History
 	};
 	VAELEN_SIM_API const char* DisasterName(DisasterKind Kind) noexcept;
 
+	/// Kills Deaths of a region's coarse people, per culture in proportion and
+	/// the rounding from the majority; returns the deaths. The disasters' own
+	/// since 03.06, public since 18.06 so the winter kills the same way, to
+	/// the unit. Never for a detailed region: its deaths belong to the life
+	/// systems.
+	VAELEN_SIM_API uint32 KillShare(RegionPopulation& P, uint32 Deaths) noexcept;
+	/// The dead were believers too: takes every faith down by its share so
+	/// believers never exceed the living, the remainder from the majority.
+	VAELEN_SIM_API void TrimBelieversToTheLiving(RegionFaith& F, uint32 Living) noexcept;
+
 	/// Component of a disaster record entity.
 	struct DisasterInfo
 	{

@@ -47,6 +47,8 @@ namespace Vaelen::Economy
 		uint32 RecordShortfalls = 1;	///< Shortfall
 		uint32 RecordFortunes = 1;		///< FortuneChanged past the swing below
 		uint32 RecordInheritances = 1;	///< StockInherited
+		uint32 RecordWinters = 1;		///< 18.06: grain a winter took from a region's common stock
+		uint32 WinterGrainFloor = 20;	///< units a winter must take before it is history
 		uint32 FortuneSwing = 128;		///< a rank must move at least this much to be history
 		uint32 RoadTraffic = 100;		///< units a road must have carried before its closing is history
 		uint32 ShortfallFloor = 20;		///< units a region must be short of before it is history

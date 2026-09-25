@@ -15,14 +15,14 @@
 //
 // The chill is a burden: what a winter put on a person (18.06 by the year,
 // 18.08 by the day), judged once a year by NeedSystem beside hunger and
-// plague, and spent by the year as the ration spends hunger. The two events
-// are declared here and published by Economy's WinterSystem (18.06), as Sim
-// declares DisasterStruckEvent for everybody who publishes one.
+// plague, and spent by the year as the ration spends hunger. The two winter
+// events are Sim's (Climate.h) and published by Economy's WinterSystem.
 #pragma once
 
 #include "Vaelen/Core/CoreTypes.h"
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Population/PopulationApi.h"
+#include "Vaelen/Sim/Climate.h"
 #include "Vaelen/Sim/Event.h"
 
 namespace Vaelen
@@ -57,17 +57,12 @@ namespace Vaelen::Population
 		uint32 ChillRecovery = 200; ///< chill the year takes off everyone it judged (floor 0)
 	};
 
-	/// What a winter did to a region: the payload of Winter (the one just
-	/// lain) and WinterForeseen (the one coming, no deaths yet).
-	struct WinterPayload
-	{
-		uint32 Region = 0;
-		uint32 Severity = 0; ///< 0..3 by ClimateRules::SeverityDegreeDays
-		uint32 ColdSum = 0;	 ///< degree-days below the cold line
-		uint32 Deaths = 0;	 ///< coarse deaths of the cold; 0 for the one foreseen
-	};
-	inline constexpr EventType<WinterPayload> WinterEvent = MakeEventType<WinterPayload>("Winter");
-	inline constexpr EventType<WinterPayload> WinterForeseenEvent = MakeEventType<WinterPayload>("WinterForeseen");
+	/// The winter's two events, declared in Vaelen/Sim/Climate.h since 18.06
+	/// (the chronicle's words for them live in Sim, which cannot read a type
+	/// declared here); the names 18.05 gave them stay usable from here.
+	using WorldGen::WinterEvent;
+	using WorldGen::WinterForeseenEvent;
+	using WorldGen::WinterPayload;
 
 	/// Chills one living person: raises Chill by at most Amount, saturating at
 	/// frozen through. Returns what was actually added: 0 for an unknown
