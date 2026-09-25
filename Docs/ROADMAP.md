@@ -8459,3 +8459,10 @@ A regression worth a timeout is a test twice as slow, not one 3 % slower on
 a leg that already runs 118 minutes; the leg's own `timeout-minutes: 180`
 still bounds it. Run 313 (19.11) carries the same tree for the suite and is
 expected to hit the same edge; the push of this note supersedes it.
+
+CI run 314 (3de6a3c), read 2026-09-25 21:05 UTC: ten legs of ten green.
+On the Windows leg `Run.Door` passed in 1867.02 s - the third measurement,
+and above the old line by 67 s, so the margin was needed and not merely
+prudent; the leg's suite 235 of 235 in 6981.79 s. The first fully green run
+of this branch since 19.01's 297: every one between was cancelled by the
+next push or cut at this edge.
