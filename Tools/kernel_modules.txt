@@ -20,4 +20,5 @@ VaelenPlayer
 VaelenColony
 VaelenGameplay
 VaelenView
+VaelenScene
 VaelenRun

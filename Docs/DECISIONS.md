@@ -10686,7 +10686,7 @@ The owner asked for a 3D world walked with ZQSD (ROADMAP section 24). The kernel
 
 ## ADR-0156 — Scene geometry is an integer function of view leaves in a pure module, and what it invents says so
 
-**Status:** PROPOSED (2026-09-25, Phase 19 plan; applied by 19.05, 19.08 and 19.09).
+**Status:** PROPOSED (2026-09-25, Phase 19 plan; applied by 19.05, 19.08 and 19.09) **19.05's part APPLIED 2026-09-25**: VaelenScene, the terrain, R8.
 
 ### Context
 

@@ -7837,3 +7837,72 @@ digest changed: Replay.Climate red, "the replay did not print". Both restored.
 
 Census: +1 WORLD/digest (Replay.Climate's line, Tests/Run/CMakeLists.txt), +1
 SYNTHETIC (Test_Proof.cpp's sample digest, classed as such); 0 removed.
+
+### 19.05 AS BUILT, 2026-09-25
+
+**The ground, built in integers from the ground leaf, in a pure module.**
+STATUS: VALIDATED headless on gcc and clang; MSVC's digest is CI's to show;
+the winding of the triangles is a BELIEF about Unreal until S2 looks from above.
+
+`Source/VaelenScene` - the fourteenth kernel module (kernel_modules.txt,
+CMake, a Build.cs, the uproject before VaelenRun, both targets, kernel-ci.yml's
+count 13 -> 14, ENGINE_HANDOFF's do-not-fix list), fenced by
+check_ui_fence.py like the UI: its includes are Core, the view leaves and its
+own headers, and nothing names a world. `Vaelen/Scene/Terrain.h`:
+`SceneScale` (250 m tiles, relief 250 per mille, 8 steps, sea floor -5000 cm,
+lake depth 200, river 300, detail 200), `BuildGround` from a MapView (one
+height per tile: land = the kernel's metres x 100 x relief / 1000, floored;
+sea = the sea floor; a lake's floor 200 cm under its component's lowest shore
+- invented, and said so; a river's bed 300 cm down), `LatticeZ` (bilinear
+between centres, integer, a hashed wrinkle on land only and never on a
+centre), `HeightAt` on the mesh's own triangles, `PointOfTile` / `TileOfPoint`
+(half-open, the engine's +0.5), `BuildPatch` / `BuildChunk` (16-tile chunks,
+any stride dividing the steps, int16 normals from int64 differences and an
+integer square root, RGBA8 from the biome or the water, a static_assert on the
+twelve biomes), `IsSteep` (44.77 deg as 119 K^2 < 121 (dx^2 + dy^2), exact on
+the reduced normal of a lattice triangle), `MeasureTerrain` and `TerrainLine`.
+
+Purity rule R8, no-float: no float or double code token in any kernel module;
+the one exemption is NAMED, by file: VaelenCore's Random.h, Random.cpp and
+CoreTypes.h, the tools' door. The census gained the kind WORLD/terrain.
+Atlas `--scene-terrain R|all` prints the line; `--scene-dump FILE` writes the
+ground hill-shaded as a PGM picture (looked at once: the continent, its lakes,
+the sea - the relief is faint at this scale, as the scale says it should be).
+
+PREDICTED IN WRITING FIRST, then measured:
+- steep triangles at most 0.1 % of the map: 0 of 2,097,152 at 128 and 0 of
+  8,388,608 at 256 - met. The counter was then shown to count: at ratio 1/250
+  (62.5 m tiles) the same map's mesh has 12,529 steep of 131,072.
+- the ground digest unmoved: the scene reads the map, `8f7f4948f49b6e86` still.
+- R8 without its exemption: 18 lines, all in the three VaelenCore files; 0
+  elsewhere, VaelenScene included; the prose "double" of Polities.h and
+  Living.h not flagged - met, now a self-test known answer.
+- --climate and --no-climate give one terrain digest - met
+  (`Atlas.SceneTerrain128Before`).
+
+PINNED: `LogVaelenScene: AELVOR 128 seed 41454c564f52 region all: chunks 64,
+vertices 1065024, triangles 2097152, z [-5000, 50636] cm, steep 0 of 2097152;
+terrain 105208c54e3c6ea9` (Atlas.SceneTerrain128), the same digest from
+Scene.Terrain's own path and from the clang build. At 256: terrain
+5b29727b01436706, z up to 51790 cm. Region 9 at 128: 2 chunks, terrain
+05f5e0cefbe78608.
+
+Scene.Terrain, 10 cases, 1.19 M checks at 128 and 256: every centre the
+kernel's height (5938 land, 9925 sea, 298 lake, 223 river tiles at 128 - every
+kind exercised), no neighbouring land pair too steep (and the instrument sees
+slope at 1/250), a 32-tile patch and its four chunks agree on every vertex
+byte for byte, the far lattice stands on the near one's points, every chunk a
+closed disc (V - E + F = 1, border 4 x side), 128 x 128 x 25 points in the tile
+the engine's own formula names, HeightAt equal to the plane of the built
+mesh's triangle at 10,000 seeded points, no relief no height (and the wrinkle
+alone moves the digest), the ground outlives its world, the line all or
+nothing. CONTROL: the ground the scene read is the pinned one.
+
+FAILED ON PURPOSE, each restored: corners offset per chunk -> the shared-point
+case names the vertices; the +0.5 dropped -> the engine's tile disagrees;
+ratio 1/250 as the default -> the pair and the triangle counts go red; a
+`float` planted in Terrain.cpp -> R8 names Terrain.cpp:114.
+
+DEVIATIONS. No `scene_preview.py`: the Atlas writes the PGM itself, which any
+viewer opens. The lake surface is the lowest land SHORE's raw height; the
+kernel keeps no spill level (owner question: a water leaf).

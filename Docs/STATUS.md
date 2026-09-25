@@ -30,15 +30,29 @@ PHASE       : 18 — CLIMATE & SEASONS, CLOSED headless 2026-09-25, read clause 
               NOW: Phase 19 WORLD IN 3D (ROADMAP section 26, ADR-0155 to ADR-0159):
               twelve tasks, four sittings on the owner's machine. 19.01 and 19.02
               DONE; 19.03 WAITS ON THE OWNER (sitting S1, ENGINE_HANDOFF). Headless
-              work goes on meanwhile: 19.04 DONE; NEXT 19.05, the ground built in
-              integers in a pure module (VaelenScene) - which waits for no sitting,
-              since S1 builds the commit of 19.03 and not the branch's head. Ten owner questions, the tile
+              work goes on meanwhile: 19.04 and 19.05 DONE; NEXT 19.06 is sitting S2
+              (the engine contract: VaelenWalk, the walker, ZQSD) - its code is written
+              here after S1 has built 19.03; 19.07 (the fence and the walk contract,
+              headless) can go first. Ten owner questions, the tile
               scale first.
               (17 CLOSED 2026-09-24; 16 SAVE/PERSISTENCE: fourteen tasks built, its
                GATE still open - clause (j)'s migration half deferred to the v4 bump,
                and 16.14's sitting on the owner's Windows machine. Section 22.
                15 CLOSED 2026-09-21; 14 CLOSED 2026-09-16)
-TASK        : 19.04 — DONE 2026-09-25. One composer for every engine line.
+TASK        : 19.05 — DONE 2026-09-25. The ground, in integers, in a pure module.
+
+              VaelenScene (the fourteenth kernel module, fenced like the UI) builds the
+              ground from the map leaf: one height per tile, a lattice between them, 16-
+              tile chunks with normals and colours, HeightAt on the mesh's own triangles,
+              the engine's point-to-tile rule. 250 m tiles at a quarter of the relief: 0
+              steep triangles of 2,097,152 at 128 and of 8,388,608 at 256 (predicted
+              <= 0.1 %); 12,529 at ratio 1/250, so the counter counts. Terrain digest
+              105208c54e3c6ea9 at 128, the same on gcc and clang, pinned by
+              Atlas.SceneTerrain128. Purity R8: no float in the kernel, VaelenCore's
+              three files the one named exemption (18 lines, predicted). Four failures
+              on purpose.
+
+TASK (19.04): 19.04 — DONE 2026-09-25. One composer for every engine line.
 
               Vaelen/View/Proof.h composes LogVaelenClimate from plain facts; the Atlas
               calls it instead of its printf (the line byte-identical before and after),

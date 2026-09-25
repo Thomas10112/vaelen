@@ -71,7 +71,7 @@ block, and the sections below Phase 14 stay the record they are.
 Source/VaelenCore  Source/VaelenSim  Source/VaelenPopulation  Source/VaelenSociety
 Source/VaelenEconomy  Source/VaelenPolitics  Source/VaelenMilitary
 Source/VaelenInfrastructure  Source/VaelenColony  Source/VaelenPlayer
-Source/VaelenGameplay  Source/VaelenView  Source/VaelenRun
+Source/VaelenGameplay  Source/VaelenView  Source/VaelenScene  Source/VaelenRun
 ```
 
 They are validated by the headless CI: eighteen frozen gates (`Tools/run_gates.sh`; seventeen until 18.10 added `Replay.Climate`),
@@ -295,7 +295,7 @@ save and load, 18.02's host byte, 18.10's climate wiring in both actors, and
 19.03's era flag. This sitting builds exactly that, so that a first error has
 one cause. The standing rule above holds without exception: REPORT, do not
 repair - above all nothing in `Source/VaelenCore` ... `VaelenMilitary`, nor in
-`VaelenRun`, `VaelenView` (and `VaelenScene` once 19.05 writes it) or below.
+`VaelenRun`, `VaelenView`, `VaelenScene` or below.
 
 0. Check out THE COMMIT OF 19.03, not the branch's head - the branch goes on
    with headless work (19.04, 19.05) that this build must not see:

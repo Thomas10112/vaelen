@@ -12,6 +12,7 @@ add_subdirectory(Colony)
 add_subdirectory(Player)
 add_subdirectory(Gameplay)
 add_subdirectory(View)
+add_subdirectory(Scene)
 add_subdirectory(Run)
 
 # Kernel purity: no engine headers, exceptions, RTTI or non-deterministic
@@ -167,6 +168,21 @@ if(Python3_Interpreter_FOUND)
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_atlas_output.py ${VAELEN_ATLAS_128_CLIMATE}
             --expect climate=0x59615fa1f5d24bd1 ground=0x8f7f4948f49b6e86)
   set_tests_properties(Atlas.ClimateFrozen128 PROPERTIES FIXTURES_REQUIRED Atlas128Climate TIMEOUT 300)
+
+  # 19.05: the ground one walks on, built in integers by VaelenScene from the
+  # map leaf, and said in the line the engine will print (ADR-0156). One
+  # year is enough: the ground is the map's, and the map is generation's.
+  # The same digest with --no-climate: the era does not reach the ground.
+  add_test(NAME Atlas.SceneTerrain128
+    COMMAND VaelenAtlas --size 128 --prehistory 1 --years 1 --scene-terrain all
+            --out ${CMAKE_CURRENT_BINARY_DIR}/atlas-scene-terrain.json)
+  set_tests_properties(Atlas.SceneTerrain128 PROPERTIES TIMEOUT 900
+    PASS_REGULAR_EXPRESSION "region all: chunks 64, vertices 1065024, triangles 2097152, z \\[-5000, 50636\\] cm, steep 0 of 2097152; terrain 105208c54e3c6ea9\n")
+  add_test(NAME Atlas.SceneTerrain128Before
+    COMMAND VaelenAtlas --size 128 --prehistory 1 --years 1 --no-climate --scene-terrain all
+            --out ${CMAKE_CURRENT_BINARY_DIR}/atlas-scene-terrain-before.json)
+  set_tests_properties(Atlas.SceneTerrain128Before PROPERTIES TIMEOUT 900
+    PASS_REGULAR_EXPRESSION "; terrain 105208c54e3c6ea9\n")
 
   # 14.03: the empty play - the Play wiring with nobody taken up and no
   # stream, written as a replay document. Running it is the test; what the
