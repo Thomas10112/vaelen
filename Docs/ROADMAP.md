@@ -8098,3 +8098,73 @@ FAILED ON PURPOSE, each restored: snow from the Winter byte instead of
 today's flag -> 6 checks red (the -5/-30 tiles, today's count, summer's
 count); a sun without seasons (declination 0) -> the 46.8 deg rows red; the
 sea painted too -> every sea vertex red. Census kind WORLD/sky.
+
+### 19.10 AS BUILT, 2026-09-25
+
+**The keys belong to the host, and the page says them.** STATUS: VALIDATED
+headless for the page, the Atlas and the pins; the engine half (the
+subsystem's table, the controller bound from it) is UNVERIFIED (engine) until
+a sitting builds it - S1 is pinned to 19.03b and does not see it.
+
+`Vaelen/View/Panel.h`: `PanelKeys {uint8 Keys[8]}` in Intent order;
+`DefaultKeys` is 14.09's table byte for byte (T W R E M S G K) and `WalkKeys`
+puts Speak on F; `ValidKeys(Keys, Reserved, Named)` refuses a byte that is no
+capital letter, a repeat or a reserved letter, naming it; `KeysText` /
+`KeysFromText` for a command line. `TakePanel(..., const PanelKeys&, Out)`;
+the four-argument form composes with DefaultKeys, so every caller and every
+pin before 19.10 reads as it did. The letter is printed on the page and
+nowhere else in the world, which is the whole point: a host's table moves
+the page's digest and nothing else's.
+
+Atlas `--keys LLLLLLLL`, told like `--want-bound` (eight distinct capital
+letters, refused by name otherwise: `--keys TWREMSGT` -> "refused at T");
+the three pages the Atlas composes take it, and `ReplayPlayed.cmake` passes
+it through MORE as a CMake list (`"-DMORE=--keys;TWREMFGK"`).
+
+Engine half, parsed against the shim: `UVaelenWorldSubsystem::Keys()` - a
+plain member, not in Held, because `SetupInputComponent` binds before any
+world is begun - composes every page the host takes and, when it is not
+DefaultKeys, adds ` --keys LLLLLLLL` to the `check it headless` line (the
+default is silent, so every check line printed before 19.10 reads as it
+did); `AVaelenPlayerController::SetupInputComponent` binds the eight verbs
+from that table through `FKey(FName("T"))` instead of eight `EKeys::`
+literals - FKey(FName) is a 19.02 belief, now listed in the shim ledger under
+19.10. DEVIATION from the plan row: the host holds DefaultKeys, not WalkKeys,
+until 19.06 puts ZQSD on the keyboard - one change per sitting, so S2 can see
+the binding-from-the-table work on an unchanged page before the page moves.
+
+Pinned: `View.Panel` - the walk's thirty-day page 77038fcf880e61c7, one row
+of text moved (`[S] speak` -> `[F] speak`) and the digest row after it;
+`Atlas.Keys128` - the recorded month replayed with `--keys TWREMFGK` comes to
+`Replay.Climate`'s state a56776c2166d6de1, log 1ae67b101be35733 and life
+7406a01f544161f6 and to another page, 9a400aead6539225. CONTROL: the
+four-argument page is the DefaultKeys page every byte (memcmp), the empty
+and played pins (`Atlas.PanelFrozen` d7e7149e65ceb69a, `View.Panel`'s
+0x777351768a3a4fc6) unchanged; census `--check` classifies the one new
+literal as WORLD/panel and nothing is removed.
+
+FAILED ON PURPOSE, each restored: `ValidKeys` ignoring Reserved -> the
+DefaultKeys-for-a-walker case red (2 checks); the page ignoring the table ->
+6 checks red (Speak's key, the one moved row, the digests equal); one byte
+of DefaultKeys changed (Wait on Y) -> `Atlas.PanelFrozen` prints `[Y] wait`
+and digest 347abd90b8627c51, both frozen `View.Panel` cases red. The first
+two attempts of the first two did not compile (an unused parameter under
+-Werror) and the old binary passed: a sabotage that does not build proves
+nothing, so they were redone with the parameter kept.
+
+### Found on CI run 306 (19.09), 2026-09-25: the stubs step counted six and the parse wrote nine
+
+The first complete run since 18.09 - 300, 301, 302 and 305 were cancelled by
+the push after each - went red on ONE step of the `engine modules parse` job,
+`Generated stubs`: 19.02 added `Tools/ShimProbe` with three `.generated.h`
+includes and taught `parse_engine_modules.py` about it (PROBE_MODULES), and
+the CI step that holds the two readers to one number still grepped
+`Source/Vaelen*/` only - WANTED 6, the parse wrote 9, MADE 0, `exit 1`.
+Every other leg of 306 built, and the clang release leg passed its whole
+suite before the fix landed. A sibling session (`claude/sleepy-davinci-ncmijd`,
+PR #1) had merged this base, hit the same red and written the fix, workflow
+only: the grep covers the probe too. Ported here as-is (`ce50ed9`,
+cherry-picked with its source named), reproduced first on this tree (old
+glob WANTED=6 MADE=0, new glob WANTED=9 MADE=1). `verify_fast` does not run
+that step: a clean verify_fast is not evidence that this job passes, which
+that commit's message says and this note repeats.

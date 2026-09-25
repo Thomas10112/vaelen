@@ -18,7 +18,8 @@
 // World, a Run or a Take.
 //
 // STATUS: UNVERIFIED (engine) since 19.01's ledger - its code has changed after the last build
-// that compiled it (b0921, 15.10, 867a129): 16.14's save, load and store (c146c43). Parsed
+// that compiled it (b0921, 15.10, 867a129): 16.14's save, load and store (c146c43), 19.10's
+// keys. Parsed
 // against Tools/EngineShim, never compiled. Tools/check_engine_status.py holds this line to
 // Tools/engine_builds.txt; the record of what earlier builds validated follows.
 // BUILD: b0921
@@ -158,6 +159,12 @@ public:
 	const Vaelen::View::LifeView& Life() const;
 	const Vaelen::View::ChronicleView& Chronicle() const;
 	const Vaelen::View::PanelView& Panel() const;
+	/// 19.10 (ADR-0158): the letters that press the eight verbs - the host's
+	/// table, which every page this host composes prints and every key the
+	/// controller binds comes from. DefaultKeys until 19.06 puts ZQSD on the
+	/// keyboard (then WalkKeys, Speak on F); a table that is not the default
+	/// is said on the `check it headless` line as `--keys`, told, not read.
+	const Vaelen::View::PanelKeys& Keys() const;
 	/// Everything the host has done, in the order it did it (14.01).
 	const Vaelen::Player::InputStream& Stream() const;
 
@@ -219,4 +226,7 @@ private:
 	// unit ever needs the definition. It is the type Epic wrote for exactly
 	// this, and there is no path it leaves open.
 	TPimplPtr<FVaelenHeld> Held;
+	/// The host's verb keys (19.10). Here and not in Held: the controller binds
+	/// them at SetupInputComponent, before any world is begun.
+	Vaelen::View::PanelKeys Keys_ = Vaelen::View::DefaultKeys;
 };

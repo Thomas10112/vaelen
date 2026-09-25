@@ -5,12 +5,18 @@
 // page: the target a key aims at, whether the page offers the verb at all,
 // and what it foresaw when it does not.
 //
-// STATUS: VALIDATED (Phase 14) for what Phase 14 left here - built by
+// STATUS: UNVERIFIED (engine) since 19.10 - its code has changed after the last build that
+// compiled it (b0921, 15.10, 867a129): the eight verbs bound from the host's key table
+// (ADR-0158) instead of eight literals. Parsed against Tools/EngineShim, never compiled;
+// FKey(FName) is a 19.02 belief until a sitting builds it. The record of what earlier
+// builds validated follows.
+// BUILD: b0921 - Tools/engine_builds.txt
+//
+// UNTIL 19.10: VALIDATED (Phase 14) for what Phase 14 left here - built by
 // UnrealBuildTool and RUN on 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development
 // Editor): eighty-three days played at the keyboard, and Tools/Atlas replayed
 // the stream headlessly to the same four digests, byte for byte.
 // Tests/Run/Streams/README.md has the lines.
-// BUILD: b0921 - Tools/engine_builds.txt; its code is what that build compiled (19.01).
 //
 // VALIDATED (Phase 15 task 15.10) for what 15.10 added - built by
 // UnrealBuildTool and RUN on 2026-09-21 (UE 5.6, MSVC 19.51, Win64 Development
@@ -41,6 +47,14 @@ namespace
 		}
 		return From->GetGameInstance()->GetSubsystem<UVaelenWorldSubsystem>();
 	}
+
+	/// A capital letter of the page's table as the key of that name: EKeys::T
+	/// is the key named "T", and so for every letter (19.10, ADR-0158).
+	FKey KeyOf(uint8 Letter)
+	{
+		const TCHAR Name[2] = {static_cast<TCHAR>(Letter), TEXT('\0')};
+		return FKey(FName(Name));
+	}
 } // namespace
 
 void AVaelenPlayerController::SetupInputComponent()
@@ -50,15 +64,19 @@ void AVaelenPlayerController::SetupInputComponent()
 	{
 		return;
 	}
-	// The letters the page carries (PanelView::Verbs[i].Key), in Intent order.
-	InputComponent->BindKey(EKeys::W, IE_Pressed, this, &AVaelenPlayerController::Work);
-	InputComponent->BindKey(EKeys::R, IE_Pressed, this, &AVaelenPlayerController::Rest);
-	InputComponent->BindKey(EKeys::E, IE_Pressed, this, &AVaelenPlayerController::Eat);
-	InputComponent->BindKey(EKeys::T, IE_Pressed, this, &AVaelenPlayerController::WaitOut);
-	InputComponent->BindKey(EKeys::S, IE_Pressed, this, &AVaelenPlayerController::Speak);
-	InputComponent->BindKey(EKeys::G, IE_Pressed, this, &AVaelenPlayerController::Give);
-	InputComponent->BindKey(EKeys::K, IE_Pressed, this, &AVaelenPlayerController::Take);
-	InputComponent->BindKey(EKeys::M, IE_Pressed, this, &AVaelenPlayerController::Move);
+	// The letters the page prints (PanelView::Verbs[i].Key), from the one
+	// table the host holds (19.10, ADR-0158) - eight literals until then, and
+	// nothing checked that they agreed with the page. In Intent order.
+	const UVaelenWorldSubsystem* World = Held(GetWorld());
+	const Vaelen::View::PanelKeys& Keys = World != nullptr ? World->Keys() : Vaelen::View::DefaultKeys;
+	InputComponent->BindKey(KeyOf(Keys.Keys[0]), IE_Pressed, this, &AVaelenPlayerController::WaitOut);
+	InputComponent->BindKey(KeyOf(Keys.Keys[1]), IE_Pressed, this, &AVaelenPlayerController::Work);
+	InputComponent->BindKey(KeyOf(Keys.Keys[2]), IE_Pressed, this, &AVaelenPlayerController::Rest);
+	InputComponent->BindKey(KeyOf(Keys.Keys[3]), IE_Pressed, this, &AVaelenPlayerController::Eat);
+	InputComponent->BindKey(KeyOf(Keys.Keys[4]), IE_Pressed, this, &AVaelenPlayerController::Move);
+	InputComponent->BindKey(KeyOf(Keys.Keys[5]), IE_Pressed, this, &AVaelenPlayerController::Speak);
+	InputComponent->BindKey(KeyOf(Keys.Keys[6]), IE_Pressed, this, &AVaelenPlayerController::Give);
+	InputComponent->BindKey(KeyOf(Keys.Keys[7]), IE_Pressed, this, &AVaelenPlayerController::Take);
 	InputComponent->BindKey(EKeys::Tab, IE_Pressed, this, &AVaelenPlayerController::NextTarget);
 	InputComponent->BindKey(EKeys::SpaceBar, IE_Pressed, this, &AVaelenPlayerController::TurnTheDay);
 	InputComponent->BindKey(EKeys::F9, IE_Pressed, this, &AVaelenPlayerController::WriteStream);

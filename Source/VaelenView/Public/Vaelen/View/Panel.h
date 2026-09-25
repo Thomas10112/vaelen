@@ -112,11 +112,38 @@ namespace Vaelen::View
 				  "PanelView must have no padding: MeasurePanel hashes it and a renderer copies it");
 	static_assert(sizeof(PanelView) <= 4096, "the page fits the row's 4 KiB");
 
+	/// 19.10 (ADR-0158): the letters that press the eight verbs, in Intent
+	/// order - Wait, Work, Rest, Eat, Move, Speak, Give, Take. They are the
+	/// HOST's: told to TakePanel and printed on the page, so a page's digest is
+	/// of its keys too, and a keyboard bound from the same table cannot drift
+	/// from what the page says.
+	struct PanelKeys
+	{
+		uint8 Keys[PanelVerbs] = {};
+	};
+	/// 14.09's table, byte for byte: every page pinned before 19.10 is of it,
+	/// and the four-argument TakePanel composes with it.
+	inline constexpr PanelKeys DefaultKeys{{'T', 'W', 'R', 'E', 'M', 'S', 'G', 'K'}};
+	/// The walk's (Phase 19): Speak on F, because ZQSD wants S for south.
+	inline constexpr PanelKeys WalkKeys{{'T', 'W', 'R', 'E', 'M', 'F', 'G', 'K'}};
+	/// Eight distinct capital letters, none in Reserved (a NUL-terminated
+	/// string of the host's own keys - "ZQSD " for a walker). False names the
+	/// first byte refused in Named: not a capital letter, a repeat, or reserved.
+	VAELEN_VIEW_API bool ValidKeys(const PanelKeys& Keys, const char* Reserved, char& Named);
+	/// The table as eight letters and a NUL ("TWREMSGK"), for a command line
+	/// or a log; and the table read back from exactly eight bytes (false, Out
+	/// untouched, for any other length - validity is ValidKeys's question).
+	VAELEN_VIEW_API void KeysText(const PanelKeys& Keys, char (&Out)[PanelVerbs + 1]);
+	VAELEN_VIEW_API bool KeysFromText(const char* Text, PanelKeys& Out);
+
 	/// Composes the page. Views in, rows out: no World, no ViewSources, no
 	/// allocation, and nothing here can move anything. The three views must be
 	/// of the same frame - the page says so by carrying the life's tick.
+	/// The four-argument form composes with DefaultKeys.
 	VAELEN_VIEW_API void TakePanel(const WorldView& World_, const LifeView& Life, const ChronicleView& Told,
 								   PanelView& Out);
+	VAELEN_VIEW_API void TakePanel(const WorldView& World_, const LifeView& Life, const ChronicleView& Told,
+								   const PanelKeys& Keys, PanelView& Out);
 
 	/// Turns a verb the page offers into an intent, with Issued = 0: the door
 	/// (Run::Door::Mean) stamps that, and a page cannot know the tick it will

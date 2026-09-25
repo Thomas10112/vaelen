@@ -34,6 +34,8 @@
 // test prints what it saw instead of asserting.
 #define VAELEN_PANEL_FROZEN_EMPTY 0xd7e7149e65ceb69aull
 #define VAELEN_PANEL_FROZEN_PLAYED 0x777351768a3a4fc6ull
+// 19.10: the same thirty days on the walk's keys (Speak on F), ADR-0158.
+#define VAELEN_PANEL_FROZEN_WALK 0x77038fcf880e61c7ull
 
 using namespace Vaelen;
 using namespace Vaelen::Run;
@@ -289,6 +291,102 @@ VAELEN_TEST(Panel, ThePlayedPageOfThirtyDaysIsFrozen)
 	VAELEN_LOG_INFO(
 		LogPanel, "the played page: %u rows, %u bytes of text, %u verbs offered, digest %016llx (page in %.2f ms)\n%s",
 		V.RowCount, V.Used, S.Offered, static_cast<unsigned long long>(S.Digest), Took, Drawn(V).c_str());
+}
+
+VAELEN_TEST(Panel, TheKeysAreTheHostsAndThePageSaysThem)
+{
+	// 19.10 (ADR-0158): the table of letters is an input of the page. The
+	// same thirty days as above, composed three ways.
+	Aelvor A(Small());
+	VT_REQUIRE(A.Begin());
+	Door D(A, Anywhere());
+	VT_REQUIRE(D.TakeUp() != 0);
+	for (uint32 Day = 0; Day < 30; ++Day)
+	{
+		Player::PlayerCommand C;
+		C.Kind = static_cast<uint8>(1 + Day % 8u);
+		C.Amount = 1 + Day % 3u;
+		D.Mean(C);
+		D.Day();
+	}
+	WorldGen::RegionGraphCache Ways;
+	WorldView Frame;
+	LifeView Life;
+	ChronicleView Told;
+	TakeView(A.Instance(), A.Sources(), Frame);
+	TakeLifeView(A.Instance(), A.Sources(), Ways, Life);
+	TakeChronicleView(A.Instance(), A.Sources(), Told);
+	PanelView Four, Given, Walk;
+	TakePanel(Frame, Life, Told, Four);
+	TakePanel(Frame, Life, Told, DefaultKeys, Given);
+	TakePanel(Frame, Life, Told, WalkKeys, Walk);
+
+	// CONTROL: the four-argument page IS the DefaultKeys page, every byte of
+	// it, and it is still the frozen one: no pin before 19.10 moves.
+	VT_CHECK_EQ(std::memcmp(&Four, &Given, sizeof(PanelView)), 0);
+#if VAELEN_PANEL_FROZEN_PLAYED != 0x0ull
+	VT_CHECK_EQ(MeasurePanel(Given).Digest, Hash64{VAELEN_PANEL_FROZEN_PLAYED});
+#endif
+
+	// The walk's page differs in exactly one row of its text - [F] speak for
+	// [S] speak - and, because that row is digested, in the digest row after it.
+	VT_CHECK_EQ(Walk.RowCount, Given.RowCount);
+	VT_CHECK_EQ(Walk.Verbs[5].Key, static_cast<uint8>('F'));
+	VT_CHECK_EQ(Given.Verbs[5].Key, static_cast<uint8>('S'));
+	uint32 Differ = 0;
+	std::string Was, Is;
+	for (uint32 i = 0; i < Given.RowCount && i < PanelRows; ++i)
+	{
+		if (Given.Rows[i].Kind == static_cast<uint32>(RowKind::Digest))
+		{
+			VT_CHECK(RowAt(Given, i) != RowAt(Walk, i));
+			continue;
+		}
+		if (RowAt(Given, i) != RowAt(Walk, i))
+		{
+			++Differ;
+			Was = RowAt(Given, i);
+			Is = RowAt(Walk, i);
+			VT_CHECK_EQ(Given.Rows[i].Verb, static_cast<uint32>(Player::Intent::Speak));
+		}
+	}
+	VT_CHECK_EQ(Differ, 1u);
+	VT_CHECK(Was.rfind("[S] speak", 0) == 0);
+	VT_CHECK(Is.rfind("[F] speak", 0) == 0);
+	const PanelStats S = MeasurePanel(Walk);
+	VT_CHECK(S.Digest != MeasurePanel(Given).Digest);
+#if VAELEN_PANEL_FROZEN_WALK != 0x0ull
+	VT_CHECK_EQ(S.Digest, Hash64{VAELEN_PANEL_FROZEN_WALK});
+#endif
+	VAELEN_LOG_INFO(LogPanel, "the walk's page: digest %016llx; the row that moved: '%s' -> '%s'",
+					static_cast<unsigned long long>(S.Digest), Was.c_str(), Is.c_str());
+
+	// The table is held to its rules, naming the letter: 14.09's S is ZQSD's
+	// south, so DefaultKeys is refused for a walker and WalkKeys is not.
+	char Named = '\0';
+	VT_CHECK(!ValidKeys(DefaultKeys, "ZQSD ", Named));
+	VT_CHECK_EQ(Named, 'S');
+	VT_CHECK(ValidKeys(WalkKeys, "ZQSD ", Named));
+	VT_CHECK_EQ(Named, '\0');
+	VT_CHECK(ValidKeys(DefaultKeys, "", Named)); // a replay of a 14.09 stream reserves nothing
+	PanelKeys Twice = WalkKeys;
+	Twice.Keys[7] = 'T'; // Take on Wait's letter
+	VT_CHECK(!ValidKeys(Twice, "", Named));
+	VT_CHECK_EQ(Named, 'T');
+	PanelKeys Lower = WalkKeys;
+	Lower.Keys[2] = 'r';
+	VT_CHECK(!ValidKeys(Lower, "", Named));
+	VT_CHECK_EQ(Named, 'r');
+	// And it goes to text and back, eight letters exactly.
+	char Text[PanelVerbs + 1];
+	KeysText(WalkKeys, Text);
+	VT_CHECK_EQ(std::string(Text), std::string("TWREMFGK"));
+	PanelKeys Read;
+	VT_CHECK(KeysFromText("TWREMFGK", Read));
+	VT_CHECK_EQ(std::memcmp(&Read, &WalkKeys, sizeof(PanelKeys)), 0);
+	VT_CHECK(!KeysFromText("TWREMFG", Read));
+	VT_CHECK(!KeysFromText("TWREMFGKX", Read));
+	VT_CHECK(!KeysFromText(nullptr, Read));
 }
 
 VAELEN_TEST(Panel, TheVerbsAreTheKernelsAndPressIsTheOtherHalf)

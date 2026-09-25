@@ -70,7 +70,7 @@ struct FVaelenHeld
 	Vaelen::View::ChronicleView Told;
 	Vaelen::View::PanelView Page;
 
-	void TakeAll()
+	void TakeAll(const Vaelen::View::PanelKeys& Keys)
 	{
 		if (!World)
 		{
@@ -81,20 +81,20 @@ struct FVaelenHeld
 		Vaelen::View::TakePeopleView(World->Instance(), From, Folk);
 		Vaelen::View::TakeLifeView(World->Instance(), From, Ways, Life);
 		Vaelen::View::TakeChronicleView(World->Instance(), From, Told);
-		Vaelen::View::TakePanel(Frame, Life, Told, Page);
+		Vaelen::View::TakePanel(Frame, Life, Told, Keys, Page);
 	}
 
 	/// After a command: nothing of the world moved - a Mean only queues - so
 	/// the frame, the people and the chronicle are still true, and the life
 	/// (its queue) and the page are not.
-	void TakeLifeAndPage()
+	void TakeLifeAndPage(const Vaelen::View::PanelKeys& Keys)
 	{
 		if (!World)
 		{
 			return;
 		}
 		Vaelen::View::TakeLifeView(World->Instance(), World->Sources(), Ways, Life);
-		Vaelen::View::TakePanel(Frame, Life, Told, Page);
+		Vaelen::View::TakePanel(Frame, Life, Told, Keys, Page);
 	}
 };
 
@@ -148,7 +148,7 @@ bool UVaelenWorldSubsystem::Begin(int32 Size, int32 Years, bool bStreaming)
 	// Once, here: the ground of a begun world does not change, and taking it
 	// on a frame would be taking half a megabyte on a frame.
 	Vaelen::View::TakeMapView(Held->World->Instance(), Held->World->Sources(), Held->Ground);
-	Held->TakeAll();
+	Held->TakeAll(Keys_);
 	return true;
 }
 
@@ -168,7 +168,7 @@ int32 UVaelenWorldSubsystem::TakeSomebodyElse()
 	const int32 Who = static_cast<int32>(Held->Door->TakeUp());
 	// The life and the page, not the frame: nothing of the world moved, but
 	// who is being played did, and both of those read from it.
-	Held->TakeLifeAndPage();
+	Held->TakeLifeAndPage(Keys_);
 	return Who;
 }
 
@@ -292,7 +292,7 @@ void UVaelenWorldSubsystem::AdvanceDay(int32 Days)
 		}
 		Held->Door->Day(); // records DayTurned and turns it
 	}
-	Held->TakeAll();
+	Held->TakeAll(Keys_);
 }
 
 Vaelen::Player::Refusal UVaelenWorldSubsystem::Mean(const Vaelen::Player::PlayerCommand& What)
@@ -302,7 +302,7 @@ Vaelen::Player::Refusal UVaelenWorldSubsystem::Mean(const Vaelen::Player::Player
 		return Vaelen::Player::Refusal::NoPlayer;
 	}
 	const Vaelen::Player::Refusal Answer = Held->Door->Mean(What);
-	Held->TakeLifeAndPage();
+	Held->TakeLifeAndPage(Keys_);
 	return Answer;
 }
 
@@ -334,6 +334,11 @@ const Vaelen::View::PanelView& UVaelenWorldSubsystem::Panel() const
 {
 	static const Vaelen::View::PanelView Nothing;
 	return Held ? Held->Page : Nothing;
+}
+
+const Vaelen::View::PanelKeys& UVaelenWorldSubsystem::Keys() const
+{
+	return Keys_;
 }
 
 const Vaelen::Player::InputStream& UVaelenWorldSubsystem::Stream() const
@@ -392,7 +397,7 @@ namespace
 	/// what this host was given, and nobody has to remember them at the
 	/// keyboard. It must print "adopted at" the state digest the save line
 	/// printed.
-	FString HeadlessCheck(const Vaelen::Run::Options& Given, const FString& Path)
+	FString HeadlessCheck(const Vaelen::Run::Options& Given, const Vaelen::View::PanelKeys& Keys, const FString& Path)
 	{
 		FString Out =
 			FString::Printf(TEXT("VaelenAtlas --load-from \"%s\" --size %u --years %u --prehistory %u --then-days 0"),
@@ -415,6 +420,20 @@ namespace
 		// flipped that default, and a container of the world before printed a
 		// check that rebuilt the climate world and could never agree with it.
 		Out += Given.Climate ? TEXT(" --climate") : TEXT(" --no-climate");
+		// 19.10: a host whose keys are not 14.09's says so, since the page the
+		// check must come back to prints them (ADR-0158). The default is silent,
+		// so every check line printed before 19.10 reads as it did.
+		bool Unchanged = true;
+		for (uint32 i = 0; i < Vaelen::View::PanelVerbs; ++i)
+		{
+			Unchanged = Unchanged && Keys.Keys[i] == Vaelen::View::DefaultKeys.Keys[i];
+		}
+		if (!Unchanged)
+		{
+			char Letters[Vaelen::View::PanelVerbs + 1];
+			Vaelen::View::KeysText(Keys, Letters);
+			Out += FString::Printf(TEXT(" --keys %s"), ANSI_TO_TCHAR(Letters));
+		}
 		return Out;
 	}
 } // namespace
@@ -453,7 +472,7 @@ bool UVaelenWorldSubsystem::Save(const FString& Name, FString& Out, FString& Out
 		return false;
 	}
 	Out = FPaths::Combine(Store.Where(), Name);
-	OutCheck = HeadlessCheck(Held->World->Given(), Out);
+	OutCheck = HeadlessCheck(Held->World->Given(), Keys_, Out);
 	return true;
 }
 
@@ -529,9 +548,9 @@ bool UVaelenWorldSubsystem::Load(const FString& Name, FString& Out, FString& Out
 	Held->Watched = false;
 	// The ground once, and the five views, exactly as Begin ends.
 	Vaelen::View::TakeMapView(Held->World->Instance(), Held->World->Sources(), Held->Ground);
-	Held->TakeAll();
+	Held->TakeAll(Keys_);
 	Out = FPaths::Combine(Store.Where(), Name);
-	OutCheck = HeadlessCheck(Declared, Out);
+	OutCheck = HeadlessCheck(Declared, Keys_, Out);
 	return true;
 }
 

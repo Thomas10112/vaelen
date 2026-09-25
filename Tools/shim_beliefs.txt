@@ -29,3 +29,4 @@ end               16.14  std::sort over the store's std::vector of names - a nam
 push_back         16.14  the kernel's std::vector of names, filled from the listing
 None              19.02  NOT a shim use: the engine code's own Refusal::None and friends, which 19.02's ETriggerEvent::None also spells
 Started           19.02  NOT a shim use: the atlas actor's own clock variable, which 19.02's ETriggerEvent::Started also spells
+FKey              19.10  FKey(FName): the controller binds the eight verbs from the host's key table (ADR-0158)

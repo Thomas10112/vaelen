@@ -31,7 +31,7 @@ PHASE       : 18 — CLIMATE & SEASONS, CLOSED headless 2026-09-25, read clause 
               twelve tasks, four sittings on the owner's machine. 19.01 and 19.02
               DONE; 19.03 WAITS ON THE OWNER (sitting S1, ENGINE_HANDOFF; its first
               attempt found C2487 in Aelvor.h, repaired by 19.03b - the retake builds that). Headless
-              work goes on meanwhile: 19.04, 19.05, 19.07, 19.08 and 19.09 DONE; NEXT 19.06 is sitting S2
+              work goes on meanwhile: 19.04, 19.05, 19.07, 19.08, 19.09 and 19.10 DONE; NEXT 19.06 is sitting S2
               (the engine contract: VaelenWalk, the walker, ZQSD) - its code is written
               here after S1 has built 19.03; 19.07 (the fence and the walk contract,
               headless) can go first. Ten owner questions, the tile
@@ -40,7 +40,20 @@ PHASE       : 18 — CLIMATE & SEASONS, CLOSED headless 2026-09-25, read clause 
                GATE still open - clause (j)'s migration half deferred to the v4 bump,
                and 16.14's sitting on the owner's Windows machine. Section 22.
                15 CLOSED 2026-09-21; 14 CLOSED 2026-09-16)
-TASK        : 19.09 — DONE 2026-09-25. The cold and the heat can be seen: snow, grass, sun, breath.
+TASK        : 19.10 — DONE 2026-09-25 (headless); its engine half UNVERIFIED until a sitting. The keys are the host's.
+
+              Vaelen/View/Panel.h: PanelKeys, DefaultKeys (14.09's, byte for byte),
+              WalkKeys (Speak on F), ValidKeys naming the refused letter, TakePanel
+              with a table (the four-argument form = DefaultKeys, no pin moves).
+              Atlas --keys, told like --want-bound. View.Panel pins the walk's page
+              77038fcf880e61c7 (one row moved); Atlas.Keys128: the recorded month on
+              TWREMFGK comes to the same state, log and life and page 9a400aead6539225.
+              Engine: the subsystem holds the table (DefaultKeys until 19.06), the
+              check line says --keys when it is not the default, the controller binds
+              the eight verbs from it (FKey(FName), a listed belief). Three sabotages
+              caught - two of them redone after an unbuildable first attempt.
+
+TASK (19.09): 19.09 — DONE 2026-09-25. The cold and the heat can be seen: snow, grass, sun, breath.
 
               Vaelen/Scene/Sky.h: SnowOf (today's Frost flag, 255 at -5, a ramp to
               0), GrassOf, ApplyClimate over a built mesh (the sea untouched; an

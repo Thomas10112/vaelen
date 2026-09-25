@@ -354,6 +354,26 @@ put first. It is committed as `Tests/Run/Sessions/s1-<date>.log` and re-read by
 `Tools/engine_builds.txt` gains the row `s1` (RECORDED), and
 `check_engine_status.py` moves the files this build compiled to VALIDATED.
 
+### After S1: what the branch carries beyond 19.03b, for the build after it
+
+S1 is pinned to `19.03b` and sees none of this. The next build (sitting S2,
+19.06) will, and each is a possible first error of its own:
+
+- 19.09 (kernel, CI-built): `Source/VaelenScene/Public/Vaelen/Scene/Sky.h`
+  and `Private/Sky.cpp` - integers only, nothing Unreal.
+- 19.10 (engine, parsed only): `UVaelenWorldSubsystem::Keys()` - a plain
+  `Vaelen::View::PanelKeys` member of the UCLASS, NOT a UPROPERTY (its type
+  is no USTRUCT); every page the host composes takes it, and the `check it
+  headless` line gains ` --keys LLLLLLLL` only when the table is not 14.09's.
+  `AVaelenPlayerController::SetupInputComponent` binds the eight verbs from
+  that table through `FKey(FName(...))` instead of eight `EKeys::` literals -
+  the belief to report if it does not compile is that `FKey` has a constructor
+  from `FName` (InputCoreTypes.h) and that the key named "T" is `EKeys::T`.
+  The table is DefaultKeys until 19.06, so the page and the four digests of
+  every stream recorded so far are unchanged: if `Vaelen.Play` prints another
+  `panel` digest than the Atlas replays to, the binding moved the page and
+  that is the report.
+
 ## What the kernel half already hands you
 
 | You need | It is called | Where |

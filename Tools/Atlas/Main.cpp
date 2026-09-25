@@ -507,6 +507,10 @@ namespace
 		/// engine host takes whoever the world offers (VaelenWorldSubsystem.cpp
 		/// sets 0); the kernel's own default is 1, and so is this one.
 		uint32 WantBound = 1;
+		/// 19.10: the host's verb keys, told like --want-bound (ADR-0158). A stream
+		/// recorded by a host with another table replays to the same state, log
+		/// and life and another page; Atlas.Keys128 holds that.
+		PanelKeys Keys = DefaultKeys;
 		/// 14.10: write a stream of a month played by nobody, to this path.
 		std::string Stand;
 		/// 15.10's headless half: a WALK, written with the streaming cadence on
@@ -673,6 +677,8 @@ namespace
 					 "  --scene         with --replay: print the terrain, layout and sky lines it came to (19.09)\n"
 					 "  --no-climate    18.10: the world before Phase 18 - no winter, no season, no chill (the climate "
 					 "is the default)\n"
+					 "  --keys LLLLLLLL the host's verb keys in Intent order, eight capital letters (default TWREMSGK, "
+					 "the walk's host says TWREMFGK) (19.10)\n"
 					 "  --want-bound N  StartRules::WantBound for a replay (0 or 1, default 1; the engine host "
 					 "uses 0)\n"
 					 "  --stand FILE    write a stand-in stream: thirty days played by nobody (14.10)\n"
@@ -891,6 +897,16 @@ namespace
 			else if (std::strcmp(Arg, "--inspect-dir") == 0 && HasValue)
 			{
 				Out.InspectDir = Argv[++I];
+			}
+			else if (std::strcmp(Arg, "--keys") == 0 && HasValue)
+			{
+				char Named = '\0';
+				if (!KeysFromText(Argv[++I], Out.Keys) || !ValidKeys(Out.Keys, "", Named))
+				{
+					std::fprintf(stderr, "AELVOR: --keys takes eight distinct capital letters, not %s%s%c\n", Argv[I],
+								 Named != '\0' ? " - refused at " : "", Named != '\0' ? Named : ' ');
+					return false;
+				}
 			}
 			else if (std::strcmp(Arg, "--want-bound") == 0 && HasValue && ParseUnsigned(Argv[I + 1], Value))
 			{
@@ -1396,7 +1412,7 @@ namespace
 		TakeView(A.Instance(), SourcesFor(A, Opt), Frame);
 		TakeLifeView(A.Instance(), SourcesFor(A, Opt), Ways, Life);
 		TakeChronicleView(A.Instance(), SourcesFor(A, Opt), Told);
-		TakePanel(Frame, Life, Told, Page);
+		TakePanel(Frame, Life, Told, Opt.Keys, Page);
 		const std::string Story = A.Life();
 
 		// THE LINE THE OWNER COMPARES, in the shape Vaelen.Stream.Write prints
@@ -3053,7 +3069,7 @@ namespace
 			TakeView(A.Instance(), SourcesFor(A, Opt), Frame);
 			TakeLifeView(A.Instance(), SourcesFor(A, Opt), Ways, Life);
 			TakeChronicleView(A.Instance(), SourcesFor(A, Opt), Told);
-			TakePanel(Frame, Life, Told, Page);
+			TakePanel(Frame, Life, Told, Opt.Keys, Page);
 		};
 
 		// What the month must contain: every one of the eight verbs at least
@@ -3466,7 +3482,7 @@ namespace
 			PanelView Page;
 			TakeLifeView(A.Instance(), SourcesFor(A, Opt), Ways, Life);
 			TakeChronicleView(A.Instance(), SourcesFor(A, Opt), Told);
-			TakePanel(Frame, Life, Told, Page);
+			TakePanel(Frame, Life, Told, Opt.Keys, Page);
 			std::vector<char> Rows(PanelTextBytes, '\0');
 			Lines(Page, Rows.data(), PanelTextBytes);
 			std::printf("%s\n", Rows.data());

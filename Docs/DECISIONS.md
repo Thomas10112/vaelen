@@ -10738,7 +10738,7 @@ The UI fence refuses `Tick(`, `DeltaSeconds` and clocks in VaelenUI (check_ui_fe
 
 ## ADR-0158 — The keys are the host's, and the default page is frozen
 
-**Status:** PROPOSED (2026-09-25, Phase 19 plan; applied by 19.10).
+**Status:** APPLIED 2026-09-25 by 19.10 for the page, the Atlas and the pins (proposed 2026-09-25 by the Phase 19 plan); its engine half - the subsystem's table and the controller bound from it - is written, parsed and UNVERIFIED (engine) until a sitting builds it. One deviation the as-built note records: the engine host holds DefaultKeys until 19.06 puts ZQSD on the keyboard, so that S2 sees the binding from the table on an unchanged page before the page moves.
 
 ### Context
 
