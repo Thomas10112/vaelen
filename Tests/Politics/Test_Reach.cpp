@@ -677,10 +677,23 @@ VAELEN_TEST(Reach, ASnapshotLoadedOverAWorldThatHasRunGivesTheSameWorld)
 	Fresh.Ages.Run(50);
 	VT_CHECK_EQ(ComputeStateDigest(Fresh.Instance), Truth);
 
+	// A world whose systems have already walked ANOTHER map of the same count
+	// of regions no longer takes the image at all: since 18.09 a begun map
+	// refuses an image of another shape (WorldShapeDiffers) and is left as it
+	// was, so the stale graph this case was written to catch cannot be reached
+	// through the kernel door.
+	Run Other(AelvorSeed);
+	VT_REQUIRE(Other.Ages.Generate(Run::Square(112), 40));
+	Other.Ages.Run(3);
+	const Hash64 OtherBefore = ComputeStateDigest(Other.Instance);
+	VT_CHECK(LoadSnapshot(Other.Instance, Image.data(), Image.size()) == SnapshotResult::WorldShapeDiffers);
+	VT_CHECK_EQ(ComputeStateDigest(Other.Instance), OtherBefore);
+
 	// The same image loaded into a world whose systems have already walked
-	// another map of the same count of regions.
+	// the same map with a different history: the caches it built must not
+	// survive into the loaded world either.
 	Run Used(AelvorSeed);
-	VT_REQUIRE(Used.Ages.Generate(Run::Square(112), 40));
+	VT_REQUIRE(Used.Ages.Generate(Run::Square(128), 40));
 	Used.Ages.Run(3);
 	VT_REQUIRE(LoadSnapshot(Used.Instance, Image.data(), Image.size()) == SnapshotResult::Ok);
 	Used.Ages.Run(50);
