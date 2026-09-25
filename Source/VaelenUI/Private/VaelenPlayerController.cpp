@@ -188,13 +188,15 @@ void AVaelenPlayerController::TurnTheDay()
 	// cadence ignores every look, so recording them would put a hundred records
 	// in a stream that change nothing - and would stop this host writing the
 	// stream Phase 14 wrote, which its own comments promise it still writes.
+	int32 Looked = -1;
 	if (bLookFromCamera && World->Streaming())
 	{
 		int32 Reach = 0;
-		const int32 Region = RegionTheCameraIsOver(Reach);
-		World->Watch(Region, Reach, MostRegions);
+		Looked = RegionTheCameraIsOver(Reach);
+		World->Watch(Looked, Reach, MostRegions);
 	}
 	World->AdvanceDay(1); // one DayTurned, recorded (ADR-0138)
+	AfterTheDay(Looked);
 }
 
 void AVaelenPlayerController::WriteStream()
@@ -206,6 +208,7 @@ void AVaelenPlayerController::WriteStream()
 	}
 	FString Path;
 	UE_LOG(LogVaelenUI, Log, TEXT("LogVaelenUI: stream %s"), World->WriteStream(Path) ? *Path : TEXT("not written"));
+	AfterStreamWritten();
 }
 
 void AVaelenPlayerController::Verb(Vaelen::Player::Intent Kind)
@@ -231,6 +234,8 @@ void AVaelenPlayerController::Verb(Vaelen::Player::Intent Kind)
 	{
 		Target = Aim < Life.NearCount ? Life.Near[Aim] : 0u;
 	}
+	// 19.11: the walk aims by where the body stands and faces; Tab is its fallback.
+	Target = TargetFor(Kind, Target);
 
 	Vaelen::Player::PlayerCommand What;
 	const Vaelen::Player::Refusal Foreseen = Vaelen::View::Press(Page, Kind, Target, 1, What);

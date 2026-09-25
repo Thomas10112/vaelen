@@ -457,6 +457,40 @@ Bring back the whole `Saved/Logs/Vaelen.log`, rev-parse first. It is
 committed as `Tests/Run/Sessions/s2-<date>.log`, `Session.P19S2` re-reads
 steps 3 and 4 against the Atlas, and the ledger gains the row `s2`.
 
+## PHASE 19 - sitting S3 (task 19.11): the world drawn is the world built
+
+AFTER S2 has closed. Builds the commit of 19.11 (found by subject, `^19.11: `),
+rev-parse first, the standing rule as always.
+
+1. Build as for 14.08; first error verbatim and its module.
+2. Launch with the walk mode (the `?game=` URL of S2), then `Vaelen.Walk 128
+   120` and `Vaelen.Scene`: the three LogVaelenScene lines and the `drawn
+   houses ...` line. The houses, figures, squares, road tiles and pits drawn
+   must equal the layout line's counts. You should see cubes with cones on
+   them, cylinders with spheres, slabs, the sea and the lakes.
+3. `Vaelen.Day 10`, `Vaelen.Scene` again: the layout line's day moved by ten,
+   the figures moved, the snow and the sun with them; `Vaelen.Stream.Write`.
+4. Days into the first frosts (`Vaelen.Day 30` at a time, watching the sky
+   line's snow count): a screenshot with snow on the ground and `Vaelen.Scene`;
+   then a summer screenshot the same way (the season is on the page's Weather
+   row).
+5. `stat unit` at eye level inside the settlement, the HUD on - clause (n)'s
+   figure for the scene.
+6. Four walks into the fence, from four sides: each must stop you (`Log
+   LogVaelenWalkKeys Verbose` shows `fence at (x, y)`), and the walls stop the
+   body even where the check does not look. Then M facing a Near region at the
+   fence: `LogVaelenUI: Move -> queued`, Space, and the walker put back inside
+   the new region (`day ... region R life R`).
+7. Speak facing a larger figure within 3 m: `LogVaelenUI: Speak -> queued`
+   without Tab; facing nobody, the page's own refusal.
+8. `Vaelen.Stream.Write`: the `LogVaelenWalk: N days on foot ...` line.
+9. CONTROL: relaunch without `?game=`, `Vaelen.View 128 120`, the same digests.
+
+Bring back the whole log, rev-parse first. `Session.P19S3` replays the stream
+(`--panel --want-bound 0 --stream --scene --climate`) and holds the Scene,
+Climate and Play lines byte-identical, every `day D ... region R life L
+looked K` line to R == L == K, and the instance counts to the layout line's.
+
 ## What the kernel half already hands you
 
 | You need | It is called | Where |

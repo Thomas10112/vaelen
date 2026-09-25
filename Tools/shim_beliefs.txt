@@ -126,3 +126,14 @@ bUseAsyncCooking   19.06  collision cooked now, so Vaelen.Probe can trace at onc
 bUseComplexAsSimpleCollision 19.06  the capsule meets the triangles themselves
 bUseControllerRotationYaw 19.06  off: the body turns with its steps
 bUsePawnControlRotation 19.06  the arm follows the mouse
+# 19.11 (2026-09-25): the scenery - instanced basic shapes, the water planes, the fence walls.
+AddInstance                    19.11  UInstancedStaticMeshComponent::AddInstance - a house, a figure, a slab
+GetInstanceCount               19.11  what stands drawn, held equal to the layout line's counts
+UInstancedStaticMeshComponent  19.11  the scenery's nine components
+SetMeshSectionVisible          19.11  the fence walls, collision only, unseen
+QueryAndPhysics                19.11  ECollisionEnabled - houses are not walked through
+F                              19.11  a loop variable of the scenery; a name the shim also has
+First                          19.11  a local of the water quads; a name the shim also has
+High                           19.11  a local of the fence walls; a name the shim also has
+Low                            19.11  a local of the fence walls; a name the shim also has
+L                              19.11  the layout parameter of Draw; a name the shim also has

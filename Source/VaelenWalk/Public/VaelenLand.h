@@ -69,6 +69,12 @@ public:
 	/// Which region the near chunks were built for, 0 before Build.
 	uint32 BuiltFor() const { return Region_; }
 
+	/// 19.11: the fence (Vaelen/Scene/Fence.h) as one invisible section of
+	/// walls with collision, so that the body cannot leave the played region
+	/// even where the controller's step check is not looking (a slide, a
+	/// fall). Rebuilt when the life's region changes. Returns the edges walled.
+	int32 BuildFenceWalls(const Vaelen::Scene::Ground& G, uint32 Region);
+
 	/// Bound to the subsystem's OnViewsTaken by Vaelen.Walk (AddUObject, so
 	/// it unbinds with the actor): the day's snow on the near chunks and the
 	/// sun of this level's sky at the life's hour. Reads and draws.
@@ -89,4 +95,7 @@ private:
 	TArray<uint8> NearChunks;
 	/// The near chunks' stats, measured as uploaded: what TerrainLine says.
 	Vaelen::Scene::TerrainStats NearStats;
+	/// The section the fence walls are, past every chunk's; and whose fence.
+	int32 FenceSection = -1;
+	uint32 FencedRegion = 0;
 };

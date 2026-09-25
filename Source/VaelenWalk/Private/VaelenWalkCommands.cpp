@@ -23,9 +23,11 @@
 #include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
 #include "HAL/IConsoleManager.h"
+#include "Vaelen/Scene/Layout.h"
 #include "Vaelen/Scene/Sky.h"
 #include "Vaelen/Scene/Terrain.h"
 #include "VaelenLand.h"
+#include "VaelenScenery.h"
 #include "VaelenSky.h"
 #include "VaelenWalker.h"
 #include "VaelenWorldSubsystem.h"
@@ -96,15 +98,27 @@ namespace
 		const Vaelen::Scene::Ground& G = World->Scene();
 		AVaelenLand* Land = World_->SpawnActor<AVaelenLand>();
 		AVaelenSky* Sky = World_->SpawnActor<AVaelenSky>();
-		if (Land == nullptr || Sky == nullptr || !Land->Build(G, World->Climate(), Life.Region))
+		AVaelenScenery* Scenery = World_->SpawnActor<AVaelenScenery>();
+		if (Land == nullptr || Sky == nullptr || Scenery == nullptr || !Land->Build(G, World->Climate(), Life.Region))
 		{
 			UE_LOG(LogVaelenWalk, Warning, TEXT("LogVaelenWalk: the ground could not be built"));
 			return;
 		}
-		// The land repaints and re-aims the sky after every retaking of the
-		// views; AddUObject, so the binding dies with the actor.
+		// The land repaints and re-aims the sky, the scenery redraws the
+		// layout, after every retaking of the views; AddUObject, so the
+		// bindings die with the actors. The fence walls and the water once.
+		const int32 Walled = Land->BuildFenceWalls(G, Life.Region);
+		Scenery->DrawWater(G);
+		if (!Scenery->Draw(G, World->Layout()))
+		{
+			UE_LOG(LogVaelenWalk, Warning,
+				   TEXT("LogVaelenWalk: a basic shape was not found; the scenery is not drawn"));
+		}
 		World->OnViewsTaken.AddUObject(Land, &AVaelenLand::OnViewsTaken);
+		World->OnViewsTaken.AddUObject(Scenery, &AVaelenScenery::OnViewsTaken);
 		Land->OnViewsTaken();
+		UE_LOG(LogVaelenWalk, Log, TEXT("LogVaelenWalk: fence of region %u walled along %d edges"),
+			   static_cast<unsigned>(Life.Region), Walled);
 
 		// The walker on the centroid tile of the played region, standing.
 		if (APlayerController* Controller = World_->GetFirstPlayerController())
@@ -167,6 +181,72 @@ namespace
 			   TEXT("LogVaelenWalk: probe %d of region %u, bias %d mm: max |trace-builder| %.1f cm, misses %d"), Made,
 			   static_cast<unsigned>(Land->BuiltFor()), BiasMm, MaxCm, Misses);
 	}
+
+	AVaelenScenery* SceneryOf(UWorld* World_)
+	{
+		for (TActorIterator<AVaelenScenery> It(World_); It; ++It)
+		{
+			return *It;
+		}
+		return nullptr;
+	}
+
+	/// The three LogVaelenScene lines of the world as it stands - the bytes
+	/// `VaelenAtlas --replay <stream> --scene` prints for the same world on
+	/// the same day - and what the scenery has drawn of the layout.
+	void Scene(const TArray<FString>& Args, UWorld* World_)
+	{
+		(void)Args;
+		UVaelenWorldSubsystem* World = Held(World_);
+		AVaelenLand* Land = LandOf(World_);
+		AVaelenScenery* Scenery = SceneryOf(World_);
+		if (World == nullptr || !World->Begun() || Land == nullptr)
+		{
+			UE_LOG(LogVaelenWalk, Warning, TEXT("LogVaelenWalk: no scene (Vaelen.Walk first)"));
+			return;
+		}
+		const uint32 Size = static_cast<uint32>(World->Size());
+		{
+			char Line[Vaelen::Scene::TerrainLineBytes];
+			if (Land->TerrainLine(Size, World->Seed(), Line, Vaelen::Scene::TerrainLineBytes) != 0u)
+			{
+				UE_LOG(LogVaelenWalk, Log, TEXT("%s"), ANSI_TO_TCHAR(Line));
+			}
+		}
+		const Vaelen::View::LifeView& Life = World->Life();
+		const Vaelen::Scene::LayoutStats Laid = Vaelen::Scene::MeasureLayout(World->Layout());
+		{
+			char Line[Vaelen::Scene::LayoutLineBytes];
+			if (Vaelen::Scene::LayoutLine(Size, World->Seed(), Life.Day + 1u, Laid, Line,
+										  Vaelen::Scene::LayoutLineBytes) != 0u)
+			{
+				UE_LOG(LogVaelenWalk, Log, TEXT("%s"), ANSI_TO_TCHAR(Line));
+			}
+		}
+		{
+			bool bEquatorIsPlusY = true;
+			const uint32 Row = CentroidRow(*World, bEquatorIsPlusY);
+			const Vaelen::Scene::SkyStats Sky = Vaelen::Scene::MeasureSky(World->Scene(), World->Climate(), Life, Row);
+			char Line[Vaelen::Scene::SkyLineBytes];
+			if (Vaelen::Scene::SkyLine(Size, World->Seed(), World->Climate().Day + 1u, Sky, Line,
+									   Vaelen::Scene::SkyLineBytes) != 0u)
+			{
+				UE_LOG(LogVaelenWalk, Log, TEXT("%s"), ANSI_TO_TCHAR(Line));
+			}
+		}
+		if (Scenery != nullptr)
+		{
+			const AVaelenScenery::FDrawn D = Scenery->Drawn();
+			UE_LOG(LogVaelenWalk, Log,
+				   TEXT("LogVaelenWalk: drawn houses %d figures %d (company %d) squares %d road tiles %d pits %d"),
+				   D.Houses, D.Figures, D.Company, D.Squares, D.RoadTiles, D.Pits);
+		}
+	}
+
+	FAutoConsoleCommandWithWorldAndArgs GScene(TEXT("Vaelen.Scene"),
+											   TEXT("The three LogVaelenScene lines of the world as it stands, and "
+													"what is drawn of the layout"),
+											   FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Scene));
 
 	FAutoConsoleCommandWithWorldAndArgs
 		GWalk(TEXT("Vaelen.Walk"),

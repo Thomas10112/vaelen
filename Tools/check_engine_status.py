@@ -150,6 +150,9 @@ NEW_SINCE_B0921 = {
     "Source/VaelenWalk/Public/VaelenWalkGameMode.h",
     "Source/VaelenWalk/Public/VaelenWalker.h",
     "Source/VaelenWalk/VaelenWalk.Build.cs",
+    # 19.11: the scenery.
+    "Source/VaelenWalk/Private/VaelenScenery.cpp",
+    "Source/VaelenWalk/Public/VaelenScenery.h",
 }
 COMMENTS_ONLY_SINCE_B0921 = {
     "Source/VaelenPresentation/Private/VaelenViewDrawer.cpp",

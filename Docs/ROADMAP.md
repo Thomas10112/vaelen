@@ -8395,3 +8395,47 @@ WHAT IS DECIDED HERE, on this side, without waiting: step 0 (this commit).
 Everything from step 2 on that moves a pin, a HOST byte or a config line is
 the owner's, and section 26's questions Q1, Q2, Q9 are answered by the
 proposal, not by the owner, until the owner says so.
+
+### 19.11 AS BUILT (the headless half: written, fenced, parsed), 2026-09-25
+
+**S3: the world drawn is the world built, in both seasons.** STATUS:
+UNVERIFIED (engine) - two new engine files and five changed, 25 translation
+units parsed, never compiled. Sitting S3 builds them (ENGINE_HANDOFF).
+
+`AVaelenScenery` (VaelenWalk) draws the subsystem's layout and nothing
+else, as instanced meshes of `/Engine/BasicShapes` (a belief): a house a
+cube with a cone on it (8 m, collision), a figure a cylinder with a sphere,
+the company's a size larger and on components of their own so the count
+says who can be spoken to; a square a slab, a road a slab per tile, a pit a
+wide low cylinder. The sea a plane at 0 and every lake tile a quad at its
+invented surface, procedural-mesh sections without collision, drawn once.
+`Drawn()` counts the instances for `Vaelen.Scene`, which prints the three
+LogVaelenScene lines of the world as it stands (terrain from the land,
+layout from the subsystem's layout on the life's day, sky at the life's
+hour) and a `drawn houses H figures F (company C) squares S road tiles T
+pits P` line - Session.P19S3 holds the counts equal to the layout line's.
+
+ONE LAYOUT for the drawer and the aimer: the subsystem lays the scene out
+once per retaking (`Layout()`, on `Life.Day + 1` as `--replay --scene`
+does), so the figure drawn in front is the figure `AimAt` names.
+`AVaelenPlayerController` gains three hooks - `TargetFor`, `AfterTheDay`,
+`AfterStreamWritten` - the base leaving Tab's target and doing nothing after
+the day; the walk controller answers M at the fence with `CrossingOf` (the
+region one step ahead when the life lists it Near, else Tab's), Speak, Give
+and Take with `AimAt` (else Tab's), puts the walker back with
+`PlaceAfterDay` after every turn, counted, and says the one line of the
+day: `LogVaelenWalk: day D tile T region R life L looked K`. The fence is
+also a collision-only, invisible section of walls on the land, from 2 m
+under to 4 m over the edge, rebuilt when the life's region changes - belt
+and braces over the controller's step check. `Vaelen.Stream.Write` gains
+19.12's `LogVaelenWalk: N days on foot, C crossings, R refused, A aimed, F
+fence contacts, P put back`.
+
+DEVIATIONS, said out loud: the host's keys stay DefaultKeys (S is south AND
+Speak) until the owner answers Q2 - the one counted commit of ROADMAP 27
+step 5 is where WalkKeys lands; `Vaelen.Scene` prints the sky line too, and
+an instances line the plan row did not name.
+
+Held by the fence (33 files), the module lists, the status ledger (26
+moved-or-new), the shim ledger (10 more beliefs, five of them coincidences
+named as such).

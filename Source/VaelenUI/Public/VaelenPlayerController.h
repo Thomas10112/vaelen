@@ -131,6 +131,19 @@ private:
 protected:
 	virtual int32 RegionTheCameraIsOver(int32& OutReach);
 
+	/// 19.11: what a verb is aimed at, given what Tab would aim it at. The
+	/// base answers Tab's target; the walk answers the region ahead at the
+	/// fence for Move and the figure in front for Speak, Give and Take, and
+	/// falls back to Tab's when there is none (ROADMAP 19.11).
+	virtual uint32 TargetFor(Vaelen::Player::Intent Kind, uint32 TabTarget) { return TabTarget; }
+	/// 19.11: after the day turned and the views were retaken. The base does
+	/// nothing; the walk puts the walker back inside its region and says its
+	/// one line of the day.
+	virtual void AfterTheDay(int32 Looked) { (void)Looked; }
+	/// 19.12: after the stream was written. The base does nothing; the walk
+	/// says what the days on foot came to.
+	virtual void AfterStreamWritten() {}
+
 private:
 	/// Through the page and then through the door, and nowhere else. The page
 	/// answers first - an unoffered verb costs the world nothing - and what it

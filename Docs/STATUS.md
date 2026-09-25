@@ -39,6 +39,17 @@ PHASE       : 18 — CLIMATE & SEASONS, CLOSED headless 2026-09-25, read clause 
                GATE still open - clause (j)'s migration half deferred to the v4 bump,
                and 16.14's sitting on the owner's Windows machine. Section 22.
                15 CLOSED 2026-09-21; 14 CLOSED 2026-09-16)
+TASK        : 19.11 — WRITTEN 2026-09-25, UNVERIFIED (engine): the world drawn is the world built; S3 builds it.
+
+              AVaelenScenery draws the subsystem's one layout as basic shapes (houses
+              with collision, figures, the company a size larger, squares, roads,
+              pits), the sea at 0 and the lakes at their surfaces; the fence also as
+              invisible collision walls; the walk controller aims M by CrossingOf and
+              Speak/Give/Take by AimAt with Tab as fallback, puts the walker back after
+              every day (counted) and says one line a day; Vaelen.Scene prints the
+              three scene lines and the instances drawn; Stream.Write says the days on
+              foot. 25 TUs parse; fence, lists and ledgers hold. Keys still DefaultKeys.
+
 TASK        : PATH  — PROPOSED 2026-09-25: the path to a first sale, judged by the fleet (ROADMAP 27).
 
               Three proposals, one judge, the repository re-read: 5-8 owner sittings

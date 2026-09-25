@@ -16,8 +16,11 @@
 #include "EngineUtils.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Vaelen/Core/Hash.h"
+#include "Vaelen/Scene/Fence.h"
 #include "Vaelen/Scene/Sky.h"
 #include "VaelenSky.h"
+
+#include <vector>
 #include "VaelenWorldSubsystem.h"
 
 AVaelenLand::AVaelenLand()
@@ -214,6 +217,59 @@ int32 AVaelenLand::Probe(const Vaelen::Scene::Ground& G, int32 N, double BiasCm,
 	return Made;
 }
 
+int32 AVaelenLand::BuildFenceWalls(const Vaelen::Scene::Ground& G, uint32 Region)
+{
+	if (Region_ == 0u || G.Width == 0u)
+	{
+		return 0;
+	}
+	FenceSection = static_cast<int32>(Across_ * Down_);
+	Mesh->ClearMeshSection(FenceSection);
+	FencedRegion = Region;
+	std::vector<Vaelen::Scene::FenceEdge> Fence;
+	Vaelen::Scene::BuildFence(G, Region, Fence);
+	TArray<FVector> Vertices;
+	TArray<int32> Triangles;
+	TArray<FVector> Normals;
+	TArray<FVector2D> UV0;
+	TArray<FLinearColor> Colours;
+	TArray<FProcMeshTangent> Tangents;
+	for (const Vaelen::Scene::FenceEdge& E : Fence)
+	{
+		// A wall along the edge, from 2 m under the lower end to 4 m over the
+		// higher: the capsule meets it whatever the relief across the edge.
+		const double Z0 = static_cast<double>(Vaelen::Scene::HeightAt(G, E.X0, E.Y0));
+		const double Z1 = static_cast<double>(Vaelen::Scene::HeightAt(G, E.X1, E.Y1));
+		const double Low = (Z0 < Z1 ? Z0 : Z1) - 200.0;
+		const double High = (Z0 > Z1 ? Z0 : Z1) + 400.0;
+		const int32 First = Vertices.Num();
+		Vertices.Add(FVector(E.X0, E.Y0, Low));
+		Vertices.Add(FVector(E.X1, E.Y1, Low));
+		Vertices.Add(FVector(E.X1, E.Y1, High));
+		Vertices.Add(FVector(E.X0, E.Y0, High));
+		for (int32 i = 0; i < 4; ++i)
+		{
+			Normals.Add(FVector(0.0, 0.0, 1.0));
+			UV0.Add(FVector2D(0.0, 0.0));
+			Colours.Add(FLinearColor(0.0f, 0.0f, 0.0f, 0.0f));
+			Tangents.Add(FProcMeshTangent(1.0f, 0.0f, 0.0f));
+		}
+		// Both windings: a wall met from either side, whatever culling does.
+		for (const int32 Index : {First, First + 1, First + 2, First, First + 2, First + 3, First + 2, First + 1, First,
+								  First + 3, First + 2, First})
+		{
+			Triangles.Add(Index);
+		}
+	}
+	if (Vertices.Num() == 0)
+	{
+		return 0;
+	}
+	Mesh->CreateMeshSection_LinearColor(FenceSection, Vertices, Triangles, Normals, UV0, Colours, Tangents, true);
+	Mesh->SetMeshSectionVisible(FenceSection, false);
+	return static_cast<int32>(Fence.size());
+}
+
 void AVaelenLand::OnViewsTaken()
 {
 	UWorld* Level = GetWorld();
@@ -227,6 +283,11 @@ void AVaelenLand::OnViewsTaken()
 		return;
 	}
 	Repaint(World->Scene(), World->Climate());
+	// The fence follows the life: a crossing moves it to the new region.
+	if (World->Life().Region != 0u && World->Life().Region != FencedRegion)
+	{
+		BuildFenceWalls(World->Scene(), World->Life().Region);
+	}
 	// The sun over the played region's centroid row, at the life's hour; the
 	// equator is +Y of a row above the map's middle.
 	const Vaelen::Scene::Ground& G = World->Scene();

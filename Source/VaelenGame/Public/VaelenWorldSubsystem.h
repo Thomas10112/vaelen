@@ -50,6 +50,7 @@
 #include "Vaelen/View/Frame.h"
 #include "Vaelen/View/Life.h"
 #include "Vaelen/View/Panel.h"
+#include "Vaelen/Scene/Layout.h"
 #include "Vaelen/Scene/Terrain.h"
 #include "Vaelen/View/Climate.h"
 #include "Vaelen/View/Land.h"
@@ -176,6 +177,11 @@ public:
 	const Vaelen::Scene::Ground& Scene() const;
 	const Vaelen::View::ClimateView& Climate() const;
 	const Vaelen::View::NetView& Net() const;
+	/// 19.11: what the scene invents from the views, laid out once per
+	/// retaking on the life's day (Layout.h: houses, figures, squares, roads,
+	/// pits). ONE layout for the scenery that draws it and the controller
+	/// that aims at it, so the figure spoken to is the figure drawn.
+	const Vaelen::Scene::SceneLayout& Layout() const;
 	/// The world's seed and size, for the lines the walk prints in the Atlas's
 	/// words. 0 before Begin.
 	uint64 Seed() const;

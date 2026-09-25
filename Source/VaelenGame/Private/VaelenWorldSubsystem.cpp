@@ -77,6 +77,7 @@ struct FVaelenHeld
 	Vaelen::Scene::Ground Scene_;
 	Vaelen::View::ClimateView Climate;
 	Vaelen::View::NetView Net;
+	Vaelen::Scene::SceneLayout Laid;
 
 	void TakeAll(const Vaelen::View::PanelKeys& Keys)
 	{
@@ -92,6 +93,11 @@ struct FVaelenHeld
 		Vaelen::View::TakePanel(Frame, Life, Told, Keys, Page);
 		Vaelen::View::TakeClimateView(World->Instance(), From, Climate);
 		Vaelen::View::TakeNetView(World->Instance(), From, Net);
+		// 19.11: the day counted from 1, as the Atlas's --replay --scene lays it out.
+		if (Scene_.Width != 0u)
+		{
+			Vaelen::Scene::BuildLayout(Scene_, Frame, Net, Folk, Life, Life.Day + 1u, Laid);
+		}
 	}
 
 	/// After a command: nothing of the world moved - a Mean only queues - so
@@ -377,6 +383,12 @@ const Vaelen::View::NetView& UVaelenWorldSubsystem::Net() const
 {
 	static const Vaelen::View::NetView Nothing;
 	return Held ? Held->Net : Nothing;
+}
+
+const Vaelen::Scene::SceneLayout& UVaelenWorldSubsystem::Layout() const
+{
+	static const Vaelen::Scene::SceneLayout Nothing;
+	return Held ? Held->Laid : Nothing;
 }
 
 uint64 UVaelenWorldSubsystem::Seed() const
