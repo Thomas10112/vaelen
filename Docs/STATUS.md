@@ -29,14 +29,24 @@ PHASE       : 18 — CLIMATE & SEASONS, CLOSED headless 2026-09-25, read clause 
               shim, UNVERIFIED (engine) until Phase 19's first sitting.
               NOW: Phase 19 WORLD IN 3D (ROADMAP section 26, ADR-0155 to ADR-0159):
               twelve tasks, four sittings on the owner's machine. 19.01 and 19.02
-              DONE; NEXT 19.03, the first sitting (S1): the tree as it stands, built
-              once, before any Phase 19 engine line. Ten owner questions, the tile
+              DONE; 19.03 WAITS ON THE OWNER (sitting S1, ENGINE_HANDOFF). Headless
+              work goes on meanwhile: NEXT 19.04, one composer for every engine line. Ten owner questions, the tile
               scale first.
               (17 CLOSED 2026-09-24; 16 SAVE/PERSISTENCE: fourteen tasks built, its
                GATE still open - clause (j)'s migration half deferred to the v4 bump,
                and 16.14's sitting on the owner's Windows machine. Section 22.
                15 CLOSED 2026-09-21; 14 CLOSED 2026-09-16)
-TASK        : 19.02 — DONE 2026-09-25. The shim grows to the engine contract; Super is exact.
+TASK        : 19.03 — INCOMPLETE 2026-09-25: the headless half is written; sitting S1 is the owner's.
+
+              HeadlessCheck says the era both ways (--climate / --no-climate): since
+              18.10 a pre-climate container printed a check that rebuilt the wrong
+              world. ENGINE_HANDOFF "PHASE 19 - sitting S1": build the commit of 19.03
+              (not the branch head), rev-parse first, the ADR-0135 pair from the engine,
+              the 16.14 steps, three played days and the Weather row, stat unit at
+              ground level, and host24-16 loaded must say --no-climate. Closed by
+              Session.P19S1 over the committed log and a RECORDED ledger row.
+
+TASK (19.02): 19.02 — DONE 2026-09-25. The shim grows to the engine contract; Super is exact.
 
               Twenty-four shim headers the walk needs (character, movement, spring
               arm, camera, procedural mesh, Enhanced Input, lights, sky, fog, trace,

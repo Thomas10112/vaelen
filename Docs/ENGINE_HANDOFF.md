@@ -265,8 +265,10 @@ a report: `IFileManager::Move` with Replace, `FindFiles` over a directory
    `Vaelen.Save first`. Bring back the TWO lines it prints:
    ```
    LogVaelenPlay: saved first: state <16 hex>, log <16 hex>, life <16 hex>, panel <16 hex>; year Y day D, played P, daily cadence; <path>
-   LogVaelenPlay: check it headless: VaelenAtlas --load-from "<path>" --size 128 --years 120 --prehistory 300 --then-days 0 --stream
+   LogVaelenPlay: check it headless: VaelenAtlas --load-from "<path>" --size 128 --years 120 --prehistory 300 --then-days 0 --stream --climate
    ```
+   (Since 19.03 the check names its era both ways, `--climate` or
+   `--no-climate`: the Atlas's default flipped at 18.10.)
 3. A few more `Vaelen.Day`, then `Vaelen.Stream.Write`; bring its lines too.
 4. CLOSE THE EDITOR. Reopen under `-game` again and, WITHOUT `Vaelen.Play`:
    `Vaelen.Saves` (bring the listing), then `Vaelen.Load first`. Bring back
@@ -283,6 +285,52 @@ requires `adopted at` the same state; adds `Run.Gate.Saved` over the container
 exactly as `Run.Gate.Lived` was added over the walk of 2026-09-21; replays the
 container's own STREAM section and requires the digests of step 5; and turns
 the four `UNVERIFIED (engine)` lines to VALIDATED with the date.
+
+## PHASE 19 - sitting S1 (task 19.03): the tree as it stands, built once
+
+Before any Phase 19 engine line lands (ROADMAP section 26, ADR-0159). Since
+the last build (15.10, 2026-09-21, commit `867a129`) 410 lines of engine code in
+seven files have been written here and parsed, and never compiled: 16.14's
+save and load, 18.02's host byte, 18.10's climate wiring in both actors, and
+19.03's era flag. This sitting builds exactly that, so that a first error has
+one cause. The standing rule above holds without exception: REPORT, do not
+repair - above all nothing in `Source/VaelenCore` ... `VaelenMilitary`, nor in
+`VaelenRun`, `VaelenView` (and `VaelenScene` once 19.05 writes it) or below.
+
+0. Check out THE COMMIT OF 19.03, not the branch's head - the branch goes on
+   with headless work (19.04, 19.05) that this build must not see:
+   ```
+   git fetch origin claude/vaelen-master-prompt-aw7zqj
+   git checkout $(git log origin/claude/vaelen-master-prompt-aw7zqj --grep="^19.03: " -1 --format=%H)
+   git rev-parse HEAD
+   ```
+   The FIRST line of what you bring back is that `rev-parse` - the log is
+   refused without it (`Tools/check_session.py`, `head`).
+1. Build the editor as for 14.08. Bring back the UBT result line and, if it
+   fails, the FIRST error verbatim, and stop there.
+2. In the editor console: `Vaelen.View 128 120`. Bring back its
+   `AELVOR digests:` line; it must say `frame ec18241b89c3d246, ground
+   8f7f4948f49b6e86` - the headless frame since 18.10, never yet printed by an
+   engine.
+3. The 16.14 steps above, as written.
+4. Under `-game`: `Vaelen.Play 128 120 1`, `Vaelen.Day` three times,
+   `Vaelen.Stream.Write`. Bring back the `LogVaelenPlay:` lines, the stream
+   file it names, and a SCREENSHOT of the page: its second row is the Weather
+   row, which no engine screen has shown yet.
+5. `stat unit` twice, the camera at ground level: over `Vaelen.View 128 120`
+   and during `Vaelen.Play`. Bring back the Frame / Game / Draw / GPU figures.
+   They are the baseline Phase 19's frame-time question is measured against.
+6. THE CONTROL. Copy `Tests/Run/Containers/host24-16.container` from the
+   repository into `Saved/Vaelen/`, then `Vaelen.Load host24-16`. Its `check
+   it headless` line must end with `--no-climate`: the world before the winter,
+   said by name.
+
+Bring back the whole `Saved/Logs/Vaelen.log` as it is, with the rev-parse line
+put first. It is committed as `Tests/Run/Sessions/s1-<date>.log` and re-read by
+`Session.P19S1`: the lines of step 4 against `VaelenAtlas --gate <stream>
+--want-bound 0`, byte for byte after the category. Afterwards
+`Tools/engine_builds.txt` gains the row `s1` (RECORDED), and
+`check_engine_status.py` moves the files this build compiled to VALIDATED.
 
 ## What the kernel half already hands you
 

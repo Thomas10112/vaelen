@@ -7775,3 +7775,26 @@ header says it, and the ledger (19.01) counts a belief when engine code uses it.
 The probe and two mutations (Pressed, a missing .generated.h) are additions.
 
 Census: 0 in every class.
+
+### 19.03 AS BUILT (the headless half), 2026-09-25
+
+**S1 is written down; the sitting is the owner's.** STATUS: INCOMPLETE -
+the code change and the protocol are here, the build is not.
+
+`HeadlessCheck` (VaelenWorldSubsystem.cpp) now names the era both ways,
+`--climate` or `--no-climate`: since 18.10 the Atlas's default is the climate,
+and a container of the world before printed a check that rebuilt the wrong
+world. Parsed, not compiled; the file's STATUS line names it among what moved
+since b0921. ENGINE_HANDOFF gains "PHASE 19 - sitting S1": check out the
+commit of 19.03 (found by its subject, so the branch may go on without the
+build seeing it - no tag is pushed), print `git rev-parse HEAD` first, build,
+`Vaelen.View 128 120` (the ADR-0135 pair since 18.10, `ec18241b89c3d246 /
+8f7f4948f49b6e86`, never yet printed by an engine), the 16.14 steps (whose
+check line now ends with the era), `Vaelen.Play` three days and a screenshot
+of the Weather row, `stat unit` at ground level twice, and the control: 
+`host24-16.container` loaded must print a check ending `--no-climate`.
+
+What closes it, when the log comes back: `Tests/Run/Sessions/s1-<date>.log`
+and `s1.session` (with `head`), `Session.P19S1` re-reading step 4 against
+`VaelenAtlas --gate <stream> --want-bound 0`, a RECORDED row `s1` in
+Tools/engine_builds.txt, and the STATUS lines moved to it by the checker.

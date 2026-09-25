@@ -9,7 +9,8 @@
 //
 // STATUS: UNVERIFIED (engine) since 19.01's ledger - its code has changed after the last build
 // that compiled it (b0921, 15.10, 867a129): 16.14's save, load and store (c146c43) and 18.02's
-// climate byte in the host check (5292edd). Parsed against Tools/EngineShim, never compiled.
+// climate byte in the host check (5292edd), and 19.03's era flag said both ways in that check.
+// Parsed against Tools/EngineShim, never compiled.
 // Tools/check_engine_status.py holds this line to Tools/engine_builds.txt; the record of what
 // earlier builds validated follows.
 // BUILD: b0921
@@ -409,10 +410,11 @@ namespace
 		{
 			Out += TEXT(" --lively");
 		}
-		if (Given.Climate)
-		{
-			Out += TEXT(" --climate");
-		}
+		// Said both ways (19.03). Until then only --climate was printed, which
+		// was right while the Atlas's default was the world without one; 18.10
+		// flipped that default, and a container of the world before printed a
+		// check that rebuilt the climate world and could never agree with it.
+		Out += Given.Climate ? TEXT(" --climate") : TEXT(" --no-climate");
 		return Out;
 	}
 } // namespace
