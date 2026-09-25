@@ -113,11 +113,23 @@ jobs:
           # ".generated.h" written in a sentence, and a comment about the
           # stubs would then be counted as one. The wiring guard learned the
           # same lesson the same way (check_world_wiring.py).
-          # Source/ only: the witness tree the fence was first tested against
-          # (Tools/UiWitness) went away with 14.09, and a glob that matches
-          # nothing makes grep exit 2, which pipefail then turns into a red
-          # step that says nothing about the stubs.
+          # THE SCOPE HERE MUST BE THE PARSE'S SCOPE. It was Source/ only
+          # because the witness tree the fence was first tested against
+          # (Tools/UiWitness) went away with 14.09 - and then 19.02 added
+          # Tools/ShimProbe with three .generated.h includes and taught
+          # parse_engine_modules.py about it (PROBE_MODULES) without telling
+          # this grep. One reader counted 6, the other wrote 9, and the step
+          # went red saying only "exit 1": the drift it exists to catch, in
+          # its own two scopes.
+          #
+          # A glob that matches nothing makes grep exit 2, which pipefail
+          # turns into a red step that says nothing about the stubs - so a
+          # path added here has to be one that exists, and retiring the probe
+          # means removing its two globs in the same commit. The lasting fix
+          # is for both readers to share one list rather than restate it;
+          # that is parse_engine_modules.py's to offer and is not done here.
           WANTED=$(grep -hoE '[A-Za-z]+\.generated\.h' Source/Vaelen*/Public/*.h Source/Vaelen*/Private/*.cpp \
+                   Tools/ShimProbe/Public/*.h Tools/ShimProbe/Private/*.cpp \
                    | sort -u | wc -l)
           test "$WANTED" -ge 1
           MADE=$(python3 Tools/parse_engine_modules.py --verbose | grep -c '^\[parse\] generated stubs: '"$WANTED"' ')
