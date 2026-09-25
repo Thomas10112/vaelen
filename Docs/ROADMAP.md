@@ -7264,3 +7264,37 @@ read and Phase 19.
 
 NO FROZEN DIGEST MOVED: every addition is behind a setter a world without the
 climate never calls.
+
+### 18.09 AS BUILT, 2026-09-25
+
+**The tenth door closes at the reader, for free, and bisects alone.** STATUS:
+VALIDATED headless (the kernel reader; no engine code involved).
+
+`WorldMap::Serialize`, loading: before `Reset`, `else if (IsReady() &&
+WorldGrid{Width, Height} != Bounds) return false;` - without `Ar.Fail()`, so
+`LoadSnapshot` answers `WorldShapeDiffers` (Snapshot.cpp tests the archive's
+error first and would say `Truncated`) and its rollback puts the target back.
+An unset map still takes any image. No digest folds anything new: no image
+byte, no trailer, no frozen literal moved (census 0 in every class).
+
+`Run.RefusalsAreTheCachesSafety.TheTenthDoorIsOpenAndPinnedHere` is now
+`TheTenthDoorIsClosed`: a begun 16-tile world refuses the 32-tile image by
+name, stays 16 wide, its Aelvor still declares 16, and its state digest, log
+digest and region count are the ones it had (VT_CHECK_DIGEST_EQ). CONTROL: an
+Aelvor that declares everything and has not begun - its map unset - still
+takes the image at the kernel door and is 32 wide after, so the check is on
+the map's readiness, not on the declaration. `Golden.TheLayoutDigestCannot
+TellTwoMapSizesApart` is now `TheDoorTellsTwoMapSizesApartThoughTheDigest
+Cannot`: the equality of the two layout digests is still asserted as a fact,
+and full-32's image offered to a begun full-16 answers `WorldShapeDiffers`
+with full-16 unchanged. ADR-0150's "safe by accident" section amended.
+
+FAILED ON PURPOSE, twice, restored: the door comparing the map with itself
+(`Bounds != Bounds`) - the 16-tile world answers `Ok`, is 32 wide after and
+its digest moves (b37935003c9dc7ee against 387f0d4c33a1337e); the door failing
+the archive as it refuses - the answer is `Truncated`, so the word is seen to
+depend on the omission.
+
+Clause (h) of Phase 17's gate said the tenth door was open and would close
+"with the re-freeze". It closed alone, for free, as section 25 planned; the
+note at line 6551 of this file is now history.

@@ -190,71 +190,54 @@ VAELEN_TEST(RefusalsAreTheCachesSafety, EveryDoorIntoAWorldIsShutAndSaysWhy)
 	VT_CHECK_MSG(Shut == 9u, "%u of 9 guarded doors shut; ADR-0150's cache is safe only while all of them are", Shut);
 }
 
-VAELEN_TEST(RefusalsAreTheCachesSafety, TheTenthDoorIsOpenAndPinnedHere)
+VAELEN_TEST(RefusalsAreTheCachesSafety, TheTenthDoorIsClosed)
 {
-	// THE FIRST RUN OF THIS FILE FOUND A DOOR OPEN, and this is where it is
-	// written down rather than closed.
+	// THE FIRST RUN OF THIS FILE FOUND THIS DOOR OPEN (17.08), and this test
+	// said so until 18.09 closed it. Handed a 32-tile image, a BEGUN 16-tile
+	// world of the same seed answered `Ok` and became a chimera - the map the
+	// image's, the declaration the host's - because `WorldMap::LayoutDigest`
+	// folds no extents (defect 5, still true: Golden.TheDoorTellsTwoMapSizes
+	// ApartThoughTheDigestCannot says so).
 	//
-	// The plan listed WorldShapeDiffers among the ten refusals. Handed a
-	// 32-tile image, a BEGUN 16-tile world of the same seed answers `Ok` -
-	// because `WorldMap::LayoutDigest` folds layer names and element sizes and
-	// NO EXTENTS, which is Phase 16's defect 5, still pinned by
-	// `Golden.TheLayoutDigestCannotTellTwoMapSizesApart`. 16.08 named the six
-	// causes apart; it did not put the map's size into the digest.
-	//
-	// WHY IT IS NOT CLOSED HERE. The layout digest is written INTO the image
-	// (Snapshot.cpp:435), so changing what it folds changes every image's
-	// bytes, every trailer, and every frozen state digest in the repository -
-	// gate clause (i). That is a re-freeze, like ADR-0131, and it lands as its
-	// own commit or with the v4 bump, not inside a task called "guard now".
-	//
-	// WHAT IT EXPOSES, MEASURED. In production the kernel door is reached only
-	// through `Aelvor::Adopt`, which refuses a different size by the HOST
-	// section (16.10) before `LoadSnapshot` sees a byte - the second case of
-	// the test above. A host that called `LoadSnapshot` directly would get a
-	// world whose map is 32 wide while its Aelvor still declares 16: ADR-0150's
-	// chimera. And DiplomacySystem's graph goes stale across that load exactly
-	// when the two region counts coincide, which is measured below and printed
-	// rather than asserted, because it is demography.
-	//
-	// THIS TEST FAILS THE DAY THE DOOR CLOSES. That is the point: whoever puts
-	// the extents into the digest must find this file, ADR-0150, the golden
-	// test and the re-freeze together, and rewrite all four to say the
-	// opposite. Until then it says what is true.
+	// 18.09 closed it AT THE READER, not in the digest: `WorldMap::Serialize`
+	// refuses a set image into a begun map of another shape, without failing
+	// the archive, so `LoadSnapshot` answers WorldShapeDiffers and puts the
+	// target back. No digest folds anything new, so no image byte, trailer or
+	// frozen literal moved. All ten doors are now shut.
 	const Options Source = Declaring(32u, 6u, 6u, AelvorSeed, false, true, false, true);
 	Aelvor A(Source);
 	VT_REQUIRE(A.Begin());
 	std::vector<uint8> Image;
 	VT_REQUIRE(SaveSnapshot(A.Instance(), Image) == SnapshotResult::Ok);
-	const uint32 RegionsInTheImage = RegionsOf(A);
 
 	Aelvor Other(Declaring(16u, 6u, 6u, AelvorSeed, false, true, false, true));
 	VT_REQUIRE(Other.Begin());
 	const uint32 RegionsBefore = RegionsOf(Other);
-	VT_CHECK_MSG(Other.Instance().Map().Config().Width == 16u, "the target really is 16 wide before the load");
+	const Hash64 Before = ComputeStateDigest(Other.Instance());
+	const Hash64 LogBefore = Other.Instance().Log().Digest();
 
 	const SnapshotResult Got = LoadSnapshot(Other.Instance(), Image.data(), Image.size());
-	VT_CHECK_MSG(Got == SnapshotResult::Ok,
-				 "the kernel door has CLOSED: LoadSnapshot answered %s to a 32-tile image in a 16-tile world. If "
-				 "that is by design now, defect 5 is fixed - rewrite this test, "
-				 "Golden.TheLayoutDigestCannotTellTwoMapSizesApart and ADR-0150 to say so, in the commit that "
-				 "re-froze the digests",
-				 SnapshotResultToString(Got));
-	VT_REQUIRE(Got == SnapshotResult::Ok);
+	VT_CHECK_MSG(Got == SnapshotResult::WorldShapeDiffers,
+				 "a 32-tile image offered to a begun 16-tile world answered %s; the tenth door is open again - %s",
+				 SnapshotResultToString(Got), TheCache);
+	// And the target is exactly the world it was.
+	VT_CHECK_EQ(Other.Instance().Map().Config().Width, 16u);
+	VT_CHECK_EQ(Other.Header().Size, 16u);
+	VT_CHECK_DIGEST_EQ(ComputeStateDigest(Other.Instance()), Before);
+	VT_CHECK_DIGEST_EQ(Other.Instance().Log().Digest(), LogBefore);
+	VT_CHECK_EQ(RegionsOf(Other), RegionsBefore);
 
-	// The chimera, stated: the map is the image's, the declaration is the host's.
-	VT_CHECK_MSG(Other.Instance().Map().Config().Width == 32u, "after the load the map is %u wide",
-				 Other.Instance().Map().Config().Width);
-	VT_CHECK_MSG(Other.Header().Size == 16u,
-				 "and the Aelvor still declares %u - a walk recorded now names a world that does not exist",
-				 Other.Header().Size);
-	const uint32 RegionsAfter = RegionsOf(Other);
-	VT_CHECK_MSG(RegionsAfter == RegionsInTheImage, "the loaded map has the image's %u regions, not %u",
-				 RegionsInTheImage, RegionsAfter);
-
-	std::printf("    refusals: the kernel door is open - 16-tile world (%u regions) took a 32-tile image (%u "
-				"regions) of the same seed; DiplomacySystem's graph %s across that load\n",
-				RegionsBefore, RegionsAfter,
-				RegionsBefore == RegionsAfter ? "IS STALE (same count, different map)"
-											  : "would be rebuilt (the counts differ, this time)");
+	// CONTROL: the check is on the map's READINESS, not on the declaration. A
+	// world that declares everything and has not begun - its map unset -
+	// still takes the 32-tile image at the kernel door, which is how a fresh
+	// world is loaded (and why Adopt, not this door, refuses a declared size:
+	// WorldSizeDiffers, ADR-0150).
+	Aelvor Fresh(Declaring(16u, 6u, 6u, AelvorSeed, false, true, false, true));
+	VT_REQUIRE(!Fresh.Instance().Map().IsReady());
+	const SnapshotResult Taken = LoadSnapshot(Fresh.Instance(), Image.data(), Image.size());
+	VT_CHECK_MSG(Taken == SnapshotResult::Ok, "an unset map refused the image: %s", SnapshotResultToString(Taken));
+	VT_CHECK_EQ(Fresh.Instance().Map().Config().Width, 32u);
+	std::printf("    refusals: the tenth door is shut - a begun 16-tile world (%u regions) refused a 32-tile image "
+				"by name and is unchanged; an unset one took it\n",
+				RegionsBefore);
 }

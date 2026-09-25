@@ -108,6 +108,19 @@ namespace Vaelen
 				}
 				++Replaced;
 			}
+			else if (IsReady() && WorldGrid{Width, Height} != Bounds)
+			{
+				// 18.09, THE TENTH DOOR (ADR-0150, defect 5). A begun map does not
+				// take the image of a map of another shape: that is a different
+				// world, and Reset would make a chimera of it - the map the
+				// image's, the declaration the host's. Refused WITHOUT Ar.Fail(),
+				// so LoadSnapshot answers WorldShapeDiffers rather than Truncated
+				// (Snapshot.cpp tests the archive's error first) and puts the
+				// target back. No digest folds anything new; no byte moves. An
+				// unset map still takes any image, which is how a fresh world is
+				// loaded.
+				return false;
+			}
 			else if (!Config.IsValid() || Config.Grid() != WorldGrid{Width, Height} || !Reset(Config))
 			{
 				Ar.Fail();

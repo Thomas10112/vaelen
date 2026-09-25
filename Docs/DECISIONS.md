@@ -10499,6 +10499,18 @@ are now refused** — before 16.10, only the seed was. This is written down
 because the safety is a consequence of two checks elsewhere, not a property of
 the cache, and the next person to relax either check needs to find this.
 
+**Amended 2026-09-25 (task 18.09).** 17.08 found that "both are now refused"
+held at `Aelvor::Adopt` and NOT at the kernel door: a begun 16-tile world took
+a 32-tile image of the same seed and answered `Ok`, because the layout digest
+folds no extents (defect 5). 18.09 closed that door at the reader -
+`WorldMap::Serialize` refuses an image of another shape into a begun map
+without failing the archive, so `LoadSnapshot` answers `WorldShapeDiffers` and
+puts the target back - which moved no byte of any image and no frozen
+literal. All ten doors are shut; `Run.RefusalsAreTheCachesSafety.TheTenth
+DoorIsClosed` holds it, and the cache is still safe only because of them.
+Whether the digest should also fold the extents (a v4 bump) remains the
+owner's question.
+
 ### The control
 
 Refusing on `Options::Stream` is only worth anything if the flag changes the

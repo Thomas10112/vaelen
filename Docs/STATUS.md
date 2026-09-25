@@ -32,7 +32,19 @@ PHASE       : 17 — DEBUG TOOLS, CLOSED 2026-09-24: all eleven clauses of its g
                yet: it is written here and parsed against the shim before that
                sitting. Section 22 has the clause-by-clause read.
                15 CLOSED 2026-09-21, all six clauses; 14 CLOSED 2026-09-16)
-TASK        : 18.08 — DONE 2026-09-25. The day: the chill a day at a time.
+TASK        : 18.09 — DONE 2026-09-25. The tenth door is closed.
+
+              WorldMap::Serialize refuses an image of another shape into a begun map,
+              without failing the archive: LoadSnapshot answers WorldShapeDiffers and
+              puts the target back. No byte of any image and no frozen literal moved.
+              Run.RefusalsAreTheCachesSafety.TheTenthDoorIsClosed (a begun 16-tile
+              world refuses the 32-tile image by name and is unchanged; an unset one
+              still takes it) and Golden.TheDoorTellsTwoMapSizesApartThoughTheDigest
+              Cannot (the layout digests still equal, as a fact). ADR-0150 amended: all
+              ten doors are shut. Failed on purpose twice (the map compared with itself
+              answers Ok; the archive failed answers Truncated).
+
+TASK (18.08): 18.08 — DONE 2026-09-25. The day: the chill a day at a time.
 
               Sim/Climate.h: ColdSumThrough and ChillOfDay - the exact-sum schedule of
               the colony's food, for a cold that falls on frost days only; a year of
