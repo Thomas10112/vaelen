@@ -156,10 +156,26 @@ namespace Vaelen::Player
 			// which is the yearly system doing its job, not this one being undone.
 			Population::HungerPerson(W, Persons, Needs, Person, Rules.WorkHunger);
 			Population::TirePerson(W, Persons, Needs, Person, Rules.WorkTire);
+			// 18.08: a day's work outside on a cold day chills, at the region's
+			// centroid on today's date - what the page's "deg here" says.
+			if (HasWarmth)
+			{
+				const uint32 Tile = WorldGen::RegionCentroidTile(W, Types.World, Region);
+				const Fix64 Today = WorldGen::TileTemperatureOn(
+					W.Map(), Types.World.Layers, Tile, W.Clock().Date().DayOfYear, W.Clock().GetRules().DaysPerYear());
+				if (Tile != 0u && Today < Climate.ColdLine)
+				{
+					Population::ChillPerson(W, Persons, Warmth, Person, Rules.WorkChill);
+				}
+			}
 			break;
 
 		case Intent::Rest:
 			Population::RestPerson(W, Persons, Needs, Person, Rules.RestGain);
+			if (HasWarmth)
+			{
+				Population::WarmPerson(W, Persons, Warmth, Person, Rules.RestWarm); // 18.08
+			}
 			break;
 
 		case Intent::Eat:

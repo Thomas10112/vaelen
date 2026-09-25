@@ -191,6 +191,10 @@ namespace Vaelen::Run
 														   OrderRules{});
 				Hands =
 					std::make_unique<Doings>(Ages.Types(), W.Persons, W.Families, W.Needs, W.Economy_, DoingRules{});
+				if (Given.Climate)
+				{
+					Hands->ObserveWarmth(W.Warmth, WorldGen::ClimateRules{}); // 18.08: work cold, rest warm
+				}
 				Acts->ObserveDoing(Hands.get());
 				Talk = std::make_unique<RegardSystem>(Instance, Ages.Types(), W.Persons, W.Played, W.Standing, W.Regard,
 													  RegardRules{});

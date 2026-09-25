@@ -7206,3 +7206,61 @@ of 29 reaping nothing at +100 where 29 were due.
 NO FROZEN DIGEST MOVED: nothing is told without the flag. Census: WORLD +1
 (the `Run.Climate` log pin; its three counts are integers the census does
 not read); nothing removed.
+
+### 18.08 AS BUILT, 2026-09-25
+
+**The day: the chill of the colony and of the played person, a day at a
+time.** STATUS: PROTOTYPE (Phase 18), headless.
+
+Sim/Climate.h: `RegionYearBasis` (the mean-with-variation, the latitude and
+the calendar RegionYear shapes a year from), `ColdSumThrough` (the cold sum of
+days [0, d], summed in ShapeYear's order, so the last day's is the year's to
+the raw value) and `ChillOfDay` - floor(floor(cold sum through today) ×
+Exposure / 1000 / DegreeDaysPerChill) minus the same through yesterday: the
+exact-sum schedule of `ShareOfDay`, for a cold that falls on the frost days
+only. A year of days sums to what the yearly winter (18.06) puts on a person
+at the same exposure, to the unit, and a day that is not a frost day takes
+nothing. `ColonyDaySystem::ObserveCold(Setup, Warmth, ClimateRules, Exposure,
+DegreeDaysPerChill)` chills the colony's living persons by today's share
+beside the food; `WinterRules::DailyRegion` already keeps the yearly winter
+off them. `DoingRules` gains `WorkChill 6` and `RestWarm 20`, and
+`Doings::ObserveWarmth(Warmth, ClimateRules)`: a day of work on a day below
+the cold line at the region's centroid (today's date - what the page's "deg
+here" reads) chills by WorkChill; a rest warms by RestWarm, floored at warm.
+Aelvor tells the verbs the warmth when both Play and Climate are asked for.
+
+`Tests/Population/Test_ColdDay.cpp` (`Population.ColdDay`, 422 checks):
+`TheDaysOfAYearSumToTheWintersChillExactly` - five places (the pole 5512
+degree-days, tundra 1751, grassland 111, a mild coast 607, the equator 0) at
+four exposures (1000, 700, 300, 1): the last day's cold sum IS the year's to
+the raw value, the 360 days sum to the winter's chill to the unit, no chill on
+a day at or above the line; CONTROL, rule 1: the pole has frost and a chill,
+the equator none on any day; the day wraps; zero days or zero degree-days
+take nothing. `AColonyIsChilledADayAtATimeAndTheYearAgrees` - AELVOR 128/300,
+the coldest peopled region (9: 245 frost days, cold sum 2302) living at the
+day at exposure 300: all 301 persons alive through year 301 took exactly 34,
+a day at a time; CONTROL, rule 2: the same colony not told the cold chilled
+nobody, and its 306 need records and its whole log equal the cold one's.
+`Player.Doings.AColdDaysWorkChillsAndARestWarms`: with a line every day is
+below, a day's work takes the chill from 0 to 6 and a rest back to 0; with a
+line no day is below, the work chills nobody; a world not told the warmth has
+none to move.
+
+FAILED ON PURPOSE, three times, restored: (A) each day's deficit floored on
+its own instead of the running sum - the pole's year sums to 135 against the
+winter's 275, 55 against 192, 0 against 82: the schedule that is not exact
+loses the cold of every mild frost day; (B) a chill every day whatever the
+temperature - 635 against 275 and 45 chills on days above the line; (C) work
+chilling whatever the day - the mild world's person takes 6.
+
+DEVIATIONS FROM THE ROW. The colony's exposure is a rule (1000 unless told):
+the fuel the winter takes is the year's, and a day does not know it. The
+played person's region is NOT chilled by the day: PlayerDaySystem is in
+Player, the winter in Economy, and nothing below Player can tell who is
+played, so skipping them in the yearly pass would need a mark the phase does
+not have. The played person is chilled at the year's turn like their
+neighbours, and by the day only through the verbs. Written down for 18.10's
+read and Phase 19.
+
+NO FROZEN DIGEST MOVED: every addition is behind a setter a world without the
+climate never calls.
