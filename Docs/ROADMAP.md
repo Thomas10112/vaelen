@@ -85,7 +85,7 @@ layout changes, a `VAELEN_SAVE_FORMAT_VERSION` bump (`Version.h`).
 | 15 | STREAMING & LOD | Engine streaming coupled to the simulation's grains: what is simulated at which detail away from the player. **The row said "simulation LOD 0-4" until 15.09 found that two different things were being called LOD.** `SimLod` (Sim/System.h) is a real five-rung ladder of how OFTEN a system runs - 1, 4, 24, 720, 8640 ticks - and 15.02 moved a system down it. A REGION has two grains and not five: person by person, or counts per culture. `RegionLod::Level` is written in one place, always the same value, and levels 0, 1 and 3 have never been reachable. | **CLOSED 2026-09-21** (15.01-15.10, section 21). The planning found five defects before a line was written; the review of 15.10 found 27 more, among them that the engine host recorded a world its own replay does not reach. The gate is met on a walk a person actually lived. |
 | 16 | SAVE/PERSISTENCE | **The row said "serialisation of the whole world state" until the planning measured it: that shipped in Phase 01 and works.** What is not saved is the RUN - `Run::Aelvor`'s own members - so a restored world continues identically until somebody LOOKS, and then parts company with the world it was copied from. The gap is about thirty bytes, one part in 700,000 of the image. So the phase is a save that can refuse, a load that cannot half-apply, a container around the untouched image, a verb by which a run adopts a world it did not generate, a file that cannot destroy the last good one, and a migration chain. | BROKEN DOWN (16.01-16.14, section 22; the planning found twelve defects first, among them that `SaveSnapshot` cannot fail and cannot say so in exactly the builds a player runs) |
 | 17 | DEBUG TOOLS | **The row said inspectors, replay tooling, a determinism diff, statistics and a console; the panel measured the causal graph at 1.3% dense and one edge deep and the phase became the instruments that could see that.** As built: a container corpus, the event-type name table, a store that reads a directory, a walk that says how it ended, the causal census, the inspector, a harness that sees a vacuous assertion, nine doors guarded and a tenth pinned open, and a why that names its end. Section 23. | CLOSED 2026-09-24, all eleven clauses; no frozen digest moved |
-| 18 | CLIMATE & SEASONS | **Owner's decision, 2026-09-24: "le froid, le chaud et tout doivent s'afficher."** Today a tile has an ANNUAL MEAN temperature that decides its biome at generation and is never read again; seasons exist in the clock and are consumed by nothing but generation and the snapshot; a person's only need is hunger. This phase gives the world a CURRENT temperature (tile × season), a warmth need beside hunger, a winter that weighs on stores and mortality, a harvest that depends on the climate, and the figures in the view leaves so the HUD can draw them. Kernel work: it moves every frozen digest and lands with its own re-freeze. Section 24. **Broken down in section 25 (2026-09-24): ten tasks, a twelve-clause gate, ADR-0151 to ADR-0154; the temperature is a FUNCTION not a layer, the winter has a calendar not an omen, the chill is its own component declared only in a climate world, and the re-freeze is ONE commit whose footprint a classified census predicts - after that census has shown Phase 17's clause (i) grep blind to `0x…ull`.** | PLANNED, breakdown in section 25; placed BEFORE the stress test because the stress test must measure the world we mean to ship |
+| 18 | CLIMATE & SEASONS | **Owner's decision, 2026-09-24: "le froid, le chaud et tout doivent s'afficher."** Today a tile has an ANNUAL MEAN temperature that decides its biome at generation and is never read again; seasons exist in the clock and are consumed by nothing but generation and the snapshot; a person's only need is hunger. This phase gives the world a CURRENT temperature (tile × season), a warmth need beside hunger, a winter that weighs on stores and mortality, a harvest that depends on the climate, and the figures in the view leaves so the HUD can draw them. Kernel work: it moves every frozen digest and lands with its own re-freeze. Section 24. **Broken down in section 25 (2026-09-24): ten tasks, a twelve-clause gate, ADR-0151 to ADR-0154; the temperature is a FUNCTION not a layer, the winter has a calendar not an omen, the chill is its own component declared only in a climate world, and the re-freeze is ONE commit whose footprint a classified census predicts - after that census has shown Phase 17's clause (i) grep blind to `0x…ull`.** | CLOSED headless 2026-09-25 (section 25): eleven clauses met, (c) not met as written (the gates were run at the flip, not at every commit); the climate is the default world since 18.10; the actors UNVERIFIED (engine) |
 | 19 | WORLD IN 3D | **Owner's decision, 2026-09-24: "un RPG médiéval en 3D, ZQSD, où l'on peut tout faire."** What exists is a MAP: regions, biomes, roads, a person and a colony drawn from the view leaves, a camera that moves region to region, at 100+ fps (Phase 13). This phase is a world one WALKS: terrain in volume from `TileGrid` and `Hydrology`, buildings from Infrastructure, persons from Population as characters, the played person moved at the keyboard, a shoulder camera, and the climate of Phase 18 visible. The procedural-mesh and controller C++ is written here and parsed against the shim; meshes, materials, animation and SEEING IT are the owner's machine, one session per task and not per phase. Section 24. | PLANNED |
 | 20 | STRESS TEST | Long-duration and large-world runs, performance budgets, determinism at scale — measured WITH Phases 18 and 19 in, not before them. 17.05 already handed it a figure: `PlayerActed` is 54% of a 16.8-million-event log in a world nobody played. | PLANNED (was 18) |
 | 21 | MODDING | Data-driven definitions, mod loading, stable ids and APIs for mods. | PLANNED (was 19) |
@@ -7298,3 +7298,109 @@ depend on the omission.
 Clause (h) of Phase 17's gate said the tenth door was open and would close
 "with the re-freeze". It closed alone, for free, as section 25 planned; the
 note at line 6551 of this file is now history.
+
+### 18.10 AS BUILT, 2026-09-25
+
+**The switch and the re-freeze, in one commit, its footprint predicted and
+printed.** STATUS: VALIDATED headless; the two actors UNVERIFIED (engine).
+
+`Options::Climate = true` (Aelvor.h) and the Atlas's `--climate` on by default,
+with `--no-climate` for the world before Phase 18; `Aelvor::Sources()` tells the
+view `HasClimate = Given_.Climate`. Both engine actors now declare `WarmthTypes`
+after `PolityTypes`, build `WinterSystem` after the stocks
+(`RunAfter("Stocks")`, `ObserveSettlements`), tell the harvest the season and
+the need system the winter, and the view actor's sources say `HasClimate` and
+`HasWarmth` - parsed against the shim, 14 translation units, 0 errors. The two
+`OPTIONAL` entries are gone from `check_world_wiring.py`: the four wirings
+agree with the climate in all of them. `Test_Golden`'s `OptionsOf` sets
+`Climate = false` (the goldens are images of the world before and are never
+regenerated); the four CMake drivers that replay a recorded month
+(`Gate.cmake`, `ReplayPlayed.cmake`, `ReplayWithoutWiring.cmake`,
+`SaveFuzz.cmake`) default to `ERA=--no-climate`, so the engine-recorded months
+and the walk replay to their old lines. `Replay.Climate` is new: a thirty-day
+stand-in written by `--stand` in the climate world (`aelvor128-climate-stand-
+2026-09-25.stream`), replayed with `-DERA=--climate` to four pinned digests;
+the same stream replayed with `--no-climate` plays another person. The
+container corpus was regenerated by its recorded command (twice, byte for
+byte the same) and re-pinned; `host24-16.container` is kept, and is now also
+the pre-climate played-16. `Atlas.Runs128Before`, `Atlas.Frozen128Before` and
+`Atlas.PanelFrozenBefore` hold the world before under `--no-climate` to the
+frame `abc5a5767c6cf9dd` and the page `54787451e65766c1` it had.
+
+RE-FROZEN, with the values beside them: the ADR-0135 frame at 128/120
+`abc5a5767c6cf9dd` -> `ec18241b89c3d246` (`Atlas.Frozen128`, `Test_Aelvor`);
+the empty page `54787451e65766c1` -> `d7e7149e65ceb69a` (`Atlas.PanelFrozen`,
+`Test_Panel`), the played page `703c838ca533a095` -> `777351768a3a4fc6`; the
+corpus trailers `d17d7fd9a6f09ea6 / 64d11b40b612581c / 2ec516c4d275ab6f` ->
+`a002a2992df640fe / 333beace65e0feaa / a066899eaa656f2e`, and their section
+digests. Counted, as be9df8d did: at AELVOR 128/300+120 the climate world has
+36032 people against 36374 (99 %), 5148 / 6933 / 5902 winters by severity,
+1581 dead of the cold, 38427 grain and 60628 timber taken by the winters; the
+empty play's log under the flip is `c5acefba48cd0fb5`, which is exactly
+`Run.Climate`'s pin - the default world and the gate's climate world are one.
+
+TESTS THAT TOOK THE CLIMATE WORLD AND NEEDED TO SAY WHICH WORLD THEY MEANT.
+Three `Run.Checkpoint` cases on (32, 10+10, lively) worlds found nobody to
+take up once the winter was on - demography, not the save - and now name
+`Climate = false`; the mismatch case's host is now the one WITHOUT a climate,
+and the carried HOST flags read the climate on. `View.Climate`'s
+without-a-climate control names the world before and sets `HasClimate` false
+explicitly. `Run.Climate`'s baseline names `Climate = false`.
+
+THE CONTROLS. The wiring check with one actor missing the winter prints the
+position ("9. WinterSystem ... ProductionSystem") and fails; with it, 4 agree.
+FAILED ON PURPOSE: one re-frozen pin with a digit changed (`frame=0x...247`) -
+`Atlas.Frozen128` alone red of the five Atlas entries around it.
+
+ALSO FOUND ON THE FLIP'S FIRST BROAD RUN, AND NOT THE FLIP'S: `Politics.Reach`
+loaded a 128-tile image over a begun 112-tile world, which 18.09's door now
+refuses. 18.09's verification had not run the Politics suite; fixed and pushed
+on its own (19b0ebc) before this commit.
+
+The census read against ADR-0154's prediction table is in the ADR: every
+moved site predicted, nothing predicted unmoved moved, one prediction wrong in
+the safe direction (ViewGate wires its own world and did not move).
+
+FOUND AT THE FLIP, AND FIXED IN IT: `VaelenAtlas --golden` built its worlds
+from `Options`' defaults and so wrote three CLIMATE images after the flip - no
+entry runs the writer, so nothing was red. It now names `Climate = false`, and
+was measured writing the three goldens byte for byte (`cmp`); with the line
+turned to `true` all three differ. The Golden README says which era its
+images are of.
+
+WHAT THE SEVENTEEN GATES DO NOT SEE. The row planned "the 17 gates re-frozen";
+none moved, and not by luck: the twelve system gates wire their own worlds
+(the AELVOR seed, not `Run::Aelvor`), and the five recording gates replay
+with `--no-climate`. So the seventeen say the world before the winter is
+untouched - which is what they are for - and say nothing of the world with
+it. The default world is held by `Run.Climate`, `Replay.Climate`,
+`Atlas.Frozen128`, `Atlas.ClimateFrozen128`, `Atlas.PanelFrozen`, `Run.Aelvor`
+and `View.Panel`, all in every CI leg; `Replay.Climate` joins the gate list
+(eighteen from here), because the gate list is what a phase is closed on.
+
+### The Phase 18 gate, read clause by clause on 2026-09-25
+
+Run on the tree of this commit: the clause suites on the gcc debug tree
+(33 of 33, 442 s), the touched entries on the gcc release tree (29 of 29), the
+seventeen gates on a freshly configured `out/build/linux-clang-debug`.
+
+| clause | state |
+|---|---|
+| (a) `Kernel.FrozenCensus` | **met** — green; the ADR-0131 commit reported as its known answer, the blind regex's 0 kept as the pre-fix arm (18.01) |
+| (b) `Run.Checkpoint`, `Run.Containers`, `Atlas.ContainersRegenerate` | **met, with the trailers moved at the flip as they must** — ClimateDiffers by name, host24-16 adopted by a climate-less host and refused by a climate one, the 26-byte HOST refused; the three regenerate byte for byte. The clause's trailers `d17d7fd9a6f09ea6 / 64d11b40b612581c / 2ec516c4d275ab6f` held through the HOST byte (18.02, measured then) and moved at 18.10 to `a002a2992df640fe / 333beace65e0feaa / a066899eaa656f2e`, in the census; `64d11b40b612581c` survives as host24's |
+| (c) nothing moved before the switch | **met for the literals, NOT met as written for the gates** — `frozen_census.py --diff 5292edd 19b0ebc`: 0 removed in every class, 12 added (the 18.04 climate and ground pins, 18.07's log pin, three event-name hashes, six synthetic checker values). The seventeen gates were NOT run at every commit 18.02-18.09: each task ran the suites it touched plus the census, and the gates ran at 18.10. They wire their own worlds (above), so no task of 18.02-18.09 could have moved them without moving a census site - but the clause asked for the run, and it was not made. And one commit of the range left a suite red: 18.09 (3cc1831) left `Politics.Reach` failing until 19b0ebc, because 18.09's verification did not run the Politics suite |
+| (d) `Sim.Climate` | **met** |
+| (e) `View.Climate`, `View.Frame`, `View.Life`, `View.Panel`, `View.Leaf`, `Atlas.PanelFrozen`, `Atlas.OutputSelfTest` | **met** — the pre-phase frame and panel equal under `HasClimate` off, now named explicitly since the default is on; `Atlas.PanelFrozenBefore` still prints `digest 54787451e65766c1` under `--no-climate` |
+| (f) `Population.Warmth`, `Population.Needs`, `Population.ColdDay`, `Player.Doings`, `Player.Hours` | **met, with one deviation written down at 18.08** — the played person is chilled by the year, not by the day |
+| (g) `Economy.Winter`, `Economy.Ledger`, `Economy.Production`, `Sim.HistoryText` | **met** |
+| (h) `Run.Climate` | **met as re-drawn at 18.07** — the panel's "no peopled region emptied" and "cold regions ≥ 0.55 × capacity" failed on the first measurement and were replaced by two-sided bounds by biome (18.07 AS BUILT has the figures and the logistic 1 − d/25); 99 % of 36374, the log `c5acefba48cd0fb5` pinned, the harsh control empties 8 regions |
+| (i) `Atlas.Climate128`, `Atlas.PanelFrozen`, `Atlas.OutputSelfTest`, `Atlas.Frozen128` | **met** — `--expect climate=0x59615fa1f5d24bd1` unmoved through the flip; the Before entries hold the old frame and page |
+| (j) `Run.RefusalsAreTheCachesSafety`, `Golden.*` | **met** — `git show --stat 3cc1831 \| grep -c Golden/` → 0, and 0 at 18.10; the three goldens re-written byte for byte by `--golden` |
+| (k) the census over the flip | **met** — `--diff 19b0ebc` (18.09 head) `..` this commit: 24 removed, 33 added in 7 files, WORLD −14/+22, RECORD −10/+11, GEN/HASH/CONST/SEED/SYNTHETIC unmoved; row for row against ADR-0154's table, one prediction wrong in the safe direction (ViewGate). Ground `0x8f7f4948f49b6e86` unmoved and still asserted; `git show HEAD -- Tests/Sim/Test_{Climate,WorldGen,WorldPipeline,Hydrology,Regions,Deposits}.cpp \| grep -cP '^-.*0x[0-9a-f]{16}'` → 0; `VAELEN_CLIMATE_LOG` lines removed → 0. `Population.PopulationGate` passes on its old literal with the climate on, because it never had the climate; the recorded months replay to their old lines under `--no-climate` |
+| (l) `Kernel.WorldWiring`, `Kernel.EventTypes`, `Kernel.UiFence`, `Kernel.Purity`; `--self-test`; `verify_fast` | **met** — four wirings agree with no OPTIONAL entry for the winter; `verify_fast` clean at this commit and at every commit of the phase; `--self-test`'s counting arm run on the eighteenth entry with the impossible gate appended: `GATES-DONE 1 failing (of 2)`, `SELF-TEST OK: the list can go red` (the full list's arm is the same loop, unchanged) |
+| the gates | **met** — `Tools/run_gates.sh linux-clang-debug`: `GATES-DONE 0 failing (of 17)` in 4012 s on a freshly configured `out/build/linux-clang-debug` at this commit's sources; `Replay.Climate`, added as the eighteenth after that run, passed alone through the script (`GATES-DONE 0 failing (of 1)`) |
+
+**Phase 18 is CLOSED headless: eleven clauses met, (c) met for what it
+measures and not as written, said above, not re-worded.** The two actors'
+climate wiring is parsed against the shim and UNVERIFIED (engine) until
+Phase 19's first sitting.

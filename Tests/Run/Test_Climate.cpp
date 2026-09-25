@@ -93,6 +93,7 @@ namespace
 VAELEN_TEST(Climate, TheClimateWorldIsAliveWithinTheBounds)
 {
 	Options Off;
+	Off.Climate = false; // 18.10: the default is on now; the world before must be asked for
 	Options On;
 	On.Climate = true;
 	Aelvor A(Off);

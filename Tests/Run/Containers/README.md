@@ -30,9 +30,9 @@ has the same section table cannot catch a reader that assumes one.
 
 | file | tiles | pre-history | years | wiring | container v | image v | tick | log events | log bytes | bytes | image trailer |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `bare-16.container` | 16 | 10 | 1 | none | 2 | 3 | 95040 | 129 | 14464 | 77686 | `d17d7fd9a6f09ea6` |
-| `played-16.container` | 16 | 10 | 1 | Play+Stream+Lively+Colony | 2 | 3 | 95184 | 148 | 16592 | 80863 | `64d11b40b612581c` |
-| `full-32.container` | 32 | 10 | 1 | Play+Stream+Lively+Colony | 2 | 3 | 95184 | 577 | 64640 | 182720 | `2ec516c4d275ab6f` |
+| `bare-16.container` | 16 | 10 | 1 | Climate | 2 | 3 | 95040 | 139 | 15584 | 82388 | `a002a2992df640fe` |
+| `played-16.container` | 16 | 10 | 1 | Play+Stream+Lively+Colony+Climate | 2 | 3 | 95184 | 159 | 17824 | 85677 | `333beace65e0feaa` |
+| `full-32.container` | 32 | 10 | 1 | Play+Stream+Lively+Colony+Climate | 2 | 3 | 95184 | 701 | 78528 | 200190 | `a066899eaa656f2e` |
 | `host24-16.container` | 16 | 10 | 1 | Play+Stream+Lively+Colony | 2 | 3 | 95184 | 148 | 16592 | 80862 | `64d11b40b612581c` |
 
 The **image trailer** is the last eight bytes of the STATE section: what
@@ -44,11 +44,12 @@ reader which swapped them cannot pass — that swap was a live defect in
 showed the two are different numbers on every container: `e0614906cb8a5676`
 where `ComputeStateDigest` returns `0f6fa26b35d09a70`.
 
-`bare-16.container`'s trailer is `d17d7fd9a6f09ea6`, which is
-`bare-16.snapshot`'s state digest in the golden README, and its STATE section is
-77478 bytes, which is that file's exact size. The container carries the image
-**verbatim** — that is checkable by `memcmp` rather than by argument, and this is
-the check.
+Until 18.10, `bare-16.container`'s trailer was `d17d7fd9a6f09ea6` -
+`bare-16.snapshot`'s state digest in the golden README - and its STATE section
+was that file's exact size, 77478 bytes: the container carries the image
+**verbatim**. Since 18.10 the corpus is written by a climate world and the
+goldens stay images of the world before it, so the two no longer coincide; the
+verbatim claim is checked against the container's own trailer instead.
 
 ## The section tables, read back out of the bytes
 ### `bare-16.container`
@@ -59,9 +60,9 @@ Seed `000041454c564f52`, flags `00000000`, 3 sections.
 
 | kind | offset | length | section digest |
 |---|---|---|---|
-| STATE (1) | 146 | 77478 | `eae7b629c9d0924e` |
-| RUN (2) | 77624 | 29 | `bfd0910bf8f1c63f` |
-| HOST (3) | 77653 | 25 | `4a4c61d69390db4b` |
+| STATE (1) | 146 | 82180 | `34eb7363dd3affc8` |
+| RUN (2) | 82326 | 29 | `bfd0910bf8f1c63f` |
+| HOST (3) | 82355 | 25 | `4a4c60d69390d998` |
 
 ### `played-16.container`
 
@@ -71,10 +72,10 @@ Seed `000041454c564f52`, flags `00000000`, 4 sections.
 
 | kind | offset | length | section digest |
 |---|---|---|---|
-| STATE (1) | 176 | 80420 | `389defae6a977e74` |
-| RUN (2) | 80596 | 37 | `befe7c22e544cdd4` |
-| HOST (3) | 80633 | 25 | `d4f215b4679211f7` |
-| STREAM (4) | 80658 | 197 | `a65b8a037dcc3b7a` |
+| STATE (1) | 176 | 85234 | `261ab2c8943e064b` |
+| RUN (2) | 85410 | 37 | `befe7c22e544cdd4` |
+| HOST (3) | 85447 | 25 | `d4f214b467921044` |
+| STREAM (4) | 85472 | 197 | `a65b8a037dcc3b7a` |
 
 ### `full-32.container`
 
@@ -84,9 +85,9 @@ Seed `000041454c564f52`, flags `00000000`, 3 sections.
 
 | kind | offset | length | section digest |
 |---|---|---|---|
-| STATE (1) | 146 | 182498 | `3e0cd92228e56387` |
-| RUN (2) | 182644 | 43 | `40ed8c3bbb2a1640` |
-| HOST (3) | 182687 | 25 | `0df7628587f8e927` |
+| STATE (1) | 146 | 199968 | `050a7c2f4f8af71d` |
+| RUN (2) | 200114 | 43 | `40ed8c3bbb2a1640` |
+| HOST (3) | 200157 | 25 | `0df7618587f8e774` |
 
 ### `host24-16.container` — kept, not regenerated (18.02)
 
@@ -98,7 +99,9 @@ further on — and every container written BEFORE it reads as `Climate = false`.
 This file is the reader's proof of that: `Run.Containers` checks every figure
 below against its bytes, `Run.Checkpoint` adopts it into a host that did not
 ask for a climate (`Ok`) and into one that did (`ClimateDiffers`, by name).
-The image inside is the same image: the trailer is `played-16`'s.
+The image inside is `played-16`'s as it was before 18.10 too - the world
+without the climate - so since the flip its trailer (`64d11b40b612581c`) is no
+longer today's `played-16`'s.
 
 Seed `000041454c564f52`, flags `00000000`, 4 sections.
 

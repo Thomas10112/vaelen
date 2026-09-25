@@ -2,7 +2,7 @@
 // Phase 14.03: the Run holds the Atlas wiring, and the frozen pair says so.
 //
 // The claim that matters most is the first test: a Run with nothing set is the
-// Atlas at 128/120, frame abc5a5767c6cf9dd and ground 8f7f4948f49b6e86 - the
+// Atlas at 128/120, frame ec18241b89c3d246 (since 18.10) and ground 8f7f4948f49b6e86 - the
 // pair the engine and the headless kernel agreed on under ADR-0135. If either
 // moves, this task STOPS and an ADR says why; that rule is in the roadmap row
 // and this is the test that enforces it. The second test is the idle claim
@@ -31,7 +31,7 @@ using namespace Vaelen::View;
 // The ADR-0135 pair. Atlas.Frozen128 holds it for the tool; this holds it for
 // the module a host uses. As macros, for the reason Test_ViewGate gives: MSVC
 // C4127 forbids `if (constexpr != 0)`.
-#define VAELEN_RUN_FROZEN_FRAME 0xabc5a5767c6cf9ddull
+#define VAELEN_RUN_FROZEN_FRAME 0xec18241b89c3d246ull
 #define VAELEN_RUN_FROZEN_GROUND 0x8f7f4948f49b6e86ull
 
 namespace

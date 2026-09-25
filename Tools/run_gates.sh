@@ -36,11 +36,14 @@ TOTAL=0
 # system computes; the five below check a digest a RECORDING replays to, and
 # Phase 16 is about to change the code that reads recordings. A gate list that
 # covered only the first kind would have gone green through all of it.
+# Replay.Climate (18.10) is the only entry in the world WITH the climate: every
+# other gate wires its own world or replays with --no-climate, so without it the
+# list would close Phase 18 without seeing the default world at all.
 # Run.Gate.Lived and Replay.Lived carry the walk a person played in Unreal on
 # 2026-09-21 - the only entries here that came off another machine.
 for G in Sim.HistoryGate Population.PopulationGate Society.SocietyGate Economy.EconomyGate \
          Politics.PoliticsGate Military.MilitaryGate Infrastructure.InfrastructureGate Player.PlayerGate \
-         Run.Golden Replay.Played Replay.Walked Replay.Lived Run.Gate Run.Gate.Lived \
+         Run.Golden Replay.Played Replay.Walked Replay.Lived Run.Gate Run.Gate.Lived Replay.Climate \
          Colony.ColonyGate Gameplay.GameplayGate View.ViewGate \
          ${SELFTEST:+Nonexistent.GateThatMustFail}; do
   OUT=$(ctest --preset "$PRESET" -R "^${G}$" 2>&1 | grep -E "tests passed|tests failed" | head -1)

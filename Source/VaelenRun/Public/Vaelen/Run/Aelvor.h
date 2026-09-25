@@ -99,9 +99,10 @@ namespace Vaelen::Run
 		/// a host that did not ask for one, BY NAME, rather than by the
 		/// kernel's `LayoutDiffers` after the fact (ADR-0150's lesson with
 		/// Stream, which declared no type and was invisible to every guard).
-		/// Every frozen digest this project has belongs to a world without it;
-		/// 18.10 flips the default and re-freezes, in one commit.
-		bool Climate = false;
+		/// 18.10 flipped the default and re-froze every digest that moved, in
+		/// one commit (ADR-0154). False is the world before Phase 18 - the
+		/// goldens, and the months recorded in it, are replayed with it.
+		bool Climate = true;
 	};
 
 	/// The component type sets of the wiring, for a test or a subsystem that

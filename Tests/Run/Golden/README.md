@@ -20,6 +20,14 @@ Regenerated — only to prove today's build still writes them byte for byte — 
 VaelenAtlas --golden Tests/Run/Golden/
 ```
 
+**They are images of the world before the winter.** Since 18.10 the climate is
+the default (`Options::Climate = true`, ADR-0154); the writer above and
+`Golden.V3RoundTrips` both name `Climate = false`, and no layer or type of
+Phase 18 enters a world wired so, which is why the layout digests above still
+match. Found at the flip: `--golden` had inherited the default and wrote three
+climate images that differed from every file here; it now says which world,
+and was measured writing all three byte for byte again.
+
 CTest `Golden.V3RoundTrips` loads each one into a freshly wired world of its
 recorded options, requires `Ok`, requires the state digest above, and requires a
 re-save to be byte-identical to the file on disk.

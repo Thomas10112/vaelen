@@ -10,7 +10,7 @@
 //
 // And measured, not just seen: every figure the engine prints matches
 // Tools/Atlas at the same seed and settings, INCLUDING the frame digest
-// (abc5a5767c6cf9dd at 128/120) and the ground digest (8f7f4948f49b6e86) since
+// (ec18241b89c3d246 at 128/120 since 18.10) and the ground digest (8f7f4948f49b6e86) since
 // ADR-0135 put the same systems in both. Two halves of one project, one world.
 //
 // The claim about what this file CANNOT REACH is checked by the compiler, and

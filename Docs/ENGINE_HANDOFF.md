@@ -43,11 +43,18 @@ block, and the sections below Phase 14 stay the record they are.
   then. 18.06 added `Economy::WinterSystem` behind the same option, built
   after the stock system with `RunAfter("Stocks")`, `ObserveSettlements(
   Trade.Settlement)`, and the harvest told `RunAfter("Winter")` - the four
-  lines both actors add at the flip. Nothing changes on screen until 18.10 flips
-  `Options::Climate` in all four wirings; the page then carries a weather row
-  and the HUD draws it through `View::Lines` as it draws the rest, with no
-  engine change. The engine files of 16.14 and the actors are parsed against
-  the shim on every commit of the phase.
+  lines both actors add at the flip. **18.10 FLIPPED IT.** Both actors now
+  declare `WarmthTypes` after `PolityTypes`, build `WinterSystem` after the
+  stocks, tell the harvest the season and the need system the winter, and the
+  view actor's sources say `HasClimate` and `HasWarmth` - the page carries a
+  weather row and the HUD draws it through `View::Lines` with no engine change.
+  **The ADR-0135 pair moved with it:** at 128/120 the frame the engine must
+  match is now `ec18241b89c3d246` (it was `abc5a5767c6cf9dd`, which the
+  headless side still reproduces with `--no-climate`); the ground is unchanged,
+  `8f7f4948f49b6e86`. Parsed against the shim, not built here: the actors are
+  UNVERIFIED (engine) until the owner's next sitting prints the two lines.
+  Months recorded before 18.10 are pre-climate worlds; replay them headless with
+  `--no-climate` (the CTest drivers do).
 - **Phase 17 (DEBUG TOOLS) is CLOSED, 2026-09-24**, all eleven clauses, and it
   had no engine task. One thing it changed that the engine COPIES:
   `View::ChronicleView` (`Vaelen/View/Chronicle.h`) holds four why lines instead

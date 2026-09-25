@@ -71,6 +71,10 @@ namespace
 		O.Size = G.Size;
 		O.PreHistory = G.PreHistory;
 		O.Years = G.Years;
+		// 18.10: the goldens are images of the world before Phase 18 and are
+		// never regenerated (README.md:4); they load into the world they were
+		// written by.
+		O.Climate = false;
 		if (G.Full)
 		{
 			O.Play = true;

@@ -10,8 +10,14 @@
 #
 # Expected in: ATLAS, STREAM, MORE (the flags under test) and WANT (a line the
 # run must print).
+# 18.10: the recorded months belong to the world before Phase 18 - a stream
+# carries no Options - so they are replayed into it unless the entry says
+# otherwise (-DERA=--climate for a month recorded in a climate world).
+if(NOT DEFINED ERA)
+  set(ERA --no-climate)
+endif()
 execute_process(
-  COMMAND ${ATLAS} --savefuzz ${STREAM} --points ${POINTS} --seed ${SEED} --stream --want-bound 0
+  COMMAND ${ATLAS} --savefuzz ${STREAM} --points ${POINTS} --seed ${SEED} --stream --want-bound 0 ${ERA}
           --expect-state ${EXPECT} ${MORE}
   RESULT_VARIABLE Ran
   OUTPUT_VARIABLE Said

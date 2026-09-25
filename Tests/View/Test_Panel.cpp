@@ -32,8 +32,8 @@
 // The two pages, frozen. As macros for the reason Test_ViewGate gives: MSVC
 // C4127 forbids `if (constexpr != 0)`. 0 means "not frozen yet", and then the
 // test prints what it saw instead of asserting.
-#define VAELEN_PANEL_FROZEN_EMPTY 0x54787451e65766c1ull
-#define VAELEN_PANEL_FROZEN_PLAYED 0x703c838ca533a095ull
+#define VAELEN_PANEL_FROZEN_EMPTY 0xd7e7149e65ceb69aull
+#define VAELEN_PANEL_FROZEN_PLAYED 0x777351768a3a4fc6ull
 
 using namespace Vaelen;
 using namespace Vaelen::Run;

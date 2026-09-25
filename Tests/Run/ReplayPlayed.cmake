@@ -23,8 +23,14 @@
 # MORE carries whatever else the host's configuration was, unset for a stream
 # that needs none. 15.10's walk needs --stream: the cadence a world decides its
 # detail on is the host's, not the stream's, exactly as --want-bound is.
+# 18.10: the recorded months belong to the world before Phase 18 - a stream
+# carries no Options - so they are replayed into it unless the entry says
+# otherwise (-DERA=--climate for a month recorded in a climate world).
+if(NOT DEFINED ERA)
+  set(ERA --no-climate)
+endif()
 execute_process(
-  COMMAND ${ATLAS} --replay ${STREAM} --panel --want-bound 0 ${MORE} --out ${OUT}
+  COMMAND ${ATLAS} --replay ${STREAM} --panel --want-bound 0 ${ERA} ${MORE} --out ${OUT}
   RESULT_VARIABLE Ran
   OUTPUT_VARIABLE Said
   ERROR_VARIABLE Wrote)

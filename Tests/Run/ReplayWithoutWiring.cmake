@@ -17,8 +17,14 @@
 # A failing replay is checked for HOW it failed, not that it failed. Atlas
 # exits non-zero for a stream of another world, an unreadable file and a bad
 # argument alike, so exit code alone would pass against a typo in STREAM.
+# 18.10: the recorded months belong to the world before Phase 18 - a stream
+# carries no Options - so they are replayed into it unless the entry says
+# otherwise (-DERA=--climate for a month recorded in a climate world).
+if(NOT DEFINED ERA)
+  set(ERA --no-climate)
+endif()
 execute_process(
-  COMMAND ${ATLAS} --replay ${STREAM} --panel --want-bound 0 --out ${OUT}
+  COMMAND ${ATLAS} --replay ${STREAM} --panel --want-bound 0 ${ERA} --out ${OUT}
   RESULT_VARIABLE Ran
   OUTPUT_VARIABLE Said
   ERROR_VARIABLE Wrote)

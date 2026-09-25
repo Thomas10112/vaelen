@@ -24,6 +24,7 @@
 #include "Vaelen/Economy/Stocks.h"
 #include "Vaelen/Economy/Trade.h"
 #include "Vaelen/Economy/Wealth.h"
+#include "Vaelen/Economy/Winter.h"
 #include "Vaelen/Politics/Polities.h"
 #include "Vaelen/Population/Families.h"
 #include "Vaelen/Population/Lives.h"
@@ -31,6 +32,7 @@
 #include "Vaelen/Population/Needs.h"
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Population/Traits.h"
+#include "Vaelen/Population/Warmth.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/Regions.h"
 #include "Vaelen/Sim/TileGrid.h"
@@ -179,6 +181,9 @@ namespace
 			Trade = TradeTypes::Declare(Instance);
 			Wealth = WealthTypes::Declare(Instance);
 			Polities = PolityTypes::Declare(Instance);
+			// 18.10: the climate, in every wiring at the same position - after
+			// Polity, before anything optional (ADR-0153).
+			Warmth = WarmthTypes::Declare(Instance);
 
 			LifeRules Life;
 			Life.SpouseRequired = 1;
@@ -202,7 +207,7 @@ namespace
 			Ranks = std::make_unique<StandingSystem>(Instance, Ages.Types(), Persons, Families, Traits, Organizations,
 													 Standing, StandingRules{});
 			Bonds = std::make_unique<BondageSystem>(Instance, Ages.Types(), Persons, Norms, Standing, Bondage,
-												   BondageRules{});
+													BondageRules{});
 			Rulers =
 				std::make_unique<PolitySystem>(Instance, Ages.Types(), Persons, Organizations, Polities, PolityRules{});
 
@@ -219,6 +224,15 @@ namespace
 			Harvest->ObserveTraits(Traits.Traits);
 			Body->RunAfter("Production");
 			Body->ObserveRation(Production.Ration);
+			// 18.10: the winter after the stocks and before the harvest; the
+			// need system judges the chill; the harvest has a season.
+			Winters = std::make_unique<WinterSystem>(Instance, Ages.Types(), Persons, Families, Economy, Warmth,
+													 WinterRules{});
+			Winters->RunAfter("Stocks");
+			Winters->ObserveSettlements(Trade.Settlement);
+			Harvest->RunAfter("Winter");
+			Harvest->ObserveClimate(Vaelen::WorldGen::ClimateRules{});
+			Body->ObserveWinter(Warmth, WarmthRules{});
 			Rulers->RunAfter("Lod");
 
 			Instance.Systems().Add(Lives.get());
@@ -229,6 +243,7 @@ namespace
 			Instance.Systems().Add(Orgs.get());
 			Instance.Systems().Add(Customs.get());
 			Instance.Systems().Add(Stocks.get());
+			Instance.Systems().Add(Winters.get());
 			Instance.Systems().Add(Harvest.get());
 			Instance.Systems().Add(Fair.get());
 			Instance.Systems().Add(Roads.get());
@@ -284,6 +299,7 @@ namespace
 		Vaelen::Economy::TradeTypes Trade;
 		Vaelen::Economy::WealthTypes Wealth;
 		Vaelen::Politics::PolityTypes Polities;
+		Vaelen::Population::WarmthTypes Warmth; ///< 18.10
 		std::unique_ptr<Vaelen::Population::LifeSystem> Lives;
 		std::unique_ptr<Vaelen::Population::FamilySystem> Houses;
 		std::unique_ptr<Vaelen::Population::NeedSystem> Body;
@@ -292,6 +308,7 @@ namespace
 		std::unique_ptr<Vaelen::Society::OrganizationSystem> Orgs;
 		std::unique_ptr<Vaelen::Society::NormSystem> Customs;
 		std::unique_ptr<Vaelen::Economy::StockSystem> Stocks;
+		std::unique_ptr<Vaelen::Economy::WinterSystem> Winters; ///< 18.10
 		std::unique_ptr<Vaelen::Economy::ProductionSystem> Harvest;
 		std::unique_ptr<Vaelen::Economy::MarketSystem> Fair;
 		std::unique_ptr<Vaelen::Economy::TradeSystem> Roads;

@@ -513,7 +513,7 @@ namespace
 		/// reading it. Replaying a walk without it is replaying it into a world
 		/// that pays attention on a different schedule, and the digests say so.
 		bool Stream = false;
-		bool Climate = false; ///< 18.02: told, not read, exactly like --stream
+		bool Climate = true; ///< 18.10: on by default; --no-climate is the world before Phase 18
 		/// 15.10's gate: a walk recorded elsewhere, replayed here and asked the
 		/// six clauses of the phase gate. The streaming cadence is forced on
 		/// for it - RunGate says why.
@@ -657,8 +657,8 @@ namespace
 					 "  --replay FILE   replay a vaelen-stream into a fresh played Run and write what it came to\n"
 					 "  --empty         the empty play: the Play wiring with nobody taken up, no stream\n"
 					 "  --panel         with --replay or --empty: print the first screen it came to (14.06)\n"
-					 "  --climate       18.04: the view carries the climate (a season, degrees, a climate leaf); told, "
-					 "not read\n"
+					 "  --no-climate    18.10: the world before Phase 18 - no winter, no season, no chill (the climate "
+					 "is the default)\n"
 					 "  --want-bound N  StartRules::WantBound for a replay (0 or 1, default 1; the engine host "
 					 "uses 0)\n"
 					 "  --stand FILE    write a stand-in stream: thirty days played by nobody (14.10)\n"
@@ -731,7 +731,11 @@ namespace
 			}
 			else if (std::strcmp(Arg, "--climate") == 0)
 			{
-				Out.Climate = true;
+				Out.Climate = true; // 18.10: the default; kept so older command lines still read
+			}
+			else if (std::strcmp(Arg, "--no-climate") == 0)
+			{
+				Out.Climate = false;
 			}
 			else if (std::strcmp(Arg, "--stand") == 0 && HasValue)
 			{
@@ -2250,11 +2254,13 @@ namespace
 			RO.Size = G.Size;
 			RO.PreHistory = G.PreHistory;
 			RO.Years = G.Years;
+			// A golden is an image of the world before Phase 18, and 18.10 made
+			// the climate the default: say which world, whatever the flag.
+			RO.Climate = false;
 			if (G.Full)
 			{
 				RO.Play = true;
 				RO.Stream = true;
-				RO.Climate = Opt.Climate;
 				RO.Lively = true;
 				RO.Colony = true;
 			}
