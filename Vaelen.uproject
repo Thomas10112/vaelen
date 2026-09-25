@@ -203,6 +203,22 @@
 			]
 		},
 		{
+			"Name": "VaelenWalk",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine",
+				"InputCore",
+				"EnhancedInput",
+				"ProceduralMeshComponent",
+				"VaelenCore",
+				"VaelenView",
+				"VaelenScene",
+				"VaelenGame",
+				"VaelenUI"
+			]
+		},
+		{
 			"Name": "VaelenPresentation",
 			"Type": "Runtime",
 			"LoadingPhase": "Default",
@@ -238,6 +254,10 @@
 			"TargetAllowList": [
 				"Editor"
 			]
+		},
+		{
+			"Name": "ProceduralMeshComponent",
+			"Enabled": true
 		}
 	]
 }

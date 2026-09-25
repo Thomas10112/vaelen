@@ -10712,7 +10712,7 @@ MapView already carries elevation in metres and the hydrology flags (Land.h:44-8
 
 ## ADR-0157 — The engine side draws and presses keys and nothing else: a fenced actor module, the controller as the only door caller, an asset-free contract, and an exact `Super`
 
-**Status:** PROPOSED (2026-09-25, Phase 19 plan; applied by 19.02 and 19.06) **19.02's part APPLIED 2026-09-25**: the exact Super, the shim's contract headers (beliefs), the contract probe and the module-list check.
+**Status:** PROPOSED (2026-09-25, Phase 19 plan; applied by 19.02 and 19.06) **19.02's part APPLIED 2026-09-25**: the exact Super, the shim's contract headers (beliefs), the contract probe and the module-list check. **19.06's part WRITTEN 2026-09-25**: the fenced actor module (VaelenWalk, six more refused words), the controller as the only door caller (the walk's controller is a VaelenUI subclass and moves any pawn), the asset-free contract (mapping context, lights, PMC sections and the engine's vertex-colour material made in C++) - UNVERIFIED (engine) until sitting S2 builds it; one deviation the as-built note records: the game mode and the commands live in VaelenWalk, for the dependency direction.
 
 ### Context
 

@@ -8,12 +8,17 @@
 // one host input that is not a gameplay command (ADR-0138); F9 writes the
 // stream.
 //
-// STATUS: VALIDATED (Phase 14) for what Phase 14 left here - built by
+// STATUS: UNVERIFIED (engine) since 19.06 - its code has changed after the last build that
+// compiled it (b0921, 15.10, 867a129): RegionTheCameraIsOver is virtual and protected, so the
+// walk's controller can answer with the region under the walker's feet. Parsed, never
+// compiled; sitting S2 builds it.
+// BUILD: b0921 - Tools/engine_builds.txt
+//
+// UNTIL 19.06: VALIDATED (Phase 14) for what Phase 14 left here - built by
 // UnrealBuildTool and RUN on 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development
 // Editor): eighty-three days played at the keyboard, and Tools/Atlas replayed
 // the stream headlessly to the same four digests, byte for byte.
 // Tests/Run/Streams/README.md has the lines.
-// BUILD: b0921 - Tools/engine_builds.txt; its code is what that build compiled (19.01).
 //
 // VALIDATED (Phase 15 task 15.10) for what 15.10 added - built by
 // UnrealBuildTool and RUN on 2026-09-21 (UE 5.6, MSVC 19.51, Win64 Development
@@ -120,8 +125,13 @@ private:
 	/// what this reads the camera with, and whether THAT is const in UE 5.6 is
 	/// a thing this session believes rather than knows. A non-const helper
 	/// compiles either way, and its one caller (TurnTheDay) is non-const.
-	int32 RegionTheCameraIsOver(int32& OutReach);
+	///
+	/// Virtual since 19.06: the walk's controller answers with the region
+	/// under the walker's feet, and the day turn asks the same question.
+protected:
+	virtual int32 RegionTheCameraIsOver(int32& OutReach);
 
+private:
 	/// Through the page and then through the door, and nowhere else. The page
 	/// answers first - an unoffered verb costs the world nothing - and what it
 	/// offers becomes a PlayerCommand the module hands to Mean.

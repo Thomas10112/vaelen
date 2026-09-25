@@ -74,7 +74,24 @@ ROOTS = [
     # be built from a MapView that outlived its world - and so the engine's walk
     # can include it. The same rules as the UI, applied to the whole module.
     ("VaelenScene", ()),
+    # 19.06, ADR-0157: the walk draws and stands; it reads the views the
+    # subsystem hands on and never turns the day, means a verb, looks, takes
+    # somebody up, saves or loads - ROOT_TOKENS below refuses the words.
+    ("VaelenWalk", ()),
 ]
+
+# Words a ROOT may not say on top of TOKENS: the door's verbs and the
+# subsystem's, so that no module but VaelenUI can be a second host.
+ROOT_TOKENS = {
+    "VaelenWalk": [
+        (r"\bMean\s*\(", "the walk means a verb; only the UI's controller does, through the page"),
+        (r"\bWatch\s*\(", "the walk hands over a look; the day turn does, from the controller"),
+        (r"\bAdvanceDay\s*\(", "the walk turns the day; Space does, from the controller"),
+        (r"\bTakeSomebodyElse\s*\(", "the walk takes somebody up; Vaelen.TakeUp does"),
+        (r"\bSave\s*\(", "the walk saves; Vaelen.Save does"),
+        (r"\bLoad\s*\(", "the walk loads; Vaelen.Load does"),
+    ],
+}
 
 ALLOWED = set(
     ["Vaelen/View/%s.h" % n for n in
@@ -193,6 +210,7 @@ def check(root, witness=True):
     if not folders:
         return ["no UI to check: neither Source/ nor Tools/UiWitness holds VaelenUI or VaelenGame"]
     for folder, exempt in folders:
+        extra = ROOT_TOKENS.get(Path(folder).name, [])
         for path in sources(folder, exempt):
             with open(path, "r", encoding="utf-8") as handle:
                 text = handle.read()
@@ -211,7 +229,7 @@ def check(root, witness=True):
                         if not allowed(reached):
                             bad.append("%s includes %s, whose closure reaches %s"
                                        % (where, include, reached))
-            for pattern, says in TOKENS:
+            for pattern, says in TOKENS + extra:
                 for found in re.finditer(pattern, text):
                     line = text.count("\n", 0, found.start()) + 1
                     bad.append("%s:%d: %s - %s" % (where, line, found.group(0).strip(), says))
@@ -252,6 +270,29 @@ MUTATIONS = [
     ("something ticked", "void Go() { Thing.Tick(0.1f); }\n"),
     ("randomness", "int Roll() { return rand(); }\n"),
     ("ViewSources named", "Vaelen::View::ViewSources From;\n"),
+]
+
+
+WALK_CONTROL = '''// A walk file that must PASS: it reads views and draws.
+#include "Vaelen/Scene/Terrain.h"
+#include "Vaelen/View/Climate.h"
+
+// Meaning nothing to the world: a Ticker would, and there is none here.
+void Draw(const Vaelen::Scene::Ground& G, const Vaelen::View::ClimateView& C)
+{
+	(void)G;
+	(void)C;
+}
+'''
+
+WALK_MUTATIONS = [
+    ("a verb meant", "void Go() { World->Mean(What); }\n"),
+    ("the day turned", "void Go() { World->AdvanceDay(1); }\n"),
+    ("a look handed over", "void Go() { World->Watch(1, 1, 4); }\n"),
+    ("somebody taken up", "void Go() { World->TakeSomebodyElse(); }\n"),
+    ("a save", "void Go() { World->Save(Name, Out, Check); }\n"),
+    ("a load", "void Go() { World->Load(Name, Out, Check); }\n"),
+    ("something ticked in the walk", "void Go() { Thing.Tick(0.1f); }\n"),
 ]
 
 
@@ -319,11 +360,32 @@ def self_test(root):
             failures += 1
         shutil.rmtree(aside)
 
+        # 19.06: the walk's own words. A VaelenWalk that only draws passes -
+        # its control says "Meaning" and "Ticker", words a substring ban would
+        # catch; one that means a verb, turns the day or ticks is refused.
+        walk = source / "VaelenWalk" / "Private"
+        walk.mkdir(parents=True)
+        (source / "VaelenWalk" / "Public").mkdir(parents=True)
+        land = walk / "VaelenLand.cpp"
+        with open(land, "w", encoding="utf-8") as handle:
+            handle.write(WALK_CONTROL)
+        complaints = check(copy, witness=False)
+        if complaints:
+            print("self-test: the WALK CONTROL was refused: " + "; ".join(complaints), file=sys.stderr)
+            failures += 1
+        for name, mutation in WALK_MUTATIONS:
+            with open(land, "w", encoding="utf-8") as handle:
+                handle.write(WALK_CONTROL + mutation)
+            if not check(copy, witness=False):
+                print("self-test: in the walk, %s was NOT caught" % name, file=sys.stderr)
+                failures += 1
+        shutil.rmtree(source / "VaelenWalk")
+
     if failures:
         print("self-test: %d case(s) failed" % failures, file=sys.stderr)
         return 1
-    print("self-test: %d mutations, the closure and the unnamed folder, all caught, "
-          "control clean" % len(MUTATIONS))
+    print("self-test: %d mutations, the closure, the unnamed folder and the walk's %d, all caught, "
+          "control clean" % (len(MUTATIONS), len(WALK_MUTATIONS)))
     return 0
 
 

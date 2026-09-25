@@ -379,6 +379,69 @@ S1 is pinned to `19.03b` and sees none of this. The next build (sitting S2,
   `panel` digest than the Atlas replays to, the binding moved the page and
   that is the report.
 
+## PHASE 19 - sitting S2 (task 19.06): the engine contract, run once
+
+AFTER S1 has closed (its log committed, `Session.P19S1` green). Every API the
+phase rests on runs once, early: procedural-mesh sections and their complex
+collision under CharacterMovement, a mapping context made without an asset,
+ZQSD on AZERTY (believed: Unreal's letter keys follow the layout), a lit sky
+in a map with no light, the engine's vertex-colour material, and FKey(FName)
+from 19.10. If any fails, 19.07-19.10 stand headless and only the engine
+side is redesigned. The standing rule holds: REPORT, do not repair.
+
+0. Check out THE COMMIT OF 19.06:
+   ```
+   git fetch origin claude/vaelen-master-prompt-aw7zqj
+   git checkout $(git log origin/claude/vaelen-master-prompt-aw7zqj --grep="^19.06: " -1 --format=%H)
+   git rev-parse HEAD
+   ```
+   The FIRST line of what you bring back is that `rev-parse`.
+1. Build the editor as for 14.08. Eleven new engine files (Source/VaelenWalk,
+   VaelenUI's walk controller) and four changed ones; the plugin
+   ProceduralMeshComponent is newly enabled in the uproject. Bring back the
+   UBT result line and, if it fails, the FIRST error verbatim AND WHICH
+   MODULE it is in, and stop there.
+2. Launch the walk - the game mode is chosen by the map URL, so no config
+   line changes:
+   ```
+   UnrealEditor.exe "D:\...\vaelen\Vaelen.uproject" /Engine/Maps/Entry?game=/Script/VaelenWalk.VaelenWalkGameMode -game -log
+   ```
+   You should be a capsule with a camera behind it, in the dark (no world
+   yet, no sky yet).
+3. `Vaelen.Walk 128 120` (seconds of work). Bring back its lines:
+   `LogVaelenWalk: walker on tile T of region R at (x, y, z)`, the
+   `LogVaelenScene: ... region R:` terrain line, the `LogVaelenClimate:`
+   line and the `LogVaelenScene: ... sky day` line. The first two of those
+   three must equal, byte for byte after the category,
+   `VaelenAtlas --size 128 --prehistory 300 --years 120 --scene-terrain R`
+   and the climate line the same Atlas command prints - `Session.P19S2`
+   re-reads them so.
+4. `Vaelen.Probe 64`. Bring back `probe 64 of region R, bias 0 mm: max
+   |trace-builder| X cm, misses M`. X <= 1.0 and M = 0 is the pass; a miss
+   is a hole in the ground, a wide gap is a section uploaded at the wrong
+   place. THE CONTROL: `Vaelen.Probe 64 50` must print `max ... 5.0 cm` -
+   a probe that cannot fail is not a probe.
+5. `Log LogVaelenWalkKeys Verbose`, then Z, Q, S, D pressed once each:
+   four `LogVaelenWalk: move (x, y) facing f` lines, (0, 1), (-1, 0),
+   (0, -1), (1, 0) in that order on an AZERTY keyboard. Then `Log
+   LogVaelenWalkKeys Log` to quiet it. A `fence at (x, y)` line instead of a
+   step is the fence (ADR-0155): you stood at the region's edge.
+6. Walk up the steepest ground near you. Bring back whether the walker
+   climbs it or slides: the map has no triangle steeper than 44.76 deg
+   (`Atlas.SceneTerrain128`: steep 0), so a slide is a report.
+7. Space, three times: three `LogVaelenPlay: day` lines, and the ground
+   repainted (snow where it froze overnight, if any) and the sun moved.
+   Bring back the lines and say whether anything visibly changed.
+8. `stat unit` at eye level. Bring back Frame / Game / Draw / GPU.
+9. Two screenshots: the ground from the walker with the page over it, and
+   one looking at the horizon (the sky, the fog, the far land).
+10. THE CONTROL: close, relaunch WITHOUT the `?game=` part, and
+    `Vaelen.View 128 120`: the same `AELVOR digests:` line as S1's.
+
+Bring back the whole `Saved/Logs/Vaelen.log`, rev-parse first. It is
+committed as `Tests/Run/Sessions/s2-<date>.log`, `Session.P19S2` re-reads
+steps 3 and 4 against the Atlas, and the ledger gains the row `s2`.
+
 ## What the kernel half already hands you
 
 | You need | It is called | Where |

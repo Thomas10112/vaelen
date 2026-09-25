@@ -8194,3 +8194,64 @@ is byte-identical between 19.03b and HEAD, and 19.03b compiled on
 2026-09-25. Three lenses closed negative: no unity build in either target,
 the module-relative private include of VaelenScene resolved by UBT, the
 19.10 `Keys_` member UHT-safe.
+
+### 19.06 AS BUILT (the headless half: written, fenced, parsed), 2026-09-25
+
+**S2: the engine contract, run once before the scene is built on it.**
+STATUS: UNVERIFIED (engine) - eleven new engine files and four changed
+ones, parsed against the shim (24 translation units, 0 errors), never
+compiled. Sitting S2 builds them; ENGINE_HANDOFF "PHASE 19 - sitting S2".
+
+`Source/VaelenWalk/`, an engine module of actors and two commands:
+`AVaelenLand` uploads VaelenScene's ground as procedural-mesh sections, one
+per chunk - the chunks touching the played region at the full lattice with
+collision (exactly the chunks `--scene-terrain R` measures, so the line it
+prints is the Atlas's bytes), the far land at stride Steps without; the
+day's snow and grass on the near chunks (19.09), repainted on the
+subsystem's `OnViewsTaken`; M_VaelenTile when it is on the disk, else
+`GEngine->VertexColorMaterial` (a belief). `AVaelenSky`: a directional
+light, a real-time sky light, an atmosphere and a height fog made in C++,
+the sun aimed from `Scene::SunOf` at the life's hour - the world's hours,
+never a frame clock. `AVaelenWalker`: a character, capsule 42/96, 500 cm/s,
+the walkable floor at Terrain.h's 44.76 deg, a 300 cm arm and a camera, NO
+Tick. `AVaelenWalkGameMode` names the HUD of 14.09, the walk controller and
+the walker; chosen by the map URL (`?game=/Script/VaelenWalk.VaelenWalkGameMode`),
+so no config line changes on the owner's machine. `Vaelen.Walk <size>
+<years>` begins with the daily cadence, spawns the land and the sky, stands
+the walker on the played region's centroid tile and prints the terrain,
+climate and sky lines; `Vaelen.Probe N [biasMm]` traces N hashed points
+against the builder's HeightAt and prints the widest gap and the misses -
+with a bias the gap must show it.
+
+VaelenUI: `AVaelenWalkController : AVaelenPlayerController` - Z/Q/S/D, the
+arrows and the mouse mapped at run time with Enhanced Input (no asset,
+ADR-0157) on top of 14.09's keys; every step checked against the fence
+(`Scene::Inside`, ADR-0155) where it would land, and not taken when it
+leaves the played region's walkable tiles; the day turn's look answered
+from the region under the walker's feet (`Scene::RegionAt`), reach 1 -
+`RegionTheCameraIsOver` is virtual for it. VaelenGame: `Ground()`,
+`Scene()` (the ground cut once at Begin), `Climate()`, `Net()`, `Seed()`,
+`Size()`, `OnViewsTaken` (Begin, AdvanceDay, Load), and `ClimateLine()`
+composed by Proof.h from the same facts the Atlas measures - printed by
+`Vaelen.Play`, `Vaelen.Day` and `Vaelen.Walk`.
+
+DEVIATIONS from the plan row, said out loud: the game mode and the two
+commands live in VaelenWalk, not in VaelenUI and VaelenGame - VaelenWalk
+depends on both, and neither may depend on it; the near chunks are the
+touching chunks only (no ring at the full lattice), so the engine's terrain
+line IS `--scene-terrain R`'s; the host's key table stays DefaultKeys, so
+S is south AND Speak until the first walk sitting says which the owner
+wants (19.10's deviation, kept); the move log is Verbose (`Log
+LogVaelenWalkKeys Verbose` shows it), because Triggered fires every frame a
+key is held.
+
+Held by: `Kernel.UiFence` reads VaelenWalk with the UI's rules and six more
+words it may not say (Mean, Watch, AdvanceDay, TakeSomebodyElse, Save, Load
+- ROOT_TOKENS), its self-test failing on purpose on each and on a Tick, its
+control passing on "Meaning" and "Ticker"; `Kernel.ModuleLists` (19 modules
+agree; the plugin control is now the uproject forgetting
+ProceduralMeshComponent); `Kernel.EngineStatus` (41 files, the known answer
+grown to 24 moved-or-new); `Kernel.ShimLedger` (112 beliefs, the 94 of the
+walk listed by name with what each is for; the self-test's synthetic method
+renamed, since its old name became a real belief). One shim line added:
+`UWorld::GetFirstPlayerController`.

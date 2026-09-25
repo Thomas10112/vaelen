@@ -167,14 +167,14 @@ def self_test():
         shim = os.path.join(tmp, "Shim")
         shutil.copytree(L.SHIM, shim)
         with open(os.path.join(shim, "SelfTestCharacter.h"), "w", encoding="utf-8") as f:
-            f.write("#pragma once\nclass ASelfTestCharacter { public: void SetWalkableFloorAngle(float); };\n")
+            f.write("#pragma once\nclass ASelfTestCharacter { public: void SetSelfTestFloorAngle(float); };\n")
         hud = os.path.join(tmp, "Source", "VaelenUI", "Private", "VaelenHUD.cpp")
         with open(hud, "a", encoding="utf-8") as f:
-            f.write("\nstatic void Use(ASelfTestCharacter& C) { C.SetWalkableFloorAngle(44.76f); }\n")
+            f.write("\nstatic void Use(ASelfTestCharacter& C) { C.SetSelfTestFloorAngle(44.76f); }\n")
         refused, _, _ = check(root=tmp, shim=shim)
         named = sorted(r.split(" ")[0] for r in refused)
         expect("a new shim entry used by engine code and listed nowhere is refused, both names",
-               named == ["ASelfTestCharacter", "SetWalkableFloorAngle"] and all("VaelenHUD.cpp:" in r for r in refused),
+               named == ["ASelfTestCharacter", "SetSelfTestFloorAngle"] and all("VaelenHUD.cpp:" in r for r in refused),
                str(refused))
         # CONTROL: the same use inside a comment is no use at all.
         with open(hud, encoding="utf-8") as f:

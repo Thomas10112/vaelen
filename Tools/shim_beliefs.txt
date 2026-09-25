@@ -30,3 +30,99 @@ push_back         16.14  the kernel's std::vector of names, filled from the list
 None              19.02  NOT a shim use: the engine code's own Refusal::None and friends, which 19.02's ETriggerEvent::None also spells
 Started           19.02  NOT a shim use: the atlas actor's own clock variable, which 19.02's ETriggerEvent::Started also spells
 FKey              19.10  FKey(FName): the controller binds the eight verbs from the host's key table (ADR-0158)
+# 19.06 (2026-09-25): the walk - VaelenWalk and VaelenUI's walk controller - uses what 19.02's shim
+# headers and Tools/ShimProbe believed in, and every name below is a belief until sitting S2 builds it.
+ACharacter         19.06  the walker is one (VaelenWalker)
+APawn              19.06  the walk controller moves any pawn
+AddControllerPitchInput 19.06  the mouse looks
+AddControllerYawInput 19.06  the mouse looks
+AddMappingContext  19.06  UEnhancedInputLocalPlayerSubsystem - the run-time mapping context
+AddMovementInput   19.06  a step of the walker
+AddUObject         19.06  the land binds to the subsystem's OnViewsTaken
+Axis2D             19.06  EInputActionValueType - one axis for ZQSD, one for the mouse
+BindAction         19.06  UEnhancedInputComponent - Move and Look
+Broadcast          19.06  the subsystem fires OnViewsTaken after every retaking
+Cast               19.06  the walk controller casts InputComponent to the enhanced one
+ClearAllMeshSections 19.06  AVaelenLand::Build starts clean
+ClearMeshSection   19.06  Repaint replaces a near section
+CreateMeshSection_LinearColor 19.06  one section per chunk, with the day's colours
+D                  19.06  EKeys::D - right
+DECLARE_MULTICAST_DELEGATE 19.06  FVaelenViewsTaken on the subsystem
+DefaultPawnClass   19.06  AVaelenWalkGameMode names the walker
+Down               19.06  EKeys::Down - the arrows walk too
+ECC_Visibility     19.06  the probe's trace channel
+EInputActionValueType 19.06  the two actions' value type
+ETriggerEvent      19.06  Triggered, the event the actions bind on
+Empty              19.06  TArray::Empty - the land's section table, rebuilt
+FEnhancedActionKeyMapping 19.06  MapKey's answer, whose Modifiers swizzle and negate
+FHitResult         19.06  the probe's trace
+FInputActionValue  19.06  what a bound action hands the controller
+FProcMeshTangent   19.06  a section's tangents
+GetActorLocation   19.06  the walker's feet, for the fence and the look
+GetCapsuleComponent 19.06  the walker's capsule
+GetCharacterMovement 19.06  the walker's legs
+GetControlRotation 19.06  where the walker faces
+GetFirstPlayerController 19.06  Vaelen.Walk finds the possessed walker
+GetLocalPlayer     19.06  the controller reaches the enhanced-input subsystem
+GetPawn            19.06  the controller's body
+GetScaledCapsuleHalfHeight 19.06  standing height, to place the walker on the ground
+ImpactPoint        19.06  FHitResult - where the trace met the ground
+InitCapsuleSize    19.06  the walker's capsule
+Left               19.06  EKeys::Left
+LineTraceSingleByChannel 19.06  the probe
+Made               19.06  a local of the probe; a name the shim also has
+MapKey             19.06  UInputMappingContext - a key onto an action
+MaxWalkSpeed       19.06  500 cm/s
+Mesh               19.06  the land's own member; a name the shim also has
+Modifiers          19.06  FEnhancedActionKeyMapping::Modifiers
+Mouse2D            19.06  EKeys::Mouse2D - the look
+Normals            19.06  the land's own array; a parameter name of the shim's CreateMeshSection_LinearColor
+Q                  19.06  EKeys::Q - left
+RecaptureSky       19.06  USkyLightComponent after the sun moved
+Right              19.06  EKeys::Right
+RotationRate       19.06  UCharacterMovementComponent - the walker turns
+Section            19.06  a local of the land; a name the shim also has
+SetActorLocation   19.06  the walker put on the centroid tile
+SetAtmosphereSunLight 19.06  the sun lights the atmosphere
+SetFogDensity      19.06  the haze
+SetIntensity       19.06  the sun, and night
+SetLightColor      19.06  the sun's colour
+SetWalkableFloorAngle 19.06  44.76 deg, Terrain.h's slope
+SetWorldRotation   19.06  the sun aimed
+SocketName         19.06  USpringArmComponent - where the camera hangs
+SocketOffset       19.06  the camera over the shoulder
+Tangents           19.06  the land's own array; a parameter name of the shim's CreateMeshSection_LinearColor
+TargetArmLength    19.06  300 cm
+Triangles          19.06  the land's own array; a parameter name of the shim's
+Triggered          19.06  ETriggerEvent::Triggered
+UCameraComponent   19.06  the walker's eye
+UCharacterMovementComponent 19.06  the walker's legs
+UDirectionalLightComponent 19.06  the sun
+UEnhancedInputComponent 19.06  the walk's input component
+UEnhancedInputLocalPlayerSubsystem 19.06  where the mapping context goes
+UExponentialHeightFogComponent 19.06  the haze
+UInputAction       19.06  Move and Look, made at run time
+UInputMappingContext 19.06  made at run time
+UInputModifierNegate 19.06  S and Q
+UInputModifierSwizzleAxis 19.06  Z and S onto the axis's Y
+ULocalPlayer       19.06  the local player, for the subsystem
+UProceduralMeshComponent 19.06  the ground
+USkyAtmosphereComponent 19.06  the air
+USkyLightComponent 19.06  the sky light
+USpringArmComponent 19.06  the camera's arm
+UV0                19.06  the land's own array; a parameter name of the shim's
+Up                 19.06  EKeys::Up
+V                  19.06  a loop variable of the land; a name the shim also has
+Value              19.06  FInputActionValue Value, the handlers' parameter
+ValueType          19.06  UInputAction::ValueType
+VertexColorMaterial 19.06  GEngine's, when M_VaelenTile is not on the disk
+Vertices           19.06  the land's own array; a parameter name of the shim's
+Yaw                19.06  FRotator::Yaw - where the walker faces
+bBlockingHit       19.06  FHitResult
+bDoCollisionTest   19.06  the arm pulls the camera in
+bOrientRotationToMovement 19.06  the walker turns where it walks
+bRealTimeCapture   19.06  the sky light follows the sun
+bUseAsyncCooking   19.06  collision cooked now, so Vaelen.Probe can trace at once
+bUseComplexAsSimpleCollision 19.06  the capsule meets the triangles themselves
+bUseControllerRotationYaw 19.06  off: the body turns with its steps
+bUsePawnControlRotation 19.06  the arm follows the mouse

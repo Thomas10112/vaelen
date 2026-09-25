@@ -102,6 +102,12 @@ namespace
 			   bStreaming ? TEXT("daily (Options::Stream on, replay with --stream)") : TEXT("yearly"),
 			   static_cast<unsigned>(Life.Person), static_cast<unsigned>(Life.Region),
 			   static_cast<unsigned>(World->World().People));
+		// 19.06: the weather, in the bytes the Atlas prints (Vaelen/View/Proof.h).
+		const FString Weather = World->ClimateLine();
+		if (!Weather.IsEmpty())
+		{
+			UE_LOG(LogVaelenPlay, Log, TEXT("%s"), *Weather);
+		}
 	}
 
 	void Day(const TArray<FString>& Args, UWorld* World_)
@@ -122,6 +128,12 @@ namespace
 				   static_cast<unsigned>(Life.DaysLived), static_cast<unsigned>(Life.Year),
 				   static_cast<unsigned>(Life.Held), static_cast<unsigned>(Life.Taken),
 				   static_cast<unsigned>(Life.Refused), Took);
+		}
+		// 19.06: and the weather the days came to, once, in the Atlas's bytes.
+		const FString Weather = World->ClimateLine();
+		if (!Weather.IsEmpty())
+		{
+			UE_LOG(LogVaelenPlay, Log, TEXT("%s"), *Weather);
 		}
 	}
 

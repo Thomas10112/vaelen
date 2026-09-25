@@ -28,12 +28,12 @@ way to make it green is to say UNVERIFIED (engine) - or to build it.
     check_engine_status.py --record ID      derive Tools/EngineBuilds/ID.txt from git
 
 THE KNOWN ANSWER (--self-test): every engine file marked VALIDATED at build
-b0921 (15.10, 867a129) must be refused for exactly seven files - the five whose
-code moved since 15.10 (VaelenWorldSubsystem.cpp/.h, VaelenPlayCommands.cpp,
-VaelenViewActor.cpp, VaelenAtlasActor.cpp) and the two 16.14 wrote after it
-(VaelenCheckpointStore.cpp/.h, not in that build) - while the three whose
-comments alone changed (VaelenViewDrawer.cpp/.h, VaelenViewActor.h) pass. That
-set is a measurement of git, not of how anybody marked anything.
+b0921 (15.10, 867a129) must be refused for exactly the files whose code moved
+since 15.10 or were written after it (MOVED_SINCE_B0921, NEW_SINCE_B0921 below:
+seven on 2026-09-25 at 19.01, twenty-four after 19.06 wrote the walk) - while
+the three whose comments alone changed (VaelenViewDrawer.cpp/.h, VaelenViewActor.h)
+pass. That set is a measurement of git, not of how anybody marked anything, and
+a task that moves engine code adds its files to it.
 """
 
 import argparse
@@ -126,10 +126,30 @@ MOVED_SINCE_B0921 = {
     "Source/VaelenGame/Private/VaelenWorldSubsystem.cpp",
     "Source/VaelenGame/Public/VaelenWorldSubsystem.h",
     "Source/VaelenPresentation/Private/VaelenViewActor.cpp",
+    # 19.10: the controller binds from the host's table; 19.06: the look helper is
+    # virtual, and both module rules gained a dependency.
+    "Source/VaelenUI/Private/VaelenPlayerController.cpp",
+    "Source/VaelenUI/Public/VaelenPlayerController.h",
+    "Source/VaelenUI/VaelenUI.Build.cs",
+    "Source/VaelenGame/VaelenGame.Build.cs",
 }
 NEW_SINCE_B0921 = {
     "Source/VaelenGame/Private/VaelenCheckpointStore.cpp",
     "Source/VaelenGame/Private/VaelenCheckpointStore.h",
+    # 19.06: the walk, a module no build has seen.
+    "Source/VaelenUI/Private/VaelenWalkController.cpp",
+    "Source/VaelenUI/Public/VaelenWalkController.h",
+    "Source/VaelenWalk/Private/VaelenLand.cpp",
+    "Source/VaelenWalk/Private/VaelenSky.cpp",
+    "Source/VaelenWalk/Private/VaelenWalkCommands.cpp",
+    "Source/VaelenWalk/Private/VaelenWalkGameMode.cpp",
+    "Source/VaelenWalk/Private/VaelenWalkModule.cpp",
+    "Source/VaelenWalk/Private/VaelenWalker.cpp",
+    "Source/VaelenWalk/Public/VaelenLand.h",
+    "Source/VaelenWalk/Public/VaelenSky.h",
+    "Source/VaelenWalk/Public/VaelenWalkGameMode.h",
+    "Source/VaelenWalk/Public/VaelenWalker.h",
+    "Source/VaelenWalk/VaelenWalk.Build.cs",
 }
 COMMENTS_ONLY_SINCE_B0921 = {
     "Source/VaelenPresentation/Private/VaelenViewDrawer.cpp",
@@ -192,7 +212,7 @@ def self_test():
         for path in L.engine_files(tmp):
             rewrite(tmp, path, claim_everything)
         named = {p for p, _ in check(tmp)}
-        expect("claiming b0921 everywhere names exactly the 5 moved and the 2 newer files",
+        expect("claiming b0921 everywhere names exactly the moved and the newer files (a measurement of git, kept here)",
                named == MOVED_SINCE_B0921 | NEW_SINCE_B0921,
                "named {}".format(sorted(named)))
         expect("the 3 files whose comments alone changed since b0921 are not named",

@@ -50,11 +50,20 @@
 #include "Vaelen/View/Frame.h"
 #include "Vaelen/View/Life.h"
 #include "Vaelen/View/Panel.h"
+#include "Vaelen/Scene/Terrain.h"
+#include "Vaelen/View/Climate.h"
+#include "Vaelen/View/Land.h"
+#include "Vaelen/View/Net.h"
 
 #include "VaelenWorldSubsystem.generated.h"
 
 /// Held in the .cpp, where the World may be named.
 struct FVaelenHeld;
+
+/// 19.06: fired after every retaking of the views - Begin, AdvanceDay, Load -
+/// and never on a frame. What the walk repaints on (ADR-0138: the scene moves
+/// when the world does, and the world moves on a day turn).
+DECLARE_MULTICAST_DELEGATE(FVaelenViewsTaken);
 
 UCLASS()
 class VAELENGAME_API UVaelenWorldSubsystem : public UGameInstanceSubsystem
@@ -159,6 +168,26 @@ public:
 	const Vaelen::View::LifeView& Life() const;
 	const Vaelen::View::ChronicleView& Chronicle() const;
 	const Vaelen::View::PanelView& Panel() const;
+	/// 19.06: what the walk reads. The map, taken ONCE at Begin (Land.h says
+	/// it is not a per-frame structure); the scene's ground, cut from it once
+	/// in integers (Terrain.h, ADR-0156); the climate and the net, retaken with
+	/// the other views. Empty before Begin.
+	const Vaelen::View::MapView& Ground() const;
+	const Vaelen::Scene::Ground& Scene() const;
+	const Vaelen::View::ClimateView& Climate() const;
+	const Vaelen::View::NetView& Net() const;
+	/// The world's seed and size, for the lines the walk prints in the Atlas's
+	/// words. 0 before Begin.
+	uint64 Seed() const;
+	int32 Size() const;
+	/// 19.06: fired after every retaking of the views. See FVaelenViewsTaken.
+	FVaelenViewsTaken OnViewsTaken;
+	/// 19.06: LogVaelenClimate, composed by Vaelen/View/Proof.h from facts this
+	/// module reads off the world (the winters and the dead of the cold are the
+	/// log's) - the bytes `VaelenAtlas` prints for the same world on the same
+	/// day, so a sitting compares them byte for byte. Empty without a climate
+	/// or before Begin.
+	FString ClimateLine() const;
 	/// 19.10 (ADR-0158): the letters that press the eight verbs - the host's
 	/// table, which every page this host composes prints and every key the
 	/// controller binds comes from. DefaultKeys until 19.06 puts ZQSD on the

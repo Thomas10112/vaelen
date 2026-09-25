@@ -36,6 +36,9 @@
 #include "Vaelen/Run/Aelvor.h"
 #include "Vaelen/Run/Checkpoint.h"
 #include "Vaelen/Run/Door.h"
+#include "Vaelen/Economy/Winter.h"
+#include "Vaelen/Population/Needs.h"
+#include "Vaelen/View/Proof.h"
 #include "Vaelen/View/Take.h"
 
 #include <string>
@@ -69,6 +72,11 @@ struct FVaelenHeld
 	Vaelen::View::LifeView Life;
 	Vaelen::View::ChronicleView Told;
 	Vaelen::View::PanelView Page;
+	/// 19.06: the walk's leaves. The scene's ground is cut once at Begin from
+	/// the map above; the climate and the net are retaken with the rest.
+	Vaelen::Scene::Ground Scene_;
+	Vaelen::View::ClimateView Climate;
+	Vaelen::View::NetView Net;
 
 	void TakeAll(const Vaelen::View::PanelKeys& Keys)
 	{
@@ -82,6 +90,8 @@ struct FVaelenHeld
 		Vaelen::View::TakeLifeView(World->Instance(), From, Ways, Life);
 		Vaelen::View::TakeChronicleView(World->Instance(), From, Told);
 		Vaelen::View::TakePanel(Frame, Life, Told, Keys, Page);
+		Vaelen::View::TakeClimateView(World->Instance(), From, Climate);
+		Vaelen::View::TakeNetView(World->Instance(), From, Net);
 	}
 
 	/// After a command: nothing of the world moved - a Mean only queues - so
@@ -148,7 +158,10 @@ bool UVaelenWorldSubsystem::Begin(int32 Size, int32 Years, bool bStreaming)
 	// Once, here: the ground of a begun world does not change, and taking it
 	// on a frame would be taking half a megabyte on a frame.
 	Vaelen::View::TakeMapView(Held->World->Instance(), Held->World->Sources(), Held->Ground);
+	// 19.06: and the ground one walks on, cut from that map once, in integers.
+	Vaelen::Scene::BuildGround(Held->Ground, Vaelen::Scene::SceneScale{}, Held->Scene_);
 	Held->TakeAll(Keys_);
+	OnViewsTaken.Broadcast();
 	return true;
 }
 
@@ -293,6 +306,7 @@ void UVaelenWorldSubsystem::AdvanceDay(int32 Days)
 		Held->Door->Day(); // records DayTurned and turns it
 	}
 	Held->TakeAll(Keys_);
+	OnViewsTaken.Broadcast();
 }
 
 Vaelen::Player::Refusal UVaelenWorldSubsystem::Mean(const Vaelen::Player::PlayerCommand& What)
@@ -339,6 +353,70 @@ const Vaelen::View::PanelView& UVaelenWorldSubsystem::Panel() const
 const Vaelen::View::PanelKeys& UVaelenWorldSubsystem::Keys() const
 {
 	return Keys_;
+}
+
+const Vaelen::View::MapView& UVaelenWorldSubsystem::Ground() const
+{
+	static const Vaelen::View::MapView Nothing;
+	return Held ? Held->Ground : Nothing;
+}
+
+const Vaelen::Scene::Ground& UVaelenWorldSubsystem::Scene() const
+{
+	static const Vaelen::Scene::Ground Nothing;
+	return Held ? Held->Scene_ : Nothing;
+}
+
+const Vaelen::View::ClimateView& UVaelenWorldSubsystem::Climate() const
+{
+	static const Vaelen::View::ClimateView Nothing;
+	return Held ? Held->Climate : Nothing;
+}
+
+const Vaelen::View::NetView& UVaelenWorldSubsystem::Net() const
+{
+	static const Vaelen::View::NetView Nothing;
+	return Held ? Held->Net : Nothing;
+}
+
+uint64 UVaelenWorldSubsystem::Seed() const
+{
+	return Held && Held->World ? Held->World->Given().Seed : 0u;
+}
+
+int32 UVaelenWorldSubsystem::Size() const
+{
+	return Held && Held->World ? static_cast<int32>(Held->World->Given().Size) : 0;
+}
+
+FString UVaelenWorldSubsystem::ClimateLine() const
+{
+	if (!Held || !Held->World || !Held->World->Begun() || Held->Climate.Tiles.empty())
+	{
+		return FString();
+	}
+	// The same facts the Atlas's PrintClimateLine measures, in the same
+	// order, so the line is the same bytes: the tile stats from the view, the
+	// winters and the dead of the cold from the log, through the one composer.
+	const Vaelen::World& W = Held->World->Instance();
+	const Vaelen::Economy::WinterStats Winters = Vaelen::Economy::MeasureWinters(W, 0u);
+	Vaelen::View::ClimateLineFacts Facts;
+	Facts.Size = Held->World->Given().Size;
+	Facts.Seed = Held->World->Given().Seed;
+	Facts.Day = Held->Climate.Day;
+	Facts.Year = Held->Climate.Year;
+	Facts.Season = Held->Climate.Season;
+	Facts.Stats = Vaelen::View::MeasureClimateView(Held->Climate);
+	Facts.HardWinters = Winters.Winters[2] + Winters.Winters[3];
+	Facts.ColdDeaths = Winters.ColdDeaths + Vaelen::Population::MeasureNeeds(W, Held->World->Handles().Persons,
+																			 Held->World->Handles().Needs, 0u)
+												.ColdDeaths;
+	char Line[Vaelen::View::ClimateLineBytes];
+	if (Vaelen::View::ClimateLine(Facts, Line, Vaelen::View::ClimateLineBytes) == 0u)
+	{
+		return FString();
+	}
+	return FString(ANSI_TO_TCHAR(Line));
 }
 
 const Vaelen::Player::InputStream& UVaelenWorldSubsystem::Stream() const
@@ -549,6 +627,7 @@ bool UVaelenWorldSubsystem::Load(const FString& Name, FString& Out, FString& Out
 	// The ground once, and the five views, exactly as Begin ends.
 	Vaelen::View::TakeMapView(Held->World->Instance(), Held->World->Sources(), Held->Ground);
 	Held->TakeAll(Keys_);
+	OnViewsTaken.Broadcast();
 	Out = FPaths::Combine(Store.Where(), Name);
 	OutCheck = HeadlessCheck(Declared, Keys_, Out);
 	return true;

@@ -172,15 +172,17 @@ def self_test():
     # VaelenPresentation missing from both, and nothing else.
     tmp = copy()
     for target in TARGETS:
-        edit(tmp, target, '"VaelenUI", "VaelenPresentation", "Vaelen"', '"VaelenUI", "Vaelen"')
+        edit(tmp, target, '"VaelenUI", "VaelenWalk", "VaelenPresentation", "Vaelen"', '"VaelenUI", "VaelenWalk", "Vaelen"')
     got = check(tmp)
     expect("known answer: the targets as the plan found them name exactly VaelenPresentation, twice",
            len(got) == 2 and all(g.startswith("VaelenPresentation absent from ExtraModuleNames") for g in got),
            str(got))
     shutil.rmtree(tmp)
 
+    # 19.06 enabled ProceduralMeshComponent for the walk, so the control is the
+    # uproject FORGETTING it: VaelenWalk's Build.cs names it, and is refused.
     tmp = copy()
-    edit(tmp, "Source/VaelenUI/VaelenUI.Build.cs", '"InputCore",', '"InputCore",\n\t\t\t"ProceduralMeshComponent",')
+    edit(tmp, "Vaelen.uproject", '"Name": "ProceduralMeshComponent"', '"Name": "ProceduralMeshComponentGone"')
     got = check(tmp)
     expect("a Build.cs naming a plugin module the uproject does not enable is refused",
            len(got) == 1 and "ProceduralMeshComponent" in got[0] and "not enabled" in got[0], str(got))

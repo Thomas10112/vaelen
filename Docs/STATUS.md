@@ -32,14 +32,27 @@ PHASE       : 18 — CLIMATE & SEASONS, CLOSED headless 2026-09-25, read clause 
               DONE; 19.03 WAITS ON THE OWNER (sitting S1, ENGINE_HANDOFF; its first
               attempt found C2487 in Aelvor.h, repaired by 19.03b - the retake builds that). Headless
               work goes on meanwhile: 19.04, 19.05, 19.07, 19.08, 19.09 and 19.10 DONE; NEXT 19.06 is sitting S2
-              (the engine contract: VaelenWalk, the walker, ZQSD) - its code is written
-              here after S1 has built 19.03; 19.07 (the fence and the walk contract,
-              headless) can go first. Ten owner questions, the tile
+              (the engine contract: VaelenWalk, the walker, ZQSD) - its code is WRITTEN
+              (S1 built 19.03b on 2026-09-25); the sitting is the owner's. Ten owner questions, the tile
               scale first.
               (17 CLOSED 2026-09-24; 16 SAVE/PERSISTENCE: fourteen tasks built, its
                GATE still open - clause (j)'s migration half deferred to the v4 bump,
                and 16.14's sitting on the owner's Windows machine. Section 22.
                15 CLOSED 2026-09-21; 14 CLOSED 2026-09-16)
+TASK        : 19.06 — WRITTEN 2026-09-25, UNVERIFIED (engine): the walk, parsed and fenced; sitting S2 builds it.
+
+              Source/VaelenWalk: AVaelenLand (the scene's chunks as PMC sections, the
+              played region's at the full lattice with collision - the Atlas's
+              --scene-terrain R bytes - the day's snow repainted on OnViewsTaken),
+              AVaelenSky (sun from Scene::SunOf at the life's hour, sky light,
+              atmosphere, fog), AVaelenWalker (no Tick), AVaelenWalkGameMode (by map
+              URL), Vaelen.Walk and Vaelen.Probe (with a bias that must show). VaelenUI:
+              AVaelenWalkController - ZQSD at run time, every step fenced (ADR-0155),
+              the look from the walker's feet. VaelenGame: Scene(), Climate(), Net(),
+              OnViewsTaken, ClimateLine() on Play/Day/Walk. 24 TUs parse; the fence,
+              the module lists, the status and shim ledgers hold (94 beliefs listed).
+              ENGINE_HANDOFF "sitting S2" says what to type and bring back.
+
 TASK        : 19.10 — DONE 2026-09-25 (headless); its engine half UNVERIFIED until a sitting. The keys are the host's.
 
               Vaelen/View/Panel.h: PanelKeys, DefaultKeys (14.09's, byte for byte),

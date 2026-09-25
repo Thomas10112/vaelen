@@ -53,7 +53,7 @@ SHIM = os.path.join(ROOT, "Tools", "EngineShim")
 # list and not a scan: a module that appears here is a module somebody decided
 # cannot be covered by the real headless build, and that decision should be
 # visible in a file rather than inferred from a directory layout.
-ENGINE_MODULES = ["VaelenPresentation", "Vaelen", "VaelenGame", "VaelenUI"]
+ENGINE_MODULES = ["VaelenPresentation", "Vaelen", "VaelenGame", "VaelenUI", "VaelenWalk"]
 
 # The modules the UI fence covers (14.07). They are parsed with a LITERAL
 # include list and not with kernel_include_dirs(), so that a header the UI may
@@ -64,7 +64,11 @@ ENGINE_MODULES = ["VaelenPresentation", "Vaelen", "VaelenGame", "VaelenUI"]
 # It is a literal list on purpose. kernel_include_dirs() enumerates every
 # Source/*/Public there is, so a filter over it would silently widen the day a
 # module is added - which is the failure this whole file exists to prevent.
-UI_MODULES = {"VaelenUI"}
+# 19.06: the walk is fenced like the UI, with four more words it may not say
+# (check_ui_fence.py ROOT_TOKENS), and parsed with the same literal list plus
+# the scene (a leaf module, ADR-0156) and, for the walk alone, VaelenUI's
+# headers: its game mode names the UI's controller and HUD.
+UI_MODULES = {"VaelenUI", "VaelenWalk"}
 
 # 19.02: the shim's contract probe (Tools/ShimProbe/README.md). Parsed with the
 # engine modules and never built, and NOT an engine module: the STATUS check and
@@ -73,11 +77,13 @@ UI_MODULES = {"VaelenUI"}
 PROBE_MODULES = ["ShimProbe"]
 PARSED_MODULES = ENGINE_MODULES + PROBE_MODULES
 
-def ui_include_dirs(source_root):
-    """What VaelenUI may see, and nothing else."""
+def ui_include_dirs(source_root, module="VaelenUI"):
+    """What a fenced module may see, and nothing else."""
     out = [module_dir(source_root, "VaelenGame", "Public")]
-    for name in ("VaelenView", "VaelenCore", "VaelenPlayer"):
+    for name in ("VaelenView", "VaelenCore", "VaelenPlayer", "VaelenScene"):
         out.append(os.path.join(ROOT, "Source", name, "Public"))
+    if module == "VaelenWalk":
+        out.append(module_dir(source_root, "VaelenUI", "Public"))
     return out
 
 # Where a module lives when Source/ does not hold it yet. 14.08 writes
@@ -277,7 +283,7 @@ def parse_modules(args, shared):
                 stub_generated_headers(args.source_root, [module], own)
                 generated = own
             if module in UI_MODULES:
-                includes = [SHIM, generated, public] + ui_include_dirs(args.source_root)
+                includes = [SHIM, generated, public] + ui_include_dirs(args.source_root, module)
             else:
                 includes = [SHIM, generated, public] + kernel_include_dirs()
             if args.verbose:
