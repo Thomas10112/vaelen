@@ -7613,6 +7613,21 @@ Fourteen clauses, each naming a command. `<19.xx head>` is the commit that close
     - its "≥ 60 fps" was a hard clause with no measurement behind it.
 - **ADR-0155 to ADR-0159 are written in `Docs/DECISIONS.md` as PROPOSED**, each applied by the task that names it.
 
+### Found after the Phase 18 close, on CI run 297
+
+Six entries were red on every release leg: `Atlas.Inspect.{bare-16, played-16,
+full-32}` and `Atlas.Causes.{bare-16, played-16, full-32}`. They pin what the
+inspector and the cause census read out of the container corpus, which 18.10
+regenerated in the climate world - and neither family was in 18.10's
+verification set (the gate clauses named `Run.Containers` and
+`Atlas.ContainersRegenerate`, which were green). Re-pinned with the corpus's
+own figures; full-32's census moved from 7 caused events of 577 (1.21 %) to 49
+of 701 (6.99 %) - the winter's cause edges, foreseen -> winter -> stores taken
+and dead of the cold - and its widest fan-out from 1 to 2. `host24-16` kept its
+old lines: it is the world before. The lesson is 18.10's clause (k): "the census
+diff equals the table" measured the literals; these were pins written as prose
+in CMake strings, which the census reads only when they are sixteen hex digits.
+
 ### 19.01 AS BUILT, 2026-09-25
 
 **The instruments first: every engine STATUS held to a build, every shim

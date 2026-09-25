@@ -414,20 +414,24 @@ add_test(NAME Atlas.ContainersRegenerate
 set_tests_properties(Atlas.ContainersRegenerate PROPERTIES TIMEOUT 1800 COST 700)
 
 # 17.05: the cause census over the corpus, three entries, one per container.
-# The figures are the roadmap's, pinned whole; Docs/ROADMAP.md section 23
-# carries the same three lines and says what they mean for 17.09.
+# The figures were the roadmap's (Docs/ROADMAP.md section 23). Re-pinned at
+# 19.05 (found red on CI run 297): 18.10 regenerated the corpus in the climate
+# world and these six inspector entries were not in its verification set.
+# full-32 went from 7 caused events of 577 to 49 of 701 - the winter's own
+# cause edges (foreseen -> winter -> stores taken, dead of the cold).
 foreach(Pair
-    "bare-16;causes: 129 events, 3 with a cause (2.33%), 126 roots"
-    "played-16;causes: 148 events, 3 with a cause (2.03%), 145 roots"
-    "full-32;causes: 577 events, 7 with a cause (1.21%), 570 roots")
+    "bare-16;causes: 139 events, 3 with a cause (2.16%), 136 roots;causes: deepest chain 1 edge(s), median depth 0, widest fan-out 1 (event 1)"
+    "played-16;causes: 159 events, 3 with a cause (1.89%), 156 roots;causes: deepest chain 1 edge(s), median depth 0, widest fan-out 1 (event 1)"
+    "full-32;causes: 701 events, 49 with a cause (6.99%), 652 roots;causes: deepest chain 1 edge(s), median depth 0, widest fan-out 2 (event 82)")
   list(GET Pair 0 Name)
   list(GET Pair 1 Headline)
+  list(GET Pair 2 Depth)
   add_test(NAME Atlas.Causes.${Name}
     COMMAND ${CMAKE_COMMAND}
             -DATLAS=$<TARGET_FILE:VaelenAtlas>
             -DFILE=${PROJECT_SOURCE_DIR}/Tests/Run/Containers/${Name}.container
             "-DHEADLINE=${Headline}"
-            "-DDEPTH=causes: deepest chain 1 edge(s), median depth 0, widest fan-out 1 (event 1)"
+            "-DDEPTH=${Depth}"
             -P ${CMAKE_CURRENT_LIST_DIR}/Causes.cmake)
   set_tests_properties(Atlas.Causes.${Name} PROPERTIES TIMEOUT 600)
 endforeach()
@@ -442,20 +446,21 @@ set(InspectDrv ${CMAKE_CURRENT_LIST_DIR}/Inspect.cmake)
 add_test(NAME Atlas.Inspect.bare-16
   COMMAND ${CMAKE_COMMAND} -DATLAS=$<TARGET_FILE:VaelenAtlas>
           -DFILE=${PROJECT_SOURCE_DIR}/Tests/Run/Containers/bare-16.container
-          "-DWANT_HEADER=inspect: container v2, image v3, flags 00000000, seed 000041454c564f52, tick 95040, 129 events, 14464 log bytes"
-          "-DWANT_TRAILER=inspect: image trailer d17d7fd9a6f09ea6 (this is the state digest every other tool means)"
+          "-DWANT_HEADER=inspect: container v2, image v3, flags 00000000, seed 000041454c564f52, tick 95040, 139 events, 15584 log bytes"
+          "-DWANT_TRAILER=inspect: image trailer a002a2992df640fe (this is the state digest every other tool means)"
           "-DWANT_LAST=inspect: no STREAM section - this save does not carry its own tape"
           -P ${InspectDrv})
 add_test(NAME Atlas.Inspect.played-16
   COMMAND ${CMAKE_COMMAND} -DATLAS=$<TARGET_FILE:VaelenAtlas>
           -DFILE=${PROJECT_SOURCE_DIR}/Tests/Run/Containers/played-16.container
-          "-DWANT_HEADER=inspect: container v2, image v3, flags 00000000, seed 000041454c564f52, tick 95184, 148 events, 16592 log bytes"
-          "-DWANT_TRAILER=inspect: image trailer 64d11b40b612581c (this is the state digest every other tool means)"
+          "-DWANT_HEADER=inspect: container v2, image v3, flags 00000000, seed 000041454c564f52, tick 95184, 159 events, 17824 log bytes"
+          "-DWANT_TRAILER=inspect: image trailer 333beace65e0feaa (this is the state digest every other tool means)"
           "-DWANT_LAST=inspect: stream 6 day(s), 0 command(s), 1 taking(s), 6 look(s); header 16 tiles 10+1 seed 000041454c564f52 v1; rules ages 0-45 bound 0 ore 0"
           -P ${InspectDrv})
-# 18.02: the kept 24-byte-HOST container reads through the same inspector,
-# with the same header and trailer as played-16 - the world did not move, the
-# section did.
+# 18.02: the kept 24-byte-HOST container reads through the same inspector.
+# Until 18.10 it had played-16's header and trailer - the world did not move,
+# the section did; since 18.10 played-16 is a climate world and host24 keeps
+# the world before.
 add_test(NAME Atlas.Inspect.host24-16
   COMMAND ${CMAKE_COMMAND} -DATLAS=$<TARGET_FILE:VaelenAtlas>
           -DFILE=${PROJECT_SOURCE_DIR}/Tests/Run/Containers/host24-16.container
@@ -466,8 +471,8 @@ add_test(NAME Atlas.Inspect.host24-16
 add_test(NAME Atlas.Inspect.full-32
   COMMAND ${CMAKE_COMMAND} -DATLAS=$<TARGET_FILE:VaelenAtlas>
           -DFILE=${PROJECT_SOURCE_DIR}/Tests/Run/Containers/full-32.container
-          "-DWANT_HEADER=inspect: container v2, image v3, flags 00000000, seed 000041454c564f52, tick 95184, 577 events, 64640 log bytes"
-          "-DWANT_TRAILER=inspect: image trailer 2ec516c4d275ab6f (this is the state digest every other tool means)"
+          "-DWANT_HEADER=inspect: container v2, image v3, flags 00000000, seed 000041454c564f52, tick 95184, 701 events, 78528 log bytes"
+          "-DWANT_TRAILER=inspect: image trailer a066899eaa656f2e (this is the state digest every other tool means)"
           "-DWANT_LAST=inspect: run begun, detail 6, dug 6, eyes on region 1 reach 1 most 0, 3 near, 4 watched"
           -P ${InspectDrv})
 # The mistake the whole phase turns on, made on purpose: the inner format
