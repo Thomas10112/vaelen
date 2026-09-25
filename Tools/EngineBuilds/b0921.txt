@@ -1,0 +1,249 @@
+# build b0921 at 867a129 (RECONSTRUCTED), derived from git by check_engine_status.py --record.
+# Never edit by hand: re-derive it, and the self-test compares the bytes.
+file Source/Vaelen/Private/Vaelen.cpp 1366a52fb5ee72f1
+file Source/Vaelen/Private/VaelenAtlasActor.cpp 3f47966dae05b067
+file Source/Vaelen/Private/VaelenLogSink.cpp af3f30b3004cad44
+file Source/Vaelen/Private/VaelenLogSink.h dedee7a876ed4a62
+file Source/Vaelen/Public/Vaelen.h 2eb626ee01849e57
+file Source/Vaelen/Public/VaelenAtlasActor.h 4d42e808a9cf5324
+file Source/Vaelen/Vaelen.Build.cs 07ee380cf7831fd8
+file Source/VaelenGame/Private/VaelenGameModule.cpp d67bd47ba8d8f458
+file Source/VaelenGame/Private/VaelenPlayCommands.cpp bcd16388bfd1b709
+file Source/VaelenGame/Private/VaelenWorldSubsystem.cpp 7cb581caff30f4e1
+file Source/VaelenGame/Public/VaelenWorldSubsystem.h e13adef615437fab
+file Source/VaelenGame/VaelenGame.Build.cs bdcddb7a2306a09e
+file Source/VaelenPresentation/Private/VaelenPresentationModule.cpp 9ce06097ad90cb5f
+file Source/VaelenPresentation/Private/VaelenViewActor.cpp 7142778821098501
+file Source/VaelenPresentation/Private/VaelenViewDrawer.cpp 9e96f9c3f157c909
+file Source/VaelenPresentation/Public/VaelenViewActor.h 3600a817de392277
+file Source/VaelenPresentation/Public/VaelenViewDrawer.h 147d1e67d3e66a9e
+file Source/VaelenPresentation/VaelenPresentation.Build.cs 4f47a447b581073d
+file Source/VaelenUI/Private/VaelenGameMode.cpp 43a15b4016f2ff5e
+file Source/VaelenUI/Private/VaelenHUD.cpp 114f73274ce6da01
+file Source/VaelenUI/Private/VaelenPlayerController.cpp 3245aa92bafb0e3d
+file Source/VaelenUI/Private/VaelenUIModule.cpp 56364408b2563a35
+file Source/VaelenUI/Public/VaelenGameMode.h 6bde2689404c53bd
+file Source/VaelenUI/Public/VaelenHUD.h 3f32ba524318de92
+file Source/VaelenUI/Public/VaelenPlayerController.h fd726ba455dec518
+file Source/VaelenUI/VaelenUI.Build.cs 859b1bcd35ad3179
+seen A
+seen AActor
+seen AGameModeBase
+seen AHUD
+seen ANSI_TO_TCHAR
+seen APlayerController
+seen Add
+seen AddInstanceComponent
+seen AddInstances
+seen AddOnScreenDebugMessage
+seen AddUnique
+seen All
+seen Args
+seen Atoi
+seen B
+seen BeginPlay
+seen BindKey
+seen Canvas
+seen Category
+seen Clamp
+seen ClearInstances
+seen Collection
+seen Combine
+seen Command
+seen ConstructorHelpers
+seen Count
+seen Create
+seen CreateDefaultSubobject
+seen CreateStatic
+seen DECLARE_LOG_CATEGORY_EXTERN
+seen DEFINE_LOG_CATEGORY
+seen DEFINE_LOG_CATEGORY_STATIC
+seen Deinitialize
+seen DestroyComponent
+seen Display
+seen DrawDebugLine
+seen DrawHUD
+seen DrawText
+seen E
+seen ECollisionEnabled
+seen EComponentMobility
+seen EKeys
+seen ELogVerbosity
+seen Error
+seen Expression
+seen F9
+seen FAutoConsoleCommandWithWorldAndArgs
+seen FCString
+seen FColor
+seen FConsoleCommandWithWorldAndArgsDelegate
+seen FCriticalSection
+seen FFileHelper
+seen FGuid
+seen FLinearColor
+seen FMaterialParameterInfo
+seen FMath
+seen FName
+seen FObjectFinder
+seen FPaths
+seen FPlatformTime
+seen FRotator
+seen FScopeLock
+seen FString
+seen FSubsystemCollectionBase
+seen FTransform
+seen FVector
+seen FVector2D
+seen Fatal
+seen Find
+seen FindOrAdd
+seen Flush
+seen FlushPersistentDebugLines
+seen From
+seen G
+seen GENERATED_BODY
+seen GEngine
+seen GLog
+seen Get
+seen GetActorTransform
+seen GetAllVectorParameterInfo
+seen GetGameInstance
+seen GetPlayerViewPoint
+seen GetSmallFont
+seen GetSubsystem
+seen GetVerbosity
+seen GetWorld
+seen HUDClass
+seen How
+seen IE_Pressed
+seen IMPLEMENT_MODULE
+seen IMPLEMENT_PRIMARY_GAME_MODULE
+seen IModuleInterface
+seen Index
+seen Init
+seen Initialize
+seen InputComponent
+seen IsEmpty
+seen IsGameModule
+seen IsValidIndex
+seen It
+seen K
+seen KINDA_SMALL_NUMBER
+seen Level
+seen LoadObject
+seen Lock
+seen Log
+seen M
+seen MakePimpl
+seen MakeUnique
+seen MarkRenderStateDirty
+seen Max
+seen Movable
+seen MoveTemp
+seen Name
+seen NewObject
+seen NoCollision
+seen Num
+seen NumCustomDataFloats
+seen Object
+seen Out
+seen Path
+seen PlayerControllerClass
+seen Pow
+seen PrimaryActorTick
+seen Printf
+seen ProjectSavedDir
+seen R
+seen RegisterComponent
+seen Release
+seen Reserve
+seen Reset
+seen Rest
+seen RootComponent
+seen Rotation
+seen S
+seen SaveStringToFile
+seen Scale
+seen Seconds
+seen SetCastShadow
+seen SetCollisionEnabled
+seen SetCustomDataValue
+seen SetLocation
+seen SetMaterial
+seen SetMobility
+seen SetNum
+seen SetNumZeroed
+seen SetScale3D
+seen SetStaticMesh
+seen SetVectorParameterValue
+seen SetupAttachment
+seen SetupInputComponent
+seen ShutdownModule
+seen Size
+seen SpaceBar
+seen SpawnActor
+seen Start
+seen StartupModule
+seen Static
+seen StaticClass
+seen Succeeded
+seen Super
+seen T
+seen TActorIterator
+seen TArray
+seen TCHAR
+seen TEXT
+seen TMap
+seen TObjectPtr
+seen TPimplPtr
+seen TSet
+seen TUniquePtr
+seen Tab
+seen Text
+seen ToString
+seen TransformPosition
+seen Type
+seen UCLASS
+seen UE_LOG
+seen UFUNCTION
+seen UGameInstanceSubsystem
+seen UHierarchicalInstancedStaticMeshComponent
+seen UMaterialInstanceDynamic
+seen UMaterialInterface
+seen UPROPERTY
+seen USceneComponent
+seen UStaticMesh
+seen UTF8_TO_TCHAR
+seen UWorld
+seen Vector
+seen Verbose
+seen Verbosity
+seen VeryVerbose
+seen W
+seen Warning
+seen What
+seen Where
+seen Which
+seen White
+seen World
+seen World_
+seen X
+seen Y
+seen Z
+seen ZeroRotator
+seen ZeroVector
+seen bCanEverTick
+seen bShowMouseCursor
+seen c_str
+seen empty
+seen ensureAlwaysMsgf
+seen int32
+seen int64
+seen meta
+seen size
+seen size_t
+seen std
+seen string
+seen uint32
+seen uint64
+seen uint8
+seen vector

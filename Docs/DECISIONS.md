@@ -10761,7 +10761,7 @@ ZQSD needs S, and S is Speak (VaelenPlayerController.cpp:57). The page prints ea
 
 ## ADR-0159 — An engine clause closes on a committed log re-read by CTest: the build ledger, STATUS, the shim ledger, and the debt paid first
 
-**Status:** PROPOSED (2026-09-25, Phase 19 plan; applied by 19.01, 19.03 and 19.12).
+**Status:** PROPOSED (2026-09-25, Phase 19 plan; applied by 19.01, 19.03 and 19.12). **19.01's part APPLIED 2026-09-25**: the ledger, the records, the status and shim checks and the session reader are built and have failed on purpose; SEEN is derived from git rather than hand-tagged (ROADMAP 19.01 AS BUILT).
 
 ### Context
 

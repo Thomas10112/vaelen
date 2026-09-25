@@ -74,10 +74,10 @@ Source/VaelenInfrastructure  Source/VaelenColony  Source/VaelenPlayer
 Source/VaelenGameplay  Source/VaelenView  Source/VaelenRun
 ```
 
-They are validated by the headless CI: seventeen frozen gates (`Tools/run_gates.sh`),
+They are validated by the headless CI: eighteen frozen gates (`Tools/run_gates.sh`; seventeen until 18.10 added `Replay.Climate`),
 six Linux presets, a Windows MSVC leg and a macOS AppleClang leg, 219 CTest entries
 (2026-09-24; it was fourteen, and 175, when this was first written). A fix applied on the engine machine
-is a fix nothing in that matrix has seen, and the frozen digests of seventeen gates
+is a fix nothing in that matrix has seen, and the frozen digests of eighteen gates
 are exactly the kind of thing a well-meant edit moves.
 
 **Report the errors. Do not repair them.** Paste the compiler output, name the
@@ -101,10 +101,15 @@ marks are paid for.
 The remaining four - `VaelenRun`'s rules file and Unreal-facing translation unit,
 `Source/VaelenGame` and `Source/VaelenUI` - were built by UBT on 2026-09-16, in
 the same editor configuration, and the modules were then RUN: a life was played
-through `VaelenUI`'s eight keys for eighty-three days. **No file in the
-repository carries `STATUS: UNVERIFIED` any more.** The fifteen that did now say
-VALIDATED with the date and what was run; getting there cost three defects that
-nothing headless could see, listed under Phase 14 below.
+through `VaelenUI`'s eight keys for eighty-three days. The fifteen files that
+carried `STATUS: UNVERIFIED` then said VALIDATED with the date and what was run;
+getting there cost three defects that nothing headless could see, listed under
+Phase 14 below. **That stopped being true after 15.10, and nothing noticed:** by
+2026-09-25, 16.14 and 18.02/18.10 had put 410 non-comment lines into seven engine
+files, five of which still said VALIDATED. Since 19.01 every engine file names the
+build its STATUS rests on (`// BUILD: <id>`, a row of `Tools/engine_builds.txt`),
+and `Kernel.EngineStatus` refuses a claim whose code moved past that build. The
+list of what is UNVERIFIED is what that check accepts, not this paragraph.
 
 ## 13.06 - the first UBT build of all twelve kernel modules
 
@@ -242,9 +247,10 @@ commandlet.
 
 The engine half is written and parsed (2026-09-24), not built and not run.
 `Source/VaelenGame/Private/VaelenCheckpointStore.h` and `.cpp` carry
-`STATUS: UNVERIFIED (engine)` until this sitting, and so do the additions to
+`STATUS: UNVERIFIED (engine)` until this sitting, and since 19.01 so do
 `VaelenWorldSubsystem` (`Save`, `Load`, `Saves`) and `VaelenPlayCommands`
-(`Vaelen.Save`, `Vaelen.Load`, `Vaelen.Saves`). The standing rule holds: a
+(`Vaelen.Save`, `Vaelen.Load`, `Vaelen.Saves`) - until 19.01 this paragraph said
+they did, and they still said VALIDATED; `Kernel.EngineStatus` now holds it. The standing rule holds: a
 compile error in those files is reported, not repaired - and an error inside
 `Source/VaelenRun` or below is reported and NOT repaired, whatever it says.
 Three engine calls were parsed and never run, and are the likeliest to need

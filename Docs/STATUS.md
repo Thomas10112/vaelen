@@ -24,20 +24,34 @@ PHASE       : 18 — CLIMATE & SEASONS, CLOSED headless 2026-09-25, read clause 
               before it stays one flag away (--no-climate, Options::Climate = false):
               the goldens, the recorded months and the seventeen gates live there;
               Replay.Climate joins the gate list as the eighteenth, in the new world.
-              run_gates.sh: GATES-DONE 0 failing (of 17) in 4012 s at this commit.
+              run_gates.sh: GATES-DONE 0 failing (of 17) in 4012 s at 18.10 (d339068).
               The two actors wire the climate unconditionally - parsed against the
               shim, UNVERIFIED (engine) until Phase 19's first sitting.
-              NEXT: Phase 19 WORLD IN 3D, BROKEN DOWN 2026-09-25 (ROADMAP section 26,
-              ADR-0155 to ADR-0159 proposed): twelve tasks, four sittings on the
-              owner's machine. First, 19.01: instruments that see engine STATUS
-              drift - 410 non-comment engine lines in 7 files never compiled since
-              867a129, five of them marked VALIDATED. Ten owner questions, the tile
+              NOW: Phase 19 WORLD IN 3D (ROADMAP section 26, ADR-0155 to ADR-0159):
+              twelve tasks, four sittings on the owner's machine. 19.01 DONE; NEXT
+              19.02, the shim grows to the engine contract and the module lists are
+              checked; 19.03 is the first sitting (S1). Ten owner questions, the tile
               scale first.
               (17 CLOSED 2026-09-24; 16 SAVE/PERSISTENCE: fourteen tasks built, its
                GATE still open - clause (j)'s migration half deferred to the v4 bump,
                and 16.14's sitting on the owner's Windows machine. Section 22.
                15 CLOSED 2026-09-21; 14 CLOSED 2026-09-16)
-TASK        : 18.10 — DONE 2026-09-25. The switch and the re-freeze, in one commit.
+TASK        : 19.01 — DONE 2026-09-25. The instruments first, each with a known answer in git.
+
+              Tools/engine_builds.txt (five past builds, RECONSTRUCTED) and records
+              derived from git: every engine file's STATUS is now held to a named
+              build by Kernel.EngineStatus - a claim whose CODE moved past its build
+              is refused, a reworded comment is not. Kernel.ShimLedger counts the
+              shim's beliefs: 15, all 16.14's store, listed in Tools/shim_beliefs.txt.
+              Session.SelfTest re-reads an engine sitting's log against the headless
+              command (the 09-16 pair). Known answer met on the first run: claimed at
+              b0921, exactly the 5 moved files and the 2 newer ones are refused, the 3
+              comment-only ones are not. The five now say UNVERIFIED (engine); two
+              Build.cs labels corrected. Failed on purpose in temp trees and in the
+              real tree through CTest. Deviation: SEEN is derived from git, not
+              hand-tagged per shim line (ROADMAP 19.01 AS BUILT says why).
+
+TASK (18.10): 18.10 — DONE 2026-09-25. The switch and the re-freeze, in one commit.
 
               Options::Climate = true, Atlas --no-climate; the four wirings agree with
               the winter in all of them. Re-frozen, predicted first in ADR-0154's table

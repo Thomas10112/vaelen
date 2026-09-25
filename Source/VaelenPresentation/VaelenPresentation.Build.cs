@@ -1,10 +1,11 @@
 // VAELEN - VaelenPresentation module rules. Phase 13 task 13.07c.
 //
-// STATUS: PROTOTYPE - compiled and linked by UnrealBuildTool on UE 5.6.1 with
+// STATUS: VALIDATED - compiled and linked by UnrealBuildTool on UE 5.6.1 with
 // MSVC 14.44 on 2026-09-10 (14 modules, 167 actions, Result: Succeeded), and
-// NOT YET RUN. Nothing here has been dropped in a level or looked at, so every
-// claim about what it DRAWS remains unmeasured. What compiling proves is only
-// that it is the shape of a program.
+// RUN since: 13.09 (2026-09-14) dropped AVaelenViewActor in a level, looked at
+// it, and matched its frame digest to the headless one (VaelenViewActor.cpp).
+// Until 19.01 this line said PROTOTYPE and NOT YET RUN, four builds late.
+// BUILD: b0921 - Tools/engine_builds.txt; its code is what that build compiled (19.01).
 //
 // It is still not covered by the headless CI, and cannot be: nothing here can
 // be built without an engine.

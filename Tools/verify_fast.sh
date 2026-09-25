@@ -16,6 +16,7 @@
 #   parse          the engine modules, against Tools/EngineShim
 #   wiring         the four wirings of AELVOR agree
 #   ui fence       the UI includes no kernel header and names no world
+#   engine status  no engine STATUS beyond what was built; every shim belief listed (19.01)
 #   frozen census  every sixteen-hex literal is in a file the table names (18.01)
 #   compiles       every TU the change can reach, syntax-only, the build's flags
 #
@@ -73,6 +74,12 @@ python3 Tools/check_world_wiring.py | tail -1
 
 echo "[verify] ui fence"
 python3 Tools/check_ui_fence.py | tail -2 | head -1
+echo "[verify] engine status"
+# 19.01. A STATUS line that claims a build its code has moved past, and a shim
+# name the engine code relies on that no build compiled: both read text only.
+python3 Tools/check_engine_status.py | tail -1
+python3 Tools/check_shim_ledger.py | tail -1
+
 echo "[verify] frozen census"
 # 18.01. Here and not only in ctest because a literal added in a file the
 # table does not name is exactly the kind of thing a person notices before a

@@ -6,6 +6,7 @@
 // DEFINE_VTABLE_PTR_HELPER_CTOR instantiating the same one whatever the class
 // declares, and RegionGraphCache exported whole while emitting nothing. NOT yet
 // run: nothing here is VALIDATED until 14.10's two lines come out of a log.
+// BUILD: b0921 - Tools/engine_builds.txt; its code is what that build compiled (19.01).
 //
 // THE MODULE THAT HOLDS THE WORLD. VaelenUI (14.09) draws and presses keys and
 // has no name for a World in its whole vocabulary; this is where the World

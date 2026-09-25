@@ -7612,3 +7612,90 @@ Fourteen clauses, each naming a command. `<19.xx head>` is the commit that close
     - its accessors omitted `Net()`, which the layout needs;
     - its "≥ 60 fps" was a hard clause with no measurement behind it.
 - **ADR-0155 to ADR-0159 are written in `Docs/DECISIONS.md` as PROPOSED**, each applied by the task that names it.
+
+### 19.01 AS BUILT, 2026-09-25
+
+**The instruments first: every engine STATUS held to a build, every shim
+belief counted, every sitting closed by a log CTest re-reads.** STATUS:
+VALIDATED headless (the instruments); what they measure is the engine's.
+
+BUILT. `Tools/engine_builds.txt`, five rows, all RECONSTRUCTED from the
+commits that reported them (b0907 83f878e, b0910 7f4fd51, b0914 bca6745,
+b0916 9059709, b0921 867a129) - no sitting before Phase 19 printed its commit.
+`Tools/EngineBuilds/<id>.txt`, each derived from git by
+`check_engine_status.py --record <id>` and never by hand: a code fingerprint
+(comments stripped, then tokens, sha-256) for every engine file at that
+commit, and the shim names that build's engine code used, of the shim of
+that commit. `Tools/engine_ledger.py` is the shared reader. Committed rather
+than recomputed because the CI clones at depth 1; where the history exists
+the self-test re-derives all five byte for byte.
+
+`Tools/check_engine_status.py` (`Kernel.EngineStatus`, `…SelfTest`): the
+first `// STATUS:` of each of the 28 engine files names VALIDATED, BUILT or
+PROTOTYPE with a `// BUILD: <id>` whose record holds the file and whose code
+fingerprint is the file's, or UNVERIFIED (engine) / INCOMPLETE. The Build.cs
+files are held too; `Vaelen.Build.cs` had no STATUS line and has one.
+
+`Tools/check_shim_ledger.py` (`Kernel.ShimLedger`, `…SelfTest`) and
+`Tools/shim_beliefs.txt`: a shim name the engine code uses and no build's
+record has seen must be listed with its task; a listed name a build has seen,
+or no engine file uses, is refused. `--diff A B` needs git.
+
+`Tools/check_session.py` (`Session.SelfTest`) and `Tests/Run/Sessions/`:
+`s0916.session` and its log, the two lines the owner pasted on 2026-09-16
+(no raw log of that sitting was kept; the session says so and names no
+`head`). All three tools are in `verify_fast.sh`.
+
+MARKED. The five files whose code moved past b0921 now say
+`UNVERIFIED (engine)` and name what moved (16.14's store in the subsystem and
+the play commands, 18.02's host byte, 18.10's climate wiring in both actors),
+with `// BUILD: b0921` as the last build of an earlier form; their earlier
+records stay below as `UNTIL 19.01:`. Twenty files gained `// BUILD: b0921`.
+`VaelenUI.Build.cs` said "NOT yet run" over a module a month was played
+through; `VaelenPresentation.Build.cs` said PROTOTYPE, NOT YET RUN, four builds
+late - both corrected. ENGINE_HANDOFF: eighteen gates, and the two paragraphs
+that said files carried marks they did not.
+
+KNOWN ANSWERS, predicted in writing before the first run:
+- Every engine file claimed VALIDATED at b0921: refused for exactly the five
+  moved files and the two 16.14 wrote after it (VaelenCheckpointStore.cpp/.h,
+  in no build); the three whose comments alone changed are NOT named (the
+  CONTROL - the checker reads code, not dates). Predicted: the five and the
+  three. Met on the first run.
+- `check_shim_ledger.py --diff 867a129 HEAD`: 13 names (Delete, Directory,
+  FileExists, FindFiles, GetCleanFilename, IFileManager, LoadFileToArray,
+  MakeDirectory, SaveArrayToFile, TCHAR_TO_UTF8, begin, end, push_back).
+  Predicted 8 to 25 - met; the prediction's "at least FFileHelper, FPaths,
+  FScopeLock, FCriticalSection" was WRONG on all four: the engine code used them
+  before 15.10. The check itself counts 15: the diff cannot see Move and Bytes,
+  names the engine code used before as OTHER things (the verb; a tally) and
+  which the shim acquired only in 16.14. Two instruments, the gap explained.
+- The session reader accepts the 09-16 pair against
+  `--replay aelvor256-2026-09-16.stream --panel --want-bound 0 --no-climate`.
+
+FAILED ON PURPOSE. In temp trees (the self-tests): one code token changed in
+VaelenHUD.cpp refused as changed since b0921, a changed comment accepted; a
+BUILD naming no row, a file with no STATUS, VALIDATED with no BUILD - each
+refused; an unlisted belief refused naming its engine file:line, a seen name
+listed as a belief refused, a listed name nobody uses refused, a new shim
+class and member used by engine code and listed nowhere refused by both names
+and accepted once the use is only a comment; one hex digit changed in the log
+refused naming the column, a missing line refused as missing, a log opened on
+another commit refused, the engine's timestamp and Display prefix ignored, and
+the same log against the stream replayed with `--climate` refused. In the real
+tree, through CTest: `const` → `const volatile` in VaelenHUD.cpp and
+IFileManager struck from the list turned `Kernel.EngineStatus` and
+`Kernel.ShimLedger` red with those two sentences; restored from a copy.
+
+DEVIATION FROM THE ROW, and why. The row asked for `// SEEN <build>` or
+`// BELIEF <task>` on every shim declaration. Built instead: SEEN is DERIVED -
+a name is seen when a build's engine code used it, read from git at that
+build's commit - and only beliefs are written down, in one list. A hand tag
+on 1313 lines would be a claim; the derivation is a measurement, and it cannot
+say SEEN about a name no build compiled. It reads names, not meanings, so it
+over-counts (Bytes, Directory, begin, end and push_back are the store's own
+variables or std::vector's) and never under-counts; the list says which.
+The row's "SEEN naming an unknown build" has no place to occur; its
+counterpart, a BUILD naming no ledger row, is refused.
+
+Census: 0 in every class (no literal of the classified kinds added).

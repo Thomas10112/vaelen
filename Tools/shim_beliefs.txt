@@ -1,0 +1,29 @@
+# VAELEN - the shim's beliefs: names of Tools/EngineShim that the engine modules' code uses and that
+# no owner build has compiled a use of. 19.01, ADR-0159; Tools/check_shim_ledger.py holds this list
+# to the code and to Tools/EngineBuilds/, both ways: an unlisted belief is refused, and so is a name
+# listed here that a build has since seen (drop it the day its sitting builds it).
+#
+#   <name>  <task that introduced the use>  <what the engine code needs it for>
+#
+# On 2026-09-25 (first run): 15 beliefs, all of them 16.14's VaelenCheckpointStore - the only engine
+# code written since the last build (b0921, 867a129) that reaches for an engine API the shim had not
+# already been built against. `check_shim_ledger.py --diff 867a129 HEAD` says 13; the two it cannot
+# see are Move and Bytes, names the engine code already used before 15.10 as OTHER things (the verb
+# Move, a tally's Bytes) and which the shim acquired only in 16.14. The ledger reads names, not
+# meanings, so it also counts coincidences (Bytes, Directory, begin, end, push_back are the store's own
+# variables or std::vector's): more beliefs than there are, never fewer - the safe direction.
+Bytes             16.14  a parameter name of the shim's FFileHelper::SaveArrayToFile; the store's own variable
+Delete            16.14  IFileManager::Delete - Forget removes a checkpoint
+Directory         16.14  the store's own member; a parameter name of the shim's IFileManager::MakeDirectory
+FileExists        16.14  IFileManager::FileExists - Load says NotFound before it reads
+FindFiles         16.14  IFileManager::FindFiles - List reads the directory
+GetCleanFilename  16.14  FPaths::GetCleanFilename - a listed file's name without its directory
+IFileManager      16.14  IFileManager::Get(), the store's file system
+LoadFileToArray   16.14  FFileHelper::LoadFileToArray - Load reads the container's bytes
+MakeDirectory     16.14  IFileManager::MakeDirectory - Save makes Saved/Vaelen
+Move              16.14  IFileManager::Move - Save writes a temporary file and moves it over the old one
+SaveArrayToFile   16.14  FFileHelper::SaveArrayToFile - Save writes the container's bytes
+TCHAR_TO_UTF8     16.14  a listed file name handed to the kernel's checkpoint names as UTF-8
+begin             16.14  std::sort over the store's std::vector of names - a name the shim's TArray also has
+end               16.14  std::sort over the store's std::vector of names - a name the shim's TArray also has
+push_back         16.14  the kernel's std::vector of names, filled from the listing

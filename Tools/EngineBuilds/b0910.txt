@@ -1,0 +1,9 @@
+# build b0910 at 7f4fd51 (RECONSTRUCTED), derived from git by check_engine_status.py --record.
+# Never edit by hand: re-derive it, and the self-test compares the bytes.
+file Source/Vaelen/Private/Vaelen.cpp 1366a52fb5ee72f1
+file Source/Vaelen/Private/VaelenAtlasActor.cpp 50a5c4907acc65f1
+file Source/Vaelen/Private/VaelenLogSink.cpp af3f30b3004cad44
+file Source/Vaelen/Private/VaelenLogSink.h dedee7a876ed4a62
+file Source/Vaelen/Public/Vaelen.h 2eb626ee01849e57
+file Source/Vaelen/Public/VaelenAtlasActor.h d720824426b1b713
+file Source/Vaelen/Vaelen.Build.cs 07ee380cf7831fd8

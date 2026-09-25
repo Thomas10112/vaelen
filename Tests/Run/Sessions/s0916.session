@@ -1,0 +1,15 @@
+# VAELEN - the sitting of 2026-09-16 (build b0916), RECONSTRUCTED. 19.01, ADR-0159.
+#
+# The two lines the engine printed after the eighty-three-day month, as the owner pasted them
+# (Tests/Run/Streams/README.md, and pinned since 14.10 by Replay.Played). No raw log of that
+# sitting was kept - the pasted lines are what exists - so this log holds them alone, and the
+# session names no `head`: that sitting printed no commit. Every sitting from 19.03 on commits
+# its log as it came off the machine and names its commit.
+#
+# The reader's known answer: it must accept these two lines against the replay, and refuse them
+# with one digit changed (Session.SelfTest).
+log s0916-2026-09-16.log
+run --replay {streams}/aelvor256-2026-09-16.stream --panel --want-bound 0 --no-climate
+line LogVaelenPlay: AELVOR 256
+line LogVaelenPlay: verbs
+other --replay {streams}/aelvor256-2026-09-16.stream --panel --want-bound 0 --climate

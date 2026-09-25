@@ -17,7 +17,13 @@
 // below is a view leaf, the command surface or Core, and nothing here names a
 // World, a Run or a Take.
 //
-// STATUS: VALIDATED (Phase 14) for what Phase 14 left here - built by
+// STATUS: UNVERIFIED (engine) since 19.01's ledger - its code has changed after the last build
+// that compiled it (b0921, 15.10, 867a129): 16.14's save, load and store (c146c43). Parsed
+// against Tools/EngineShim, never compiled. Tools/check_engine_status.py holds this line to
+// Tools/engine_builds.txt; the record of what earlier builds validated follows.
+// BUILD: b0921
+//
+// UNTIL 19.01: VALIDATED (Phase 14) for what Phase 14 left here - built by
 // UnrealBuildTool and RUN on 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development
 // Editor): eighty-three days played at the keyboard, and Tools/Atlas replayed
 // the stream headlessly to the same four digests, byte for byte.

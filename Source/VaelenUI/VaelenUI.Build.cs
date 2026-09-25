@@ -3,7 +3,9 @@
 // STATUS: BUILT - parsed against Tools/EngineShim under the RESTRICTED include
 // set of 14.07, fenced by Tools/check_ui_fence.py, and compiled and linked by
 // UnrealBuildTool on 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development Editor).
-// NOT yet run: the eight LogVaelenUI lines of 14.09 have never been printed.
+// RUN on 2026-09-16: the eighty-three-day month of Tests/Run/Streams was played
+// at this module's keys and read off its page ("NOT yet run" here until 19.01).
+// BUILD: b0921 - Tools/engine_builds.txt; its code is what that build compiled (19.01).
 //
 // THE MODULE THAT DRAWS AND PRESSES KEYS, AND HOLDS NOTHING.
 //

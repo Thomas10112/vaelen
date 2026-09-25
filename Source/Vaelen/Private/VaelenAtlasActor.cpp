@@ -1,6 +1,13 @@
 // VAELEN - the world in the viewport.
 //
-// STATUS: VALIDATED (UE 5.6, 2026-09-10) - compiled and linked by UnrealBuildTool in 13.06;
+// STATUS: UNVERIFIED (engine) since 19.01's ledger - its code has changed after the last build
+// that compiled it (b0921, 15.10, 867a129): 18.10's climate wiring - WarmthTypes, the
+// WinterSystem, the season told to the harvest (d339068). Parsed against Tools/EngineShim, never
+// compiled. Tools/check_engine_status.py holds this line to Tools/engine_builds.txt; the record
+// of what earlier builds validated follows.
+// BUILD: b0921
+//
+// UNTIL 19.01: VALIDATED (UE 5.6, 2026-09-10) - compiled and linked by UnrealBuildTool in 13.06;
 // not run in the editor, and not covered by the headless CI.
 
 #include "VaelenAtlasActor.h"

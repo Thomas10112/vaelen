@@ -72,8 +72,26 @@ if(Python3_Interpreter_FOUND)
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/gen_event_names.py --check)
   add_test(NAME Kernel.EventTypesSelfTest
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/gen_event_names.py --self-test)
+  # 19.01, ADR-0159: what the engine modules say about themselves, held to what
+  # the owner's machine built. Nothing in CI compiles those four modules, so
+  # their STATUS lines were the whole record, and on 2026-09-25 five of them
+  # said VALIDATED over code no compiler had read. EngineStatus refuses a claim
+  # whose CODE moved since the build it names (Tools/engine_builds.txt, the
+  # records in Tools/EngineBuilds/); ShimLedger refuses a name of the shim the
+  # engine code relies on that no build compiled and nobody listed. Each
+  # self-test holds a known answer from git and fails its instrument on purpose.
+  add_test(NAME Kernel.EngineStatus
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_engine_status.py)
+  add_test(NAME Kernel.EngineStatusSelfTest
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_engine_status.py --self-test)
+  add_test(NAME Kernel.ShimLedger
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_shim_ledger.py)
+  add_test(NAME Kernel.ShimLedgerSelfTest
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_shim_ledger.py --self-test)
   set_tests_properties(Kernel.Purity Kernel.PuritySelfTest Kernel.WorldWiring Kernel.UiFence
                        Kernel.UiFenceSelfTest Kernel.EventTypes Kernel.EventTypesSelfTest
+                       Kernel.EngineStatus Kernel.EngineStatusSelfTest Kernel.ShimLedger
+                       Kernel.ShimLedgerSelfTest
                        PROPERTIES TIMEOUT 120)
 elseif(VAELEN_REQUIRE_PURITY_CHECK)
   message(FATAL_ERROR "Python 3 is required for the Kernel.Purity test. Install it or configure with -DVAELEN_REQUIRE_PURITY_CHECK=OFF (the purity check is then NOT run).")
@@ -97,6 +115,16 @@ set_tests_properties(Atlas.Runs PROPERTIES FIXTURES_SETUP AtlasA TIMEOUT 900)
 set_tests_properties(Atlas.RunsAgain PROPERTIES FIXTURES_SETUP AtlasB TIMEOUT 900)
 
 if(Python3_Interpreter_FOUND)
+  # 19.01, ADR-0159: an engine sitting is closed by its committed log re-read
+  # here against the headless command that must print the same lines - not by
+  # pasting them into a document. Its known answer is the sitting of 2026-09-16:
+  # accepted as it stands, refused with one digit changed, with a line missing,
+  # and against the same stream replayed into the climate world.
+  add_test(NAME Session.SelfTest
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_session.py
+            ${PROJECT_SOURCE_DIR}/Tests/Run/Sessions/s0916.session --atlas $<TARGET_FILE:VaelenAtlas> --self-test)
+  set_tests_properties(Session.SelfTest PROPERTIES TIMEOUT 3600 COST 2000)
+
   add_test(NAME Atlas.Output
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_atlas_output.py ${VAELEN_ATLAS_A})
   set_tests_properties(Atlas.Output PROPERTIES FIXTURES_REQUIRED AtlasA TIMEOUT 300)
