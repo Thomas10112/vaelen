@@ -10654,3 +10654,133 @@ the OLD frame and page under `--no-climate` - the world before, kept.
 ONE PREDICTION WAS WRONG IN THE SAFE DIRECTION: the table said View (ViewGate)
 would move "where built through Aelvor". `View.ViewGate` wires its own world
 and did not move. No site moved that the table said would not.
+
+---
+
+## ADR-0155 — The walker belongs to the host and the person to the world: confinement, crossing by Move, the look from the walker's region
+
+**Status:** PROPOSED (2026-09-25, Phase 19 plan; applied by 19.07 and 19.11).
+
+### Context
+
+The owner asked for a 3D world walked with ZQSD (ROADMAP section 24). The kernel knows a person's region and nothing smaller (Folk.h:50-54; Persons.h:46-49). A Move is queued by `Door::Mean` (Door.h:65) and applied at the day turn (Door.h:80), and only towards an adjacent detailed region (Doings.cpp:84-90; Life.cpp:198-206). The look is an input that changes the world (ROADMAP:4955). A camera level with the horizon records region 0, "looking nowhere" (VaelenPlayerController.cpp:142). A capsule moving in floating point on the frame clock could stand in region B while the life says A, and that would make the picture a second source of truth.
+
+### Decision
+
+- The walker's position is host state: never recorded, never saved, never read by the kernel.
+- A collision fence built by VaelenScene confines it to the walkable tiles (land minus lakes) of `LifeView.Region`.
+- Leaving a region takes `M` while facing a region listed in `Life.Near`. The page's `Press` answers first and `Mean` follows only on None.
+- After every day turn, `PlaceAfterDay` puts the walker at a deterministic `Arrival` point, and every put-back is counted.
+- The daily look is `RegionAt(walker)`, which equals `Life.Region` by construction.
+- Only integers reach the door: the intent's target, the region looked at, and the day turn.
+
+### Consequences
+
+- A walk is a stream like 14.10's and 15.10's, and it replays headlessly with no position.
+- `Run.Walk` proves it: two different wanderings with the same crossings give byte-identical streams, and TooFar and Costly record nothing.
+- Crossing always costs a day turn (question 3).
+- Saving needs no new section, because a load re-places the walker at `Arrival`.
+- Travel within a day would be a kernel change and is out of scope.
+
+---
+
+## ADR-0156 — Scene geometry is an integer function of view leaves in a pure module, and what it invents says so
+
+**Status:** PROPOSED (2026-09-25, Phase 19 plan; applied by 19.05, 19.08 and 19.09).
+
+### Context
+
+MapView already carries elevation in metres and the hydrology flags (Land.h:44-89), so terrain needs nothing new from the kernel. The engine cannot be run in this environment. Float geometry can differ between compilers, which makes digests incomparable. Infrastructure is wired nowhere (Aelvor.cpp:63-107), and people have no position. The drawer already invents a person's spot and says so (VaelenViewDrawer.h:163-172). No metres-per-tile exists anywhere, and the height-to-width ratio decides whether CharacterMovement can walk the ground: at a ratio of 1/1000, 0 of 12,395 tile pairs at 128 are steeper than 44.76°, against 812 at 1/250.
+
+### Decision
+
+- A new kernel module, **VaelenScene**, builds terrain, fence, layout and sky as int32 centimetres, int16 normals and RGBA8 colours, from view leaves only. It is fenced to Core plus the View leaves, CMake-built, purity-checked, digested, pinned on gcc, clang and MSVC, and printed by the Atlas in the format the engine prints.
+- The scale is a rule (`SceneScale`), not a kernel fact. The default is 250 m tiles at a quarter of the relief, pending question 1.
+- `HeightAt` is the mesh's own triangle interpolation.
+- Lake surfaces, detail relief, houses, roads and figure slots are **invented**. The headers say so, and none of them becomes a kernel fact.
+- Houses are one per living family and yield only to lower-indexed families; figure slots come from `HashCombine(Identity, Day)`.
+- Purity rule **R8** refuses `float`/`double` code tokens in every kernel module, and names VaelenCore's Random and CoreTypes sites as the one exemption.
+
+### Consequences
+
+- Every mesh and placement can be measured headless, and the engine only converts and uploads.
+- CI's kernel module count goes from 13 to 14, and VaelenScene joins ENGINE_HANDOFF's do-not-fix list.
+- No WORLD, GEN or HASH literal moves; the new pins are the kinds WORLD/terrain, WORLD/scene and WORLD/sky.
+- A water leaf, simulated buildings and person positions stay out of scope until the owner asks, each with its own counted re-freeze where one is due.
+
+---
+
+## ADR-0157 — The engine side draws and presses keys and nothing else: a fenced actor module, the controller as the only door caller, an asset-free contract, and an exact `Super`
+
+**Status:** PROPOSED (2026-09-25, Phase 19 plan; applied by 19.02 and 19.06).
+
+### Context
+
+The UI fence refuses `Tick(`, `DeltaSeconds` and clocks in VaelenUI (check_ui_fence.py:70-73, :112-115), and VaelenPlayerController.h:58 says there must be no Tick. A walking character needs per-frame motion. Other plans proposed a fence exception or a module allowed to tick; both would weaken the rule. There is no ProceduralMeshComponent plugin (Vaelen.uproject:221-233), no content in git (`Content/.gitkeep`), and no light in `/Engine/Maps/Entry` (DefaultEngine.ini:3). The shim's inherited `Super` is correct only for classes derived straight from a shim base (Tools/EngineShim/GameFramework/Actor.h:18-26), and ACharacter is not one.
+
+### Decision
+
+- **Module VaelenWalk holds actors only:** land, sky, walker and scenery. It is fenced with the UI rule set **plus** per-root tokens refusing `Mean(`, `Watch(`, `AdvanceDay(`, `TakeSomebodyElse(`, `Save(` and `Load(`.
+- **The walk controller lives in VaelenUI.** It remains the only caller of the door.
+- **Motion comes from Enhanced Input.** Actions and a mapping context are created at runtime, Triggered calls `AddMovementInput`, and CharacterMovement ticks inside the engine. Our code overrides no Tick.
+- **The contract uses no assets:** the ProceduralMeshComponent plugin, `VertexColorMaterial`, lights made in C++ and engine basic shapes.
+- **The scene rebuilds on the subsystem's `OnViewsTaken`,** once a day and never on a frame.
+- **The shim is exact:** its generated stubs write an exact `Super`/`ThisClass`, and every new shim entry is a BELIEF until a sitting compiles it.
+
+### Consequences
+
+- The no-Tick rule and the door fence both stay true.
+- Every UE API the phase uses runs once in sitting S2, before the scene is built on it; `Vaelen.Probe` with a forced 5 cm bias shows that the engine-side check can fail.
+- Assets and animation stay owner questions.
+- If runtime mapping contexts are refused, the fallback is the legacy `BindAxisKey`, which is also a belief.
+
+---
+
+## ADR-0158 — The keys are the host's, and the default page is frozen
+
+**Status:** PROPOSED (2026-09-25, Phase 19 plan; applied by 19.10).
+
+### Context
+
+ZQSD needs S, and S is Speak (VaelenPlayerController.cpp:57). The page prints each verb's letter into the text it hashes (Panel.cpp:218, :386-387, :467). Renaming a letter in place would move every panel digest, including `Replay.Played`'s `panel 7de2c5faf3cc1813`, which the engine printed on 2026-09-16. The controller binds eight literal keys (VaelenPlayerController.cpp:53-60), and nothing checks that they agree with the page.
+
+### Decision
+
+- `PanelKeys` is an input to `TakePanel`. `DefaultKeys` is today's table, byte for byte; `WalkKeys` puts Speak on F (question 2).
+- `ValidKeys` refuses duplicates and reserved letters.
+- The Atlas is told `--keys`, like `--want-bound`: the table is told, not read.
+- The controller binds the verbs from `Panel().Verbs[i].Key`.
+
+### Consequences
+
+- No existing panel pin moves; the walk page gets one new WORLD/panel pin.
+- A replay of a walk needs `--keys`. Without it only the panel digest differs, and `Atlas.Keys128` proves this.
+- The screen and the keyboard can no longer drift apart.
+
+---
+
+## ADR-0159 — An engine clause closes on a committed log re-read by CTest: the build ledger, STATUS, the shim ledger, and the debt paid first
+
+**Status:** PROPOSED (2026-09-25, Phase 19 plan; applied by 19.01, 19.03 and 19.12).
+
+### Context
+
+410 non-comment lines in 7 engine files have not been compiled since `867a129` (15.10). Five of those files still say VALIDATED, and ENGINE_HANDOFF.md:244-246 claims marks that do not exist. No commit is recorded beside any owner build. The shim is compiled against, so a wrong entry makes CI greener, not redder. Earlier engine clauses were closed by pasting lines into documents.
+
+### Decision
+
+- **`Tools/engine_builds.txt`** records each owner build: date, commit and what ran.
+- **`check_engine_status.py`** refuses a file whose STATUS claims a build its code has changed since.
+- **`check_shim_ledger.py`** tags every shim declaration BELIEF or SEEN.
+- **`check_session.py`** reads each sitting's committed log (`Tests/Run/Sessions/`) through a `Session.*` CTest entry against the headless command that must print the same bytes.
+- **Every sitting opens with `git rev-parse HEAD`** equal to its tag.
+- **The first sitting builds the tree as it stands,** before any Phase 19 engine line.
+- **One sitting per engine task:** four planned, a budget of six.
+
+### Consequences
+
+- A first UBT error has one cause.
+- STATUS changes only through the checker.
+- The phase gate requires 0 stale STATUS lines and 0 unexercised beliefs.
+- Two phases' pending engine lines (16.14 and 18.10) close in S1.
+- Owner cost is four sittings plus the debt's share of S1.

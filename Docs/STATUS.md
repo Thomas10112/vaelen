@@ -27,7 +27,12 @@ PHASE       : 18 — CLIMATE & SEASONS, CLOSED headless 2026-09-25, read clause 
               run_gates.sh: GATES-DONE 0 failing (of 17) in 4012 s at this commit.
               The two actors wire the climate unconditionally - parsed against the
               shim, UNVERIFIED (engine) until Phase 19's first sitting.
-              NEXT: Phase 19 WORLD IN 3D - to be broken down by a panel, as 18 was.
+              NEXT: Phase 19 WORLD IN 3D, BROKEN DOWN 2026-09-25 (ROADMAP section 26,
+              ADR-0155 to ADR-0159 proposed): twelve tasks, four sittings on the
+              owner's machine. First, 19.01: instruments that see engine STATUS
+              drift - 410 non-comment engine lines in 7 files never compiled since
+              867a129, five of them marked VALIDATED. Ten owner questions, the tile
+              scale first.
               (17 CLOSED 2026-09-24; 16 SAVE/PERSISTENCE: fourteen tasks built, its
                GATE still open - clause (j)'s migration half deferred to the v4 bump,
                and 16.14's sitting on the owner's Windows machine. Section 22.
