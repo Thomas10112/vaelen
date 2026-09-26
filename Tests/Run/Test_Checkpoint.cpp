@@ -1185,6 +1185,190 @@ VAELEN_TEST(Checkpoint, ASaveWithNoTapeSaysSoInsteadOfInventingOne)
 				 GotRules.ToAge, GotRules.WantBound, GotRules.PreferOre);
 }
 
+VAELEN_TEST(Checkpoint, ALookTooFarIsRefusedOnRestoreRatherThanDroppedInSilence)
+{
+	// ADR-0149 for the guard the Phase 16 review put into GetStream. The fix
+	// landed as one line - `return Report.BadLines == 0u` - and a guard that
+	// has never been made to fire is a guard nobody has checked the wiring of.
+	//
+	// THE ASYMMETRY IS REAL AND IT IS REACHABLE FROM HOST INPUT. EncodeStream
+	// writes any uint32 Looked::Reach; DecodeStream refuses a look line whose
+	// Reach is above MaxReach (4096) and counts it in BadLines. Attention is
+	// the host's, Door::Look pushes At.Reach onto the tape verbatim with no
+	// clamp anywhere between, so a host that looks further than 4096 writes a
+	// save whose STREAM section this build cannot read back.
+	//
+	// DecodeStream is right to forgive that in a .stream file on disk, which
+	// may have been written by another build or edited by hand. It is wrong
+	// here: these bytes are this build's own EncodeStream output, so a line
+	// the decoder will not read is a round-trip defect. Before the fix,
+	// ReadStreamSection returned TRUE and handed back a tape with the look
+	// missing - and the looks are what decided which regions were detailed,
+	// so the restored world would have gone on to detail a different map and
+	// no digest in the save would have said why.
+	// 64 AT 20+10, NOT 32 AT 10+10, and the difference is 18.10. This case
+	// needs a played person and a tape; the world is scaffolding. It used the
+	// smallest world that offered somebody, and when Options::Climate became
+	// true by default that world stopped offering anybody at all - the
+	// TakeUp below went to zero and the case died on its own anti-vacuity
+	// check, which is the check doing its job. A world of 64 over thirty
+	// years still offers somebody with the climate on: it is the same world
+	// Tests/Run/SaveMatrix.h pins at person 11, measured after the flip.
+	//
+	// The climate is left at its default rather than switched off. A host
+	// that looks too far will be running the world this build actually
+	// generates, and a round-trip case that quietly pins the world before
+	// Phase 18 would stop being about that host.
+	Options O;
+	O.Size = 64u;
+	O.PreHistory = 20u;
+	O.Years = 10u;
+	O.Play = true;
+	O.Stream = true;
+	O.Lively = true;
+
+	Aelvor A(O);
+	VT_REQUIRE(A.Begin());
+	Player::StartRules Rules;
+	Door D(A, Rules);
+	VT_REQUIRE(D.TakeUp() != 0u);
+
+	// One look inside the decoder's range and one past it, so that the tape
+	// carries a line that round-trips beside the line that does not. A tape
+	// of nothing but bad lines could be refused by something else entirely.
+	Attention Near;
+	Near.Region = 1u;
+	Near.Reach = 2u;
+	Near.Most = 0u;
+	D.Look(Near);
+	D.Day();
+
+	Attention TooFar;
+	TooFar.Region = 1u;
+	TooFar.Reach = 5000u; // MaxReach is 4096, and nothing clamps this
+	TooFar.Most = 0u;
+	D.Look(TooFar);
+	D.Day();
+
+	VT_REQUIRE(D.Stream().Looks.size() == 2u);
+	VT_CHECK_MSG(D.Stream().Looks[1].Reach == 5000u, "the tape records the host's reach verbatim, got %u",
+				 D.Stream().Looks[1].Reach);
+
+	std::vector<uint8> Bytes;
+	VT_REQUIRE(BuildCheckpoint(A, D.Stream(), D.Rules(), Bytes) == CheckpointResult::Ok);
+	CheckpointView View;
+	VT_REQUIRE(ReadCheckpoint(Bytes.data(), Bytes.size(), View).Result == CheckpointResult::Ok);
+
+	// The container itself is intact - four sections, every digest agreeing.
+	// What is wrong is one line INSIDE the STREAM section, which is a level
+	// no digest looks at.
+	VT_CHECK_MSG(View.Sections.size() == 4u, "the container is whole: %zu sections", View.Sections.size());
+
+	Player::InputStream Back;
+	Player::StartRules BackRules;
+	VT_CHECK_MSG(!ReadStreamSection(View, Back, BackRules),
+				 "a tape this build wrote and cannot read back is refused, not forgiven");
+
+	// AND THE CONTROL, which is what makes the refusal mean something: the
+	// SAME tape with the reach brought inside MaxReach round-trips, so it is
+	// the unreadable line being refused and not the shape of the tape.
+	Aelvor B(O);
+	VT_REQUIRE(B.Begin());
+	Door E(B, Rules);
+	VT_REQUIRE(E.TakeUp() != 0u);
+	E.Look(Near);
+	E.Day();
+	Attention JustInside;
+	JustInside.Region = 1u;
+	JustInside.Reach = 4096u;
+	JustInside.Most = 0u;
+	E.Look(JustInside);
+	E.Day();
+	std::vector<uint8> Fine;
+	VT_REQUIRE(BuildCheckpoint(B, E.Stream(), E.Rules(), Fine) == CheckpointResult::Ok);
+	CheckpointView Whole;
+	VT_REQUIRE(ReadCheckpoint(Fine.data(), Fine.size(), Whole).Result == CheckpointResult::Ok);
+	Player::InputStream Good;
+	Player::StartRules GoodRules;
+	VT_CHECK_MSG(ReadStreamSection(Whole, Good, GoodRules), "a reach of exactly MaxReach reads back");
+	VT_CHECK_MSG(Good.Looks.size() == 2u, "with both of its looks, %zu", Good.Looks.size());
+	VT_CHECK_MSG(Good.Looks[1].Reach == 4096u, "and the far one kept its reach, %u", Good.Looks[1].Reach);
+}
+
+VAELEN_TEST(Checkpoint, AViewFromARefusedContainerFindsNothingRatherThanGarbage)
+{
+	// ADR-0149 for the second guard the Phase 16 review put in, and this one
+	// had never been exercised at all.
+	//
+	// ReadCheckpoint pushes each SectionEntry as it validates it, walking the
+	// table, but sets Out.Base only on the success path at the very end. So a
+	// container refused PART-WAY through the table returns a view holding
+	// entries and a null Base. Find then computed `Base + Entry.Offset`, which
+	// is undefined behaviour on a null pointer and which in practice yields a
+	// small non-null address - so GetStream's `At == nullptr` guard could not
+	// fire, and its size check went on to pass against a length describing a
+	// buffer nobody owned.
+	//
+	// No caller in the tree ignores the refusal today, which is why this was
+	// latent rather than live. That is exactly the kind of guard worth a test:
+	// nothing else in the suite would notice it rotting.
+	Aelvor A(OptionsFor(Wirings[1]));
+	VT_REQUIRE(A.Begin());
+	std::vector<uint8> Good;
+	VT_REQUIRE(BuildCheckpoint(A, Good) == CheckpointResult::Ok);
+
+	CheckpointView Whole;
+	VT_REQUIRE(ReadCheckpoint(Good.data(), Good.size(), Whole).Result == CheckpointResult::Ok);
+	VT_REQUIRE(Whole.Sections.size() == 3u);
+	// The HOST section is third, so entries 0 and 1 are pushed before the walk
+	// refuses. A refusal at entry 0 would leave no entries and prove nothing.
+	const uint64 HostAt = Whole.Sections[2].Offset;
+	VT_REQUIRE(Whole.Sections[2].Kind == static_cast<uint16>(SectionKind::Host));
+	VT_REQUIRE(Whole.Sections[2].Length > 0u);
+
+	// Damage inside HOST, with the CONTAINER trailer resealed over it so that
+	// the trailer agrees and the walk gets far enough to refuse by section.
+	std::vector<uint8> Bad = Good;
+	Bad[static_cast<usize>(HostAt)] = static_cast<uint8>(Bad[static_cast<usize>(HostAt)] ^ 0xFFu);
+	const Hash64 Sealed = HashBytes(reinterpret_cast<const char*>(Bad.data()), Bad.size() - 8u);
+	std::memcpy(Bad.data() + Bad.size() - 8u, &Sealed, 8u);
+
+	CheckpointView Refused;
+	const CheckpointRefusal Why = ReadCheckpoint(Bad.data(), Bad.size(), Refused);
+	VT_REQUIRE(Why.Result == CheckpointResult::Corrupt);
+	VT_CHECK_MSG(Why.Section == 2u, "refused at the third entry, got %u", Why.Section);
+
+	// THE SHAPE THAT MADE THE BUG POSSIBLE, pinned so that a later change
+	// which clears Sections on refusal does not quietly make this test
+	// vacuous: the view really does come back holding entries.
+	VT_CHECK_MSG(Refused.Sections.size() == 2u,
+				 "the two entries validated before the refusal are still in the view, "
+				 "%zu",
+				 Refused.Sections.size());
+
+	// AND EVERY LOOKUP INTO IT IS NOTHING. Before the fix the first of these
+	// returned Base + Offset off a null Base.
+	uint64 Length = 12345u;
+	VT_CHECK_MSG(Refused.Find(SectionKind::State, Length) == nullptr,
+				 "a section the walk DID validate is still not findable through a view with no bytes behind it");
+	VT_CHECK_MSG(Length == 0u, "and the length is cleared rather than left as the caller had it, got %llu",
+				 static_cast<unsigned long long>(Length));
+	uint64 RunLength = 1u;
+	VT_CHECK_MSG(Refused.Find(SectionKind::Run, RunLength) == nullptr, "the same for RUN");
+	uint64 HostLength = 1u;
+	VT_CHECK_MSG(Refused.Find(SectionKind::Host, HostLength) == nullptr, "and HOST was never validated at all");
+
+	// So the readers built on Find refuse instead of reading a wild pointer.
+	Options Declared;
+	VT_CHECK_MSG(!ReadHostSection(Refused, Declared), "ReadHostSection says no");
+	Aelvor::RunState Carried;
+	VT_CHECK_MSG(!ReadRunSection(Refused, Carried), "ReadRunSection says no");
+	Player::InputStream Tape;
+	Player::StartRules Rules;
+	VT_CHECK_MSG(!ReadStreamSection(Refused, Tape, Rules), "and ReadStreamSection, whose own null check was the one "
+														   "the wild pointer walked straight past");
+}
+
 VAELEN_TEST(Checkpoint, TheClimateIsInTheHostSection)
 {
 	// 18.02: THE SWITCH BEFORE THE THING IT SWITCHES. Options::Climate is a

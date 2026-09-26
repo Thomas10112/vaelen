@@ -1031,12 +1031,10 @@ namespace
 			std::fprintf(stderr, "AELVOR: generation failed at %u x %u\n", RO.Size, RO.Size);
 			return 1;
 		}
-		Player::StartRules Rules;
-		Rules.WantBound = Opt.WantBound;
-		Rules.FromAge = Opt.FromAge;
-		Rules.ToAge = Opt.ToAge;
 		// The window is the host's configuration exactly as --want-bound is,
 		// and three modes plumbed it while four accepted it and threw it away.
+		Player::StartRules Rules;
+		Rules.WantBound = Opt.WantBound;
 		Rules.FromAge = Opt.FromAge;
 		Rules.ToAge = Opt.ToAge;
 		Vaelen::Run::Door D(A, Rules);
@@ -2100,8 +2098,6 @@ namespace
 		}
 		Player::StartRules Rules;
 		Rules.WantBound = Opt.WantBound;
-		Rules.FromAge = Opt.FromAge;
-		Rules.ToAge = Opt.ToAge;
 		Rules.FromAge = Opt.FromAge;
 		Rules.ToAge = Opt.ToAge;
 		Vaelen::Run::Door D(A, Rules);
