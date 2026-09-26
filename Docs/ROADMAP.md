@@ -8527,6 +8527,79 @@ failing arm is not the one this test guards). `Run.Store`,
 green; `Run.Registry` counts the new suite. The shim ledger refused one name
 on the first run, `erase` - `std::vector::erase` after `std::unique` over the
 engine store's names, which the shim's TArray also uses inside - listed as
-the coincidence it is, beside `begin` and `end` (123 beliefs). Phase 16's gate gains row (n),
+the coincidence it is, beside `begin` and `end` (123 beliefs). CI run 316
+green on 01e6bcf, ten legs of ten: `Run.SaveAside` 1.48 s on the Windows
+leg, whose C library refuses a rename over an existing name - the first time
+a CI leg overwrote a save by name and the aside carried it. Phase 16's gate gains row (n),
 met; clause (j)'s migration half and 16.14's sitting remain what keep the
 phase from CLOSED.
+
+## 28. Phase 20 - STRESS TEST: opened with the soak
+
+Phase 20 is where the questions the earlier phases wrote down and did not
+answer go: the log that grows without bound (Phase 16's close, ROADMAP
+section 22: 49 `Log().All()` call sites, a dozen scanning the whole log
+every tick), the 500-year AELVOR 256 and its 182 MB save, the cost of a day
+after years of play. Section 27 proposes reducing the phase to one soak; the
+owner has not decided, and the soak is the instrument either path needs
+first, so it is built and the phase is OPENED by it rather than planned
+around it. The breakdown of the rest waits on what the soak says and on the
+owner's answer to section 27.
+
+### 20.01, 2026-09-26: the soak - three years of the product's world, played a day at a time
+
+`Run.Soak` (`Tests/Run/Test_Soak.cpp`): the subsystem's own world
+(`VaelenWorldSubsystem::Begin` - 128 tiles, 300+120 years, Play and Stream,
+the climate the default), played through the door for three years of 360
+days with Run.Door's round-robin of the eight verbs, a container built and
+READ BACK every year, one measurement line per year. LOGGED and not
+asserted (ADR-0109): the day's mean and worst cost, the process's resident
+set (Linux, from /proc; said as unmeasured elsewhere), the container's size
+and build time, the log's event count, the living, the played life. ASSERTED,
+because it does not depend on the machine: 1080 days turned and 1080
+commands on the tape; people alive every year; every year's container reads
+and its trailer is the world's own digest; and THE PIN - the state after
+three years, `16954db42400b164`, the same on gcc debug and release here and
+required of every CI leg, so that a thousand days of play through the door
+are held to determinism as a month is.
+
+What it measured, gcc release (debug in brackets), 2026-09-26:
+
+| | day mean | day max | resident | container | log events | alive |
+|---|---|---|---|---|---|---|
+| day 0 | | | 34 MiB after Begin (17.9 s), 108 with the container | 26 222 KiB in 209 ms | 221 169 | |
+| year 1 | 0.1 ms (0.3) | 43 ms (74) | 108 MiB | 26 481 KiB | 222 885 | 36 256 |
+| year 2 | 0.1 ms | 45 ms | 109 MiB | 26 760 KiB | 224 676 | 36 411 |
+| year 3 | 0.1 ms | 45 ms | 109 MiB | 27 006 KiB | 226 704 | 36 298 |
+| year 3 over year 1 | x1.03 | | +1 MiB | x1.02 | x1.02 | |
+
+Ten years, run once here at release for the record (the CTest entry runs
+three): day mean x1.04, resident +4 MiB, container x1.08 (28 562 KiB), log
+x1.07 (239 295 events), 36 878 alive; the played person died in year 10 and
+the door took up 5501 in region 9. So at this wiring THE LOG QUESTION IS
+NOT URGENT: 1 700 events a year on a base of 221 000, the container growing
+2 % a year, the day's cost flat. The wiring matters - Lively is not in it,
+the colony is not, and 256 is not - and those are the soak's next cells,
+each a decision of the owner's (section 27 cuts Lively from the shipped
+build). The whole suite costs 19 s at release and 30 s at debug: three
+years of play are cheaper than one generation, which is the lesson of
+Phase 15's streaming in one number.
+
+THE INSTRUMENT LIED FIRST, twice, and both are written into the test. The
+first version built the year's container into a fresh vector and read
+resident memory the year after: +50 MiB over three years, which was the
+allocator keeping three freed 26 MiB buffers and not the world. One buffer
+now serves the whole soak, built once before year 1 so every reading holds
+it. The second version reused that buffer without clearing it and the
+container DOUBLED every year until its own reader refused it:
+`BuildCheckpoint` appends to `Out`, as `SaveSnapshot` does, and its contract
+now says so in the first sentence rather than the third. Resident growth is
++1 MiB over three years measured properly, and +50 MiB measured the way a
+reasonable person would first measure it.
+
+Failed on purpose, each built: one digit of the pin (1 red), a year one day
+short (the days, the tape and the pin: 3 red), the yearly trailer compared
+with the wrong digest (3 red). `Run.Soak` TIMEOUT 3600, COST 4000, declared
+with the other long poles though it is not one. The frozen census names the
+file (WORLD: 572 sites in 112 files, WORLD 208); Kernel 17/17, verify_fast
+clean, clang syntax with the build's flags.

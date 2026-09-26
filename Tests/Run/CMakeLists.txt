@@ -93,6 +93,10 @@ set_tests_properties(Replay.Played PROPERTIES COST 4000)
 # Run.Climate have (845 s on gcc debug); a regression would be a test twice as
 # slow, not 3 % slower.
 set_tests_properties(Run.Door PROPERTIES TIMEOUT 3600 COST 3000)
+# 20.01: three years of the product's world played a day at a time, a
+# container built and read back every year. Measured on gcc debug at the
+# figures in ROADMAP; declared here so it starts with the other long poles.
+set_tests_properties(Run.Soak PROPERTIES TIMEOUT 3600 COST 4000)
 # Phase 16's gate cell lives in Run.Checkpoint: 128 tiles with the full Play,
 # Stream, Lively and Colony wiring, generated once and adopted once. Measured at
 # about 95 seconds and a peak of 1.1 GB, which puts it between Run.Door and

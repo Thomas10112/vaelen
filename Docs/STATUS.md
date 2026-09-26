@@ -40,6 +40,20 @@ PHASE       : 18 — CLIMATE & SEASONS, CLOSED headless 2026-09-25, read clause 
                and 16.14's sitting on the owner's Windows machine; the name promise
                the 19.10 audit found unkept is met by 16.15. Section 22.
                15 CLOSED 2026-09-21; 14 CLOSED 2026-09-16)
+TASK        : 20.01 — DONE 2026-09-26 (headless). The soak: three years of the product's world, a day at a time.
+
+              Phase 20 OPENED by its instrument rather than planned around it (ROADMAP
+              section 28): Run.Soak plays the subsystem's own world (128, 300+120,
+              Play, Stream, climate) through the door for 1080 days with the eight
+              verbs in turn, builds and reads back a container every year, prints a
+              line a year (ms/day, resident, container, log, alive) and pins the
+              state after three years, 16954db42400b164, on every CI leg. Measured:
+              day mean 0.1 ms release / 0.3 ms debug, flat; resident +1 MiB over
+              three years (+4 over ten); container +2 % a year; log +0.8 % a year -
+              at this wiring the log question is not urgent. 19 s release, 30 s
+              debug. The instrument lied twice first (the allocator's kept buffers;
+              BuildCheckpoint appending), both fixed in the test and written down.
+
 TASK        : 16.15 — DONE 2026-09-25 (headless). The last good save keeps its name.
 
               The 19.10 audit found the engine's replace (a delete, then a rename)
@@ -1146,7 +1160,12 @@ COMPLETED
   (debug), so the entry stays on windows-msvc-debug and clause (e) names eight legs
 ✓ ADR-0136 to ADR-0139
 
-NEXT
+NEXT (2026-09-26)
+→ The owner's sittings S1 (close: the log), S2 (19.06), S3 (19.11), S4 (19.12); the
+  owner's decisions on ROADMAP section 27 and on Q2 (WalkKeys). Headless meanwhile:
+  Phase 20's next soak cells once the owner says which wiring ships (Lively, the
+  colony, 256), 19.12's replay entries the day the S4 stream lands.
+  (What follows is the NEXT of 2026-09-16, kept as the record of Phase 15's opening.)
 → Phase 15 — STREAMING & LOD. Nothing is asked of the engine machine any more: the build
   happened, the month was played, the frame rate was read. The phase-15 breakdown is planned
   headless-first and opens on three defects the planning itself found, all three confirmed in

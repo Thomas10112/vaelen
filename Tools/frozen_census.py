@@ -163,6 +163,7 @@ TABLE = {
     "Tests/View/Test_Proof.cpp": "SYNTHETIC",
     "Tests/Run/Test_Aelvor.cpp": "WORLD",
     "Tests/Run/Test_Climate.cpp": "WORLD",
+    "Tests/Run/Test_Soak.cpp": "WORLD",  # 20.01: the state after three years of play, pinned
     "Tests/Run/Test_Golden.cpp": "WORLD",
     "Tests/Run/Test_Containers.cpp": "WORLD",
     "Tests/CMakeLists.txt": "WORLD",
