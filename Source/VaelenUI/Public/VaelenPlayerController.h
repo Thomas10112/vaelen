@@ -143,6 +143,9 @@ protected:
 	/// 19.12: after the stream was written. The base does nothing; the walk
 	/// says what the days on foot came to.
 	virtual void AfterStreamWritten() {}
+	/// 19.11b: after every retaking of the views (Begin, a day turned by any
+	/// path, a load, another life taken up) - the walk puts its body back here.
+	virtual void AfterViewsTaken() {}
 
 private:
 	/// Through the page and then through the door, and nowhere else. The page

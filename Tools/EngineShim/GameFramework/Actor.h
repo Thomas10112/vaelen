@@ -26,7 +26,12 @@ public:
 	using Super = AActor;
 
 	FActorTickFunction PrimaryActorTick;
-	USceneComponent* RootComponent = nullptr;
+
+	/// 19.11b: the engine's own accessor. RootComponent itself is PROTECTED
+	/// below, as in GameFramework/Actor.h - a free function reaching it
+	/// through an AActor* was accepted by this shim and is MSVC C2248 on
+	/// the real one (found by the review of 2026-09-26).
+	USceneComponent* GetRootComponent() const;
 
 	UWorld* GetWorld() const;
 	FTransform GetActorTransform() const;
@@ -50,4 +55,9 @@ public:
 	void RemoveInstanceComponent(USceneComponent* Component);
 
 	virtual void BeginPlay();
+
+protected:
+	/// Protected, as the engine declares it: an actor's own constructor may
+	/// assign it (every actor here does); nothing outside the class reads it.
+	USceneComponent* RootComponent = nullptr;
 };

@@ -2,7 +2,8 @@
 // Phase 19 task 19.06: the keyboard of the walk. See VaelenWalkController.h.
 //
 // STATUS: UNVERIFIED (engine) - written and PARSED against Tools/EngineShim on
-// 2026-09-25, not yet built by UnrealBuildTool nor run: sitting S2 builds it.
+// 2026-09-25 (reviewed and corrected 2026-09-26, 19.11b), not yet built by
+// UnrealBuildTool nor run: sitting S2 builds it.
 #include "VaelenWalkController.h"
 
 #include "Engine/GameInstance.h"
@@ -215,28 +216,58 @@ void AVaelenWalkController::AfterTheDay(int32 Looked)
 	const Vaelen::View::LifeView& Life = World->Life();
 	const Vaelen::Scene::Ground& G = World->Scene();
 	++Walked.Days;
-	Walked.Crossings += RegionBefore != 0u && Life.Region != RegionBefore ? 1u : 0u;
-	Walked.Refused +=
-		Life.Refused > RefusedBefore && Life.LastRefusal == static_cast<uint32>(Vaelen::Player::Refusal::TooFar) ? 1u
-																												 : 0u;
-	RegionBefore = Life.Region;
-	RefusedBefore = Life.Refused;
-	// Put back inside the region the life is in now - the same tile-centre
-	// rule Run.Walk proves headless (PlaceAfterDay), and counted.
+	// The crossing and the refusal were counted, and the body put back, by
+	// AfterViewsTaken as the turn's views were retaken (19.11b); here only
+	// the line, from where the body stands now.
 	const FVector At = Body->GetActorLocation();
-	Vaelen::int64 X = static_cast<Vaelen::int64>(At.X);
-	Vaelen::int64 Y = static_cast<Vaelen::int64>(At.Y);
-	if (Vaelen::Scene::PlaceAfterDay(G, Life.Region, X, Y))
-	{
-		++Walked.PutBack;
-		const double Z = static_cast<double>(Vaelen::Scene::HeightAt(G, X, Y)) + 106.0;
-		Body->SetActorLocation(FVector(static_cast<double>(X), static_cast<double>(Y), Z));
-	}
+	const Vaelen::int64 X = static_cast<Vaelen::int64>(At.X);
+	const Vaelen::int64 Y = static_cast<Vaelen::int64>(At.Y);
 	uint32 Tile = 0;
 	Vaelen::Scene::TileOfPoint(G, X, Y, Tile);
 	UE_LOG(LogVaelenWalkKeys, Log, TEXT("LogVaelenWalk: day %u tile %u region %u life %u looked %d"),
 		   static_cast<unsigned>(Life.DaysLived), static_cast<unsigned>(Tile),
 		   static_cast<unsigned>(Vaelen::Scene::RegionAt(G, X, Y)), static_cast<unsigned>(Life.Region), Looked);
+}
+
+void AVaelenWalkController::AfterViewsTaken()
+{
+	// Put back inside the region the life is in NOW - the same tile-centre
+	// rule Run.Walk proves headless (PlaceAfterDay), and counted. Bound to the
+	// subsystem's retaking, so Space, Vaelen.Day and Vaelen.TakeUp all put
+	// the body where the life is (19.11b: it followed Space alone).
+	UVaelenWorldSubsystem* World = HeldWorld(GetWorld());
+	APawn* Body = GetPawn();
+	if (World == nullptr || !World->Begun() || Body == nullptr || World->Life().Region == 0u)
+	{
+		return;
+	}
+	const Vaelen::View::LifeView& Life = World->Life();
+	const Vaelen::Scene::Ground& G = World->Scene();
+	const FVector At = Body->GetActorLocation();
+	Vaelen::int64 X = static_cast<Vaelen::int64>(At.X);
+	Vaelen::int64 Y = static_cast<Vaelen::int64>(At.Y);
+	// Counted from where the body STOOD against where the life IS, on every
+	// path alike, and not on the first placing (the body arrives from the
+	// origin, which is nobody's region): a crossing is a turn that moved the
+	// life out from under the walker, a refusal the world's TooFar since the
+	// last retaking (19.11b: read before and after Space alone, the first
+	// crossing went uncounted and Vaelen.Day's went unseen).
+	if (bPlaced)
+	{
+		const uint32 Stood = Vaelen::Scene::RegionAt(G, X, Y);
+		Walked.Crossings += Stood != 0u && Life.Region != Stood ? 1u : 0u;
+		Walked.Refused +=
+			Life.Refused > RefusedSeen && Life.LastRefusal == static_cast<uint32>(Vaelen::Player::Refusal::TooFar) ? 1u
+																												   : 0u;
+	}
+	RefusedSeen = Life.Refused;
+	if (Vaelen::Scene::PlaceAfterDay(G, Life.Region, X, Y))
+	{
+		Walked.PutBack += bPlaced ? 1u : 0u;
+		const double Z = static_cast<double>(Vaelen::Scene::HeightAt(G, X, Y)) + 106.0;
+		Body->SetActorLocation(FVector(static_cast<double>(X), static_cast<double>(Y), Z));
+	}
+	bPlaced = true;
 }
 
 void AVaelenWalkController::AfterStreamWritten()

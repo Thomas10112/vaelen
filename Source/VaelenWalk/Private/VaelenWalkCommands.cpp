@@ -16,13 +16,17 @@
 // the subsystem's, and the fence refuses the words (check_ui_fence.py).
 //
 // STATUS: UNVERIFIED (engine) - written and PARSED against Tools/EngineShim on
-// 2026-09-25, not yet built by UnrealBuildTool nor run: sitting S2 builds it.
+// 2026-09-25 (reviewed and corrected 2026-09-26, 19.11b), not yet built by
+// UnrealBuildTool nor run: sitting S2 builds it.
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/GameModeBase.h"
 #include "GameFramework/PlayerController.h"
 #include "HAL/IConsoleManager.h"
+#include "Vaelen/Scene/Fence.h"
 #include "Vaelen/Scene/Layout.h"
 #include "Vaelen/Scene/Sky.h"
 #include "Vaelen/Scene/Terrain.h"
@@ -120,10 +124,28 @@ namespace
 		UE_LOG(LogVaelenWalk, Log, TEXT("LogVaelenWalk: fence of region %u walled along %d edges"),
 			   static_cast<unsigned>(Life.Region), Walled);
 
-		// The walker on the centroid tile of the played region, standing.
+		// The walker on the played region's centroid tile - or the nearest
+		// walkable tile of the region when the centroid is a lake (19.11b:
+		// PlaceAfterDay's rule, the one Run.Walk proves) - standing.
 		if (APlayerController* Controller = World_->GetFirstPlayerController())
 		{
-			if (AVaelenWalker* Walker = Cast<AVaelenWalker>(Controller->GetPawn()))
+			// The pawn spawned at the origin over no floor, and fell: past the
+			// world's KillZ (minutes) the engine destroyed it. Spawn it again
+			// where the game's start would (19.11b).
+			if (Controller->GetPawn() == nullptr)
+			{
+				if (AGameModeBase* Mode = World_->GetAuthGameMode())
+				{
+					Mode->RestartPlayer(Controller);
+				}
+			}
+			AVaelenWalker* Walker = Cast<AVaelenWalker>(Controller->GetPawn());
+			if (Walker == nullptr)
+			{
+				UE_LOG(LogVaelenWalk, Warning,
+					   TEXT("LogVaelenWalk: no walker to place (is the game mode VaelenWalkGameMode?)"));
+			}
+			else
 			{
 				uint32 Tile = 0;
 				for (const Vaelen::View::RegionView& R : World->World().Regions)
@@ -136,9 +158,17 @@ namespace
 				}
 				Vaelen::int64 X = 0, Y = 0;
 				Vaelen::Scene::PointOfTile(G, Tile, X, Y);
+				Vaelen::Scene::PlaceAfterDay(G, Life.Region, X, Y);
+				Vaelen::Scene::TileOfPoint(G, X, Y, Tile);
 				const double Z = static_cast<double>(Vaelen::Scene::HeightAt(G, X, Y)) +
 								 static_cast<double>(Walker->StandingHalfHeight()) + 10.0;
 				Walker->SetActorLocation(FVector(static_cast<double>(X), static_cast<double>(Y), Z));
+				// Whatever speed the fall gave it stays in the void: the body
+				// stands on the ground it was put on.
+				if (UCharacterMovementComponent* Movement = Walker->GetCharacterMovement())
+				{
+					Movement->StopMovementImmediately();
+				}
 				UE_LOG(LogVaelenWalk, Log, TEXT("LogVaelenWalk: walker on tile %u of region %u at (%lld, %lld, %.0f)"),
 					   static_cast<unsigned>(Tile), static_cast<unsigned>(Life.Region), static_cast<long long>(X),
 					   static_cast<long long>(Y), Z);
@@ -207,8 +237,17 @@ namespace
 		}
 		const uint32 Size = static_cast<uint32>(World->Size());
 		{
+			// The played region's line (the near chunks, as Vaelen.Walk prints
+			// it) AND the whole ground's: `--replay --scene` prints the latter,
+			// region "all", and the two could never be the same line (19.11b).
 			char Line[Vaelen::Scene::TerrainLineBytes];
 			if (Land->TerrainLine(Size, World->Seed(), Line, Vaelen::Scene::TerrainLineBytes) != 0u)
+			{
+				UE_LOG(LogVaelenWalk, Log, TEXT("%s"), ANSI_TO_TCHAR(Line));
+			}
+			Vaelen::Scene::TerrainStats All;
+			Vaelen::Scene::MeasureChunks(World->Scene(), 0u, All);
+			if (Vaelen::Scene::TerrainLine(Size, World->Seed(), 0u, All, Line, Vaelen::Scene::TerrainLineBytes) != 0u)
 			{
 				UE_LOG(LogVaelenWalk, Log, TEXT("%s"), ANSI_TO_TCHAR(Line));
 			}

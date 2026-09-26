@@ -65,6 +65,9 @@ struct FVaelenHeld;
 /// and never on a frame. What the walk repaints on (ADR-0138: the scene moves
 /// when the world does, and the world moves on a day turn).
 DECLARE_MULTICAST_DELEGATE(FVaelenViewsTaken);
+/// 19.11b: fired after the stream is written - by F9 or by Vaelen.Stream.Write
+/// alike - so that a controller's summary line follows both.
+DECLARE_MULTICAST_DELEGATE(FVaelenStreamWritten);
 
 UCLASS()
 class VAELENGAME_API UVaelenWorldSubsystem : public UGameInstanceSubsystem
@@ -187,7 +190,11 @@ public:
 	uint64 Seed() const;
 	int32 Size() const;
 	/// 19.06: fired after every retaking of the views. See FVaelenViewsTaken.
+	/// Since 19.11b also after TakeSomebodyElse: the life moved, and what
+	/// follows the life (the fence, the body, the layout) must follow.
 	FVaelenViewsTaken OnViewsTaken;
+	/// 19.11b: fired after WriteStream succeeds. See FVaelenStreamWritten.
+	FVaelenStreamWritten OnStreamWritten;
 	/// 19.06: LogVaelenClimate, composed by Vaelen/View/Proof.h from facts this
 	/// module reads off the world (the winters and the dead of the cold are the
 	/// log's) - the bytes `VaelenAtlas` prints for the same world on the same

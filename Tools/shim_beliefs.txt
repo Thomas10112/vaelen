@@ -45,7 +45,6 @@ BindAction         19.06  UEnhancedInputComponent - Move and Look
 Broadcast          19.06  the subsystem fires OnViewsTaken after every retaking
 Cast               19.06  the walk controller casts InputComponent to the enhanced one
 ClearAllMeshSections 19.06  AVaelenLand::Build starts clean
-ClearMeshSection   19.06  Repaint replaces a near section
 CreateMeshSection_LinearColor 19.06  one section per chunk, with the day's colours
 D                  19.06  EKeys::D - right
 DECLARE_MULTICAST_DELEGATE 19.06  FVaelenViewsTaken on the subsystem
@@ -138,3 +137,11 @@ First                          19.11  a local of the water quads; a name the shi
 High                           19.11  a local of the fence walls; a name the shim also has
 Low                            19.11  a local of the fence walls; a name the shim also has
 L                              19.11  the layout parameter of Draw; a name the shim also has
+UpdateMeshSection_LinearColor  19.11b  UProceduralMeshComponent: the day's colours in place, no collision re-cooked - VaelenLand::Repaint
+SetCollisionResponseToChannel  19.11b  UPrimitiveComponent: the fence walls ignore the camera and visibility channels - VaelenLand
+ECR_Ignore        19.11b  ECollisionResponse, the answer the walls give the camera and a trace
+ECC_Camera        19.11b  ECollisionChannel, the spring arm's channel the walls must not block
+GetAuthGameMode   19.11b  UWorld: the game mode that respawns a walker the void destroyed - Vaelen.Walk
+RestartPlayer     19.11b  AGameModeBase: a pawn spawned and possessed again for the controller - Vaelen.Walk
+StopMovementImmediately  19.11b  UCharacterMovementComponent: a placed walker keeps none of its fall - Vaelen.Walk
+Mode              19.11b  the game mode as a local of Vaelen.Walk - a name the shim also has (a coincidence, like begin and end)

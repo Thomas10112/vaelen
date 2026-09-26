@@ -410,15 +410,22 @@ in a map with no light, the engine's vertex-colour material, and FKey(FName)
 from 19.10. If any fails, 19.07-19.10 stand headless and only the engine
 side is redesigned. The standing rule holds: REPORT, do not repair.
 
-0. Check out THE COMMIT OF 19.06:
+0. Check out THE COMMIT OF 19.11b - not 19.06's: the review of 2026-09-26
+   (ROADMAP "19.11b") found and repaired, in the code S2 would have built,
+   a walker the engine destroys four minutes after launch, a ground painted
+   on one chunk of sixty-four, fence walls with holes on every slope, a
+   headless twin of the wrong world, and (in 19.11's scenery) a line MSVC
+   refuses. 19.06's commit as it stood would have spent the sitting on
+   those. 19.11b carries 19.06, 19.10 and 19.11 together, so S3's steps run
+   on THIS build if S2's do - no second build.
    ```
    git fetch origin claude/vaelen-master-prompt-aw7zqj
-   git checkout $(git log origin/claude/vaelen-master-prompt-aw7zqj --grep="^19.06: " -1 --format=%H)
+   git checkout $(git log origin/claude/vaelen-master-prompt-aw7zqj --grep="^19.11b: " -1 --format=%H)
    git rev-parse HEAD
    ```
    The FIRST line of what you bring back is that `rev-parse`.
-1. Build the editor as for 14.08. Eleven new engine files (Source/VaelenWalk,
-   VaelenUI's walk controller) and four changed ones; the plugin
+1. Build the editor as for 14.08. Thirteen new engine files (Source/VaelenWalk,
+   VaelenUI's walk controller) and six changed ones; the plugin
    ProceduralMeshComponent is newly enabled in the uproject. Bring back the
    UBT result line and, if it fails, the FIRST error verbatim AND WHICH
    MODULE it is in, and stop there.
@@ -432,11 +439,16 @@ side is redesigned. The standing rule holds: REPORT, do not repair.
 3. `Vaelen.Walk 128 120` (seconds of work). Bring back its lines:
    `LogVaelenWalk: walker on tile T of region R at (x, y, z)`, the
    `LogVaelenScene: ... region R:` terrain line, the `LogVaelenClimate:`
-   line and the `LogVaelenScene: ... sky day` line. The first two of those
-   three must equal, byte for byte after the category,
-   `VaelenAtlas --size 128 --prehistory 300 --years 120 --scene-terrain R`
-   and the climate line the same Atlas command prints - `Session.P19S2`
-   re-reads them so.
+   line and the `LogVaelenScene: ... sky day` line. The terrain and climate
+   lines must equal, byte for byte after the category, the ones
+   ```
+   VaelenAtlas --empty --stream --climate --want-bound 0 --size 128 --years 120 --scene --scene-terrain R
+   ```
+   prints - the Atlas begun the way Vaelen.Walk begins (Play and Stream:
+   the plain `--scene-terrain R` run is another world by one cold death,
+   19.11b) - and `Session.P19S2` re-reads them so. In the raw log every
+   such line reads `LogVaelenWalk: LogVaelenScene: ...` (the engine's
+   category, then the line's own); the reader takes the last.
 4. `Vaelen.Probe 64`. Bring back `probe 64 of region R, bias 0 mm: max
    |trace-builder| X cm, misses M`. X <= 1.0 and M = 0 is the pass; a miss
    is a hole in the ground, a wide gap is a section uploaded at the wrong
@@ -465,15 +477,19 @@ steps 3 and 4 against the Atlas, and the ledger gains the row `s2`.
 
 ## PHASE 19 - sitting S3 (task 19.11): the world drawn is the world built
 
-AFTER S2 has closed. Builds the commit of 19.11 (found by subject, `^19.11: `),
-rev-parse first, the standing rule as always.
+AFTER S2 has closed - and on S2's own build when that build is 19.11b's
+commit or later, since it carries 19.11: skip step 1 then. Otherwise the
+commit of 19.11b (found by subject, `^19.11b: `), rev-parse first, the
+standing rule as always.
 
 1. Build as for 14.08; first error verbatim and its module.
 2. Launch with the walk mode (the `?game=` URL of S2), then `Vaelen.Walk 128
-   120` and `Vaelen.Scene`: the three LogVaelenScene lines and the `drawn
-   houses ...` line. The houses, figures, squares, road tiles and pits drawn
-   must equal the layout line's counts. You should see cubes with cones on
-   them, cylinders with spheres, slabs, the sea and the lakes.
+   120` and `Vaelen.Scene`: FOUR LogVaelenScene lines - the played region's
+   terrain, the whole ground's (`region all`, the one `--replay --scene`
+   prints), the layout, the sky - and the `drawn houses ...` line. The
+   houses, figures, squares, road tiles and pits drawn must equal the layout
+   line's counts. You should see cubes with cones on them, cylinders with
+   spheres, slabs, the sea and the lakes - coloured, on every chunk.
 3. `Vaelen.Day 10`, `Vaelen.Scene` again: the layout line's day moved by ten,
    the figures moved, the snow and the sun with them; `Vaelen.Stream.Write`.
 4. Days into the first frosts (`Vaelen.Day 30` at a time, watching the sky
@@ -495,7 +511,10 @@ rev-parse first, the standing rule as always.
 Bring back the whole log, rev-parse first. `Session.P19S3` replays the stream
 (`--panel --want-bound 0 --stream --scene --climate`) and holds the Scene,
 Climate and Play lines byte-identical, every `day D ... region R life L
-looked K` line to R == L == K, and the instance counts to the layout line's.
+looked K` line to R == L, with K the R of the line before (the Begin region
+on the first: the look is taken from the feet BEFORE the turn, so on the
+day of a crossing K is the region left and R the region arrived in - the
+step S3's item 6 asks for), and the instance counts to the layout line's.
 
 ## What the kernel half already hands you
 

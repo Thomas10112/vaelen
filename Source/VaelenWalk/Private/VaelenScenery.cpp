@@ -2,10 +2,12 @@
 // Phase 19 task 19.11: the world drawn is the world built. See VaelenScenery.h.
 //
 // STATUS: UNVERIFIED (engine) - written and PARSED against Tools/EngineShim on
-// 2026-09-25, not yet built by UnrealBuildTool nor run: sitting S3 builds it.
+// 2026-09-25 (reviewed and corrected 2026-09-26, 19.11b), not yet built by
+// UnrealBuildTool nor run: sitting S3 builds it.
 #include "VaelenScenery.h"
 
 #include "Components/InstancedStaticMeshComponent.h"
+#include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
@@ -17,11 +19,14 @@ namespace
 {
 	/// A basic shape as an instanced component, no collision unless asked:
 	/// figures and slabs are walked through, houses are not.
-	UInstancedStaticMeshComponent* Shapes(AActor* Owner, const TCHAR* Name, UStaticMesh* Mesh, bool bCollide,
-										  bool& bFound)
+	/// The parent is handed in: AActor::RootComponent is protected in the
+	/// engine, and a free function reading it through an AActor* is MSVC C2248
+	/// (found by the review of 2026-09-26; the shim accepted it until then).
+	UInstancedStaticMeshComponent* Shapes(AActor* Owner, USceneComponent* Under, const TCHAR* Name, UStaticMesh* Mesh,
+										  bool bCollide, bool& bFound)
 	{
 		UInstancedStaticMeshComponent* Made = Owner->CreateDefaultSubobject<UInstancedStaticMeshComponent>(Name);
-		Made->SetupAttachment(Owner->RootComponent);
+		Made->SetupAttachment(Under);
 		if (Mesh != nullptr)
 		{
 			Made->SetStaticMesh(Mesh);
@@ -55,15 +60,15 @@ AVaelenScenery::AVaelenScenery()
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> Sphere(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
 	bShapesFound = Cube.Succeeded() && Cone.Succeeded() && Cylinder.Succeeded() && Sphere.Succeeded();
 	bool bFound = bShapesFound;
-	Houses = Shapes(this, TEXT("Houses"), Cube.Object, true, bFound);
-	Roofs = Shapes(this, TEXT("Roofs"), Cone.Object, true, bFound);
-	Figures = Shapes(this, TEXT("Figures"), Cylinder.Object, false, bFound);
-	Heads = Shapes(this, TEXT("Heads"), Sphere.Object, false, bFound);
-	Company = Shapes(this, TEXT("Company"), Cylinder.Object, false, bFound);
-	CompanyHeads = Shapes(this, TEXT("CompanyHeads"), Sphere.Object, false, bFound);
-	Squares = Shapes(this, TEXT("Squares"), Cube.Object, false, bFound);
-	Roads = Shapes(this, TEXT("Roads"), Cube.Object, false, bFound);
-	Pits = Shapes(this, TEXT("Pits"), Cylinder.Object, false, bFound);
+	Houses = Shapes(this, Water, TEXT("Houses"), Cube.Object, true, bFound);
+	Roofs = Shapes(this, Water, TEXT("Roofs"), Cone.Object, true, bFound);
+	Figures = Shapes(this, Water, TEXT("Figures"), Cylinder.Object, false, bFound);
+	Heads = Shapes(this, Water, TEXT("Heads"), Sphere.Object, false, bFound);
+	Company = Shapes(this, Water, TEXT("Company"), Cylinder.Object, false, bFound);
+	CompanyHeads = Shapes(this, Water, TEXT("CompanyHeads"), Sphere.Object, false, bFound);
+	Squares = Shapes(this, Water, TEXT("Squares"), Cube.Object, false, bFound);
+	Roads = Shapes(this, Water, TEXT("Roads"), Cube.Object, false, bFound);
+	Pits = Shapes(this, Water, TEXT("Pits"), Cylinder.Object, false, bFound);
 	bShapesFound = bFound;
 }
 
@@ -166,6 +171,12 @@ void AVaelenScenery::DrawWater(const Vaelen::Scene::Ground& G)
 	// The sea: one plane at 0 over the whole map, half a tile past its edge.
 	Quad(-C / 2.0, -C / 2.0, (G.Width - 0.5) * C, (G.Height - 0.5) * C, 0.0, FLinearColor(0.10f, 0.25f, 0.45f, 1.0f));
 	Water->CreateMeshSection_LinearColor(0, Vertices, Triangles, Normals, UV0, Colours, Tangents, false);
+	// A material per section, or the section is drawn with the engine's default
+	// and the vertex colour above shows nothing (19.11b, the review).
+	if (GEngine != nullptr)
+	{
+		Water->SetMaterial(0, GEngine->VertexColorMaterial);
+	}
 	// The lakes: a quad per lake tile at the surface the ground invented for it.
 	Vertices.Empty();
 	Triangles.Empty();
@@ -187,6 +198,10 @@ void AVaelenScenery::DrawWater(const Vaelen::Scene::Ground& G)
 	if (Vertices.Num() > 0)
 	{
 		Water->CreateMeshSection_LinearColor(1, Vertices, Triangles, Normals, UV0, Colours, Tangents, false);
+		if (GEngine != nullptr)
+		{
+			Water->SetMaterial(1, GEngine->VertexColorMaterial);
+		}
 	}
 }
 

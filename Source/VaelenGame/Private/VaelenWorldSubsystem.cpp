@@ -186,8 +186,10 @@ int32 UVaelenWorldSubsystem::TakeSomebodyElse()
 	}
 	const int32 Who = static_cast<int32>(Held->Door->TakeUp());
 	// The life and the page, not the frame: nothing of the world moved, but
-	// who is being played did, and both of those read from it.
+	// who is being played did, and both of those read from it - and so must
+	// whatever follows the life (19.11b: the walk's fence, body and layout).
 	Held->TakeLifeAndPage(Keys_);
+	OnViewsTaken.Broadcast();
 	return Who;
 }
 
@@ -470,7 +472,12 @@ bool UVaelenWorldSubsystem::WriteStream(FString& Out)
 	Out = FPaths::Combine(FPaths::ProjectSavedDir(), FString(TEXT("Vaelen")));
 	Out = FPaths::Combine(Out, Name);
 	const std::string Text = Vaelen::Player::EncodeStream(Held->Door->Stream());
-	return FFileHelper::SaveStringToFile(FString(ANSI_TO_TCHAR(Text.c_str())), *Out);
+	if (!FFileHelper::SaveStringToFile(FString(ANSI_TO_TCHAR(Text.c_str())), *Out))
+	{
+		return false;
+	}
+	OnStreamWritten.Broadcast();
+	return true;
 }
 
 namespace
@@ -637,8 +644,11 @@ bool UVaelenWorldSubsystem::Load(const FString& Name, FString& Out, FString& Out
 	Held->Door = Taped ? MakeUnique<Vaelen::Run::Door>(*Held->World, Rules, Tape)
 					   : MakeUnique<Vaelen::Run::Door>(*Held->World, Rules);
 	Held->Watched = false;
-	// The ground once, and the five views, exactly as Begin ends.
+	// The ground once, the scene's ground cut from it (19.11b: Load forgot the
+	// cut, and a loaded world walked on nothing), and the five views, exactly
+	// as Begin ends.
 	Vaelen::View::TakeMapView(Held->World->Instance(), Held->World->Sources(), Held->Ground);
+	Vaelen::Scene::BuildGround(Held->Ground, Vaelen::Scene::SceneScale{}, Held->Scene_);
 	Held->TakeAll(Keys_);
 	OnViewsTaken.Broadcast();
 	Out = FPaths::Combine(Store.Where(), Name);

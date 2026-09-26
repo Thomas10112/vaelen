@@ -2,7 +2,8 @@
 // Phase 19 task 19.06: the ground one walks on, uploaded. See VaelenLand.h.
 //
 // STATUS: UNVERIFIED (engine) - written and PARSED against Tools/EngineShim on
-// 2026-09-25, not yet built by UnrealBuildTool nor run: sitting S2 builds it.
+// 2026-09-25 (reviewed and corrected 2026-09-26, 19.11b), not yet built by
+// UnrealBuildTool nor run: sitting S2 builds it.
 #include "VaelenLand.h"
 
 #include "CollisionQueryParams.h"
@@ -34,6 +35,14 @@ AVaelenLand::AVaelenLand()
 	Mesh->bUseComplexAsSimpleCollision = true;
 	Mesh->bUseAsyncCooking = false;
 	RootComponent = Mesh;
+	// The walls (19.11b): a component of their own, attached under the ground,
+	// answering the pawn and nothing the camera or a trace asks.
+	Walls = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("FenceWalls"));
+	Walls->SetupAttachment(Mesh);
+	Walls->bUseComplexAsSimpleCollision = true;
+	Walls->bUseAsyncCooking = false;
+	Walls->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	Walls->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 	// The project's tile material when it exists on this disk (VaelenViewActor
 	// takes it the same way); the engine's own vertex-colour material
 	// otherwise, which is the asset-free default ADR-0157 asks for and a
@@ -76,22 +85,40 @@ bool AVaelenLand::Build(const Vaelen::Scene::Ground& G, const Vaelen::View::Clim
 				}
 			}
 			NearChunks.Add(Near ? 1u : 0u);
-			Upload(G, Climate, CX, CY, Near);
 		}
 	}
-	if (Paint != nullptr)
+	// The far chunks first and the near ones last (19.11b): every section
+	// created with collision re-cooks the collision of every section that has
+	// it, so the near chunks - the only ones with collision - go in when
+	// nothing else with collision is there to re-cook but themselves.
+	for (int32 Pass = 0; Pass < 2; ++Pass)
 	{
-		Mesh->SetMaterial(0, Paint);
-	}
-	else if (GEngine != nullptr)
-	{
-		Mesh->SetMaterial(0, GEngine->VertexColorMaterial);
+		for (uint32 CY = 0; CY < Down_; ++CY)
+		{
+			for (uint32 CX = 0; CX < Across_; ++CX)
+			{
+				const bool Near = NearChunks[static_cast<int32>(CY * Across_ + CX)] != 0u;
+				if (Near == (Pass == 1))
+				{
+					Upload(G, Climate, CX, CY, Near, false);
+				}
+			}
+		}
 	}
 	return true;
 }
 
+UMaterialInterface* AVaelenLand::PaintFor() const
+{
+	if (Paint != nullptr)
+	{
+		return Paint;
+	}
+	return GEngine != nullptr ? static_cast<UMaterialInterface*>(GEngine->VertexColorMaterial) : nullptr;
+}
+
 void AVaelenLand::Upload(const Vaelen::Scene::Ground& G, const Vaelen::View::ClimateView& Climate, uint32 CX, uint32 CY,
-						 bool Near)
+						 bool Near, bool Recolour)
 {
 	Vaelen::Scene::TerrainMesh Cut;
 	const uint32 Stride = Near ? 1u : static_cast<uint32>(G.Scale.Steps);
@@ -101,10 +128,13 @@ void AVaelenLand::Upload(const Vaelen::Scene::Ground& G, const Vaelen::View::Cli
 	}
 	if (Near)
 	{
-		// Measured BEFORE the snow: the terrain line is the ground's, and the
-		// same one whatever the day (Atlas.SceneTerrain128's rule). The snow
-		// goes on the copy that is uploaded.
-		Vaelen::Scene::MeasureTerrain(Cut, NearStats);
+		// Measured BEFORE the snow, and once: the terrain line is the ground's,
+		// the same one whatever the day (Atlas.SceneTerrain128's rule). The
+		// snow goes on the copy that is uploaded.
+		if (!Recolour)
+		{
+			Vaelen::Scene::MeasureTerrain(Cut, NearStats);
+		}
 		Vaelen::Scene::ApplyClimate(G, Climate, Cut);
 	}
 	TArray<FVector> Vertices;
@@ -129,7 +159,21 @@ void AVaelenLand::Upload(const Vaelen::Scene::Ground& G, const Vaelen::View::Cli
 		Triangles.Add(static_cast<int32>(Index));
 	}
 	const int32 Section = static_cast<int32>(CY * Across_ + CX);
+	if (Recolour)
+	{
+		// Colours alone: empty arrays are not applied, the positions stand,
+		// and no collision is re-cooked (the engine's UpdateMeshSection).
+		const TArray<FVector> NoVertices;
+		const TArray<FVector2D> NoUV;
+		const TArray<FProcMeshTangent> NoTangents;
+		Mesh->UpdateMeshSection_LinearColor(Section, NoVertices, NoVertices, NoUV, Colours, NoTangents);
+		return;
+	}
 	Mesh->CreateMeshSection_LinearColor(Section, Vertices, Triangles, Normals, UV0, Colours, Tangents, Near);
+	// A material PER SECTION (19.11b): a procedural mesh takes one for each,
+	// and a section without one is drawn with the engine's default, which
+	// ignores the vertex colours everything here is painted with.
+	Mesh->SetMaterial(Section, PaintFor());
 }
 
 void AVaelenLand::Repaint(const Vaelen::Scene::Ground& G, const Vaelen::View::ClimateView& Climate)
@@ -138,21 +182,20 @@ void AVaelenLand::Repaint(const Vaelen::Scene::Ground& G, const Vaelen::View::Cl
 	{
 		return;
 	}
-	// The near chunks again, snow and all. A section is replaced whole: the
-	// shim knows no UpdateMeshSection, and once a day is not a frame.
-	const Vaelen::Scene::TerrainStats Keep = NearStats;
+	// The near chunks' colours again, snow and all, in place: the section's
+	// vertices stand and its collision is not re-cooked (19.11b: clearing and
+	// re-creating each near section cost two cooks of every near chunk, per
+	// chunk, per day).
 	for (uint32 CY = 0; CY < Down_; ++CY)
 	{
 		for (uint32 CX = 0; CX < Across_; ++CX)
 		{
 			if (NearChunks[static_cast<int32>(CY * Across_ + CX)] != 0u)
 			{
-				Mesh->ClearMeshSection(static_cast<int32>(CY * Across_ + CX));
-				Upload(G, Climate, CX, CY, true);
+				Upload(G, Climate, CX, CY, true, true);
 			}
 		}
 	}
-	NearStats = Keep; // the same ground, measured once
 }
 
 uint32 AVaelenLand::TerrainLine(uint32 Size, uint64 Seed, char* Out, uint32 Bytes) const
@@ -223,8 +266,7 @@ int32 AVaelenLand::BuildFenceWalls(const Vaelen::Scene::Ground& G, uint32 Region
 	{
 		return 0;
 	}
-	FenceSection = static_cast<int32>(Across_ * Down_);
-	Mesh->ClearMeshSection(FenceSection);
+	Walls->ClearAllMeshSections();
 	FencedRegion = Region;
 	std::vector<Vaelen::Scene::FenceEdge> Fence;
 	Vaelen::Scene::BuildFence(G, Region, Fence);
@@ -234,14 +276,14 @@ int32 AVaelenLand::BuildFenceWalls(const Vaelen::Scene::Ground& G, uint32 Region
 	TArray<FVector2D> UV0;
 	TArray<FLinearColor> Colours;
 	TArray<FProcMeshTangent> Tangents;
+	// Every wall from 2 m under the lowest point of the near ground to 4 m
+	// over its highest (19.11b): an edge is a whole tile side, and the ground
+	// between its two corners rises above or falls below the corners' own
+	// heights on a slope - a wall sized from the corners alone had holes.
+	const double Low = static_cast<double>(NearStats.MinZ) - 200.0;
+	const double High = static_cast<double>(NearStats.MaxZ) + 400.0;
 	for (const Vaelen::Scene::FenceEdge& E : Fence)
 	{
-		// A wall along the edge, from 2 m under the lower end to 4 m over the
-		// higher: the capsule meets it whatever the relief across the edge.
-		const double Z0 = static_cast<double>(Vaelen::Scene::HeightAt(G, E.X0, E.Y0));
-		const double Z1 = static_cast<double>(Vaelen::Scene::HeightAt(G, E.X1, E.Y1));
-		const double Low = (Z0 < Z1 ? Z0 : Z1) - 200.0;
-		const double High = (Z0 > Z1 ? Z0 : Z1) + 400.0;
 		const int32 First = Vertices.Num();
 		Vertices.Add(FVector(E.X0, E.Y0, Low));
 		Vertices.Add(FVector(E.X1, E.Y1, Low));
@@ -265,8 +307,8 @@ int32 AVaelenLand::BuildFenceWalls(const Vaelen::Scene::Ground& G, uint32 Region
 	{
 		return 0;
 	}
-	Mesh->CreateMeshSection_LinearColor(FenceSection, Vertices, Triangles, Normals, UV0, Colours, Tangents, true);
-	Mesh->SetMeshSectionVisible(FenceSection, false);
+	Walls->CreateMeshSection_LinearColor(0, Vertices, Triangles, Normals, UV0, Colours, Tangents, true);
+	Walls->SetMeshSectionVisible(0, false);
 	return static_cast<int32>(Fence.size());
 }
 
@@ -282,7 +324,18 @@ void AVaelenLand::OnViewsTaken()
 	{
 		return;
 	}
-	Repaint(World->Scene(), World->Climate());
+	// The ground follows the life (19.11b): after a crossing or another life
+	// taken up, the near chunks - full lattice, collision - are the new
+	// region's, or the body is put back on far land with nothing to stand on.
+	// Otherwise the day's colours alone.
+	if (World->Life().Region != 0u && World->Life().Region != Region_)
+	{
+		Build(World->Scene(), World->Climate(), World->Life().Region);
+	}
+	else
+	{
+		Repaint(World->Scene(), World->Climate());
+	}
 	// The fence follows the life: a crossing moves it to the new region.
 	if (World->Life().Region != 0u && World->Life().Region != FencedRegion)
 	{

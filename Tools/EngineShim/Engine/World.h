@@ -25,6 +25,8 @@ public:
 	UGameInstance* GetGameInstance() const;
 	/// 19.06 BELIEF: the local player's controller, which Vaelen.Walk places on the ground.
 	class APlayerController* GetFirstPlayerController() const;
+	/// 19.11b BELIEF: the game mode of this world, on the authority.
+	class AGameModeBase* GetAuthGameMode() const;
 
 	/// 19.02 BELIEF: Vaelen.Probe compares these traces with the scene's own heights.
 	bool LineTraceSingleByChannel(FHitResult& OutHit, const FVector& Start, const FVector& End,

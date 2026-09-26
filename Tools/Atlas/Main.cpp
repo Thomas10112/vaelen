@@ -3318,33 +3318,12 @@ namespace
 		return Height / 2u;
 	}
 
-	/// Every chunk touching Region (0: all of them) at the full lattice, into Stats.
+	/// Every chunk touching Region (0: all of them) at the full lattice, into
+	/// Stats - Scene::MeasureChunks since 19.11b, the engine's Vaelen.Scene
+	/// measuring by the same function.
 	void MeasureTerrainOf(const Scene::Ground& G, uint32 Region, Scene::TerrainStats& Stats)
 	{
-		Scene::TerrainMesh Mesh;
-		for (uint32 CY = 0; CY < Scene::ChunksDown(G); ++CY)
-		{
-			for (uint32 CX = 0; CX < Scene::ChunksAcross(G); ++CX)
-			{
-				bool Wanted = Region == 0u;
-				for (uint32 Y = CY * Scene::ChunkTiles; !Wanted && Y < (CY + 1u) * Scene::ChunkTiles && Y < G.Height;
-					 ++Y)
-				{
-					for (uint32 X = CX * Scene::ChunkTiles; X < (CX + 1u) * Scene::ChunkTiles && X < G.Width; ++X)
-					{
-						if (G.Region[Y * G.Width + X] == Region)
-						{
-							Wanted = true;
-							break;
-						}
-					}
-				}
-				if (Wanted && Scene::BuildChunk(G, CX, CY, 1u, Mesh))
-				{
-					Scene::MeasureTerrain(Mesh, Stats);
-				}
-			}
-		}
+		Scene::MeasureChunks(G, Region, Stats);
 	}
 
 	bool PrintSceneTerrain(const MapView& Map, const Options& Opt)
@@ -3533,6 +3512,29 @@ namespace
 				if (Scene::TerrainLine(RO.Size, RO.Seed, 0u, Terrain, Line, Scene::TerrainLineBytes) != 0u)
 				{
 					std::printf("%s\n", Line);
+				}
+				// 19.11b: and one region's, when asked (--scene-terrain R beside
+				// --scene): the line Vaelen.Walk prints for the region it built,
+				// from THIS world - the played and streamed one, which is not the
+				// world `--scene-terrain` alone builds (its climate line differs:
+				// 1581 cold deaths against 1582 at 128).
+				if (!Opt.SceneTerrain.empty() && Opt.SceneTerrain != "all")
+				{
+					char* End = nullptr;
+					const unsigned long Region = std::strtoul(Opt.SceneTerrain.c_str(), &End, 10);
+					if (End == Opt.SceneTerrain.c_str() || *End != '\0' || Region == 0ul || Region > 65535ul)
+					{
+						std::fprintf(stderr, "AELVOR: --scene-terrain takes a region (1-65535) or \"all\", not %s\n",
+									 Opt.SceneTerrain.c_str());
+						return 1;
+					}
+					Scene::TerrainStats Near;
+					MeasureTerrainOf(G, static_cast<uint32>(Region), Near);
+					if (Scene::TerrainLine(RO.Size, RO.Seed, static_cast<uint32>(Region), Near, Line,
+										   Scene::TerrainLineBytes) != 0u)
+					{
+						std::printf("%s\n", Line);
+					}
 				}
 			}
 			WorldGen::RegionGraphCache Ways;

@@ -60,9 +60,13 @@ protected:
 	/// Move at the fence facing a Near region -> that region (CrossingOf);
 	/// Speak, Give, Take -> the company figure in front (AimAt); else Tab's.
 	virtual uint32 TargetFor(Vaelen::Player::Intent Kind, uint32 TabTarget) override;
-	/// The walker put back inside its region (PlaceAfterDay), counted, and
-	/// the one line of the day: `LogVaelenWalk: day D tile T region R life L looked K`.
+	/// The counts of the turn and the one line of the day:
+	/// `LogVaelenWalk: day D tile T region R life L looked K`.
 	virtual void AfterTheDay(int32 Looked) override;
+	/// After every retaking of the views, whichever path turned the day: the
+	/// crossing and the refusal counted, the walker put back inside the life's
+	/// region (PlaceAfterDay), counted.
+	virtual void AfterViewsTaken() override;
 	/// `LogVaelenWalk: N days on foot, C crossings, R refused, A aimed, F fence contacts, P put back`.
 	virtual void AfterStreamWritten() override;
 
@@ -73,8 +77,10 @@ private:
 	bool Feet(Vaelen::int64& X, Vaelen::int64& Y, Vaelen::int64& DirX, Vaelen::int64& DirY) const;
 
 	FOnFoot Walked;
-	uint32 RegionBefore = 0;
-	uint32 RefusedBefore = 0;
+	/// The life's refusal count at the last retaking, and whether the body
+	/// has been placed once (the first placing is an arrival, not a put-back).
+	uint32 RefusedSeen = 0;
+	bool bPlaced = false;
 
 	UInputAction* MoveAction = nullptr;
 	UInputAction* LookAction = nullptr;

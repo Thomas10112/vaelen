@@ -80,6 +80,15 @@ void AVaelenPlayerController::SetupInputComponent()
 	InputComponent->BindKey(EKeys::Tab, IE_Pressed, this, &AVaelenPlayerController::NextTarget);
 	InputComponent->BindKey(EKeys::SpaceBar, IE_Pressed, this, &AVaelenPlayerController::TurnTheDay);
 	InputComponent->BindKey(EKeys::F9, IE_Pressed, this, &AVaelenPlayerController::WriteStream);
+	// 19.11b: the hooks a subclass fills follow the SUBSYSTEM's signals, not
+	// this controller's keys, so that Vaelen.Stream.Write, Vaelen.Day and
+	// Vaelen.TakeUp reach them as F9 and Space do. AddUObject: the bindings
+	// die with the controller.
+	if (UVaelenWorldSubsystem* World = Held(GetWorld()))
+	{
+		World->OnStreamWritten.AddUObject(this, &AVaelenPlayerController::AfterStreamWritten);
+		World->OnViewsTaken.AddUObject(this, &AVaelenPlayerController::AfterViewsTaken);
+	}
 	bShowMouseCursor = true;
 }
 
@@ -208,7 +217,9 @@ void AVaelenPlayerController::WriteStream()
 	}
 	FString Path;
 	UE_LOG(LogVaelenUI, Log, TEXT("LogVaelenUI: stream %s"), World->WriteStream(Path) ? *Path : TEXT("not written"));
-	AfterStreamWritten();
+	// AfterStreamWritten is not called here: it follows the subsystem's
+	// OnStreamWritten (bound in SetupInputComponent), so that the console's
+	// Vaelen.Stream.Write and this key print the same summary (19.11b).
 }
 
 void AVaelenPlayerController::Verb(Vaelen::Player::Intent Kind)

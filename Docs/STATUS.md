@@ -40,6 +40,20 @@ PHASE       : 18 — CLIMATE & SEASONS, CLOSED headless 2026-09-25, read clause 
                and 16.14's sitting on the owner's Windows machine; the name promise
                the 19.10 audit found unkept is met by 16.15. Section 22.
                15 CLOSED 2026-09-21; 14 CLOSED 2026-09-16)
+TASK        : 19.11b — DONE 2026-09-26 (headless). The engine code reviewed before it is built.
+
+              A read-only fleet (six lenses, three refuters per finding, 81 agents)
+              over the 3 745 engine lines never compiled: 22 findings stood, all
+              repaired. One stops the build (a free function reading the protected
+              AActor::RootComponent - the shim now says protected and its self-test
+              refuses it); the rest would have spent S2: the walker destroyed by
+              KillZ before Vaelen.Walk, a material on one chunk of sixty-four, walls
+              with holes on slopes, near chunks never rebuilt after a crossing, the
+              wrong headless twin (1581 against 1582 cold deaths), Stream.Write and
+              Vaelen.Day bypassing the controller's hooks, Load without a ground,
+              the session reader reading the wrong category. ENGINE_HANDOFF: S2
+              builds 19.11b's commit and S3 runs on the same build.
+
 TASK        : 20.01 — DONE 2026-09-26 (headless). The soak: three years of the product's world, a day at a time.
 
               Phase 20 OPENED by its instrument rather than planned around it (ROADMAP
@@ -67,7 +81,7 @@ TASK        : 16.15 — DONE 2026-09-25 (headless). The last good save keeps its
               engine one is UNVERIFIED (engine), parsed (25 TUs). Failed on
               purpose four ways, each built. Phase 16's gate gains row (n), met.
 
-TASK        : 19.11 — WRITTEN 2026-09-25, UNVERIFIED (engine): the world drawn is the world built; S3 builds it.
+TASK        : 19.11 — WRITTEN 2026-09-25, UNVERIFIED (engine), reviewed and corrected 2026-09-26 (19.11b): S3 builds it.
 
               AVaelenScenery draws the subsystem's one layout as basic shapes (houses
               with collision, figures, the company a size larger, squares, roads,

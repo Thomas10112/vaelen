@@ -19,4 +19,7 @@ public:
 	/// why it is a setter and not a field.
 	void SetWalkableFloorAngle(float InWalkableFloorAngle);
 	float GetWalkableFloorAngle() const;
+	/// 19.11b BELIEF: velocity and pending forces zeroed now - a walker placed
+	/// by hand after a long fall does not carry the fall's speed into the ground.
+	void StopMovementImmediately();
 };

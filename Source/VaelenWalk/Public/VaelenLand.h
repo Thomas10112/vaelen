@@ -21,7 +21,8 @@
 // against HeightAt, and a bias that must show.
 //
 // STATUS: UNVERIFIED (engine) - written and PARSED against Tools/EngineShim on
-// 2026-09-25, not yet built by UnrealBuildTool nor run: sitting S2 builds it.
+// 2026-09-25 (reviewed and corrected 2026-09-26, 19.11b), not yet built by
+// UnrealBuildTool nor run: sitting S2 builds it.
 // The winding of the triangles (counter-clockwise from above, Terrain.h) and
 // GEngine->VertexColorMaterial are the beliefs S2 settles first.
 #pragma once
@@ -52,7 +53,8 @@ public:
 
 	/// The day's colours again, on the near chunks only (the far land keeps
 	/// its biome colours: a tile of it is one vertex, and snow on it would be
-	/// a fact the walker cannot reach). Nothing when Build never ran.
+	/// a fact the walker cannot reach). Colours alone, through the section
+	/// UPDATE, so no collision is re-cooked (19.11b). Nothing when Build never ran.
 	void Repaint(const Vaelen::Scene::Ground& G, const Vaelen::View::ClimateView& Climate);
 
 	/// The line the engine prints for the region it built: MeasureTerrain
@@ -70,23 +72,34 @@ public:
 	uint32 BuiltFor() const { return Region_; }
 
 	/// 19.11: the fence (Vaelen/Scene/Fence.h) as one invisible section of
-	/// walls with collision, so that the body cannot leave the played region
-	/// even where the controller's step check is not looking (a slide, a
-	/// fall). Rebuilt when the life's region changes. Returns the edges walled.
+	/// walls with collision, on a component of its own that the camera's arm
+	/// and Vaelen.Probe's traces ignore (19.11b), so that the body cannot
+	/// leave the played region even where the controller's step check is not
+	/// looking (a slide, a fall). Every wall spans the near chunks' whole
+	/// height range, so no slope passes over or under it. Rebuilt when the
+	/// life's region changes. Returns the edges walled.
 	int32 BuildFenceWalls(const Vaelen::Scene::Ground& G, uint32 Region);
 
 	/// Bound to the subsystem's OnViewsTaken by Vaelen.Walk (AddUObject, so
 	/// it unbinds with the actor): the day's snow on the near chunks and the
-	/// sun of this level's sky at the life's hour. Reads and draws.
+	/// sun of this level's sky at the life's hour - and, when the life's
+	/// region changed (a crossing, another life), the ground rebuilt around
+	/// the new one, near chunks and walls alike (19.11b). Reads and draws.
 	void OnViewsTaken();
 
 private:
 	/// One section per chunk, in chunk order (CY * Across + CX): the near
-	/// ones remember it so that Repaint touches them and only them.
+	/// ones remember it so that Repaint touches them and only them. With
+	/// Recolour, the section's colours are updated in place instead.
 	void Upload(const Vaelen::Scene::Ground& G, const Vaelen::View::ClimateView& Climate, uint32 CX, uint32 CY,
-				bool Near);
+				bool Near, bool Recolour);
+	/// The project's tile material, or the engine's vertex-colour one.
+	UMaterialInterface* PaintFor() const;
 
 	UProceduralMeshComponent* Mesh = nullptr;
+	/// 19.11b: the fence walls, apart from the ground so that their channels
+	/// (no camera, no visibility) are theirs alone.
+	UProceduralMeshComponent* Walls = nullptr;
 	UMaterialInterface* Paint = nullptr;
 	uint32 Region_ = 0;
 	uint32 Across_ = 0;
@@ -95,7 +108,6 @@ private:
 	TArray<uint8> NearChunks;
 	/// The near chunks' stats, measured as uploaded: what TerrainLine says.
 	Vaelen::Scene::TerrainStats NearStats;
-	/// The section the fence walls are, past every chunk's; and whose fence.
-	int32 FenceSection = -1;
+	/// Whose fence the walls are.
 	uint32 FencedRegion = 0;
 };

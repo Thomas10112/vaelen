@@ -35,6 +35,12 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STREAMS = os.path.join(ROOT, "Tests", "Run", "Streams")
 ATLAS = [None]
+# THE LAST category on the line, not the first (19.11b, the review of 2026-09-26):
+# the engine writes `[ts][frame]<Category>: <message>`, and every composed line
+# this project prints carries its own `LogVaelenX: ` at the head of the MESSAGE
+# (`UE_LOG(LogVaelenWalk, ..., TEXT("LogVaelenScene: AELVOR ..."))`), so a raw
+# Vaelen.log holds `LogVaelenWalk: LogVaelenScene: AELVOR ...` and the first
+# category is the engine's, the second the line's. The Atlas prints the second.
 CATEGORY = re.compile(r"(Log[A-Za-z]+): (?:(?:Display|Warning|Error|Log|Verbose): )?(.*)$")
 
 
@@ -69,10 +75,16 @@ class Session:
 
 
 def normal(text):
-    """Every line of a log, read from its category on; lines with no category dropped."""
+    """Every line of a log, read from its LAST category on; lines with no category dropped."""
     out = []
     for raw in text.replace("\r", "").split("\n"):
         m = CATEGORY.search(raw)
+        while m:
+            # A message that begins with a category of its own: read from there.
+            inner = CATEGORY.search(m.group(2))
+            if inner is None or inner.start() != 0:
+                break
+            m = inner
         if m:
             out.append("{}: {}".format(m.group(1), m.group(2)))
     return out
@@ -150,6 +162,21 @@ def self_test(session, log_text, headless_text):
                         else l for l in log_text.split("\n"))
     got = compare(session, dressed, headless_text)
     expect("the engine's timestamp and verbosity prefix are not compared", not got, str(got))
+
+    # AS THE ENGINE REALLY WRITES IT (19.11b): the log category the UE_LOG was
+    # given, then the message, which carries its own `LogVaelenX: ` - so a raw
+    # line reads `[ts][f]LogVaelenWalk: LogVaelenScene: AELVOR ...` or
+    # `LogVaelenPlay: LogVaelenPlay: AELVOR ...`. Read from the LAST category.
+    as_written = "\n".join("[2026.09.16-18.00.00:000][  0]LogVaelenWalk: " + l if l.startswith("Log")
+                            else l for l in log_text.split("\n"))
+    got = compare(session, as_written, headless_text)
+    expect("a line under the engine's own category is read from the line's category", not got, str(got))
+    # And the first-category reading, kept as the pre-fix arm: it must REFUSE
+    # such a log, or the case above is not testing anything.
+    first = [("{}: {}".format(m.group(1), m.group(2)) if (m := CATEGORY.search(raw)) else None)
+             for raw in as_written.split("\n")]
+    expect("the pre-fix reading (the first category) does not equal the line",
+           not any(l is not None and any(l.startswith(p) for p in session.lines) for l in first), str(first[:3]))
 
     # A sitting that names its commit: a log opened on another commit is refused.
     session.head, saved = "0123456789abcdef0123456789abcdef01234567", session.head

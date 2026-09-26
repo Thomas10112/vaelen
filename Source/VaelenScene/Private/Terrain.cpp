@@ -538,6 +538,33 @@ namespace Vaelen::Scene
 		Into.Triangles += static_cast<uint32>(M.Triangles.size() / 3u);
 	}
 
+	void MeasureChunks(const Ground& G, uint32 Region, TerrainStats& Into)
+	{
+		TerrainMesh Mesh;
+		for (uint32 CY = 0; CY < ChunksDown(G); ++CY)
+		{
+			for (uint32 CX = 0; CX < ChunksAcross(G); ++CX)
+			{
+				bool Wanted = Region == 0u;
+				for (uint32 Y = CY * ChunkTiles; !Wanted && Y < (CY + 1u) * ChunkTiles && Y < G.Height; ++Y)
+				{
+					for (uint32 X = CX * ChunkTiles; X < (CX + 1u) * ChunkTiles && X < G.Width; ++X)
+					{
+						if (G.Region[Y * G.Width + X] == Region)
+						{
+							Wanted = true;
+							break;
+						}
+					}
+				}
+				if (Wanted && BuildChunk(G, CX, CY, 1u, Mesh))
+				{
+					MeasureTerrain(Mesh, Into);
+				}
+			}
+		}
+	}
+
 	uint32 TerrainLine(uint32 Size, uint64 Seed, uint32 Region, const TerrainStats& S, char* Out, uint32 Bytes)
 	{
 		if (Out == nullptr || Bytes == 0u)
