@@ -9201,6 +9201,37 @@ the suite names what moved. Sabotaged on purpose on the release build
 clean. CI: run 328 on c8ac9bf was in progress when this pushed and is
 cancelled by it, as 327 was; the run on this commit is the one to read.
 
+**`Replay.Bound`, the same afternoon: the premise held by an entry.** Step 2
+also asked for the bound start's stand-in, and the measurement above says
+where one can be written: `VaelenAtlas --stand --size 128 --years 120
+--want-bound 1` (the climate world, Play only, as the 18.10 stand-in) takes
+up Erdass of Krukraldord, 40, bound to Okigerdo, and writes thirty days and
+32 intents - `Tests/Run/Streams/aelvor128-bound-stand-2026-09-27.stream`.
+`ReplayPlayed.cmake` learns `WANTBOUND` (default 0, the literal every entry
+passed until now) and `BOND`, the page's own row about the bond, so that a
+replay held to a bound life is held to the life BEING bound and not only to
+four digests. `Replay.Bound` (-DERA=--climate -DWANTBOUND=1) pins Erdass's
+month: state fa3a942904aaeb26, log 0ccf228b6b72f976, life 8818b318eb76441b,
+panel 41268c2b1206c449, the climate line Replay.Climate's (the same world on
+the same day), 19 taken and 13 refused by the world - "could not eat:
+nothing to do it with", what a bound life at 128 is like today, pinned
+rather than argued. THE CONTROL, `Replay.Bound.AsFree`: the same tape
+without the rule is REFUSED by the replay (exit 1, one wrong taking: the tape
+says Erdass, a host asking for whoever comes offers Dokdahum), and the month
+it prints on the way is Dokdahum's, Replay.Climate's four digests exactly -
+the thirty-two intents are the same, who lives them is the host's rule alone,
+told to the replay and never read from the tape (Door.h). The driver learns
+`WRONG` for it: a refusal pinned by its reason, so a replay that read the
+rule from the tape and ran clean fails the control. The first version of
+this control expected the free month to run CLEAN and was red on its first
+run - the refusal is the better control and is what is kept.
+Replay.Bound joins the gate list as the nineteenth, the only entry with the
+premise in it. Sabotaged five ways through the driver on the release build:
+WANTBOUND dropped against the bound line, one recorded Give re-aimed
+(4714 -> 4715), one life digit changed, the bond row expected for another
+holder, a BOND too short to be a row - each refused by name; and the control
+replayed WITH the rule runs clean and fails the control for it.
+
 The `--empty` play was the wrong instrument for this question and is
 written down as such: it takes nobody up by design (14.03), so its "0
 taking(s)" says nothing about the offer. The probe read the offer.

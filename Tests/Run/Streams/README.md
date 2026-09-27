@@ -289,3 +289,27 @@ in the world before Phase 18, carries no Options, and is replayed with
 `--no-climate` (the four drivers default to it). The first month the owner
 plays in a climate build replaces this file, as the real month replaced the
 14.10 stand-in.
+
+## `aelvor128-bound-stand-2026-09-27.stream` - a bound life's month (section 27 step 2)
+
+Written by `VaelenAtlas --stand --size 128 --years 120 --want-bound 1` on the
+day the colony question was measured (ROADMAP "Section 27 step 2 measured"),
+for the reason the climate stand-in was: so that a replay of a BOUND life - the
+premise of the game, which `StartRules{}` asks for and no month in this
+directory had - is held by an entry (`Replay.Bound`, `-DERA=--climate
+-DWANTBOUND=1`) before anybody has played one in Unreal. Thirty days, 32
+intents, nobody's hand on it. The life is Erdass of Krukraldord, 40, bound to
+Okigerdo, and the page's own row says so (`-DBOND`). Thirteen of the 32 come
+back refused by the world - "could not eat: nothing to do it with" - where the
+free life's month has three: what a bound life at 128 is like today.
+
+`WantBound` is not in the file, as the first section says, so the same tape
+replayed without it (`Replay.Bound.AsFree`) is REFUSED - exit 1, one wrong
+taking: the tape says Erdass was taken up and a host asking for whoever comes
+offers Dokdahum - and the month it prints on the way is Dokdahum's, exactly
+`Replay.Climate`'s four digests: the thirty-two intents are the same, who
+lives them is the host's rule. That entry is the control, and it is held to
+the refusal (`-DWRONG`), so a replay that read the rule from the tape and ran
+clean would fail it. The first month the
+owner plays bound in a build whose host asks for it replaces this file, as
+the real month replaced the 14.10 stand-in.

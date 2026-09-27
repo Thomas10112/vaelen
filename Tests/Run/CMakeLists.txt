@@ -238,6 +238,52 @@ add_test(NAME Atlas.Keys128
           -P ${CMAKE_CURRENT_LIST_DIR}/ReplayPlayed.cmake)
 set_tests_properties(Atlas.Keys128 PROPERTIES TIMEOUT 1800 COST 2000)
 
+# Section 27 step 2: a month of a BOUND life, the premise of the game, held by
+# an entry before anybody has played one in Unreal. A stand-in written by
+# --stand with --want-bound 1 on the climate world (thirty days, played by
+# nobody: Streams/README.md), replayed with -DWANTBOUND=1 - the rule is the
+# host's and is TOLD to the replay, as --stream and --keys are. Erdass is bound
+# to Okigerdo, and the page's own row says so (-DBOND); 13 of 32 intents come
+# back refused by the world where the free life's month has 3, most of them
+# "could not eat: nothing to do it with" - what a bound life at 128 is like
+# today, pinned rather than argued. The climate line is Replay.Climate's:
+# the same world on the same day, another life in it.
+add_test(NAME Replay.Bound
+  COMMAND ${CMAKE_COMMAND}
+          -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DSTREAM=${PROJECT_SOURCE_DIR}/Tests/Run/Streams/aelvor128-bound-stand-2026-09-27.stream
+          -DOUT=${CMAKE_CURRENT_BINARY_DIR}/replay-bound.json
+          -DERA=--climate
+          -DWANTBOUND=1
+          "-DSAME=replay: 32 of 32 answered identically, 30 of 30 days"
+          "-DPLAYED=LogVaelenPlay: AELVOR 128 seed 41454c564f52: played Erdass (person 3610, region 2) 30 days, 32 intents (19 taken, 13 refused by the world, 0 dropped at the door), state fa3a942904aaeb26, log 0ccf228b6b72f976, life 8818b318eb76441b, panel 41268c2b1206c449"
+          "-DVERBS=LogVaelenPlay: verbs work 8 rest 9 eat 9 wait 1 speak 2 give 1 take 1 move 1"
+          "-DBOND=bound to Okigerdo since year 420"
+          "-DCLIMATE=LogVaelenClimate: AELVOR 128 seed 41454c564f52: day 31 of year 420, spring; coldest -20 warmest 29; frost 6844 of 16384 tiles, 7652 growing; hard winters 12864, cold deaths 1589; climate bf25b48823dbd83a"
+          -P ${CMAKE_CURRENT_LIST_DIR}/ReplayPlayed.cmake)
+set_tests_properties(Replay.Bound PROPERTIES TIMEOUT 1800 COST 2000)
+
+# THE CONTROL (ADR-0149): the same tape replayed WITHOUT the rule is REFUSED
+# - exit 1, "1 wrong ... 1 taking(s)": the recorded taking names Erdass and a
+# host asking for whoever comes offers Dokdahum - and the month it would have
+# lived is Dokdahum's, Replay.Climate's four digests exactly, since the
+# recorded intents are the same thirty-two and who lives them is the host's
+# rule alone. An entry that pinned Replay.Bound without this one could not
+# tell a replay that reads WantBound from the tape (which would run clean
+# here) from one that is told it.
+add_test(NAME Replay.Bound.AsFree
+  COMMAND ${CMAKE_COMMAND}
+          -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DSTREAM=${PROJECT_SOURCE_DIR}/Tests/Run/Streams/aelvor128-bound-stand-2026-09-27.stream
+          -DOUT=${CMAKE_CURRENT_BINARY_DIR}/replay-bound-free.json
+          -DERA=--climate
+          "-DWRONG=32 answered, 1 wrong, 30 day(s), 1 taking(s), 0 left, refused 0"
+          "-DSAME=replay: 32 of 32 answered identically, 30 of 30 days"
+          "-DPLAYED=LogVaelenPlay: AELVOR 128 seed 41454c564f52: played Dokdahum (person 3588, region 2) 30 days, 32 intents (29 taken, 3 refused by the world, 0 dropped at the door), state a56776c2166d6de1, log 1ae67b101be35733, life 7406a01f544161f6, panel a24da97168077746"
+          "-DVERBS=LogVaelenPlay: verbs work 8 rest 9 eat 9 wait 1 speak 2 give 1 take 1 move 1"
+          -P ${CMAKE_CURRENT_LIST_DIR}/ReplayPlayed.cmake)
+set_tests_properties(Replay.Bound.AsFree PROPERTIES TIMEOUT 1800 COST 2000)
+
 add_test(NAME Replay.Walked
   COMMAND ${CMAKE_COMMAND}
           -DATLAS=$<TARGET_FILE:VaelenAtlas>

@@ -136,7 +136,9 @@ TASK (27.2) : the colony question measured — DONE 2026-09-27 (headless VALIDAT
   first. The subsystem's world has no colony: region 26 (culture 1, bits 7) holds 119 bound, 45 in
   the window, and TakeUp(WantBound=1) is offered person 3580. Run.Bound pins both worlds (two 128
   worlds, Run.Climate's cost). Three fixes ranked for the owner in ROADMAP "Section 27 step 2
-  measured"; none applied.
+  measured"; none applied. Replay.Bound: a bound life's month (Erdass, bound to Okigerdo) written by --stand
+  --want-bound 1 and replayed with the rule TOLD (-DWANTBOUND=1, -DBOND the page's row); Replay.Bound.AsFree
+  the control (the same tape, free: Replay.Climate's digests). Gate 19 in run_gates.sh.
 
 TASK (22.03) : check_cook.py — DONE 2026-09-27 (VALIDATED for the script). A staged package
   checked against the assets the code names by string (derived from Source: the four basic shapes
