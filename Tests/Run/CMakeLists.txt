@@ -38,6 +38,9 @@ set_tests_properties(Run.Aelvor PROPERTIES TIMEOUT 3600)
 # 18.07: two AELVOR 128/300+120 worlds, the climate off and on; the cost is
 # the gate's, written down.
 set_tests_properties(Run.Climate PROPERTIES TIMEOUT 3600)
+# Section 27 step 2: two more AELVOR 128/300+120 worlds, the colony off and on;
+# the same cost, written down the same way.
+set_tests_properties(Run.Bound PROPERTIES TIMEOUT 3600)
 
 # ── 14.10: a month played by hand, replayed by no hand ───────────────────────
 # Tools/Atlas replays the checked-in stream into a fresh world of the STREAM's

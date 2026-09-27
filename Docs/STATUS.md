@@ -129,6 +129,15 @@ TASK        : 19.10 — DONE 2026-09-25 (headless); its engine half UNVERIFIED u
               the eight verbs from it (FKey(FName), a listed belief). Three sabotages
               caught - two of them redone after an unbuildable first attempt.
 
+TASK (27.2) : the colony question measured — DONE 2026-09-27 (headless VALIDATED; the fix is the
+  owner's). Play+Colony offers nobody bound at 128 because Aelvor::Begin details the busiest region
+  WITH ORE (75) instead of the busiest (26), and region 75 is 1359 people of culture 3, whose customs
+  allow no bondage at all (NormSet::BondageAllowed 0); every entry in Bondage.cpp asks the culture
+  first. The subsystem's world has no colony: region 26 (culture 1, bits 7) holds 119 bound, 45 in
+  the window, and TakeUp(WantBound=1) is offered person 3580. Run.Bound pins both worlds (two 128
+  worlds, Run.Climate's cost). Three fixes ranked for the owner in ROADMAP "Section 27 step 2
+  measured"; none applied.
+
 TASK (22.03) : check_cook.py — DONE 2026-09-27 (VALIDATED for the script). A staged package
   checked against the assets the code names by string (derived from Source: the four basic shapes
   and the engine materials), the default map, the configs, the executable; Game assets optional and

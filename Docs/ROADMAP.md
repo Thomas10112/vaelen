@@ -8388,7 +8388,9 @@ LFS unless a playtest names the look as the blocker.
 THE RISKS, first three: 24 engine files never compiled and 112 beliefs (the
 sittings, pinned by subject, REPORT not repair); the premise not in the
 world as measured (WantBound=1 with the colony offers nobody at 128 - a
-measured timebox, then the cheapest fix); the fun unproven (a page that
+measured timebox, then the cheapest fix; MEASURED 2026-09-27, below: the
+colony's ground has a culture that binds nobody, and the subsystem's world,
+which has no colony, offers person 3580 bound); the fun unproven (a page that
 reads "X ate" sixteen times after 30 days - LivelyFrom with a prediction,
 then strangers).
 
@@ -9119,3 +9121,86 @@ come back refused, the cooker did not follow the CDO's finder: the config
 line `+DirectoriesToAlwaysCook=(Path="/Engine/BasicShapes")` under
 `[/Script/UnrealEd.ProjectPackagingSettings]` in DefaultGame.ini is the
 fix, and a config line is the owner's (section 27).
+
+### Section 27 step 2 measured, 2026-09-27: why Play+Colony offers nobody bound at 128 - the colony's ground, not the world
+
+The timebox was a day; the answer took an afternoon and one instrument. The
+question section 27 asked (step 2, and the second of its three risks): the
+premise of the game is a bound life, `StartRules{}` asks for one, and the
+40-second Atlas cell that carries the colony (Play+Stream+Lively+Colony, the
+`full-*` goldens) is offered nobody at 128. WHY, measured on the two worlds
+of the question, from one seed, with a scratch probe against the release
+libraries and then `Run.Bound` (`Tests/Run/Test_Bound.cpp`), which pins it:
+
+| world (AELVOR 128, 300+120 years) | detailed region | its culture / bondage bits | alive | aged 16-40 | bound | bound in the window | `TakeUp(WantBound=1)` |
+|---|---|---|---|---|---|---|---|
+| Play+Stream (the SUBSYSTEM's world, no colony) | 26, the busiest | 1 / 7 (debt, capture, birth) | 1428 | 522 | 119 | 45 | person 3580, bound |
+| Play+Stream+Colony (the Atlas cell; Lively changes nothing) | 75, the busiest WITH ORE, the colony founded there | 3 / 0 (none) | 1359 | 503 | 0 | 0 | nobody |
+
+**THE CAUSE IS TWO RULES MEETING.** `Aelvor::Begin` details one region for
+the pre-play years: the busiest, or with `Options::Colony` the busiest that
+has ore under it, because a colony is people put on rock (`BusiestWithOre`,
+copied from the Atlas). On AELVOR 128 those are different regions, 26 and
+75, and the two belong to different cultures. A culture's customs
+(`NormSet::BondageAllowed`, 05.04) say which bondage institutions it
+allows, each of the three drawn at 500 per mille from the culture's
+identity: of AELVOR's five cultures, culture 1 allows all three, culture 2
+allows debt and birth, and cultures 3 and 4 allow NONE. Every entry
+`Bondage.cpp` has asks the culture first - debt (`Allows(Culture, Debt)`),
+birth (`Allows(Culture, Birth)`), capture - and the promotion path binds
+only what an earlier detail left in the region's strata, which a first
+detail has none of. Region 75 is 1359 people of culture 3: nobody there can
+be bound by any rule the kernel has, in 120 years or a thousand. Not the
+size (the window holds 503 lives), not the age window, not the colony's
+hands (1100 of them, 463 lifted): the ground the colony rule chose, and
+the customs of the people on it. The Lively cell reads the same numbers.
+
+**AND THE PRODUCT'S WORLD IS NOT THAT CELL.** `VaelenWorldSubsystem::Begin`
+asks for Play and Stream and never the colony (`Source/VaelenGame/Private/VaelenWorldSubsystem.cpp`),
+so the game's world details region 26, where 119 are bound after 120 years
+and 45 of them are inside the default window: the premise IS in the
+product's world as it is built today. Only the host's `Rules.WantBound = 0`
+line (twice: Begin and the load path) hides it, and that line is the
+owner's by this section's own rule. Section 27's risk sentence ("the
+premise not in the world as measured") was written from the Atlas cell and
+is narrower than it read: it is the COLONY cell that lacks the premise.
+
+**THE CHEAPEST FIXES, for the owner to choose from - none applied, none
+moves a pin here:**
+
+1. *Ship the world as measured*: the subsystem's `WantBound = 1` with the
+   printed fallback to 0 that step 2 already names. Two host lines. The
+   game then starts person 3580 of region 26, bound, aged in the window; a
+   map that holds nobody bound falls back and says so in the log. No kernel
+   digest moves. This is the fix section 27 assumed and it is enough for
+   S3's "a bound life" clause.
+2. *If the colony must be in the shipped world*: `BusiestWithOre` picks,
+   among the ore regions, the busiest whose MAJORITY CULTURE allows debt
+   bondage. Measured at the moment of the choice (year 300): region 63
+   (921 people, culture 2) instead of 75 (1385). One kernel rule in
+   `Aelvor.cpp` and the Atlas's copy; every Colony world's digests move
+   (the `full-*` goldens, `Run.Aelvor`'s colony day, the gate cells), so it
+   is a re-freeze commit in the 18.10 form and the owner's to authorise.
+3. *Or the colony holds its hands*: 11.04 already says "a region that
+   keeps people bound with nobody to hold them is what a colony IS", and
+   `BondState::Holder = 0` means the region itself. Founding a colony
+   could bind its hands to the region (a Promotion entry with holder 0,
+   custom or no custom). A design change to Bondage or Mining with a
+   Phase 11 gate behind it; the most game-like answer and the most
+   expensive.
+
+The instrument stays: `Run.Bound` costs two 128 worlds, which `Run.Climate`
+already pays on every leg (measured here: 42 s on gcc release, 82 s on gcc
+debug, timeout 3600 as its sibling's), and pins the region, the culture, its bits, the
+seven counts and the person, so that the day one of the three fixes lands
+the suite names what moved. Sabotaged on purpose on the release build
+(ADR-0149, the variable kept): the expected bits of region 75 set to 1 -
+`R.BondageBits == 1` refused with the actual 0; the expected person set to
+3579 - refused with 3580; and the control's `WantBound = 0` set to 1 -
+`Taken != 0` refused, since region 75 offers nobody bound. All three back; `Run.Bound` 2 of 2 on release and debug after, `verify_fast`
+clean. CI: run 328 on c8ac9bf was in progress when this pushed and is
+cancelled by it, as 327 was; the run on this commit is the one to read.
+
+The `--empty` play was the wrong instrument for this question and is
+written down as such: it takes nobody up by design (14.03), so its "0
+taking(s)" says nothing about the offer. The probe read the offer.
