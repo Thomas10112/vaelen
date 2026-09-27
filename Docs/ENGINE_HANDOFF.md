@@ -417,10 +417,15 @@ side is redesigned. The standing rule holds: REPORT, do not repair.
    headless twin of the wrong world, and (in 19.11's scenery) a line MSVC
    refuses. 19.06's commit as it stood would have spent the sitting on
    those. 19.11b carries 19.06, 19.10 and 19.11 together, so S3's steps run
-   on THIS build if S2's do - no second build.
+   on THIS build if S2's do - no second build. Then the shim was audited
+   against UE 5.6 (2026-09-27, ROADMAP "The shim audited"): the engine's
+   Engine/Engine.h only forward-declares UMaterial, and VaelenLand.cpp
+   handed `GEngine->VertexColorMaterial` to `SetMaterial` without including
+   Materials/Material.h - MSVC would have refused the conversion. The
+   commit of the audit carries that include (and 19.11b); build IT:
    ```
    git fetch origin claude/vaelen-master-prompt-aw7zqj
-   git checkout $(git log origin/claude/vaelen-master-prompt-aw7zqj --grep="^19.11b: " -1 --format=%H)
+   git checkout $(git log origin/claude/vaelen-master-prompt-aw7zqj --grep="^The shim audited" -1 --format=%H)
    git rev-parse HEAD
    ```
    The FIRST line of what you bring back is that `rev-parse`.
@@ -480,10 +485,10 @@ so the log is adopted the day it lands - and the ledger gains the row `s2`.
 
 ## PHASE 19 - sitting S3 (task 19.11): the world drawn is the world built
 
-AFTER S2 has closed - and on S2's own build when that build is 19.11b's
-commit or later, since it carries 19.11: skip step 1 then. Otherwise the
-commit of 19.11b (found by subject, `^19.11b: `), rev-parse first, the
-standing rule as always.
+AFTER S2 has closed - and on S2's own build when that build is the shim
+audit's commit or later, since it carries 19.11 and 19.11b: skip step 1
+then. Otherwise the commit of the audit (found by subject, `^The shim
+audited`), rev-parse first, the standing rule as always.
 
 1. Build as for 14.08; first error verbatim and its module.
 2. Launch with the walk mode (the `?game=` URL of S2), then `Vaelen.Walk 128

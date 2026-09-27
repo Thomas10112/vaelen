@@ -27,8 +27,8 @@ public:
 	void SetRelativeRotation(const FRotator& How);
 	void SetWorldRotation(const FRotator& How);
 	void SetMobility(EComponentMobility Mobility);
-	void SetCollisionEnabled(ECollisionEnabled Enabled);
-	void SetCastShadow(bool bCast);
+	// SetCollisionEnabled and SetCastShadow are UPrimitiveComponent's
+	// (Components/PrimitiveComponent.h) since the shim audit of 2026-09-27.
 	void DestroyComponent(bool bPromoteChildren = false);
 	void RegisterComponent();
 	void SetWorldLocation(const FVector& Where);

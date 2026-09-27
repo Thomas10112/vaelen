@@ -73,9 +73,17 @@ namespace
 		return Row;
 	}
 
-	/// The land and the sky of this level, spawned by Vaelen.Walk; null before it.
+	/// The land and the sky of this level, spawned by Vaelen.Walk; null before
+	/// it - and null for no world at all, tested BEFORE the iterator: the
+	/// engine's TActorIterator asserts on a null world in its constructor
+	/// (the shim audit of 2026-09-27), and a console command can be run with
+	/// none.
 	AVaelenLand* LandOf(UWorld* World_)
 	{
+		if (World_ == nullptr)
+		{
+			return nullptr;
+		}
 		for (TActorIterator<AVaelenLand> It(World_); It; ++It)
 		{
 			return *It;
@@ -214,6 +222,10 @@ namespace
 
 	AVaelenScenery* SceneryOf(UWorld* World_)
 	{
+		if (World_ == nullptr)
+		{
+			return nullptr;
+		}
 		for (TActorIterator<AVaelenScenery> It(World_); It; ++It)
 		{
 			return *It;

@@ -8,6 +8,7 @@
 #include "Components/SkyAtmosphereComponent.h"
 #include "Components/SkyLightComponent.h"
 #include "Engine/Engine.h"
+#include "Materials/Material.h"
 #include "Engine/HitResult.h"
 #include "Engine/World.h"
 #include "ProceduralMeshComponent.h"

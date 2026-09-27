@@ -3,7 +3,7 @@
 // stands for UE 5.6's ProceduralMeshComponent.h (plugin ProceduralMeshComponent).
 #pragma once
 
-#include "Components/SceneComponent.h"
+#include "Components/PrimitiveComponent.h"
 #include "CoreMinimal.h"
 #include "Engine/EngineTypes.h"
 
@@ -22,7 +22,8 @@ struct FProcMeshTangent
 /// A mesh built from arrays at run time. Believed from UE 5.x: eight
 /// parameters and a defaulted ninth, collision decided per section - the
 /// argument count is exactly what a mutation of 19.02 gets wrong.
-class UProceduralMeshComponent : public USceneComponent
+/// UMeshComponent stands between in the engine.
+class UProceduralMeshComponent : public UPrimitiveComponent
 {
 public:
 	bool bUseComplexAsSimpleCollision = true;
@@ -40,8 +41,6 @@ public:
 									   const TArray<FVector>& Normals, const TArray<FVector2D>& UV0,
 									   const TArray<FLinearColor>& VertexColors,
 									   const TArray<FProcMeshTangent>& Tangents, bool bSRGBConversion = false);
-	/// 19.11b BELIEF: UPrimitiveComponent's, per channel, for the whole component.
-	void SetCollisionResponseToChannel(ECollisionChannel Channel, ECollisionResponse NewResponse);
 	void ClearMeshSection(int32 SectionIndex);
 	void ClearAllMeshSections();
 	void SetMeshSectionVisible(int32 SectionIndex, bool bNewVisibility);

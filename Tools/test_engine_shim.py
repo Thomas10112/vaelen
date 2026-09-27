@@ -200,6 +200,26 @@ MUTATIONS = [
         '#include "ShimProbeLand.generated.h"',
         "",
     ),
+    # The shim audit of 2026-09-27: three declarations the shim had looser
+    # than the engine, each shown to matter.
+    (
+        "audit: a shadow verb called on a light - SetCastShadow is UPrimitiveComponent's, a light is not one",
+        LAND,
+        "Sun->SetIntensity(10.0f);",
+        "Sun->SetIntensity(10.0f);\n\tSun->SetCastShadow(false);",
+    ),
+    (
+        "audit: VertexColorMaterial handed to SetMaterial without Materials/Material.h - Engine.h only forward-declares UMaterial",
+        LAND,
+        '#include "Materials/Material.h"\n',
+        "",
+    ),
+    (
+        "audit: SetupInputComponent called from outside the controller - protected in the engine",
+        INPUT,
+        "void AShimProbeController::SetupInputComponent()",
+        "static void Poke(APlayerController* P)\n{\n\tP->SetupInputComponent();\n}\nvoid AShimProbeController::SetupInputComponent()",
+    ),
 ]
 
 

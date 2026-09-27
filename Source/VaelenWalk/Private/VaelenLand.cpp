@@ -12,6 +12,7 @@
 #include "Engine/HitResult.h"
 #include "Engine/World.h"
 #include "Materials/MaterialInterface.h"
+#include "Materials/Material.h"
 #include "ProceduralMeshComponent.h"
 #include "Engine/GameInstance.h"
 #include "EngineUtils.h"

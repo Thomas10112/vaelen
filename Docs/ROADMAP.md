@@ -8710,3 +8710,60 @@ fence, the module lists, the status ledger; Scene and Atlas entries green
 on gcc debug and release with `Replay.Climate`'s three scene lines
 unmoved. ENGINE_HANDOFF: S2 builds the commit of 19.11b, and S3 runs on
 that build. Two sittings' worth of dead ends, found by reading.
+
+### The shim audited, 2026-09-27: 43 headers read against UE 5.6 by 52 agents - 4 confirmed, 2 refuted, all four applied
+
+19.11b's review had just shown what one false declaration in the shim costs:
+`ClearMeshSection` parsed here and does not exist there, and the sitting
+that would have found it is the owner's. So before S2 the whole of
+Tools/EngineShim was read against the engine's own headers - one auditor
+per shim header (43), then three refuters on each claim, an audit of what
+is claimed and of what is missing. Six claims came out; two were refuted
+on reading (an `FString ==` case-insensitive in the engine and sensitive in
+the shim, harmless because every comparison of ours is of equal spellings;
+the other a duplicate of the material finding keyed on another file). The
+four that stood, each now applied AND each now a mutation of
+Tools/test_engine_shim.py (27, from 24) that the pristine tree parses and
+the broken one does not:
+
+1. **`TActorIterator` on a null world is a fatal assert in the engine**, in
+   the constructor, before any `operator bool` is asked (medium). The shim
+   stood it and answered false, and two console commands of VaelenWalk -
+   `Vaelen.Probe` and `Vaelen.Scene` - built the iterator (`LandOf`,
+   `SceneryOf`) BEFORE testing the world for null. Both helpers now return
+   null on a null world, first; the shim's constructor says the
+   precondition and takes `const UWorld*` as the engine's does. A parse
+   cannot see the order of a test and a construction, so this one is
+   documented in the shim rather than mutated.
+2. **`SetCollisionEnabled`, `SetCastShadow` and the channel responses are
+   `UPrimitiveComponent`'s**, and the shim had them on every
+   `USceneComponent` - so a call on a light, a fog, a camera or a spring
+   arm parsed here and fails there (low). New
+   `Tools/EngineShim/Components/PrimitiveComponent.h`; the ISM, the capsule
+   and the procedural mesh derive from it (the engine's intermediate
+   classes named in comments, not shimmed); the lights, the sky, the
+   fog, the camera and the arm stay scene components. Mutation:
+   `Sun->SetCastShadow(false)` on the probe's directional light - caught.
+3. **`Engine/Engine.h` only forward-declares `UMaterial`** in the engine
+   (medium); the shim's included Materials/Material.h, so the three files
+   that hand `GEngine->VertexColorMaterial` (a `TObjectPtr<UMaterial>`) to
+   `SetMaterial` (a `UMaterialInterface*`) would compile here and not
+   under MSVC, where the derived-to-base conversion needs the complete
+   type. The shim's Engine.h forward-declares now, and VaelenLand.cpp,
+   VaelenScenery.cpp and the probe's ShimProbeLand.cpp include
+   Materials/Material.h themselves. Mutation: that include removed from
+   the probe - caught. THIS IS THE ONE THAT WOULD HAVE COST S2: 19.06's
+   land is one of the three files.
+4. **`APlayerController::SetupInputComponent` is protected** in the engine
+   and was public in the shim (low): an override is fine either way, a
+   call from outside a controller is not. Protected now. Mutation: a free
+   function calling it - caught.
+
+Held after: 25 TUs parse against the tightened shim; the shim self-test
+27 mutations all caught, control clean, the reverse control still
+refusing; the ledger 130 beliefs, no name added and none struck (the
+verbs moved between shim classes are the same names); the fence, the
+module lists, the status ledger, the census 572 sites; the 17 Kernel
+entries; verify_fast clean. Nothing of the kernel moved. S2 builds THIS
+commit now, not 19.11b's, for finding 3; ENGINE_HANDOFF step 0 and
+s2.session's `head` say so.

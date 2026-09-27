@@ -4,8 +4,13 @@
 #include "CoreMinimal.h"
 #include "Engine/Canvas.h"
 #include "Engine/World.h"
-#include "Materials/Material.h"
 #include "UObject/Object.h"
+
+/// Forward-declared and NOT included, as in the engine's Engine/Engine.h: a
+/// file that turns VertexColorMaterial into a UMaterialInterface* needs
+/// Materials/Material.h itself, or MSVC sees an incomplete UMaterial (the
+/// shim audit of 2026-09-27; this header used to include it and hid that).
+class UMaterial;
 
 class UEngine : public UObject
 {

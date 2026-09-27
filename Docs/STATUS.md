@@ -129,6 +129,16 @@ TASK        : 19.10 — DONE 2026-09-25 (headless); its engine half UNVERIFIED u
               the eight verbs from it (FKey(FName), a listed belief). Three sabotages
               caught - two of them redone after an unbuildable first attempt.
 
+TASK (shim)  : the shim audited — DONE 2026-09-27. Every header of Tools/EngineShim read
+  against UE 5.6 by 52 agents (43 auditors, three refuters per claim): 4 confirmed and applied,
+  2 refuted. The one that mattered: the engine's Engine/Engine.h only FORWARD-DECLARES UMaterial,
+  the shim included it, and the three files handing GEngine->VertexColorMaterial to SetMaterial
+  (VaelenLand.cpp among them - S2's land) would have failed under MSVC and parsed here. Also:
+  TActorIterator asserts on a null world in its constructor and two console commands built it
+  before testing the world; SetCollisionEnabled/SetCastShadow are UPrimitiveComponent's, not every
+  scene component's; SetupInputComponent is protected. Three new mutations of the shim self-test
+  (27), each caught. S2 builds the audit's commit. ROADMAP "The shim audited, 2026-09-27".
+
 TASK (19.09b): 19.09b — DONE 2026-09-25. The review's findings: one rule for the paint and the count.
 
               MeasureSky counted grass on lakes and rivers that ApplyClimate never
@@ -1176,8 +1186,8 @@ COMPLETED
   (debug), so the entry stays on windows-msvc-debug and clause (e) names eight legs
 ✓ ADR-0136 to ADR-0139
 
-NEXT (2026-09-26)
-→ The owner's sittings S1 (close: the log), S2 (19.06), S3 (19.11), S4 (19.12); the
+NEXT (2026-09-27)
+→ The owner's sittings S1 (close: the log), S2 (19.06, on the shim audit's commit), S3 (19.11), S4 (19.12); the
   owner's decisions on ROADMAP section 27 and on Q2 (WalkKeys). Headless meanwhile:
   Phase 20's next soak cells once the owner says which wiring ships (Lively, the
   colony, 256), 19.12's replay entries the day the S4 stream lands.
@@ -1202,8 +1212,9 @@ TESTS
 ✓ 181 CTest entries on linux-gcc-release, every gate of fifteen phases, Run.Checkpoint among them
 ✓ CI: 10 jobs - six Linux presets, clang-format 18, Windows MSVC, macOS AppleClang, and the engine
   modules parse (clang 18) that builds nothing and reads everything
-✓ verify_fast: purity 216 files 0 violations · shim self-test 13 mutations · 13 translation units
-  parsed · 4 wirings of AELVOR agree · UI fence 8 files, 16 mutations · AND, since 2026-09-21,
+✓ verify_fast (counts of 2026-09-27): purity clean · shim self-test 27 mutations · 25 translation
+  units parsed · shim ledger 130 beliefs · 4 wirings of AELVOR agree · UI fence 33 files · frozen
+  census 572 sites · AND, since 2026-09-21,
   every TU the change reaches COMPILED, syntax-only, with the build's own flags (ADR-0148). The
   six checks above it all read the source as text; none had ever handed a file to a compiler, and
   two commits shipped that would not build while all six were green. It refuses rather than skips

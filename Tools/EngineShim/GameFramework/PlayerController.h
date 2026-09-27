@@ -16,7 +16,6 @@ public:
 	UInputComponent* InputComponent = nullptr;
 	bool bShowMouseCursor = false;
 
-	virtual void SetupInputComponent();
 	/// Where the person at the keyboard is looking from and at. 15.10 reads it
 	/// on the day turn, which is the only moment this module reads anything of
 	/// the frame - there is no Tick here and the fence refuses one.
@@ -35,4 +34,10 @@ public:
 	void Possess(APawn* InPawn);
 	FRotator GetControlRotation() const;
 	void SetControlRotation(const FRotator& NewRotation);
+
+protected:
+	/// Protected in the engine (GameFramework/PlayerController.h): overridden
+	/// by a controller, called by nobody outside one. Public here until the
+	/// shim audit of 2026-09-27.
+	virtual void SetupInputComponent();
 };
