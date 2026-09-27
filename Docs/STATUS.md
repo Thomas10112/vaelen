@@ -129,6 +129,12 @@ TASK        : 19.10 — DONE 2026-09-25 (headless); its engine half UNVERIFIED u
               the eight verbs from it (FKey(FName), a listed belief). Three sabotages
               caught - two of them redone after an unbuildable first attempt.
 
+TASK (22.03) : check_cook.py — DONE 2026-09-27 (VALIDATED for the script). A staged package
+  checked against the assets the code names by string (derived from Source: the four basic shapes
+  and the engine materials), the default map, the configs, the executable; Game assets optional and
+  noted. Kernel.CookSelfTest, fourteen controls. The UAT BuildCookRun line is S4's step 0 in
+  ENGINE_HANDOFF. ROADMAP "22.03".
+
 TASK (22.02) : a listing reads heads and trailers — DONE 2026-09-27 (headless VALIDATED, engine
   UNVERIFIED). ReadCheckpointHeading reads a container's head and table from its first two kilobytes;
   ICheckpointStore::ReadPart seeks (stdio: fseek; engine: FArchive, seven beliefs, 147); DescribeSave

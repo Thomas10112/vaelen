@@ -9089,3 +9089,33 @@ control (a half file under a plain name lists with no version) caught it.
 The heading now says where the last section ends (`PayloadEnd`), and a
 file shorter than its own table claims is listed by name and size with
 every field 0. Run.Store holds the half file beside the stray and the cut.
+
+### 22.03, 2026-09-27: `check_cook.py` - a package checked against what the code asks of it, and the UAT line
+
+Section 27's step 7, the last headless item before S4's package. A package
+that starts and draws no house is worse than one that refuses to start: the
+scenery finds its shapes by NAME at construction (`/Engine/BasicShapes/Cube`,
+ConstructorHelpers), the ground paints with the engine's vertex-colour
+material when M_VaelenTile is not on this disk, the default map is the
+engine's Entry - strings in .cpp files, none of them an asset the cooker can
+see from a map. `Tools/check_cook.py <staged directory>` reads the two
+manifests UnrealAutomationTool stages with every build (one line per file,
+UFS and NonUFS) and refuses a package missing any file the code names.
+
+What is required is DERIVED, not listed: every `/Engine/...` literal the
+engine modules' sources name (today the four basic shapes, their material,
+the vertex-colour, grid and default materials) as `Engine/Content/<path>.uasset`;
+the GameDefaultMap of DefaultEngine.ini as a `.umap`; the three
+Config/Default*.ini and the .uproject; an executable, Development or
+Shipping by name. Every `/Game/...` literal is optional and noted absent
+(the code falls back). Backslashes, case and a manifest named instead of
+its folder are all the same package. `Kernel.CookSelfTest`: the complete
+package accepted, each required file missing refused by name, no executable
+refused, the Shipping name accepted, the optional asset a note, a folder
+without manifests refused as not a staged build - fourteen controls.
+
+The UAT line and the check are ENGINE_HANDOFF's S4 step 0. If the shapes
+come back refused, the cooker did not follow the CDO's finder: the config
+line `+DirectoriesToAlwaysCook=(Path="/Engine/BasicShapes")` under
+`[/Script/UnrealEd.ProjectPackagingSettings]` in DefaultGame.ini is the
+fix, and a config line is the owner's (section 27).

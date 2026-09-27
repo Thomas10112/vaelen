@@ -539,6 +539,22 @@ AFTER S3. The build of 22.01's commit or later (found by subject,
 `^22.01: `), rev-parse first, the standing rule as always. Two things are
 new at launch and cost no typing: the title page, and Escape.
 
+0. THE PACKAGE (22.03), once the editor build of step 1 is green - the
+   Development package a stranger will run, from the engine's own tool:
+   ```
+   "<UE_5.6>\Engine\Build\BatchFiles\RunUAT.bat" BuildCookRun -project="<repo>\Vaelen.uproject" -platform=Win64 -clientconfig=Development -build -cook -stage -pak -archive -archivedirectory="<somewhere>\VaelenPackage"
+   python Tools\check_cook.py "<somewhere>\VaelenPackage\Windows"
+   ```
+   Bring back UAT's last twenty lines (`BUILD SUCCESSFUL` or the first
+   error) and check_cook's lines verbatim. It refuses a package missing any
+   file the code names by string - the four basic shapes above all, which
+   no map references. If they are refused, the line
+   `+DirectoriesToAlwaysCook=(Path="/Engine/BasicShapes")` under
+   `[/Script/UnrealEd.ProjectPackagingSettings]` in Config/DefaultGame.ini
+   is the fix, and it is yours to add (a config line, section 27); then
+   cook again. `Vaelen\Binaries\Win64\Vaelen.exe` in the archive is what
+   steps 2-6 run from the title page - `-game` is implied, and the console
+   opens with the tilde as in the editor.
 1. Build as for 14.08; first error verbatim and its module. 22.01 touches
    VaelenUI (the controller, the HUD, the walk controller), VaelenGame (the
    subsystem) and VaelenWalk (Vaelen.Walk); seventeen beliefs are compiled

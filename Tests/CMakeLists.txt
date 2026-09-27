@@ -89,6 +89,12 @@ if(Python3_Interpreter_FOUND)
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_shim_ledger.py)
   add_test(NAME Kernel.ShimLedgerSelfTest
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_shim_ledger.py --self-test)
+  # 22.03: a packaged build checked against the assets the code names by
+  # string (the basic shapes, the default map, the configs, the executable),
+  # from UAT's staged manifests. The check itself needs a package; its
+  # controls do not.
+  add_test(NAME Kernel.CookSelfTest
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_cook.py --self-test --root ${PROJECT_SOURCE_DIR})
   # 19.02, ADR-0157: a module is named in six places and nothing held any two
   # of them together; VaelenPresentation had already fallen out of both
   # targets. ModuleLists refuses any disagreement, and its self-test has the
