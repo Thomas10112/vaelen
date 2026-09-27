@@ -421,11 +421,17 @@ side is redesigned. The standing rule holds: REPORT, do not repair.
    against UE 5.6 (2026-09-27, ROADMAP "The shim audited"): the engine's
    Engine/Engine.h only forward-declares UMaterial, and VaelenLand.cpp
    handed `GEngine->VertexColorMaterial` to `SetMaterial` without including
-   Materials/Material.h - MSVC would have refused the conversion. The
-   commit of the audit carries that include (and 19.11b); build IT:
+   Materials/Material.h - MSVC would have refused the conversion. Then
+   the scene was reviewed (2026-09-27, ROADMAP "VaelenScene reviewed"):
+   the walk opened in the dark (the sun is at dawn now, in the east, on
+   the first sky line: `sun azimuth 900 elevation 0`), the land refuses
+   to build for nobody (`Vaelen.Walk` says "nobody is played ...
+   Vaelen.TakeUp first" instead), the walker's 106 cm is one constant,
+   and the day's repaint no longer rebuilds the near chunks. The commit
+   of the review carries all of it; build IT:
    ```
    git fetch origin claude/vaelen-master-prompt-aw7zqj
-   git checkout $(git log origin/claude/vaelen-master-prompt-aw7zqj --grep="^The shim audited" -1 --format=%H)
+   git checkout $(git log origin/claude/vaelen-master-prompt-aw7zqj --grep="^VaelenScene reviewed" -1 --format=%H)
    git rev-parse HEAD
    ```
    The FIRST line of what you bring back is that `rev-parse`.
@@ -485,10 +491,10 @@ so the log is adopted the day it lands - and the ledger gains the row `s2`.
 
 ## PHASE 19 - sitting S3 (task 19.11): the world drawn is the world built
 
-AFTER S2 has closed - and on S2's own build when that build is the shim
-audit's commit or later, since it carries 19.11 and 19.11b: skip step 1
-then. Otherwise the commit of the audit (found by subject, `^The shim
-audited`), rev-parse first, the standing rule as always.
+AFTER S2 has closed - and on S2's own build when that build is the scene
+review's commit or later, since it carries 19.11 and 19.11b: skip step 1
+then. Otherwise the commit of the review (found by subject, `^VaelenScene
+reviewed`), rev-parse first, the standing rule as always.
 
 1. Build as for 14.08; first error verbatim and its module.
 2. Launch with the walk mode (the `?game=` URL of S2), then `Vaelen.Walk 128

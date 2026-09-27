@@ -1,6 +1,6 @@
-# VAELEN - sitting S2 (19.06, build of the shim audit's commit), 2026-09-27. 19.01, ADR-0159.
+# VAELEN - sitting S2 (19.06, build of the scene review's commit), 2026-09-27. 19.01, ADR-0159.
 #
-# Written BEFORE the log landed, as s1.session was: the owner builds the shim audit's commit (its
+# Written BEFORE the log landed, as s1.session was: the owner builds the scene review's commit (its
 # hash is `head` below, set by the commit after it, which is why the two differ by one), launches
 # the walk mode (ENGINE_HANDOFF "sitting S2"), types `Vaelen.Walk 128 120`, and the whole
 # Saved/Logs/Vaelen.log comes back with `git rev-parse HEAD` as its first line. Until the log is

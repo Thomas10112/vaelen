@@ -156,6 +156,7 @@ TABLE = {
     # 19.05: the ground digest the scene is built from (Atlas.Frozen128's),
     # asserted as the terrain test's control.
     "Tests/Scene/Test_Terrain.cpp": "WORLD",
+    "Tests/Scene/Test_Layout.cpp": "WORLD",  # the review of 2026-09-27: the layout digest asserted, not logged
     # 19.09: the Atlas's sky line (Atlas.SceneSky128), computed by a second wiring.
     "Tests/Scene/Test_Sky.cpp": "WORLD",
     # 19.04: hand-built facts for the line composer; the climate digest is

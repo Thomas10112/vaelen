@@ -129,6 +129,17 @@ TASK        : 19.10 — DONE 2026-09-25 (headless); its engine half UNVERIFIED u
               the eight verbs from it (FKey(FName), a listed belief). Three sabotages
               caught - two of them redone after an unbuildable first attempt.
 
+TASK (scene) : VaelenScene reviewed — DONE 2026-09-27. 96 agents (six lenses, three refuters a
+  claim) on Terrain, Fence, Layout, Sky and their tests: 25 findings applied, 4 refuted. The house
+  rule held 20 degrees on the axes only (27 on a diagonal): the diagonals too now, and the two
+  layout pins moved (Atlas.SceneLayout128 6917612c1344027f, Replay.Climate LAYOUT 6e23ade67f848db7,
+  counts unmoved). The walk opened in the dark (Awake 0 before the first day turn read as night):
+  SunOfLife, dawn for a life without hours, night under the horizon. The day turn's one growing
+  term (house overlaps, H^2 a region) bucketed by tile; Middle once per region; the A*'s arrays
+  kept; Repaint from kept meshes. Region 0 one rule (Scene::ChunkHolds), refused by the land.
+  Tests: 32 Scene cases from 26, every new instrument shown failing in two sabotaged builds.
+  ROADMAP "VaelenScene reviewed, 2026-09-27".
+
 TASK (shim)  : the shim audited — DONE 2026-09-27. Every header of Tools/EngineShim read
   against UE 5.6 by 52 agents (43 auditors, three refuters per claim): 4 confirmed and applied,
   2 refuted. The one that mattered: the engine's Engine/Engine.h only FORWARD-DECLARES UMaterial,
@@ -168,7 +179,8 @@ TASK (19.08): 19.08 — DONE 2026-09-25. Towns, houses, roads, figures - invente
               (stable under a later death), a road per open route, a pit per colony, a
               figure per living person at a slot of the day. At 128 (60+10 years, day
               100): 565 houses, 779 figures, 16 roads, layout 8542fca56e445402 - the same
-              from two wirings and two compilers, pinned by Atlas.SceneLayout128. Three
+              from two wirings and two compilers, pinned by Atlas.SceneLayout128 (re-pinned
+              6917612c1344027f on 2026-09-27: the slope rule on the diagonals too). Three
               failures on purpose.
 
 TASK (19.07): 19.07 — DONE 2026-09-25. The body is not an input, proven headless.
@@ -1187,7 +1199,7 @@ COMPLETED
 ✓ ADR-0136 to ADR-0139
 
 NEXT (2026-09-27)
-→ The owner's sittings S1 (close: the log), S2 (19.06, on the shim audit's commit), S3 (19.11), S4 (19.12); the
+→ The owner's sittings S1 (close: the log), S2 (19.06, on the scene review's commit), S3 (19.11), S4 (19.12); the
   owner's decisions on ROADMAP section 27 and on Q2 (WalkKeys). Headless meanwhile:
   Phase 20's next soak cells once the owner says which wiring ships (Lively, the
   colony, 256), 19.12's replay entries the day the S4 stream lands.

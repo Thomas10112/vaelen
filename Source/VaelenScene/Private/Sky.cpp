@@ -142,6 +142,7 @@ namespace Vaelen::Scene
 		if (Awake == 0u)
 		{
 			Out.Azimuth = 1800;
+			Out.Elevation = -100;
 			return Out;
 		}
 		const uint64 Into = Spent > Awake ? Awake : Spent;
@@ -151,6 +152,15 @@ namespace Vaelen::Scene
 		Out.Azimuth = 900 + static_cast<int32>(Into * 1800u / Awake);
 		Out.Elevation = Noon * SinDeg(Arc) / 10000;
 		return Out;
+	}
+
+	Sun SunOfLife(uint32 Row, uint32 Height, uint32 DayOfYear, const View::LifeView& Life)
+	{
+		if (Life.Person != 0u && Life.Alive != 0u && Life.Awake == 0u)
+		{
+			return SunOf(Row, Height, DayOfYear, 0u, 1u);
+		}
+		return SunOf(Row, Height, DayOfYear, Life.Spent, Life.Awake);
 	}
 
 	BodyWeather BodyOf(const View::LifeView& Life)
@@ -183,7 +193,7 @@ namespace Vaelen::Scene
 			S.Growing += Grass != 0u ? 1u : 0u;
 			H = HashCombine(H, HashUInt64((uint64{Snow} << 8) | Grass));
 		}
-		const Sun Now = SunOf(CentroidRow, G.Height, Climate.Day, Life.Spent, Life.Awake);
+		const Sun Now = SunOfLife(CentroidRow, G.Height, Climate.Day, Life);
 		const BodyWeather Body = BodyOf(Life);
 		S.Azimuth = Now.Azimuth;
 		S.Elevation = Now.Elevation;

@@ -207,11 +207,13 @@ add_test(NAME Replay.Climate
           "-DCLIMATE=LogVaelenClimate: AELVOR 128 seed 41454c564f52: day 31 of year 420, spring; coldest -20 warmest 29; frost 6844 of 16384 tiles, 7652 growing; hard winters 12864, cold deaths 1589; climate bf25b48823dbd83a"
           # 19.09: the scene the replay came to (--scene): the map's ground, the
           # same digest as Atlas.SceneTerrain128 since the ground is the map's;
-          # the layout on the life's day; the sky at the hour the stream left
+          # the layout on the life's day (re-pinned 2026-09-27 with the slope
+          # rule on a house's diagonals: ead1d4340f2cdd08 before, the counts
+          # unmoved); the sky at the hour the stream left
           # the played life - 1 of 16 waking hours, so the sun is 45 tenths up
           # in the east, and Dokdahum's breath shows: region 2 is below zero.
           "-DTERRAIN=LogVaelenScene: AELVOR 128 seed 41454c564f52 region all: chunks 64, vertices 1065024, triangles 2097152, z [-5000, 50636] cm, steep 0 of 2097152; terrain 105208c54e3c6ea9"
-          "-DLAYOUT=LogVaelenScene: AELVOR 128 seed 41454c564f52 layout day 31: squares 46, houses 7039 (unplaced 0), figures 1960 (company 16), roads 84 over 1236 tiles (unrouted 2), pits 0; layout ead1d4340f2cdd08"
+          "-DLAYOUT=LogVaelenScene: AELVOR 128 seed 41454c564f52 layout day 31: squares 46, houses 7039 (unplaced 0), figures 1960 (company 16), roads 84 over 1236 tiles (unrouted 2), pits 0; layout 6e23ade67f848db7"
           "-DSKY=LogVaelenScene: AELVOR 128 seed 41454c564f52 sky day 31: snow 1116 of 16384 tiles, growing 4019, sun azimuth 1012 elevation 45, breath 1 shiver 0; sky 84ceea193452087c"
           -P ${CMAKE_CURRENT_LIST_DIR}/ReplayPlayed.cmake)
 set_tests_properties(Replay.Climate PROPERTIES TIMEOUT 1800 COST 2000)

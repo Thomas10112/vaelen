@@ -8012,7 +8012,10 @@ MEASURED at AELVOR 128 after 60+10 years, day 100: 3 squares, 565 houses
 (0 unplaced), 779 figures, 16 roads over 282 tiles, layout 8542fca56e445402 -
 the same digest from Scene.Layout (Run::Aelvor's wiring), from the Atlas's own
 wiring and from the clang build; with --colony, 1 pit. Pinned by
-Atlas.SceneLayout128. Scene.Layout, 6 cases: nothing on water or in another
+Atlas.SceneLayout128. (Re-pinned 6917612c1344027f on 2026-09-27, the counts
+unmoved, when the slope rule took in a house's diagonals - and asserted by
+Scene.Layout from that day, which had only logged it: see "VaelenScene
+reviewed".) Scene.Layout, 6 cases: nothing on water or in another
 region (every house's four corners on its tile's land), no two houses
 overlapping, every road step a neighbour on land or river; houses + unplaced
 equal to the families and coarse shares counted independently, figures equal
@@ -8072,7 +8075,7 @@ the same digest from `Scene.Sky` by Run::Aelvor's wiring; `Atlas.SceneSky128Befo
 now holds the three scene lines of the recorded month too:
 
     LogVaelenScene: AELVOR 128 seed 41454c564f52 region all: chunks 64, vertices 1065024, triangles 2097152, z [-5000, 50636] cm, steep 0 of 2097152; terrain 105208c54e3c6ea9
-    LogVaelenScene: AELVOR 128 seed 41454c564f52 layout day 31: squares 46, houses 7039 (unplaced 0), figures 1960 (company 16), roads 84 over 1236 tiles (unrouted 2), pits 0; layout ead1d4340f2cdd08
+    LogVaelenScene: AELVOR 128 seed 41454c564f52 layout day 31: squares 46, houses 7039 (unplaced 0), figures 1960 (company 16), roads 84 over 1236 tiles (unrouted 2), pits 0; layout 6e23ade67f848db7 (ead1d4340f2cdd08 until 2026-09-27: the diagonals)
     LogVaelenScene: AELVOR 128 seed 41454c564f52 sky day 31: snow 1116 of 16384 tiles, growing 4475, sun azimuth 1012 elevation 45, breath 1 shiver 0; sky 8f48a6844f33fc3f
 
 - the terrain digest is `Atlas.SceneTerrain128`'s, since the ground is the
@@ -8767,3 +8770,157 @@ module lists, the status ledger, the census 572 sites; the 17 Kernel
 entries; verify_fast clean. Nothing of the kernel moved. S2 builds THIS
 commit now, not 19.11b's, for finding 3; ENGINE_HANDOFF step 0 and
 s2.session's `head` say so.
+
+### VaelenScene reviewed, 2026-09-27: 96 agents on 19.05 to 19.09 - 25 findings applied, 4 refuted, two pins moved
+
+The scene module (Terrain, Fence, Layout, Sky; 2,126 lines of code and
+headers, 2,223 of tests, after the review) read by six finders, one lens each - integer math,
+determinism, the day-turn's cost, the strength of the tests, the contract
+against the docs, the edges the engine reaches - and every claim put to
+three refuters (code as written, the numbers re-measured, the docs and
+the pins). 29 distinct claims; 25 stood, 4 fell. All 25 applied here, and
+every new instrument shown failing on purpose (ADR-0149) in two
+sabotaged builds recorded below.
+
+**The code (VaelenScene, and its use by VaelenWalk and VaelenUI):**
+
+- **The 20-degree rule held a house's axes only** (Layout.cpp `Level`;
+  medium). Along X and along Y at most 291 cm over 8 m - and up to 27
+  degrees on the diagonal, measured 69 houses over 20 degrees on the
+  `Vaelen.Walk 128 120` world, the steepest 29.7. The roadmap promised
+  20. Now the two diagonals too, at 291 * sqrt 2 held exactly as squares.
+  THIS MOVED THE LAYOUT DIGESTS, the counts unmoved: Atlas.SceneLayout128
+  8542fca56e445402 -> 6917612c1344027f (and Scene.Layout, which now
+  asserts it), Replay.Climate's LAYOUT line ead1d4340f2cdd08 ->
+  6e23ade67f848db7. Two pins, one cause, one commit.
+- **The walk opened in the dark** (Sky.cpp `SunOf`; medium). A played life
+  has Awake 0 from its taking-up to its first day turn, and SunOf called
+  Awake 0 night - so `Vaelen.Walk`'s first sky, and AVaelenLand's after
+  Begin, had the sun at elevation 0 and the light off, whatever the day.
+  Now `SunOfLife`: a life alive without hours yet stands at the day's
+  first hour, dawn in the east; nobody, and a dead life, are night - and
+  night is UNDER the horizon (elevation -100; it was 0, which no light
+  could tell from dawn), the engine's sun on from the horizon up.
+  MeasureSky and AVaelenLand go through the one function. No pinned
+  line reads Awake 0 (the Atlas's sky pins set 16, Replay.Climate's sky
+  is day 31); the S2 twin's sky line, in no kit, now says `azimuth 900`.
+- **The day turn's one growing term** (Layout.cpp `Overlaps`; medium).
+  Every plot asked every house of its region, H^2/2 a region, and the
+  houses follow the coarse population, which grows with the years: 34 ms
+  at 256 after 800 years. Houses are bucketed by land tile now, and a
+  plot asks its own tile's bucket alone - by the slot it was drawn from,
+  no search - since a house's centre is 4 m inside its tile and two
+  houses in different tiles are 8 m apart on the axis that parts them
+  (a tile narrower than a house asks its neighbours too). The same
+  predicate: every house that could overlap is among those asked.
+  Digest-neutral, proven by the pins above and the S2 twin's lines. A
+  first version found the neighbouring tiles by binary search and was
+  SLOWER than the scan it replaced (31.9 ms against 22.6 at 256/420
+  years): nine searches a plot cost more than four hundred comparisons.
+  MEASURED with the review's own harness, AELVOR 256 after 300 + 120
+  years, best of five: BuildLayout 22.6 ms before, 15.3 ms after - WITH
+  the diagonal rule's four extra HeightAt a plot (about 6.6 ms of the
+  23,415 plots) inside it; at 128, 5.8 ms before, 5.0 after.
+- **`Middle` rescanned the whole map per call** (201 x 65536 tile visits
+  at 256, 6.3 ms; 27.7 ms at 512) and **`Path` zero-filled two N-word
+  arrays per road** (2 MB a road at 512). Each region's middle is found
+  once over its own land (ascending, the same first minimum), and the
+  A*'s arrays are kept across roads and reset on the tiles touched.
+  Digest-neutral, the same pins.
+- **`Repaint` rebuilt each near chunk at the full lattice every day**
+  (VaelenLand.cpp; 2.5 ms a chunk) to recolour it. The near chunks' bare
+  meshes are kept from Build and the snow painted on a copy.
+- **`TActorIterator`-style edges of the scene:** `BuildChunk` guarded on
+  `CX * 16` in uint32 - CX = 2^28 wrapped to chunk 0 and answered true;
+  guarded on the chunk index now. `TerrainStats`' vertex and triangle
+  tallies were uint32 and a map BuildGround admits (8192 a side) has 2^33
+  triangles; uint64 now, the line printed through uint64 already.
+  `LatticeZ` read "is this a tile centre" AFTER the rim's clamp, so the
+  west and north outer half tiles lost the wrinkle on every centre row
+  and column while the east and south kept it - cosmetic, latent (AELVOR's
+  rim is sea, no digest moved), fixed and instrumented on a hand-drawn
+  all-land map. `Placed` is hashed raw and had no `static_assert` on its
+  size where `TerrainVertex` has one; it has.
+- **Region 0 meant three things** (VaelenLand.cpp `Build`): the scene's
+  "whole map", the fence's "no tile", and the engine's near loop's "every
+  chunk holding sea" - 59 of 64, cooked, under a line that would say
+  "all". One rule now, `Scene::ChunkHolds`, used by MeasureChunks and by
+  the engine's near chunks alike; Build refuses region 0 and `Vaelen.Walk`
+  says "nobody is played ... Vaelen.TakeUp first" instead of building.
+- **The engine's `static_cast<int64>` of a double truncates toward zero**
+  where TileOfPoint floors: a floor only at X >= 0. `Cm()` floors, at the
+  controller's five sites. **The walker's 106 cm** was 96 + 10 written by
+  hand in two modules: `VaelenWalkBody` (VaelenUI's header, since
+  VaelenWalk depends on it) holds the capsule and the clearance, and the
+  walker, the controller and Vaelen.Walk read it.
+
+**The tests (Tests/Scene; 32 cases from 26, 1.58 M checks):**
+
+- Test_Layout: the layout digest ASSERTED (it was logged, and the CMake
+  comment "the same digest by another wiring" described a check that did
+  not exist); the slope rule asserted for every house on the real ground
+  and on one four times steeper, where the rule is shown to have had plots
+  to refuse; the roads' endpoints in their route's regions and each road
+  as long as a breadth-first search's shortest walk; `Roads + Unrouted ==
+  Net.Open`; a colony's pit, on the region's middle, the very tile of its
+  square (the pit branch ran under no pinned world); the played person
+  standing nowhere and the company flagged, through the life and through
+  the world's Played alike; AimAt's cone at 29.7 and 30.1 degrees, its
+  reach at 300 and 301 cm, its tie in both orders (the four figures it had
+  sat at 0, 5, 90 and 180 degrees, and a cone of 60 answered them all the
+  same); floors under two loops that could run zero times.
+- Test_Terrain: the lake surface - the one thing 19.05 invents - asserted
+  from a flood fill of the map's own lake flags, and by a hand-drawn
+  five-by-five map with the answers worked out by hand (the old clause
+  compared a centre to the bound it is DEFINED as, and could not fail);
+  HeightAt against the triangle the mesh's OWN index list holds under the
+  point, the outer half tiles sampled (the old second instrument
+  hard-coded the diagonal, and a mesh cut the other way would have passed
+  it); the winding consistent - every interior edge walked once each way,
+  a triangle turned over caught in-test where the unordered count is
+  blind; `MeasureChunks` by region against a plain scan, region 9 at 128
+  pinned (05f5e0cefbe78608, two chunks) and the engine's line rule under
+  a headless test at last; IsSteep's threshold by known answers (0.9917
+  not steep, 0.9918 steep); the 64-bit tally; the rim's wrinkle on all
+  four sides; the two whole-map terrain digests pinned in the test.
+- Test_Fence: each edge IS the side between its two tiles (a centimetre
+  either way from its middle); every region of the frame has a walkable
+  tile (the premise `PlaceAfterDay` rests on, a measured fact now); the
+  sea search's floor.
+- Test_Sky: night under the horizon, a life's dawn; the paint at the full
+  lattice on the map's south-east chunk, the far edge included; a
+  known-answer control on a four-by-four all-land map with frost on its
+  last tile - 81 white points, 17 of them past the map's edge.
+
+**Shown failing on purpose (ADR-0149), two sabotaged builds, the
+variables kept:** (1) Level never refusing, a cone of 60 degrees, the
+company flag never set, the played person standing like anybody, roads
+over land alone, the north and south sides' corners swapped, the rim
+left unpainted, no dawn, night at 0 - Layout 5 cases of 9 failed
+(766 slope failures, 4 shortest-path, 6 played-and-company, 2 cone, the
+pin), Fence 1 of 4 (16,084 side failures), Sky 1 of 5 (the 4 sun
+checks); the rim control needed the hand-drawn map to bite (AELVOR's rim
+is sea, painted the same either way) and fails with it: 64 white of 81.
+(2) The quad cut on the other diagonal, the region next door counted in,
+the highest shore for the lowest, the threshold at 131, the tally in 32
+bits, the chunk guard on the wrapped product, the centre read after the
+clamp - Terrain 7 cases of 14 failed, each the one aimed at (3,963
+triangle failures, 1,933 lake, 14 chunk, 3 tally, the rim, the two known
+answers, the pins). Every case passes on the restored tree.
+
+**Refuted (4):** AimAt's int64 squares overflow only 30,000 km from a
+figure (the map is 32 km); `PlaceAfterDay`'s two-cause false is the
+documented contract and no map has a region without a walkable tile
+(now asserted); the two header comments were the project's own
+convention, the unassigned land they described does not exist on any
+map; and the engine's "region 0 as every chunk" was a second reading of
+the finding above, moot once fixed. One of the 25 was found by two
+lenses at once (the rim).
+
+**Held after:** the four Scene suites (33 cases), Atlas.SceneTerrain128
+and its Before, Atlas.SceneLayout128 (re-pinned), Replay.Climate
+(re-pinned LAYOUT, TERRAIN and SKY unmoved), the S2 twin's climate and
+terrain lines byte for byte (`cold deaths 1582`, region 26
+7fce7d5a0851289f, all 105208c54e3c6ea9); 25 TUs parse, the ledger 130,
+the fence, the census. S2 builds THIS commit (`^VaelenScene reviewed`):
+it carries the shim audit's include and the engine changes above.

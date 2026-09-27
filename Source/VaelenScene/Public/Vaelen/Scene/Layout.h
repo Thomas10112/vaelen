@@ -39,10 +39,11 @@
 
 namespace Vaelen::Scene
 {
-	inline constexpr int32 HouseHalfCm = 400;  ///< a house is 8 m square
-	inline constexpr int32 HouseSlopeCm = 291; ///< across its 8 m: tan 20 deg
-	inline constexpr uint32 HouseTries = 64;   ///< plots tried before a house is given up
-	inline constexpr int32 AimReachCm = 300;   ///< how near a figure must be to be spoken to
+	inline constexpr int32 HouseHalfCm = 400; ///< a house is 8 m square
+	inline constexpr int32 HouseSlopeCm =
+		291; ///< across its 8 m, on either axis and (times sqrt 2) either diagonal: tan 20 deg
+	inline constexpr uint32 HouseTries = 64; ///< plots tried before a house is given up
+	inline constexpr int32 AimReachCm = 300; ///< how near a figure must be to be spoken to
 
 	struct Placed
 	{
@@ -53,6 +54,7 @@ namespace Vaelen::Scene
 		uint32 Key = 0;	  ///< the family, the settlement, the person, the colony's region
 		uint32 Flags = 0; ///< FigureFlag for a figure, 1 for a coarse region's house
 	};
+	static_assert(sizeof(Placed) == 6 * sizeof(uint32), "Placed must have no padding: MeasureLayout hashes it");
 
 	namespace FigureFlag
 	{

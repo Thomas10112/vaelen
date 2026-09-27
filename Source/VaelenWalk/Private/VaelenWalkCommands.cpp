@@ -33,6 +33,7 @@
 #include "VaelenLand.h"
 #include "VaelenScenery.h"
 #include "VaelenSky.h"
+#include "VaelenWalkController.h"
 #include "VaelenWalker.h"
 #include "VaelenWorldSubsystem.h"
 
@@ -108,6 +109,15 @@ namespace
 		}
 		const Vaelen::View::LifeView& Life = World->Life();
 		const Vaelen::Scene::Ground& G = World->Scene();
+		if (Life.Region == 0u)
+		{
+			// Nobody taken up (the world had nobody to take, or the save
+			// carried no tape): there is no region to build the ground
+			// around, and AVaelenLand::Build refuses 0 (the review of 2026-09-27).
+			UE_LOG(LogVaelenWalk, Warning,
+				   TEXT("LogVaelenWalk: nobody is played (life region 0): no ground to walk - Vaelen.TakeUp first"));
+			return;
+		}
 		AVaelenLand* Land = World_->SpawnActor<AVaelenLand>();
 		AVaelenSky* Sky = World_->SpawnActor<AVaelenSky>();
 		AVaelenScenery* Scenery = World_->SpawnActor<AVaelenScenery>();
@@ -169,7 +179,7 @@ namespace
 				Vaelen::Scene::PlaceAfterDay(G, Life.Region, X, Y);
 				Vaelen::Scene::TileOfPoint(G, X, Y, Tile);
 				const double Z = static_cast<double>(Vaelen::Scene::HeightAt(G, X, Y)) +
-								 static_cast<double>(Walker->StandingHalfHeight()) + 10.0;
+								 static_cast<double>(Walker->StandingHalfHeight()) + VaelenWalkBody::ClearanceCm;
 				Walker->SetActorLocation(FVector(static_cast<double>(X), static_cast<double>(Y), Z));
 				// Whatever speed the fall gave it stays in the void: the body
 				// stands on the ground it was put on.

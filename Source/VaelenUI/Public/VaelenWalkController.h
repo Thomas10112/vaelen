@@ -26,6 +26,17 @@
 
 class UInputAction;
 class UInputMappingContext;
+
+/// The walker's body, in ONE place (the review of 2026-09-27): the capsule
+/// VaelenWalk makes the walker with, and the height this controller and
+/// Vaelen.Walk put the body down at, were the same numbers written twice -
+/// 96 + 10 = 106 by hand. VaelenWalk depends on VaelenUI, so they live here.
+namespace VaelenWalkBody
+{
+	inline constexpr float CapsuleRadiusCm = 42.0f;
+	inline constexpr float CapsuleHalfHeightCm = 96.0f;
+	inline constexpr double ClearanceCm = 10.0; ///< the capsule's bottom this far above HeightAt when put down
+} // namespace VaelenWalkBody
 struct FInputActionValue;
 
 UCLASS()

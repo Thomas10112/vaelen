@@ -193,13 +193,16 @@ if(Python3_Interpreter_FOUND)
     PASS_REGULAR_EXPRESSION "; terrain 105208c54e3c6ea9\n")
 
   # 19.08: what the scene invents - squares, houses, figures, roads - from the
-  # views of a sixty-year world, on day 100. Scene.Layout computes the same
-  # digest by another wiring (Run::Aelvor against the Atlas's own).
+  # views of a sixty-year world, on day 100. Scene.Layout ASSERTS the same
+  # digest by another wiring (Run::Aelvor against the Atlas's own) - since
+  # the review of 2026-09-27; it logged it before. Re-pinned that day: the
+  # slope rule holds a house's diagonals as well as its axes (8542fca56e445402
+  # before).
   add_test(NAME Atlas.SceneLayout128
     COMMAND VaelenAtlas --size 128 --prehistory 60 --years 10 --scene-layout 100
             --out ${CMAKE_CURRENT_BINARY_DIR}/atlas-scene-layout.json)
   set_tests_properties(Atlas.SceneLayout128 PROPERTIES TIMEOUT 900
-    PASS_REGULAR_EXPRESSION "layout day 100: squares 3, houses 565 \\(unplaced 0\\), figures 779 \\(company 0\\), roads 16 over 282 tiles \\(unrouted 0\\), pits 0; layout 8542fca56e445402\n")
+    PASS_REGULAR_EXPRESSION "layout day 100: squares 3, houses 565 \\(unplaced 0\\), figures 779 \\(company 0\\), roads 16 over 282 tiles \\(unrouted 0\\), pits 0; layout 6917612c1344027f\n")
 
   # 19.09: the day's snow, grass and sun from the climate leaf, at noon of
   # sixteen waking hours over region 1's centroid row. Scene.Sky computes the

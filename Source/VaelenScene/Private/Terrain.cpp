@@ -283,6 +283,11 @@ namespace Vaelen::Scene
 		int64 FY = PV - Y0 * S;
 		int64 X1 = X0 + 1;
 		int64 Y1 = Y0 + 1;
+		// A tile centre, read BEFORE the rim below rewrites FX or FY to 0 (the
+		// review of 2026-09-27): the outer half tile west and north used to
+		// count as centres on every centre row and column and lose the
+		// wrinkle the east and south rims kept.
+		const bool Centre = FX == 0 && FY == 0;
 		// Beyond the outermost centres the ground is the edge tile's.
 		const int64 LastX = static_cast<int64>(G.Width) - 1;
 		const int64 LastY = static_cast<int64>(G.Height) - 1;
@@ -320,7 +325,6 @@ namespace Vaelen::Scene
 						  int64{G.CentreCm[T01]} * (S - FX) * FY + int64{G.CentreCm[T11]} * FX * FY;
 		int64 Z = FloorDiv(Sum, S * S);
 		// Detail on land only, and never on a tile centre: a centre is the kernel's.
-		const bool Centre = FX == 0 && FY == 0;
 		const bool AllLand = G.Kind[T00] == GroundKind::Land && G.Kind[T10] == GroundKind::Land &&
 							 G.Kind[T01] == GroundKind::Land && G.Kind[T11] == GroundKind::Land;
 		if (!Centre && AllLand)
@@ -475,13 +479,16 @@ namespace Vaelen::Scene
 
 	bool BuildChunk(const Ground& G, uint32 CX, uint32 CY, uint32 Stride, TerrainMesh& Out)
 	{
-		const uint32 X0 = CX * ChunkTiles;
-		const uint32 Y0 = CY * ChunkTiles;
-		if (X0 >= G.Width || Y0 >= G.Height)
+		// Refused on the chunk index itself (the review of 2026-09-27: CX *
+		// ChunkTiles wrapped in uint32 past 2^28 and built chunk 0 as if it
+		// were that chunk, answering true).
+		if (CX >= ChunksAcross(G) || CY >= ChunksDown(G))
 		{
 			Out = TerrainMesh{};
 			return false;
 		}
+		const uint32 X0 = CX * ChunkTiles;
+		const uint32 Y0 = CY * ChunkTiles;
 		const uint32 X1 = X0 + ChunkTiles < G.Width ? X0 + ChunkTiles : G.Width;
 		const uint32 Y1 = Y0 + ChunkTiles < G.Height ? Y0 + ChunkTiles : G.Height;
 		return BuildPatch(G, X0, Y0, X1, Y1, Stride, Out);
@@ -534,8 +541,31 @@ namespace Vaelen::Scene
 		}
 		Into.Digest = H;
 		Into.Chunks += 1u;
-		Into.Vertices += static_cast<uint32>(M.Vertices.size());
-		Into.Triangles += static_cast<uint32>(M.Triangles.size() / 3u);
+		Into.Vertices += static_cast<uint64>(M.Vertices.size());
+		Into.Triangles += static_cast<uint64>(M.Triangles.size() / 3u);
+	}
+
+	bool ChunkHolds(const Ground& G, uint32 CX, uint32 CY, uint32 Region)
+	{
+		if (CX >= ChunksAcross(G) || CY >= ChunksDown(G))
+		{
+			return false;
+		}
+		if (Region == 0u)
+		{
+			return true;
+		}
+		for (uint32 Y = CY * ChunkTiles; Y < (CY + 1u) * ChunkTiles && Y < G.Height; ++Y)
+		{
+			for (uint32 X = CX * ChunkTiles; X < (CX + 1u) * ChunkTiles && X < G.Width; ++X)
+			{
+				if (G.Region[Y * G.Width + X] == Region)
+				{
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	void MeasureChunks(const Ground& G, uint32 Region, TerrainStats& Into)
@@ -545,19 +575,7 @@ namespace Vaelen::Scene
 		{
 			for (uint32 CX = 0; CX < ChunksAcross(G); ++CX)
 			{
-				bool Wanted = Region == 0u;
-				for (uint32 Y = CY * ChunkTiles; !Wanted && Y < (CY + 1u) * ChunkTiles && Y < G.Height; ++Y)
-				{
-					for (uint32 X = CX * ChunkTiles; X < (CX + 1u) * ChunkTiles && X < G.Width; ++X)
-					{
-						if (G.Region[Y * G.Width + X] == Region)
-						{
-							Wanted = true;
-							break;
-						}
-					}
-				}
-				if (Wanted && BuildChunk(G, CX, CY, 1u, Mesh))
+				if (ChunkHolds(G, CX, CY, Region) && BuildChunk(G, CX, CY, 1u, Mesh))
 				{
 					MeasureTerrain(Mesh, Into);
 				}
