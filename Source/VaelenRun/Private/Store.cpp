@@ -106,6 +106,7 @@ namespace Vaelen::Run
 
 	void DescribeSave(ICheckpointStore& Store, const char* Name, uint64 Bytes, StoreEntry& Out)
 	{
+		constexpr uint64 TrailerBytes = 8u;
 		Out = StoreEntry{};
 		Out.Name = Name;
 		Out.Bytes = Bytes;
@@ -117,6 +118,14 @@ namespace Vaelen::Run
 		}
 		CheckpointHeading Heading;
 		if (ReadCheckpointHeading(Head.data(), Head.size(), Heading).Result != CheckpointResult::Ok)
+		{
+			return;
+		}
+		// A file shorter than its own table claims - the first half of a save,
+		// what a write interrupted mid-copy leaves under a plain name - is no
+		// container: listed by name and size, every field 0, as a whole read
+		// (Truncated) would have it (Run.StoreColdProcess's control).
+		if (Heading.PayloadEnd > Bytes || Bytes - Heading.PayloadEnd < TrailerBytes)
 		{
 			return;
 		}

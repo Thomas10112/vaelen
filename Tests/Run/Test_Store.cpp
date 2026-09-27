@@ -266,24 +266,34 @@ VAELEN_TEST(Store, AListingReadsHeadsAndTrailersAndNotFiles)
 	VT_REQUIRE(F != nullptr);
 	std::fwrite(Image.data(), 1, CheckpointHeadBytes + 3u, F);
 	std::fclose(F);
+	// And the first half of a save, whose head and table read whole and whose
+	// payload does not: no save either (what a write interrupted mid-copy
+	// leaves under a plain name; Run.StoreColdProcess's control).
+	const std::string Half = Somewhere() + "listing/half";
+	F = std::fopen(Half.c_str(), "wb");
+	VT_REQUIRE(F != nullptr);
+	std::fwrite(Image.data(), 1, Image.size() / 2u, F);
+	std::fclose(F);
 	uint32 Zeroed = 0;
 	for (const StoreEntry& E : Store.List())
 	{
-		if (E.Name == "notes" || E.Name == "cut")
+		if (E.Name == "notes" || E.Name == "cut" || E.Name == "half")
 		{
 			VT_CHECK(E.Tick == 0u && E.ContainerVersion == 0u && E.SectionCount == 0u && E.Digest == 0u);
-			VT_CHECK(E.Bytes == (E.Name == "notes" ? 15u : CheckpointHeadBytes + 3u));
+			VT_CHECK(E.Bytes == (E.Name == "notes" ? 15u
+								 : E.Name == "cut" ? CheckpointHeadBytes + 3u
+												   : Image.size() / 2u));
 			++Zeroed;
 		}
 	}
-	VT_CHECK_EQ(Zeroed, 2u);
+	VT_CHECK_EQ(Zeroed, 3u);
 	// ReadPart's own edges: past the end is ShortRead, a missing name NotFound.
 	std::vector<uint8> Part;
 	VT_CHECK(Store.ReadPart("alpha", static_cast<uint64>(Image.size()) - 4u, 8u, Part) == StoreResult::ShortRead);
 	VT_CHECK(Store.ReadPart("alpha", static_cast<uint64>(Image.size()) - 8u, 8u, Part) == StoreResult::Ok);
 	VT_CHECK(Part.size() == 8u && std::memcmp(Part.data(), Image.data() + Image.size() - 8u, 8u) == 0);
 	VT_CHECK(Store.ReadPart("nobody", 0, 8u, Part) == StoreResult::NotFound);
-	for (const char* Name : {"alpha", "beta", "gamma", "notes", "cut"})
+	for (const char* Name : {"alpha", "beta", "gamma", "notes", "cut", "half"})
 	{
 		Store.Forget(Name);
 	}

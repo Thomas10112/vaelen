@@ -296,6 +296,10 @@ namespace Vaelen::Run
 		bool HasState = false;
 		uint64 StateOffset = 0; ///< from the container's first byte
 		uint64 StateLength = 0;
+		/// Where the last section ends and the eight-byte trailer begins: a
+		/// container is PayloadEnd + 8 bytes long, and a file shorter than that
+		/// is one cut short of what its own table claims.
+		uint64 PayloadEnd = 0;
 	};
 
 	/// Reads the head and the section table from a container's first bytes -

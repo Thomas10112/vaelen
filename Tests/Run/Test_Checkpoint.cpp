@@ -1338,6 +1338,7 @@ VAELEN_TEST(Checkpoint, TheHeadingIsReadFromTheFirstBytesAlone)
 		Trailer |= static_cast<uint64>(Bytes[static_cast<usize>(H.StateOffset + H.StateLength) - 8u + i]) << (8u * i);
 	}
 	VT_CHECK_DIGEST_EQ(Trailer, ImageTrailer(View));
+	VT_CHECK_EQ(H.PayloadEnd, static_cast<uint64>(Bytes.size()) - 8u);
 	// The head and the table are all it needs: exactly that many bytes read the same.
 	const usize Exact = CheckpointHeadBytes + H.SectionCount * CheckpointRowBytes;
 	CheckpointHeading Again;

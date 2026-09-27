@@ -765,6 +765,7 @@ namespace Vaelen::Run
 				Out.StateLength = Length;
 			}
 		}
+		Out.PayloadEnd = Reach;
 		return Refusal;
 	}
 

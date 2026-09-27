@@ -172,7 +172,8 @@ namespace Vaelen::Run
 	/// the table (at most CheckpointListingBytes), then the STATE trailer's
 	/// eight bytes - and Bytes as the store measured the file. The fields stay
 	/// 0 when the head is not a container this build reads (a .stream beside
-	/// the saves, another build's save, a file cut inside its table): the
+	/// the saves, another build's save, a file cut short of what its table
+	/// claims - the first half of a save is no save): the
 	/// entry is still listed, by name and size. ONE describer for both stores,
 	/// as ImageTrailer is one reader (16.14's lesson).
 	VAELEN_RUN_API void DescribeSave(ICheckpointStore& Store, const char* Name, uint64 Bytes, StoreEntry& Out);

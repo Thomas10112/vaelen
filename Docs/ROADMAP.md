@@ -9081,3 +9081,11 @@ fields set: caught). Every case passes restored.
 
 Shim: one new self-test mutation (the reader asked of FFileHelper, which
 has none - caught, 30). ENGINE: UNVERIFIED until S4 compiles the seven.
+
+Found by Run.Shuffled the same hour, before the push held: the first HALF
+of a save - head and table whole, payload cut - described as a save of
+version 2 where the whole read had said Truncated, and Run.StoreColdProcess's
+control (a half file under a plain name lists with no version) caught it.
+The heading now says where the last section ends (`PayloadEnd`), and a
+file shorter than its own table claims is listed by name and size with
+every field 0. Run.Store holds the half file beside the stray and the cut.
