@@ -26,7 +26,6 @@
 
 #include "VaelenHUD.generated.h"
 
-class UVaelenWorldSubsystem;
 class AVaelenPlayerController;
 
 UCLASS()
@@ -38,10 +37,11 @@ public:
 	virtual void DrawHUD() override;
 
 private:
-	/// 22.01: the front end's pages - title, loading, pause - drawn instead of
-	/// the world's page while the controller says one is up. Host text: not
+	/// 22.01: the front end's page - title, loading, pause - drawn instead of
+	/// the world's page while the controller says one is up, from the rows the
+	/// controller composed: this HUD composes nothing, still. Host text, not
 	/// digested, not part of any pinned line.
-	void DrawFront(UVaelenWorldSubsystem& Held, const AVaelenPlayerController& Front);
+	void DrawFront(const AVaelenPlayerController& Front);
 
 	/// The page's rows, rewritten every frame from the subsystem's cached
 	/// PanelView - which the subsystem retakes only when something moved.

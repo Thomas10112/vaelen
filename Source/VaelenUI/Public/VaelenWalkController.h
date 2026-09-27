@@ -13,7 +13,7 @@
 // look of the day turn, from the region under the walker's feet rather than
 // under the camera's ray, and the Move verb at the fence. NO Tick.
 //
-// STATUS: UNVERIFIED (engine) - written and PARSED against Tools/EngineShim on
+// STATUS: UNVERIFIED (engine) - written (and 22.01: the front end) and PARSED against Tools/EngineShim on
 // 2026-09-25, not yet built by UnrealBuildTool nor run: sitting S2 builds it.
 // The mapping context made without an asset, and letter keys that follow the
 // AZERTY layout, are the beliefs here.
@@ -46,16 +46,21 @@ class VAELENUI_API AVaelenWalkController : public AVaelenPlayerController
 
 public:
 	virtual void SetupInputComponent() override;
+
+protected:
 	/// 22.01: the walk's front end begins with Vaelen.Walk, which builds the
 	/// ground too, and continues with Vaelen.Load then Vaelen.Walk, which
-	/// walks the world the load begun.
+	/// walks the world the load begun. Landed: a world, and a body (Vaelen.Walk
+	/// respawns and places one; bPlaced is the retaking's, which can come first).
 	virtual void NewWorldLines(TArray<FString>& Out) const override { Out.Add(TEXT("Vaelen.Walk 128 120")); }
 	virtual void ContinueLines(const FString& Save, TArray<FString>& Out) const override
 	{
 		Out.Add(FString::Printf(TEXT("Vaelen.Load %s"), *Save));
 		Out.Add(TEXT("Vaelen.Walk"));
 	}
+	virtual bool LinesLanded() const override { return Super::LinesLanded() && GetPawn() != nullptr; }
 
+public:
 	/// How far ahead a step is checked against the fence, in centimetres.
 	UPROPERTY(EditAnywhere, Category = "AELVOR|Walk", meta = (ClampMin = "1"))
 	float StepCm = 50.0f;

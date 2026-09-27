@@ -17,12 +17,10 @@
 // below is a view leaf, the command surface or Core, and nothing here names a
 // World, a Run or a Take.
 //
-// STATUS: UNVERIFIED (engine) since 19.01's ledger - its code has changed after the last build
-// that compiled it (b0921, 15.10, 867a129): 16.14's save, load and store (c146c43), 19.10's
-// keys. Parsed
-// against Tools/EngineShim, never compiled. Tools/check_engine_status.py holds this line to
-// Tools/engine_builds.txt; the record of what earlier builds validated follows.
-// BUILD: b0921
+// STATUS: UNVERIFIED (engine) since 19.01's ledger (and 22.01: the front end's pages, keys and autosave) - its code has
+// changed after the last build that compiled it (b0921, 15.10, 867a129): 16.14's save, load and store
+// (c146c43), 19.10's keys. Parsed against Tools/EngineShim, never compiled. Tools/check_engine_status.py holds this
+// line to Tools/engine_builds.txt; the record of what earlier builds validated follows. BUILD: b0921
 //
 // UNTIL 19.01: VALIDATED (Phase 14) for what Phase 14 left here - built by
 // UnrealBuildTool and RUN on 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development
@@ -158,7 +156,14 @@ public:
 
 	/// Days day-turns, each recorded as a DayTurned, then every view retaken.
 	/// Nothing when no world is begun.
-	void AdvanceDay(int32 Days);
+	/// bAutosave: whether these turns count toward the autosave (22.01). A
+	/// command that turns N days one at a time to time each passes false
+	/// and calls CountForAutosave(N) once after: a batch of N counts as one
+	/// step of N and saves at most once, at its end - where a hundred presses
+	/// of Space, one turn each, save at every tenth.
+	void AdvanceDay(int32 Days, bool bAutosave = true);
+	/// 22.01: Days more day turns toward the next autosave, saving when due.
+	void CountForAutosave(int32 Days);
 
 	/// One intent through the door, which stamps it with the world's clock and
 	/// records it. The life and the page are retaken after every call, so a

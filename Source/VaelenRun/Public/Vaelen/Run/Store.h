@@ -54,8 +54,12 @@ namespace Vaelen::Run
 	{
 		std::string Name;
 		uint64 Bytes = 0;
-		/// From the container's own header, so a chooser can show a save's tick
-		/// and version without loading two gigabytes to find out.
+		/// From the container's own header - which a chooser COULD read without
+		/// loading two gigabytes, and which both stores today read by loading
+		/// the whole file and digesting it (List reads every save whole: 26 MB
+		/// a save at the ship cell, minutes at the 2.37 GB Lively cell). A
+		/// header-only List is the follow-up the review of 22.01 names; the
+		/// title page pays the whole read once per launch until then.
 		uint64 Tick = 0;
 		/// THE IMAGE'S TRAILER: the last eight bytes of the STATE section, which
 		/// is what `ComputeStateDigest` returns and what every frozen digest in

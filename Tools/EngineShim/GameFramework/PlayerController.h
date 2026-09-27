@@ -33,6 +33,10 @@ public:
 	APawn* GetPawn() const;
 	void Possess(APawn* InPawn);
 	FRotator GetControlRotation() const;
+	/// 22.01 BELIEF: a console line run as this controller - `quit` is how the
+	/// front end leaves, which the editor turns into "stop playing" and a
+	/// package into an orderly exit.
+	FString ConsoleCommand(const FString& Command, bool bWriteToLog = true);
 	void SetControlRotation(const FRotator& NewRotation);
 
 protected:

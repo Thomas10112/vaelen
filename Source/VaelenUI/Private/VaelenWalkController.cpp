@@ -1,7 +1,7 @@
 // VAELEN - VaelenUI
 // Phase 19 task 19.06: the keyboard of the walk. See VaelenWalkController.h.
 //
-// STATUS: UNVERIFIED (engine) - written and PARSED against Tools/EngineShim on
+// STATUS: UNVERIFIED (engine) - written (and 22.01: the front end) and PARSED against Tools/EngineShim on
 // 2026-09-25 (reviewed and corrected 2026-09-26, 19.11b), not yet built by
 // UnrealBuildTool nor run: sitting S2 builds it.
 #include "VaelenWalkController.h"

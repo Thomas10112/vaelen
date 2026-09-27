@@ -5,8 +5,8 @@
 // page: the target a key aims at, whether the page offers the verb at all,
 // and what it foresaw when it does not.
 //
-// STATUS: UNVERIFIED (engine) since 19.10 - its code has changed after the last build that
-// compiled it (b0921, 15.10, 867a129): the eight verbs bound from the host's key table
+// STATUS: UNVERIFIED (engine) since 19.10 (and 22.01: the front end's pages, keys and autosave) - its code has changed
+// after the last build that compiled it (b0921, 15.10, 867a129): the eight verbs bound from the host's key table
 // (ADR-0158) instead of eight literals. Parsed against Tools/EngineShim, never compiled;
 // FKey(FName) is a 19.02 belief until a sitting builds it. The record of what earlier
 // builds validated follows.
@@ -31,7 +31,6 @@
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
-#include "HAL/PlatformMisc.h"
 #include "InputCoreTypes.h"
 #include "TimerManager.h"
 #include "VaelenWorldSubsystem.h"
@@ -99,6 +98,7 @@ void AVaelenPlayerController::SetupInputComponent()
 		World->OnViewsTaken.AddUObject(this, &AVaelenPlayerController::AfterViewsTaken);
 	}
 	bShowMouseCursor = true;
+	RefreshFront(); // 22.01: the title page, before any key
 }
 
 void AVaelenPlayerController::Work()
@@ -288,6 +288,73 @@ AVaelenPlayerController::EFront AVaelenPlayerController::Front() const
 	return World != nullptr && World->Begun() ? EFront::Playing : EFront::Title;
 }
 
+bool AVaelenPlayerController::LinesLanded() const
+{
+	const UVaelenWorldSubsystem* World = Held(GetWorld());
+	return World != nullptr && World->Begun();
+}
+
+void AVaelenPlayerController::RefreshFront()
+{
+	// Composed when the page changes: after a key, after the lines ran, on
+	// pause and resume - and not on a frame. The rows say the keys and what
+	// the keys run, from the same lines the keys run.
+	FrontRows_.Reset();
+	UVaelenWorldSubsystem* World = Held(GetWorld());
+	switch (Front())
+	{
+	case EFront::Title:
+	{
+		TArray<FString> New;
+		NewWorldLines(New);
+		FrontRows_.Add(TEXT("VAELEN"));
+		FrontRows_.Add(TEXT("AELVOR - a living world, four hundred years deep before you arrive"));
+		FrontRows_.Add(TEXT(""));
+		FrontRows_.Add(FString::Printf(TEXT("Enter    a new world: %s (half a minute)"),
+									   New.Num() > 0 ? *New[0] : TEXT("nothing to run")));
+		FString Newest;
+		uint64 Tick = 0;
+		if (World != nullptr && World->NewestSave(Newest, Tick))
+		{
+			FrontRows_.Add(FString::Printf(TEXT("F8       continue: %s (tick %llu)"), *Newest,
+										   static_cast<unsigned long long>(Tick)));
+		}
+		else
+		{
+			FrontRows_.Add(TEXT("F8       continue: no save yet"));
+		}
+		FrontRows_.Add(TEXT("Escape   quit"));
+		break;
+	}
+	case EFront::Loading:
+		FrontRows_.Add(TEXT("VAELEN"));
+		FrontRows_.Add(TEXT(""));
+		FrontRows_.Add(Loading_);
+		break;
+	case EFront::Paused:
+	{
+		const Vaelen::View::LifeView& Life = World->Life();
+		FrontRows_.Add(FString::Printf(TEXT("PAUSED - AELVOR %d, year %u day %u, %u days lived"), World->Size(),
+									   static_cast<unsigned>(Life.Year), static_cast<unsigned>(Life.Day),
+									   static_cast<unsigned>(Life.DaysLived)));
+		FrontRows_.Add(TEXT(""));
+		FrontRows_.Add(TEXT("Escape   back to the world"));
+		FrontRows_.Add(TEXT("F5       save (quick)"));
+		FrontRows_.Add(TEXT("F9       write the stream"));
+		FrontRows_.Add(
+			FString::Printf(TEXT("F10      quit (the autosave is at most %d day turns old)"), World->AutosaveEvery()));
+		break;
+	}
+	default:
+		break;
+	}
+	if (!FrontRows_.IsEmpty() && !Notice_.IsEmpty())
+	{
+		FrontRows_.Add(TEXT(""));
+		FrontRows_.Add(Notice_);
+	}
+}
+
 void AVaelenPlayerController::NewWorld()
 {
 	const UVaelenWorldSubsystem* World = Held(GetWorld());
@@ -298,12 +365,13 @@ void AVaelenPlayerController::NewWorld()
 	Pending_.Reset();
 	NewWorldLines(Pending_);
 	Loading_ = TEXT("Generating AELVOR: three hundred years of pre-history and a hundred and twenty of the world. "
-					"A few seconds.");
+					"Half a minute or so; the window does not answer meanwhile.");
 	Notice_.Reset();
 	bLoading_ = true;
+	RefreshFront();
 	// Drawn this frame, run the next: the one deferral in this module, and
-	// not a Tick - it fires once, and the world moves on the console line it
-	// runs exactly as it would on the same line typed (ADR-0138).
+	// not a Tick - it fires once, and the world moves on the console lines it
+	// runs exactly as it would on the same lines typed (ADR-0138).
 	GetWorld()->GetTimerManager().SetTimerForNextTick(this, &AVaelenPlayerController::RunPending);
 }
 
@@ -319,6 +387,7 @@ void AVaelenPlayerController::Continue()
 	if (!World->NewestSave(Name, Tick))
 	{
 		Notice_ = TEXT("no save to continue from");
+		RefreshFront();
 		return;
 	}
 	Pending_.Reset();
@@ -326,6 +395,7 @@ void AVaelenPlayerController::Continue()
 	Loading_ = FString::Printf(TEXT("Loading %s (tick %llu)."), *Name, static_cast<unsigned long long>(Tick));
 	Notice_.Reset();
 	bLoading_ = true;
+	RefreshFront();
 	GetWorld()->GetTimerManager().SetTimerForNextTick(this, &AVaelenPlayerController::RunPending);
 }
 
@@ -334,6 +404,7 @@ void AVaelenPlayerController::RunPending()
 	bLoading_ = false;
 	if (GEngine == nullptr || GetWorld() == nullptr || Pending_.IsEmpty())
 	{
+		RefreshFront();
 		return;
 	}
 	const TArray<FString> Lines = Pending_;
@@ -349,9 +420,19 @@ void AVaelenPlayerController::RunPending()
 		{
 			// The line said why on its own log; the title page says that it did not.
 			Notice_ = FString::Printf(TEXT("no world after `%s` - see the log"), *Line);
+			RefreshFront();
 			return;
 		}
 	}
+	if (!LinesLanded())
+	{
+		// A world, and not what the page promised (the walk: no body placed).
+		// One world per host: the log says what stopped, and the page is the
+		// world's from here, since there is no way back to the title.
+		UE_LOG(LogVaelenUI, Warning,
+			   TEXT("LogVaelenUI: the front end's lines ran and the page's promise did not land - see the log above"));
+	}
+	RefreshFront();
 }
 
 void AVaelenPlayerController::TogglePause()
@@ -367,6 +448,11 @@ void AVaelenPlayerController::TogglePause()
 		return;
 	}
 	bPaused_ = !bPaused_;
+	if (!bPaused_)
+	{
+		Notice_.Reset(); // read on the pause page; gone with it
+	}
+	RefreshFront();
 	UE_LOG(LogVaelenUI, Log, TEXT("LogVaelenUI: %s"), bPaused_ ? TEXT("paused") : TEXT("resumed"));
 }
 
@@ -380,18 +466,21 @@ void AVaelenPlayerController::QuickSave()
 	FString Where, Check;
 	Notice_ = FString::Printf(
 		TEXT("%s%s"), World->Save(TEXT("quick"), Where, Check) ? TEXT("saved: ") : TEXT("save refused: "), *Where);
+	RefreshFront();
 	UE_LOG(LogVaelenUI, Log, TEXT("LogVaelenUI: %s"), *Notice_);
 }
 
 void AVaelenPlayerController::Quit()
 {
-	// From the pause page, or from the title page through Escape: the
+	// From the pause page (F10), or from the title page through Escape: the
 	// world is not saved here - F5 is a key away and the autosave is ten
-	// days old at most. Not forced: the engine shuts down in order.
+	// days old at most. Through the console's own `quit`, which the editor
+	// turns into "stop playing" and a package into an orderly exit (the
+	// review of 22.01: a platform exit closed the whole editor).
 	if (bLoading_ || (Front() != EFront::Paused && Front() != EFront::Title))
 	{
 		return;
 	}
 	UE_LOG(LogVaelenUI, Log, TEXT("LogVaelenUI: quit"));
-	FPlatformMisc::RequestExit(false);
+	ConsoleCommand(TEXT("quit"));
 }

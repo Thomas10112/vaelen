@@ -8933,7 +8933,7 @@ agree on every compiler.
 Section 27's step 7, headless for S4: the product's first screen without an
 asset, a Blueprint or UMG, in the words the HUD already draws with. STATUS:
 UNVERIFIED (engine) - parsed against the shim (25 TUs, 29 self-test
-mutations, 141 beliefs: eleven new), never compiled; sitting S4 builds it.
+mutations, 140 beliefs: ten new), never compiled; sitting S4 builds it.
 
 **What a player meets.** The HUD draws the front end's page BEFORE the
 world's page (Vaelen/View/Panel.h's, digested and pinned; the front end's
@@ -8964,8 +8964,9 @@ rows are host text and pinned by nothing):
 **The autosave** (VaelenWorldSubsystem::AdvanceDay): every ten DAY TURNS,
 after the views are retaken, `Save("autosave")` - counted in turns and not
 in frames or seconds, so the same play autosaves at the same days
-(`Vaelen.Day 100` counts a hundred and saves once); `SetAutosaveEvery(0)`
-turns it off; `LogVaelenWorld: autosave <path>` or the refusal by name. The
+(`Vaelen.Day 100` counts a hundred at once and saves at most once, at its end); `SetAutosaveEvery(0)`
+turns it off (a batch of N days at the console counts once); `LogVaelenWorld:
+autosave <path>` or the refusal by name. The
 store's rename-aside keeps `autosave.previous`. Cost: a container of the
 128 Play+Stream world is tens of megabytes (16.01, 20.01), a fraction of a
 second every ten Space presses; measured only on the owner's disk.
@@ -8978,14 +8979,54 @@ lowest name at a tie): no clock, no file time.
 one key that changed meaning is `Escape`: it pauses the world (and, on the
 title page, quits) - the console's own key is untouched.
 
-**Beliefs (eleven), until S4 compiles them:** `EKeys::Enter`, `Escape`,
+**Beliefs (ten), until S4 compiles them:** `EKeys::Enter`, `Escape`,
 `F5`, `F8`, `F10`; `UEngine::Exec(UWorld*, const TCHAR*)` (the engine's
 third parameter defaults to the log); `UWorld::GetTimerManager()` and
 `FTimerManager::SetTimerForNextTick(Obj, &Class::Method)`;
-`FPlatformMisc::RequestExit(bool)`; `AHUD::GetOwningPlayerController()`.
+`APlayerController::ConsoleCommand` (quit goes through the console's own
+`quit`, as the engine's QuitGame does); `AHUD::GetOwningPlayerController()`.
 Two new self-test mutations: a key the engine does not have (`F13`), and
 the deferral asked of the actor rather than the world's timers - both
 caught.
+
+**Reviewed the same day by two read-only agents** (one against the UE 5.6
+API, one adversarial on the pages' logic); what they found and what moved,
+before the second push:
+
+- The title page asked the store for the newest save ON EVERY FRAME, and
+  the engine store's List reads and digests every container whole: a
+  hundred megabytes a frame with two saves. The controller composes the
+  page's rows once, when the page changes (`RefreshFront`), and the HUD
+  draws them as it draws the panel's - it composes nothing, as its header
+  promised since 14.09; the pause row's year and day are the controller's
+  now. What remains: List still reads every save whole, once per launch -
+  26 MB a save at the ship cell, minutes at the 2.37 GB Lively cell -
+  where Store.h promised a header read. Follow-up: a header-only List (a
+  `ReadCheckpointHeader` in VaelenRun, a partial read in both stores).
+- `FPlatformMisc::RequestExit` closes the whole EDITOR under play-in-editor;
+  quit goes through `ConsoleCommand("quit")`, which the editor turns into
+  "stop playing" and a package into an orderly exit. Under play-in-editor,
+  `Escape` (Stop) and `F8` (Eject) are the editor's before the game sees
+  them: the pause and Continue exist under `-game` and in a package, where
+  the sittings run; Enter, F5, F9 and F10 are free everywhere.
+- `Vaelen.Day 100` turns the day one at a time to time each turn, and would
+  have autosaved ten times inside one typed line: it counts once now
+  (`AdvanceDay(1, false)` in its loop, `CountForAutosave(N)` after), so a
+  batch saves at most once, at its end; a hundred presses of Space save at
+  every tenth. Negative days count for nothing.
+- `.stream` files sit in the same folder and pass the name rule; the store
+  listed them at tick 0, and on a first launch after an F9 the title page
+  would have offered one. `NewestSave` skips what this build could not read
+  as a container (version 0).
+- The walk's "landed" asked for the body PLACED, which the retaking sets
+  and which can come before Vaelen.Walk respawns a walker that fell while
+  the title page was up: it asks for a body only.
+- "A few seconds" for a Begin measured at 17.9 s release (20.01), so a
+  Development build's half a minute of a frozen window: the page says so.
+- Newest is the highest TICK, and ticks are not comparable across worlds:
+  after experiments at another size the title offers the older world's
+  later save; the page prints the name and the tick, and the rule stays
+  clockless on purpose.
 
 **What is not here, on purpose:** a quit-to-title (the host holds one
 world, Begin's rule; quit and Continue is the loop), a save chooser (the

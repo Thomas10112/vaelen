@@ -43,7 +43,7 @@ void AVaelenHUD::DrawHUD()
 	{
 		if (Front->Front() != AVaelenPlayerController::EFront::Playing)
 		{
-			DrawFront(*Held, *Front);
+			DrawFront(*Front);
 			return;
 		}
 	}
@@ -73,63 +73,13 @@ void AVaelenHUD::DrawHUD()
 	}
 }
 
-void AVaelenHUD::DrawFront(UVaelenWorldSubsystem& Held, const AVaelenPlayerController& Front)
+void AVaelenHUD::DrawFront(const AVaelenPlayerController& Front)
 {
-	// The pages, as rows of text in the small font: what a person at the
-	// keyboard reads before the world, while it is made, and while it stands.
-	TArray<FString> Rows_;
-	switch (Front.Front())
-	{
-	case AVaelenPlayerController::EFront::Title:
-	{
-		Rows_.Add(TEXT("VAELEN"));
-		Rows_.Add(TEXT("AELVOR - a living world, four hundred years deep before you arrive"));
-		Rows_.Add(TEXT(""));
-		Rows_.Add(TEXT("Enter    a new world (AELVOR 128, 120 years; a few seconds)"));
-		FString Newest;
-		uint64 Tick = 0;
-		if (Held.NewestSave(Newest, Tick))
-		{
-			Rows_.Add(FString::Printf(TEXT("F8       continue: %s (tick %llu)"), *Newest,
-									  static_cast<unsigned long long>(Tick)));
-		}
-		else
-		{
-			Rows_.Add(TEXT("F8       continue: no save yet"));
-		}
-		Rows_.Add(TEXT("Escape   quit"));
-		break;
-	}
-	case AVaelenPlayerController::EFront::Loading:
-		Rows_.Add(TEXT("VAELEN"));
-		Rows_.Add(TEXT(""));
-		Rows_.Add(Front.LoadingWords());
-		break;
-	case AVaelenPlayerController::EFront::Paused:
-	{
-		const Vaelen::View::LifeView& Life = Held.Life();
-		Rows_.Add(FString::Printf(TEXT("PAUSED - AELVOR %d, year %u day %u, %u days lived"), Held.Size(),
-								  static_cast<unsigned>(Life.Year), static_cast<unsigned>(Life.Day),
-								  static_cast<unsigned>(Life.DaysLived)));
-		Rows_.Add(TEXT(""));
-		Rows_.Add(TEXT("Escape   back to the world"));
-		Rows_.Add(TEXT("F5       save (quick)"));
-		Rows_.Add(TEXT("F9       write the stream"));
-		Rows_.Add(
-			FString::Printf(TEXT("F10      quit (the autosave is at most %d day turns old)"), Held.AutosaveEvery()));
-		break;
-	}
-	default:
-		return;
-	}
-	if (!Front.Notice().IsEmpty())
-	{
-		Rows_.Add(TEXT(""));
-		Rows_.Add(Front.Notice());
-	}
+	// The front end's rows, composed by the controller when its page changed
+	// and drawn here as the panel's are: one DrawText a row, nothing of ours.
 	const float Line = 14.0f;
 	float Y = 16.0f;
-	for (const FString& Row : Rows_)
+	for (const FString& Row : Front.FrontRows())
 	{
 		Canvas->DrawText(GEngine->GetSmallFont(), Row, 16.0f, Y);
 		Y += Line;

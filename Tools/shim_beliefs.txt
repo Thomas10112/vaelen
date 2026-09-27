@@ -153,6 +153,5 @@ F10                 22.01  quit from the pause page
 Exec                22.01  a console line run by the front end (UEngine::Exec)
 GetTimerManager     22.01  the world's timers, for the one next-tick deferral
 SetTimerForNextTick 22.01  the loading page drawn before the blocking Begin
-FPlatformMisc       22.01  RequestExit's owner
-RequestExit         22.01  quit, not forced
+ConsoleCommand      22.01  quit through the console, as the engine's own QuitGame does
 GetOwningPlayerController 22.01  the HUD reads the front end's page from its controller

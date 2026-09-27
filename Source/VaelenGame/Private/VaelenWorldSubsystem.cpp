@@ -7,13 +7,11 @@
 // simulation. Tools/check_ui_fence.py reads Public and deliberately not
 // Private, which is that seam written down.
 //
-// STATUS: UNVERIFIED (engine) since 19.01's ledger - its code has changed after the last build
-// that compiled it (b0921, 15.10, 867a129): 16.14's save, load and store (c146c43) and 18.02's
-// climate byte in the host check (5292edd), and 19.03's era flag said both ways in that check.
-// Parsed against Tools/EngineShim, never compiled.
-// Tools/check_engine_status.py holds this line to Tools/engine_builds.txt; the record of what
-// earlier builds validated follows.
-// BUILD: b0921
+// STATUS: UNVERIFIED (engine) since 19.01's ledger (and 22.01: the front end's pages, keys and autosave) - its code has
+// changed after the last build that compiled it (b0921, 15.10, 867a129): 16.14's save, load and store (c146c43)
+// and 18.02's climate byte in the host check (5292edd), and 19.03's era flag said both ways in that check. Parsed
+// against Tools/EngineShim, never compiled. Tools/check_engine_status.py holds this line to Tools/engine_builds.txt;
+// the record of what earlier builds validated follows. BUILD: b0921
 //
 // UNTIL 19.01: VALIDATED (Phase 14) for what Phase 14 left here - built by
 // UnrealBuildTool and RUN on 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development
@@ -30,8 +28,6 @@
 // gate. This line said UNVERIFIED for three days while it was true.
 #include "VaelenWorldSubsystem.h"
 
-DEFINE_LOG_CATEGORY_STATIC(LogVaelenWorld, Log, All);
-
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "VaelenCheckpointStore.h"
@@ -45,6 +41,8 @@ DEFINE_LOG_CATEGORY_STATIC(LogVaelenWorld, Log, All);
 
 #include <string>
 #include <vector>
+
+DEFINE_LOG_CATEGORY_STATIC(LogVaelenWorld, Log, All);
 
 /// Everything the subsystem owns. One world, one door, one graph cache, and
 /// the five views a host reads - retaken when something moved and never on a
@@ -270,7 +268,7 @@ int32 UVaelenWorldSubsystem::RegionUnderGround(double GroundX, double GroundY, d
 	return Tile != nullptr ? static_cast<int32>(Tile->Region) : 0;
 }
 
-void UVaelenWorldSubsystem::AdvanceDay(int32 Days)
+void UVaelenWorldSubsystem::AdvanceDay(int32 Days, bool bAutosave)
 {
 	if (!Held || !Held->Door)
 	{
@@ -319,22 +317,32 @@ void UVaelenWorldSubsystem::AdvanceDay(int32 Days)
 	OnViewsTaken.Broadcast();
 	// 22.01: the autosave, every AutosaveEvery_ day turns, AFTER the views
 	// are retaken - what is saved is what is shown. Section 27's step 7.
-	if (AutosaveEvery_ > 0)
+	if (bAutosave)
 	{
-		DaysSinceAutosave_ += Days;
-		if (DaysSinceAutosave_ >= AutosaveEvery_)
-		{
-			DaysSinceAutosave_ = 0;
-			FString Where, Check;
-			if (Save(TEXT("autosave"), Where, Check))
-			{
-				UE_LOG(LogVaelenWorld, Log, TEXT("LogVaelenWorld: autosave %s"), *Where);
-			}
-			else
-			{
-				UE_LOG(LogVaelenWorld, Warning, TEXT("LogVaelenWorld: autosave refused: %s"), *Where);
-			}
-		}
+		CountForAutosave(Days);
+	}
+}
+
+void UVaelenWorldSubsystem::CountForAutosave(int32 Days)
+{
+	if (AutosaveEvery_ <= 0 || Days <= 0 || !Begun())
+	{
+		return;
+	}
+	DaysSinceAutosave_ += Days;
+	if (DaysSinceAutosave_ < AutosaveEvery_)
+	{
+		return;
+	}
+	DaysSinceAutosave_ = 0;
+	FString Where, Check;
+	if (Save(TEXT("autosave"), Where, Check))
+	{
+		UE_LOG(LogVaelenWorld, Log, TEXT("LogVaelenWorld: autosave %s"), *Where);
+	}
+	else
+	{
+		UE_LOG(LogVaelenWorld, Warning, TEXT("LogVaelenWorld: autosave refused: %s"), *Where);
 	}
 }
 
@@ -685,6 +693,13 @@ bool UVaelenWorldSubsystem::NewestSave(FString& OutName, uint64& OutTick)
 	uint64 Tick = 0;
 	for (const Vaelen::Run::StoreEntry& Entry : Store.List())
 	{
+		// A file the store lists but this build could not read as a container
+		// (its version is then 0: a .stream written beside the saves, a save
+		// of another build) is nothing to continue from.
+		if (Entry.ContainerVersion == 0u)
+		{
+			continue;
+		}
 		if (!Found || Entry.Tick > Tick || (Entry.Tick == Tick && Entry.Name < Name))
 		{
 			Found = true;

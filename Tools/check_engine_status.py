@@ -132,6 +132,9 @@ MOVED_SINCE_B0921 = {
     "Source/VaelenUI/Public/VaelenPlayerController.h",
     "Source/VaelenUI/VaelenUI.Build.cs",
     "Source/VaelenGame/VaelenGame.Build.cs",
+    # 22.01: the HUD draws the front end's pages before the world's.
+    "Source/VaelenUI/Private/VaelenHUD.cpp",
+    "Source/VaelenUI/Public/VaelenHUD.h",
 }
 NEW_SINCE_B0921 = {
     "Source/VaelenGame/Private/VaelenCheckpointStore.cpp",
@@ -223,15 +226,17 @@ def self_test():
 
     with tempfile.TemporaryDirectory() as tmp:
         copy_tree(tmp)
-        hud = "Source/VaelenUI/Private/VaelenHUD.cpp"
+        # A file still VALIDATED at b0921 (the HUD was, until 22.01 changed it).
+        built = "Source/Vaelen/Private/VaelenLogSink.cpp"
         # A comment changed under VALIDATED: still the code that was built.
-        rewrite(tmp, hud, lambda t: t.replace("// ", "// (reworded) ", 3))
+        rewrite(tmp, built, lambda t: "\n".join(l.replace("// ", "// (reworded) ", 1) if "// " in l and "STATUS:" not in l
+                                                 and "BUILD:" not in l else l for l in t.split("\n")))
         expect("a changed comment under VALIDATED is accepted", not check(tmp))
         # One code token changed: refused, by name.
-        rewrite(tmp, hud, lambda t: re.sub(r"\bconst\b", "const volatile", t, count=1))
+        rewrite(tmp, built, lambda t: re.sub(r"\bconst\b", "const volatile", t, count=1))
         named = check(tmp)
-        expect("one code token changed in VaelenHUD.cpp is refused as changed since its build",
-               len(named) == 1 and named[0][0] == hud and "changed since" in named[0][1], str(named))
+        expect("one code token changed in a VALIDATED file is refused as changed since its build",
+               len(named) == 1 and named[0][0] == built and "changed since" in named[0][1], str(named))
 
     with tempfile.TemporaryDirectory() as tmp:
         copy_tree(tmp)

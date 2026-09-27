@@ -541,11 +541,12 @@ new at launch and cost no typing: the title page, and Escape.
 
 1. Build as for 14.08; first error verbatim and its module. 22.01 touches
    VaelenUI (the controller, the HUD, the walk controller), VaelenGame (the
-   subsystem) and VaelenWalk (Vaelen.Walk); eleven beliefs are compiled
-   for the first time (ROADMAP 22.01 lists them) - the ones most likely to
-   be wrong are `UEngine::Exec`'s signature and the next-tick timer's
+   subsystem) and VaelenWalk (Vaelen.Walk); ten beliefs are compiled for
+   the first time (ROADMAP 22.01 lists them) - the ones most likely to be
+   wrong are `UEngine::Exec`'s signature and the next-tick timer's
    template form.
-2. Launch with the walk mode. The TITLE PAGE is up: `Enter` (the page says
+2. Launch with the walk mode UNDER `-game` (as S2): under play-in-editor
+   the editor takes Escape and F8 for itself. The TITLE PAGE is up: `Enter` (the page says
    what it runs: `Vaelen.Walk 128 120`). Bring back the loading page's
    words as you saw them and the first LogVaelenWalk lines - they must be
    the same lines S2 brought back.

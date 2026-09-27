@@ -134,7 +134,9 @@ TASK (22.01) : the front end as pages of text — WRITTEN 2026-09-27, UNVERIFIED
   the blocking Begin (console lines run on the next tick), pause page (Escape, F5 save `quick`, F9,
   F10 quit) during which nothing reaches the world; the autosave every ten day turns under
   `autosave` (rename-aside keeps the previous); Vaelen.Walk walks a world already begun, so the
-  walk's Continue is Vaelen.Load then Vaelen.Walk. 25 TUs parse, 29 mutations, 141 beliefs (11 new).
+  walk's Continue is Vaelen.Load then Vaelen.Walk. Reviewed by two read-only agents the same day
+  (the per-frame save listing, the editor-closing quit, ten autosaves in one Vaelen.Day, a .stream
+  offered as a save: all moved). 25 TUs parse, 29 mutations, 140 beliefs (10 new).
   Sitting S4 builds it. ROADMAP "22.01". CI run 323 green on 71702f2 (the scene review).
 
 TASK (scene) : VaelenScene reviewed — DONE 2026-09-27. 96 agents (six lenses, three refuters a

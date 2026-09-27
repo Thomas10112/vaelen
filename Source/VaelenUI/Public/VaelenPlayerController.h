@@ -8,8 +8,8 @@
 // one host input that is not a gameplay command (ADR-0138); F9 writes the
 // stream.
 //
-// STATUS: UNVERIFIED (engine) since 19.06 - its code has changed after the last build that
-// compiled it (b0921, 15.10, 867a129): RegionTheCameraIsOver is virtual and protected, so the
+// STATUS: UNVERIFIED (engine) since 19.06 (and 22.01: the front end's pages, keys and autosave) - its code has changed
+// after the last build that compiled it (b0921, 15.10, 867a129): RegionTheCameraIsOver is virtual and protected, so the
 // walk's controller can answer with the region under the walker's feet. Parsed, never
 // compiled; sitting S2 builds it.
 // BUILD: b0921 - Tools/engine_builds.txt
@@ -73,11 +73,16 @@ public:
 		Paused
 	};
 	EFront Front() const;
-	/// The words of the loading page, and the last outcome the pages show
-	/// (a save's path, a refused load, the newest save's tick).
-	const FString& LoadingWords() const { return Loading_; }
-	const FString& Notice() const { return Notice_; }
+	/// The page's rows, composed HERE when the page changes and never per
+	/// frame (the review of 22.01: the HUD composes nothing, and a title page
+	/// that read every save on every frame read a hundred megabytes a frame).
+	/// Empty while Playing: the world's page is the HUD's then.
+	const TArray<FString>& FrontRows() const { return FrontRows_; }
 	bool Paused() const { return bPaused_; }
+	/// UNDER THE EDITOR'S PLAY-IN-EDITOR, Escape stops the session and F8
+	/// ejects the player before the game sees either: the pause and the
+	/// Continue exist under `-game` and in a package, which is where the
+	/// sittings run (ENGINE_HANDOFF). Enter, F5, F9 and F10 are free everywhere.
 	/// What the camera is over, as a region, and how far it is worth detailing
 	/// around it. Read on every day turn and handed to the subsystem, which
 	/// hands it through the door - so where somebody is looking is an INPUT
@@ -177,6 +182,10 @@ protected:
 	{
 		Out.Add(FString::Printf(TEXT("Vaelen.Load %s"), *Save));
 	}
+	/// 22.01: whether the lines did what the page promised - a world begun
+	/// for the base; the walk asks more (a body, placed), since Vaelen.Walk
+	/// can leave a world begun and unwalked and there is no way back.
+	virtual bool LinesLanded() const;
 
 private:
 	/// Through the page and then through the door, and nowhere else. The page
@@ -190,15 +199,17 @@ private:
 	uint32 Aim = 0;
 
 	/// 22.01: the front end's keys and its one deferral.
-	void NewWorld();	///< Enter on the title page
-	void Continue();	///< F8 on the title page: the newest save
-	void TogglePause(); ///< Escape: pause and resume; quit from the title
-	void QuickSave();	///< F5: Vaelen.Save quick, on the pause page and in play
-	void Quit();		///< F10 on the pause page
-	void RunPending();	///< the next frame after Enter or F8: the console line
+	void NewWorld();	 ///< Enter on the title page
+	void Continue();	 ///< F8 on the title page: the newest save
+	void TogglePause();	 ///< Escape: pause and resume; quit from the title
+	void QuickSave();	 ///< F5: Vaelen.Save quick, on the pause page and in play
+	void Quit();		 ///< F10 on the pause page, Escape on the title page
+	void RunPending();	 ///< the next frame after Enter or F8: the console lines
+	void RefreshFront(); ///< the rows of the page that is up, composed once
 	bool bPaused_ = false;
 	bool bLoading_ = false;
 	TArray<FString> Pending_;
 	FString Loading_;
 	FString Notice_;
+	TArray<FString> FrontRows_;
 };

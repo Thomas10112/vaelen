@@ -15,7 +15,7 @@
 // Nothing here turns the day or means a verb: those are the controller's and
 // the subsystem's, and the fence refuses the words (check_ui_fence.py).
 //
-// STATUS: UNVERIFIED (engine) - written and PARSED against Tools/EngineShim on
+// STATUS: UNVERIFIED (engine) - written (and 22.01: the front end) and PARSED against Tools/EngineShim on
 // 2026-09-25 (reviewed and corrected 2026-09-26, 19.11b), not yet built by
 // UnrealBuildTool nor run: sitting S2 builds it.
 #include "Engine/Engine.h"
