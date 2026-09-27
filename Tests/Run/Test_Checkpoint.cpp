@@ -1297,3 +1297,79 @@ VAELEN_TEST(Checkpoint, TheClimateIsInTheHostSection)
 					 static_cast<unsigned long long>(Asked.Instance().Log().Digest()));
 	}
 }
+
+VAELEN_TEST(Checkpoint, TheHeadingIsReadFromTheFirstBytesAlone)
+{
+	// 22.02: ReadCheckpointHeading against ReadCheckpoint on one container,
+	// field by field, from a prefix of CheckpointListingBytes and no more; the
+	// trailer at the heading's STATE offset is ImageTrailer's number; and the
+	// refusals, each by its name.
+	Options O;
+	O.Size = 16u;
+	O.PreHistory = 4u;
+	O.Years = 4u;
+	Aelvor A(O);
+	VT_REQUIRE(A.Begin());
+	std::vector<uint8> Bytes;
+	VT_REQUIRE(BuildCheckpoint(A, Bytes) == CheckpointResult::Ok);
+	CheckpointView View;
+	VT_REQUIRE(ReadCheckpoint(Bytes.data(), Bytes.size(), View).Result == CheckpointResult::Ok);
+
+	CheckpointHeading H;
+	const usize Prefix = Bytes.size() < CheckpointListingBytes ? Bytes.size() : CheckpointListingBytes;
+	VT_CHECK(ReadCheckpointHeading(Bytes.data(), Prefix, H).Result == CheckpointResult::Ok);
+	VT_CHECK_EQ(H.Version, View.Version);
+	VT_CHECK_EQ(H.Flags, View.Flags);
+	VT_CHECK_EQ(H.InnerFormat, View.InnerFormat);
+	VT_CHECK_EQ(H.Seed, View.Seed);
+	VT_CHECK_EQ(H.Tick, View.Tick);
+	VT_CHECK_EQ(H.LogEvents, View.LogEvents);
+	VT_CHECK_EQ(H.LogBytes, View.LogBytes);
+	VT_CHECK_EQ(H.SectionCount, static_cast<uint32>(View.Sections.size()));
+	VT_CHECK(H.HasState);
+	uint64 StateLength = 0;
+	const uint8* State = View.Find(SectionKind::State, StateLength);
+	VT_REQUIRE(State != nullptr);
+	VT_CHECK_EQ(H.StateOffset, static_cast<uint64>(State - Bytes.data()));
+	VT_CHECK_EQ(H.StateLength, StateLength);
+	uint64 Trailer = 0;
+	for (usize i = 0; i < 8u; ++i)
+	{
+		Trailer |= static_cast<uint64>(Bytes[static_cast<usize>(H.StateOffset + H.StateLength) - 8u + i]) << (8u * i);
+	}
+	VT_CHECK_DIGEST_EQ(Trailer, ImageTrailer(View));
+	// The head and the table are all it needs: exactly that many bytes read the same.
+	const usize Exact = CheckpointHeadBytes + H.SectionCount * CheckpointRowBytes;
+	CheckpointHeading Again;
+	VT_CHECK(ReadCheckpointHeading(Bytes.data(), Exact, Again).Result == CheckpointResult::Ok);
+	VT_CHECK(Again.Tick == H.Tick && Again.StateOffset == H.StateOffset);
+	// One byte fewer: cut inside the table, Truncated; the head alone, Truncated.
+	VT_CHECK(ReadCheckpointHeading(Bytes.data(), Exact - 1u, Again).Result == CheckpointResult::Truncated);
+	VT_CHECK(ReadCheckpointHeading(Bytes.data(), CheckpointHeadBytes - 1u, Again).Result ==
+			 CheckpointResult::Truncated);
+	VT_CHECK(ReadCheckpointHeading(nullptr, 0, Again).Result == CheckpointResult::Truncated);
+	// The refusals a whole read gives, from the head alone.
+	std::vector<uint8> Bad = Bytes;
+	Bad[0] ^= 0xFFu;
+	VT_CHECK(ReadCheckpointHeading(Bad.data(), Prefix, Again).Result == CheckpointResult::BadMagic);
+	Bad = Bytes;
+	Bad[8] ^= 0xFFu; // the version's low byte
+	VT_CHECK(ReadCheckpointHeading(Bad.data(), Prefix, Again).Result == CheckpointResult::VersionMismatch);
+	Bad = Bytes;
+	Bad[16] ^= 0xFFu; // the inner format's low byte
+	VT_CHECK(ReadCheckpointHeading(Bad.data(), Prefix, Again).Result == CheckpointResult::InnerVersionMismatch);
+	Bad = Bytes;
+	Bad[52] = 65u; // the section count, past the cap
+	Bad[53] = 0u;
+	VT_CHECK(ReadCheckpointHeading(Bad.data(), Prefix, Again).Result == CheckpointResult::BadSectionTable);
+	Bad = Bytes;
+	Bad[CheckpointHeadBytes + 6u] = 0u; // the first row's offset, before the table's end
+	Bad[CheckpointHeadBytes + 7u] = 0u;
+	VT_CHECK(ReadCheckpointHeading(Bad.data(), Prefix, Again).Result == CheckpointResult::BadSectionTable);
+	// And what a heading does NOT check, on purpose: the trailer. The last
+	// byte flipped is Corrupt to ReadCheckpoint and nothing to the heading.
+	Bad = Bytes;
+	Bad.back() ^= 0xFFu;
+	VT_CHECK(ReadCheckpoint(Bad.data(), Bad.size(), View).Result == CheckpointResult::Corrupt);
+	VT_CHECK(ReadCheckpointHeading(Bad.data(), Prefix, Again).Result == CheckpointResult::Ok);
+}

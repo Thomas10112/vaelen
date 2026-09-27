@@ -5,6 +5,8 @@
 // STATUS: PROTOTYPE (Phase 16 task 16.07; 16.15 the rename-aside)
 #include "Vaelen/Run/Store.h"
 
+#include "Vaelen/Run/Checkpoint.h"
+
 #include <cstring>
 
 namespace Vaelen::Run
@@ -85,4 +87,63 @@ namespace Vaelen::Run
 		}
 		return true;
 	}
+	StoreResult ICheckpointStore::ReadPart(const char* Name, uint64 Offset, usize Length, std::vector<uint8>& Out)
+	{
+		std::vector<uint8> Whole;
+		const StoreResult Got = Read(Name, Whole);
+		if (Got != StoreResult::Ok)
+		{
+			return Got;
+		}
+		if (Offset > Whole.size() || Length > Whole.size() - static_cast<usize>(Offset))
+		{
+			return StoreResult::ShortRead;
+		}
+		Out.assign(Whole.begin() + static_cast<std::ptrdiff_t>(Offset),
+				   Whole.begin() + static_cast<std::ptrdiff_t>(Offset + Length));
+		return StoreResult::Ok;
+	}
+
+	void DescribeSave(ICheckpointStore& Store, const char* Name, uint64 Bytes, StoreEntry& Out)
+	{
+		Out = StoreEntry{};
+		Out.Name = Name;
+		Out.Bytes = Bytes;
+		const usize Prefix = Bytes < CheckpointListingBytes ? static_cast<usize>(Bytes) : CheckpointListingBytes;
+		std::vector<uint8> Head;
+		if (Store.ReadPart(Name, 0, Prefix, Head) != StoreResult::Ok)
+		{
+			return;
+		}
+		CheckpointHeading Heading;
+		if (ReadCheckpointHeading(Head.data(), Head.size(), Heading).Result != CheckpointResult::Ok)
+		{
+			return;
+		}
+		Out.Tick = Heading.Tick;
+		Out.ContainerVersion = Heading.Version;
+		Out.SectionCount = Heading.SectionCount;
+		// The image's trailer: the STATE section's last eight bytes, where
+		// ImageTrailer reads them, little-endian. 0 without a STATE section or
+		// one too short to hold them, as ImageTrailer answers.
+		if (!Heading.HasState || Heading.StateLength < sizeof(uint64) ||
+			Heading.StateOffset + Heading.StateLength > Bytes)
+		{
+			return;
+		}
+		std::vector<uint8> Tail;
+		if (Store.ReadPart(Name, Heading.StateOffset + Heading.StateLength - sizeof(uint64), sizeof(uint64), Tail) !=
+				StoreResult::Ok ||
+			Tail.size() != sizeof(uint64))
+		{
+			return;
+		}
+		uint64 Value = 0;
+		for (usize Index = 0; Index < sizeof(uint64); ++Index)
+		{
+			Value |= static_cast<uint64>(Tail[Index]) << (8u * Index);
+		}
+		Out.Digest = Value;
+	}
+
 } // namespace Vaelen::Run

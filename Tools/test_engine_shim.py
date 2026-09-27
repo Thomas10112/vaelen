@@ -227,6 +227,12 @@ MUTATIONS = [
         "InputComponent->BindKey(EKeys::F13, IE_Pressed, this, &AVaelenPlayerController::Quit);",
     ),
     (
+        "22.02: the file reader asked of FFileHelper, which has none, rather than the file manager",
+        STORE,
+        "IFileManager::Get().CreateFileReader(*Path)",
+        "FFileHelper::CreateFileReader(*Path)",
+    ),
+    (
         "22.01: the deferral asked of an actor rather than the world's timers",
         KEYS,
         "GetWorld()->GetTimerManager().SetTimerForNextTick(this, &AVaelenPlayerController::RunPending);\n}\n\nvoid AVaelenPlayerController::Continue()",

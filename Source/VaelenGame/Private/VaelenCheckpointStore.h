@@ -37,6 +37,10 @@ public:
 
 	Vaelen::Run::StoreResult Write(const char* Name, const Vaelen::uint8* Bytes, Vaelen::usize Size) override;
 	Vaelen::Run::StoreResult Read(const char* Name, std::vector<Vaelen::uint8>& Out) override;
+	/// 22.02: a part of a save through the engine's file reader, seeking - the
+	/// listing's way to a head and a trailer without the file.
+	Vaelen::Run::StoreResult ReadPart(const char* Name, Vaelen::uint64 Offset, Vaelen::usize Length,
+									  std::vector<Vaelen::uint8>& Out) override;
 	std::vector<Vaelen::Run::StoreEntry> List() override;
 	Vaelen::Run::StoreResult Forget(const char* Name) override;
 

@@ -129,6 +129,13 @@ TASK        : 19.10 — DONE 2026-09-25 (headless); its engine half UNVERIFIED u
               the eight verbs from it (FKey(FName), a listed belief). Three sabotages
               caught - two of them redone after an unbuildable first attempt.
 
+TASK (22.02) : a listing reads heads and trailers — DONE 2026-09-27 (headless VALIDATED, engine
+  UNVERIFIED). ReadCheckpointHeading reads a container's head and table from its first two kilobytes;
+  ICheckpointStore::ReadPart seeks (stdio: fseek; engine: FArchive, seven beliefs, 147); DescribeSave
+  is the one describer both List's use. Measured by the store's byte count: two saves listed for
+  under 4 KB, a Read costs the file; the listing believes the head, Read verifies. Three sabotages
+  caught. ROADMAP "22.02".
+
 TASK (22.01) : the front end as pages of text — WRITTEN 2026-09-27, UNVERIFIED (engine). Title
   (Enter new world, F8 continue from the newest save, Escape quit), loading page drawn a frame before
   the blocking Begin (console lines run on the next tick), pause page (Escape, F5 save `quick`, F9,

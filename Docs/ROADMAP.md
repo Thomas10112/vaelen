@@ -9033,3 +9033,51 @@ world, Begin's rule; quit and Continue is the loop), a save chooser (the
 newest save is the one a player wants; `Vaelen.Saves` lists them), any
 font, colour or layout beyond the rows of 14.09 - polish is Phase 22's
 remainder after a stranger has played.
+
+### 22.02, 2026-09-27: a listing reads heads and trailers, not files
+
+The follow-up 22.01's review named. `StoreEntry` promised its fields "from
+the container's own header, so a chooser can show a save's tick and version
+without loading two gigabytes to find out" - and both stores loaded every
+save whole and digested it, 26 MB a save at the ship cell, minutes at the
+2.37 GB Lively cell; the title page pays one listing per launch.
+
+- **`ReadCheckpointHeading`** (VaelenRun): the head and the section table
+  from a container's first bytes - at most `CheckpointListingBytes`, under
+  two kilobytes (the head, 56 bytes, and 64 rows of 30, the table's cap) -
+  and nothing else: no trailer, no section digest, no payload. The
+  refusals a whole read gives from the head alone (magic, version, inner
+  version, a required flag, the table's count and order), Truncated when
+  cut inside the table; the STATE row's offset and length, where the
+  image's trailer lies. A listing BELIEVES the head; Read verifies.
+- **`ICheckpointStore::ReadPart`** (Offset, Length): the stdio store
+  seeks; the engine's opens an `FArchive` through
+  `IFileManager::CreateFileReader` and seeks (seven beliefs: the reader,
+  its class, Seek, TotalSize, Serialize, IsError, and FileSize for the
+  size - 147 in the ledger). A store with no better way inherits a default
+  that reads whole and copies the part.
+- **`DescribeSave`**: ONE describer for both stores' `List` (16.14's lesson
+  again: one reader) - two partial reads, the head and the trailer's eight
+  bytes, and the size as the disk gives it. What is not a container this
+  build reads is listed by name and size with every field 0, so the title
+  page's `NewestSave` skips it (22.01's rule, version 0).
+
+MEASURED by the store's own count of bytes pulled off the disk (Run.Store,
+`AListingReadsHeadsAndTrailersAndNotFiles`): a listing of two saves reads at
+most 2 x (1976 + 8) bytes where each save is many times that, and says of
+each exactly what a whole read says (tick, version, sections, the image
+trailer); the CONTROL, a Read, costs the file. A flipped payload byte is
+nothing to the listing and Corrupt to Read - the division of labour,
+asserted. Run.Checkpoint, `TheHeadingIsReadFromTheFirstBytesAlone`: field
+by field against ReadCheckpoint, exactly the head and table's bytes
+suffice, one fewer is Truncated, each refusal by name, and the trailer
+flipped is Corrupt to the whole read and nothing to the heading.
+
+**Shown failing on purpose (ADR-0149), one sabotaged build:** ReadPart
+reading the whole file and copying (the bytes count: caught), the trailer
+read at the STATE section's start (the digest: caught), a cut table read
+as a shorter one (Truncated expected: caught; and the cut file listed with
+fields set: caught). Every case passes restored.
+
+Shim: one new self-test mutation (the reader asked of FFileHelper, which
+has none - caught, 30). ENGINE: UNVERIFIED until S4 compiles the seven.

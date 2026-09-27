@@ -22,9 +22,12 @@ namespace Vaelen::Run
 	namespace
 	{
 		constexpr usize MagicBytes = 8;
-		constexpr usize HeaderBytes = MagicBytes + 4 + 4 + 4 + 8 + 8 + 8 + 8 + 4;
-		constexpr usize EntryBytes = 2 + 4 + 8 + 8 + 8;
+		constexpr usize HeaderBytes = CheckpointHeadBytes;
+		constexpr usize EntryBytes = CheckpointRowBytes;
 		constexpr usize TrailerBytes = 8;
+		static_assert(HeaderBytes == MagicBytes + 4 + 4 + 4 + 8 + 8 + 8 + 8 + 4,
+					  "the head's layout, as the comment draws it");
+		static_assert(EntryBytes == 2 + 4 + 8 + 8 + 8, "a table row's layout, as the comment draws it");
 
 		/// The must-understand bits this build knows. Every OTHER bit of the low
 		/// half is a refusal, which is the whole point: a reader that shrugs at
@@ -680,6 +683,88 @@ namespace Vaelen::Run
 		}
 
 		Out.Base = Bytes;
+		return Refusal;
+	}
+
+	CheckpointRefusal ReadCheckpointHeading(const uint8* Bytes, usize Size, CheckpointHeading& Out)
+	{
+		CheckpointRefusal Refusal;
+		const auto Refuse = [&Refusal](CheckpointResult Why, uint32 Which = 0)
+		{
+			Refusal.Result = Why;
+			Refusal.Section = Which;
+			return Refusal;
+		};
+		Out = CheckpointHeading{};
+		if (Bytes == nullptr || Size < HeaderBytes)
+		{
+			return Refuse(CheckpointResult::Truncated);
+		}
+		if (std::memcmp(Bytes, CheckpointMagic, MagicBytes) != 0)
+		{
+			return Refuse(CheckpointResult::BadMagic);
+		}
+		const uint8* At = Bytes + MagicBytes;
+		Out.Version = GetU32(At);
+		Out.Flags = GetU32(At + 4);
+		Out.InnerFormat = GetU32(At + 8);
+		Out.Seed = GetU64(At + 12);
+		Out.Tick = GetU64(At + 20);
+		Out.LogEvents = GetU64(At + 28);
+		Out.LogBytes = GetU64(At + 36);
+		Out.SectionCount = GetU32(At + 44);
+		if (Out.Version != CheckpointVersion)
+		{
+			return Refuse(CheckpointResult::VersionMismatch);
+		}
+		if (Out.InnerFormat != VAELEN_SAVE_FORMAT_VERSION)
+		{
+			return Refuse(CheckpointResult::InnerVersionMismatch);
+		}
+		const uint16 Required = static_cast<uint16>(Out.Flags & 0xFFFFu);
+		const uint16 Unknown = static_cast<uint16>(Required & ~KnownRequiredFlags);
+		if (Unknown != 0u)
+		{
+			for (uint32 Bit = 0; Bit < 16u; ++Bit)
+			{
+				if ((Unknown & (1u << Bit)) != 0u)
+				{
+					Refusal.Result = CheckpointResult::UnknownRequiredFlag;
+					Refusal.UnknownBit = Bit;
+					return Refusal;
+				}
+			}
+		}
+		if (Out.SectionCount > CheckpointMostSections)
+		{
+			return Refuse(CheckpointResult::BadSectionTable, Out.SectionCount);
+		}
+		const usize TableBytes = static_cast<usize>(Out.SectionCount) * EntryBytes;
+		if (Size < HeaderBytes + TableBytes)
+		{
+			return Refuse(CheckpointResult::Truncated);
+		}
+		uint64 Reach = static_cast<uint64>(HeaderBytes + TableBytes);
+		for (uint32 Index = 0; Index < Out.SectionCount; ++Index)
+		{
+			const uint8* Row = Bytes + HeaderBytes + static_cast<usize>(Index) * EntryBytes;
+			const uint16 Kind = GetU16(Row);
+			const uint64 Offset = GetU64(Row + 6);
+			const uint64 Length = GetU64(Row + 14);
+			// In order and not overlapping, as ReadCheckpoint holds them; what
+			// lies beyond the file is for the trailer's reader to find.
+			if (Offset < Reach || Length > ~uint64{0} - Offset)
+			{
+				return Refuse(CheckpointResult::BadSectionTable, Index);
+			}
+			Reach = Offset + Length;
+			if (Kind == static_cast<uint16>(SectionKind::State) && !Out.HasState)
+			{
+				Out.HasState = true;
+				Out.StateOffset = Offset;
+				Out.StateLength = Length;
+			}
+		}
 		return Refusal;
 	}
 
