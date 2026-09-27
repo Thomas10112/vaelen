@@ -13,7 +13,7 @@
 # In the raw log every line reads `LogVaelenWalk: LogVaelenScene: ...` - the engine's category,
 # then the line's own; Tools/check_session.py reads from the last (19.11b).
 log s2-2026-09-27.log
-head f0c75b12e24d03f82a241f281e8f66e9b462b946
+head ee066e160bd8b4c53ef46abd78ca0c2c18a053b4
 run --empty --stream --climate --want-bound 0 --size 128 --years 120 --scene --scene-terrain 26
 line LogVaelenScene: AELVOR 128 seed 41454c564f52 region 26:
 line LogVaelenClimate: AELVOR 128
