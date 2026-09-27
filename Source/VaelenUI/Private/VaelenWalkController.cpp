@@ -105,7 +105,7 @@ void AVaelenWalkController::OnMove(const FInputActionValue& Value)
 	const FVector2D Axis = Value.Get<FVector2D>();
 	APawn* Body = GetPawn();
 	UVaelenWorldSubsystem* World = HeldWorld(GetWorld());
-	if (Body == nullptr)
+	if (Body == nullptr || Paused())
 	{
 		return;
 	}
@@ -139,7 +139,8 @@ void AVaelenWalkController::OnMove(const FInputActionValue& Value)
 void AVaelenWalkController::OnLook(const FInputActionValue& Value)
 {
 	const FVector2D Axis = Value.Get<FVector2D>();
-	if (APawn* Body = GetPawn())
+	APawn* Body = GetPawn();
+	if (Body != nullptr && !Paused())
 	{
 		Body->AddControllerYawInput(static_cast<float>(Axis.X));
 		Body->AddControllerPitchInput(static_cast<float>(-Axis.Y));

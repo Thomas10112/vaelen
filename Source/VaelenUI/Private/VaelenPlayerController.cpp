@@ -28,9 +28,12 @@
 #include "VaelenPlayerController.h"
 
 #include "Components/InputComponent.h"
+#include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
+#include "HAL/PlatformMisc.h"
 #include "InputCoreTypes.h"
+#include "TimerManager.h"
 #include "VaelenWorldSubsystem.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogVaelenUI, Log, All);
@@ -80,6 +83,12 @@ void AVaelenPlayerController::SetupInputComponent()
 	InputComponent->BindKey(EKeys::Tab, IE_Pressed, this, &AVaelenPlayerController::NextTarget);
 	InputComponent->BindKey(EKeys::SpaceBar, IE_Pressed, this, &AVaelenPlayerController::TurnTheDay);
 	InputComponent->BindKey(EKeys::F9, IE_Pressed, this, &AVaelenPlayerController::WriteStream);
+	// 22.01: the front end's keys, said on the pages the HUD draws.
+	InputComponent->BindKey(EKeys::Enter, IE_Pressed, this, &AVaelenPlayerController::NewWorld);
+	InputComponent->BindKey(EKeys::F8, IE_Pressed, this, &AVaelenPlayerController::Continue);
+	InputComponent->BindKey(EKeys::Escape, IE_Pressed, this, &AVaelenPlayerController::TogglePause);
+	InputComponent->BindKey(EKeys::F5, IE_Pressed, this, &AVaelenPlayerController::QuickSave);
+	InputComponent->BindKey(EKeys::F10, IE_Pressed, this, &AVaelenPlayerController::Quit);
 	// 19.11b: the hooks a subclass fills follow the SUBSYSTEM's signals, not
 	// this controller's keys, so that Vaelen.Stream.Write, Vaelen.Day and
 	// Vaelen.TakeUp reach them as F9 and Space do. AddUObject: the bindings
@@ -128,7 +137,7 @@ void AVaelenPlayerController::Move()
 void AVaelenPlayerController::NextTarget()
 {
 	UVaelenWorldSubsystem* World = Held(GetWorld());
-	if (World == nullptr)
+	if (World == nullptr || bPaused_)
 	{
 		return;
 	}
@@ -186,9 +195,9 @@ int32 AVaelenPlayerController::RegionTheCameraIsOver(int32& OutReach)
 void AVaelenPlayerController::TurnTheDay()
 {
 	UVaelenWorldSubsystem* World = Held(GetWorld());
-	if (World == nullptr)
+	if (World == nullptr || bPaused_)
 	{
-		return;
+		return; // 22.01: paused, the day does not turn
 	}
 	// THE LOOK BEFORE THE TURN, and only here. The subsystem remembers it and
 	// hands it through the door as the day turns, so the stream carries one
@@ -225,9 +234,9 @@ void AVaelenPlayerController::WriteStream()
 void AVaelenPlayerController::Verb(Vaelen::Player::Intent Kind)
 {
 	UVaelenWorldSubsystem* World = Held(GetWorld());
-	if (World == nullptr)
+	if (World == nullptr || bPaused_)
 	{
-		return;
+		return; // 22.01: paused, no verb reaches the door
 	}
 	const Vaelen::View::PanelView& Page = World->Panel();
 	const Vaelen::View::LifeView& Life = World->Life();
@@ -261,4 +270,128 @@ void AVaelenPlayerController::Verb(Vaelen::Player::Intent Kind)
 	UE_LOG(LogVaelenUI, Log, TEXT("LogVaelenUI: %s -> %s"), ANSI_TO_TCHAR(Vaelen::Player::IntentName(Kind)),
 		   Answer == Vaelen::Player::Refusal::None ? TEXT("queued")
 												   : ANSI_TO_TCHAR(Vaelen::Player::RefusalName(Answer)));
+}
+
+// ---------------------------------------------------------------- 22.01: the front end
+
+AVaelenPlayerController::EFront AVaelenPlayerController::Front() const
+{
+	if (bPaused_)
+	{
+		return EFront::Paused;
+	}
+	if (bLoading_)
+	{
+		return EFront::Loading;
+	}
+	const UVaelenWorldSubsystem* World = Held(GetWorld());
+	return World != nullptr && World->Begun() ? EFront::Playing : EFront::Title;
+}
+
+void AVaelenPlayerController::NewWorld()
+{
+	const UVaelenWorldSubsystem* World = Held(GetWorld());
+	if (World == nullptr || World->Begun() || bLoading_ || GetWorld() == nullptr)
+	{
+		return; // Enter means nothing but on the title page
+	}
+	Pending_.Reset();
+	NewWorldLines(Pending_);
+	Loading_ = TEXT("Generating AELVOR: three hundred years of pre-history and a hundred and twenty of the world. "
+					"A few seconds.");
+	Notice_.Reset();
+	bLoading_ = true;
+	// Drawn this frame, run the next: the one deferral in this module, and
+	// not a Tick - it fires once, and the world moves on the console line it
+	// runs exactly as it would on the same line typed (ADR-0138).
+	GetWorld()->GetTimerManager().SetTimerForNextTick(this, &AVaelenPlayerController::RunPending);
+}
+
+void AVaelenPlayerController::Continue()
+{
+	UVaelenWorldSubsystem* World = Held(GetWorld());
+	if (World == nullptr || World->Begun() || bLoading_ || GetWorld() == nullptr)
+	{
+		return;
+	}
+	FString Name;
+	uint64 Tick = 0;
+	if (!World->NewestSave(Name, Tick))
+	{
+		Notice_ = TEXT("no save to continue from");
+		return;
+	}
+	Pending_.Reset();
+	ContinueLines(Name, Pending_);
+	Loading_ = FString::Printf(TEXT("Loading %s (tick %llu)."), *Name, static_cast<unsigned long long>(Tick));
+	Notice_.Reset();
+	bLoading_ = true;
+	GetWorld()->GetTimerManager().SetTimerForNextTick(this, &AVaelenPlayerController::RunPending);
+}
+
+void AVaelenPlayerController::RunPending()
+{
+	bLoading_ = false;
+	if (GEngine == nullptr || GetWorld() == nullptr || Pending_.IsEmpty())
+	{
+		return;
+	}
+	const TArray<FString> Lines = Pending_;
+	Pending_.Reset();
+	for (const FString& Line : Lines)
+	{
+		GEngine->Exec(GetWorld(), *Line);
+		const UVaelenWorldSubsystem* World = Held(GetWorld());
+		const bool Begun = World != nullptr && World->Begun();
+		UE_LOG(LogVaelenUI, Log, TEXT("LogVaelenUI: front end ran `%s`: %s"), *Line,
+			   Begun ? TEXT("a world is begun") : TEXT("no world"));
+		if (!Begun)
+		{
+			// The line said why on its own log; the title page says that it did not.
+			Notice_ = FString::Printf(TEXT("no world after `%s` - see the log"), *Line);
+			return;
+		}
+	}
+}
+
+void AVaelenPlayerController::TogglePause()
+{
+	const UVaelenWorldSubsystem* World = Held(GetWorld());
+	if (World == nullptr || bLoading_)
+	{
+		return;
+	}
+	if (!World->Begun())
+	{
+		Quit(); // Escape on the title page
+		return;
+	}
+	bPaused_ = !bPaused_;
+	UE_LOG(LogVaelenUI, Log, TEXT("LogVaelenUI: %s"), bPaused_ ? TEXT("paused") : TEXT("resumed"));
+}
+
+void AVaelenPlayerController::QuickSave()
+{
+	UVaelenWorldSubsystem* World = Held(GetWorld());
+	if (World == nullptr || !World->Begun() || bLoading_)
+	{
+		return;
+	}
+	FString Where, Check;
+	Notice_ = FString::Printf(
+		TEXT("%s%s"), World->Save(TEXT("quick"), Where, Check) ? TEXT("saved: ") : TEXT("save refused: "), *Where);
+	UE_LOG(LogVaelenUI, Log, TEXT("LogVaelenUI: %s"), *Notice_);
+}
+
+void AVaelenPlayerController::Quit()
+{
+	// From the pause page, or from the title page through Escape: the
+	// world is not saved here - F5 is a key away and the autosave is ten
+	// days old at most. Not forced: the engine shuts down in order.
+	if (bLoading_ || (Front() != EFront::Paused && Front() != EFront::Title))
+	{
+		return;
+	}
+	UE_LOG(LogVaelenUI, Log, TEXT("LogVaelenUI: quit"));
+	FPlatformMisc::RequestExit(false);
 }

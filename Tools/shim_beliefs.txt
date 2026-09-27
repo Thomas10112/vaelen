@@ -145,3 +145,14 @@ GetAuthGameMode   19.11b  UWorld: the game mode that respawns a walker the void 
 RestartPlayer     19.11b  AGameModeBase: a pawn spawned and possessed again for the controller - Vaelen.Walk
 StopMovementImmediately  19.11b  UCharacterMovementComponent: a placed walker keeps none of its fall - Vaelen.Walk
 Mode              19.11b  the game mode as a local of Vaelen.Walk - a name the shim also has (a coincidence, like begin and end)
+Enter               22.01  the title page's new world
+Escape              22.01  the pause page, and quit from the title
+F5                  22.01  save (quick)
+F8                  22.01  continue from the newest save
+F10                 22.01  quit from the pause page
+Exec                22.01  a console line run by the front end (UEngine::Exec)
+GetTimerManager     22.01  the world's timers, for the one next-tick deferral
+SetTimerForNextTick 22.01  the loading page drawn before the blocking Begin
+FPlatformMisc       22.01  RequestExit's owner
+RequestExit         22.01  quit, not forced
+GetOwningPlayerController 22.01  the HUD reads the front end's page from its controller

@@ -99,9 +99,23 @@ namespace
 		{
 			return;
 		}
-		const int32 Size = NumberAt(Args, 0, 128);
+		// 22.01: a world already begun - by Vaelen.Load, which is the title
+		// page's Continue (`Vaelen.Load <save>` then `Vaelen.Walk`), or by a
+		// Vaelen.Play typed before - is walked as it is; the walk loads
+		// nothing itself. Otherwise one is begun, as before.
+		int32 Size = NumberAt(Args, 0, 128);
 		const int32 Years = NumberAt(Args, 1, 120);
-		if (!World->Begin(Size, Years, true))
+		if (World->Begun())
+		{
+			if (LandOf(World_) != nullptr)
+			{
+				UE_LOG(LogVaelenWalk, Warning, TEXT("LogVaelenWalk: this world is walked already"));
+				return;
+			}
+			Size = World->Size();
+			UE_LOG(LogVaelenWalk, Log, TEXT("LogVaelenWalk: walking the world already begun (AELVOR %d)"), Size);
+		}
+		else if (!World->Begin(Size, Years, true))
 		{
 			UE_LOG(LogVaelenWalk, Warning,
 				   TEXT("LogVaelenWalk: no world begun (one per host, and the map must generate)"));

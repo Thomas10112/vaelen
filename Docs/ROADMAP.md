@@ -8924,3 +8924,71 @@ terrain lines byte for byte (`cold deaths 1582`, region 26
 7fce7d5a0851289f, all 105208c54e3c6ea9); 25 TUs parse, the ledger 130,
 the fence, the census. S2 builds THIS commit (`^VaelenScene reviewed`):
 it carries the shim audit's include and the engine changes above.
+
+CI run 323 green on 71702f2, ten legs of ten: the two moved layout pins
+agree on every compiler.
+
+### 22.01, 2026-09-27: the front end as pages of text - title, loading, pause; F5, the autosave, Continue
+
+Section 27's step 7, headless for S4: the product's first screen without an
+asset, a Blueprint or UMG, in the words the HUD already draws with. STATUS:
+UNVERIFIED (engine) - parsed against the shim (25 TUs, 29 self-test
+mutations, 141 beliefs: eleven new), never compiled; sitting S4 builds it.
+
+**What a player meets.** The HUD draws the front end's page BEFORE the
+world's page (Vaelen/View/Panel.h's, digested and pinned; the front end's
+rows are host text and pinned by nothing):
+
+- **Title** (no world begun): `Enter` a new world (AELVOR 128, 120 years);
+  `F8` continue from the newest save - named on the page with its tick, or
+  "no save yet"; `Escape` quit.
+- **Loading**: drawn on the frame of the key, and the console lines the page
+  chose run on the NEXT frame (the one deferral in the UI, a next-tick
+  timer: it fires once, and the world moves on the same `Vaelen.Play` or
+  `Vaelen.Walk` line a sitting would type - ADR-0138 holds, nothing moves on
+  a frame). Through the console on purpose: the UI names no module that
+  holds a world (the fence), and a typed line and a pressed key are one line.
+  The base controller runs `Vaelen.Play 128 120 1` and `Vaelen.Load <save>`;
+  the walk's runs `Vaelen.Walk 128 120`, and for Continue `Vaelen.Load <save>`
+  then `Vaelen.Walk` - which now WALKS a world already begun (builds the
+  ground, the sky, the scenery and places the walker around it) instead of
+  refusing to begin a second; the walk loads nothing itself, as the fence
+  says.
+- **Playing**: the world's page as before; `Escape` pauses, `F5` saves as
+  `quick` (the store keeps the one before as `quick.previous`, 16.15).
+- **Paused**: year, day and days lived; `Escape` back; `F5` save; `F9` the
+  stream; `F10` quit. While paused no verb, no day turn, no Tab and no step
+  or look of the walker reaches the world - the stream is exactly what it
+  would be without the pause, since a pause is no input.
+
+**The autosave** (VaelenWorldSubsystem::AdvanceDay): every ten DAY TURNS,
+after the views are retaken, `Save("autosave")` - counted in turns and not
+in frames or seconds, so the same play autosaves at the same days
+(`Vaelen.Day 100` counts a hundred and saves once); `SetAutosaveEvery(0)`
+turns it off; `LogVaelenWorld: autosave <path>` or the refusal by name. The
+store's rename-aside keeps `autosave.previous`. Cost: a container of the
+128 Play+Stream world is tens of megabytes (16.01, 20.01), a fraction of a
+second every ten Space presses; measured only on the owner's disk.
+`NewestSave` picks the highest TICK from the containers' own headers (the
+lowest name at a tie): no clock, no file time.
+
+**What S2 and S3 see of it.** At launch the title page is up; typing
+`Vaelen.Walk 128 120` at the console still works and prints the same lines
+(the page goes away once a world is begun) - or `Enter` does the same. The
+one key that changed meaning is `Escape`: it pauses the world (and, on the
+title page, quits) - the console's own key is untouched.
+
+**Beliefs (eleven), until S4 compiles them:** `EKeys::Enter`, `Escape`,
+`F5`, `F8`, `F10`; `UEngine::Exec(UWorld*, const TCHAR*)` (the engine's
+third parameter defaults to the log); `UWorld::GetTimerManager()` and
+`FTimerManager::SetTimerForNextTick(Obj, &Class::Method)`;
+`FPlatformMisc::RequestExit(bool)`; `AHUD::GetOwningPlayerController()`.
+Two new self-test mutations: a key the engine does not have (`F13`), and
+the deferral asked of the actor rather than the world's timers - both
+caught.
+
+**What is not here, on purpose:** a quit-to-title (the host holds one
+world, Begin's rule; quit and Continue is the loop), a save chooser (the
+newest save is the one a player wants; `Vaelen.Saves` lists them), any
+font, colour or layout beyond the rows of 14.09 - polish is Phase 22's
+remainder after a stranger has played.

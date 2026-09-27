@@ -422,7 +422,10 @@ side is redesigned. The standing rule holds: REPORT, do not repair.
    Engine/Engine.h only forward-declares UMaterial, and VaelenLand.cpp
    handed `GEngine->VertexColorMaterial` to `SetMaterial` without including
    Materials/Material.h - MSVC would have refused the conversion. Then
-   the scene was reviewed (2026-09-27, ROADMAP "VaelenScene reviewed"):
+   the scene was reviewed (2026-09-27, ROADMAP "VaelenScene reviewed";
+   and 22.01 put a TITLE PAGE at launch - `Enter` runs the same
+   `Vaelen.Walk 128 120` this sitting types, and `Escape` now pauses, so
+   type at the console as written or press Enter, either is the sitting):
    the walk opened in the dark (the sun is at dawn now, in the east, on
    the first sky line: `sun azimuth 900 elevation 0`), the land refuses
    to build for nobody (`Vaelen.Walk` says "nobody is played ...
@@ -529,6 +532,38 @@ looked K` line to R == L, with K the R of the line before (the Begin region
 on the first: the look is taken from the feet BEFORE the turn, so on the
 day of a crossing K is the region left and R the region arrived in - the
 step S3's item 6 asks for), and the instance counts to the layout line's.
+
+## PHASE 19 - sitting S4 (task 19.12, with 22.01's front end): a life from the title page
+
+AFTER S3. The build of 22.01's commit or later (found by subject,
+`^22.01: `), rev-parse first, the standing rule as always. Two things are
+new at launch and cost no typing: the title page, and Escape.
+
+1. Build as for 14.08; first error verbatim and its module. 22.01 touches
+   VaelenUI (the controller, the HUD, the walk controller), VaelenGame (the
+   subsystem) and VaelenWalk (Vaelen.Walk); eleven beliefs are compiled
+   for the first time (ROADMAP 22.01 lists them) - the ones most likely to
+   be wrong are `UEngine::Exec`'s signature and the next-tick timer's
+   template form.
+2. Launch with the walk mode. The TITLE PAGE is up: `Enter` (the page says
+   what it runs: `Vaelen.Walk 128 120`). Bring back the loading page's
+   words as you saw them and the first LogVaelenWalk lines - they must be
+   the same lines S2 brought back.
+3. Play 19.12's thirty days (its own row): Space turns days; every tenth
+   turn the log prints `LogVaelenWorld: autosave <path>` - bring back the
+   first of those lines and `dir Saved\Vaelen`.
+4. `Escape`: the pause page. `F5`: the page says `saved: <path>`. `Escape`
+   again: the world. Report the pause page's first row verbatim.
+5. `Escape`, then `F10`: the game quits. Relaunch: the title page names
+   `autosave` or `quick` (whichever has the higher tick) - `F8`. Bring back
+   the loading page's words and the LogVaelenUI lines `front end ran ...`.
+   The walk must be where the save left it: `Vaelen.Scene` prints the
+   same layout digest as before the quit.
+6. Then 19.12 as written: `Vaelen.Stream.Write` and its LogVaelenWalk
+   summary, the screenshot, `stat unit`.
+
+**Report rather than repair**, as always: a key that does nothing, a page
+that does not go away, a line that differs.
 
 ## What the kernel half already hands you
 

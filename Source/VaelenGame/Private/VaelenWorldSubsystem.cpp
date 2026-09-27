@@ -30,6 +30,8 @@
 // gate. This line said UNVERIFIED for three days while it was true.
 #include "VaelenWorldSubsystem.h"
 
+DEFINE_LOG_CATEGORY_STATIC(LogVaelenWorld, Log, All);
+
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "VaelenCheckpointStore.h"
@@ -315,6 +317,25 @@ void UVaelenWorldSubsystem::AdvanceDay(int32 Days)
 	}
 	Held->TakeAll(Keys_);
 	OnViewsTaken.Broadcast();
+	// 22.01: the autosave, every AutosaveEvery_ day turns, AFTER the views
+	// are retaken - what is saved is what is shown. Section 27's step 7.
+	if (AutosaveEvery_ > 0)
+	{
+		DaysSinceAutosave_ += Days;
+		if (DaysSinceAutosave_ >= AutosaveEvery_)
+		{
+			DaysSinceAutosave_ = 0;
+			FString Where, Check;
+			if (Save(TEXT("autosave"), Where, Check))
+			{
+				UE_LOG(LogVaelenWorld, Log, TEXT("LogVaelenWorld: autosave %s"), *Where);
+			}
+			else
+			{
+				UE_LOG(LogVaelenWorld, Warning, TEXT("LogVaelenWorld: autosave refused: %s"), *Where);
+			}
+		}
+	}
 }
 
 Vaelen::Player::Refusal UVaelenWorldSubsystem::Mean(const Vaelen::Player::PlayerCommand& What)
@@ -654,6 +675,41 @@ bool UVaelenWorldSubsystem::Load(const FString& Name, FString& Out, FString& Out
 	Out = FPaths::Combine(Store.Where(), Name);
 	OutCheck = HeadlessCheck(Declared, Keys_, Out);
 	return true;
+}
+
+bool UVaelenWorldSubsystem::NewestSave(FString& OutName, uint64& OutTick)
+{
+	FVaelenCheckpointStore Store(SaveFolder());
+	bool Found = false;
+	std::string Name;
+	uint64 Tick = 0;
+	for (const Vaelen::Run::StoreEntry& Entry : Store.List())
+	{
+		if (!Found || Entry.Tick > Tick || (Entry.Tick == Tick && Entry.Name < Name))
+		{
+			Found = true;
+			Name = Entry.Name;
+			Tick = Entry.Tick;
+		}
+	}
+	if (!Found)
+	{
+		return false;
+	}
+	OutName = FString(ANSI_TO_TCHAR(Name.c_str()));
+	OutTick = Tick;
+	return true;
+}
+
+void UVaelenWorldSubsystem::SetAutosaveEvery(int32 Days)
+{
+	AutosaveEvery_ = Days < 0 ? 0 : Days;
+	DaysSinceAutosave_ = 0;
+}
+
+int32 UVaelenWorldSubsystem::AutosaveEvery() const
+{
+	return AutosaveEvery_;
 }
 
 int32 UVaelenWorldSubsystem::Saves(TArray<FString>& Out)

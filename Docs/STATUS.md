@@ -129,6 +129,14 @@ TASK        : 19.10 — DONE 2026-09-25 (headless); its engine half UNVERIFIED u
               the eight verbs from it (FKey(FName), a listed belief). Three sabotages
               caught - two of them redone after an unbuildable first attempt.
 
+TASK (22.01) : the front end as pages of text — WRITTEN 2026-09-27, UNVERIFIED (engine). Title
+  (Enter new world, F8 continue from the newest save, Escape quit), loading page drawn a frame before
+  the blocking Begin (console lines run on the next tick), pause page (Escape, F5 save `quick`, F9,
+  F10 quit) during which nothing reaches the world; the autosave every ten day turns under
+  `autosave` (rename-aside keeps the previous); Vaelen.Walk walks a world already begun, so the
+  walk's Continue is Vaelen.Load then Vaelen.Walk. 25 TUs parse, 29 mutations, 141 beliefs (11 new).
+  Sitting S4 builds it. ROADMAP "22.01". CI run 323 green on 71702f2 (the scene review).
+
 TASK (scene) : VaelenScene reviewed — DONE 2026-09-27. 96 agents (six lenses, three refuters a
   claim) on Terrain, Fence, Layout, Sky and their tests: 25 findings applied, 4 refuted. The house
   rule held 20 degrees on the axes only (27 on a diagonal): the diagonals too now, and the two

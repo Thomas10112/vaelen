@@ -46,6 +46,15 @@ class VAELENUI_API AVaelenWalkController : public AVaelenPlayerController
 
 public:
 	virtual void SetupInputComponent() override;
+	/// 22.01: the walk's front end begins with Vaelen.Walk, which builds the
+	/// ground too, and continues with Vaelen.Load then Vaelen.Walk, which
+	/// walks the world the load begun.
+	virtual void NewWorldLines(TArray<FString>& Out) const override { Out.Add(TEXT("Vaelen.Walk 128 120")); }
+	virtual void ContinueLines(const FString& Save, TArray<FString>& Out) const override
+	{
+		Out.Add(FString::Printf(TEXT("Vaelen.Load %s"), *Save));
+		Out.Add(TEXT("Vaelen.Walk"));
+	}
 
 	/// How far ahead a step is checked against the fence, in centimetres.
 	UPROPERTY(EditAnywhere, Category = "AELVOR|Walk", meta = (ClampMin = "1"))

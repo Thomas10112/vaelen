@@ -248,6 +248,17 @@ public:
 	/// chooser: name, bytes, tick, container version, sections, state digest.
 	/// Empty when the folder is not there yet. Returns how many.
 	int32 Saves(TArray<FString>& Out);
+	/// 22.01: the save with the highest tick under Saved/Vaelen (the lowest
+	/// name of two at one tick), for the title page's Continue. False, Out
+	/// untouched, when there is none. Ticks, not file times: no clock.
+	bool NewestSave(FString& OutName, uint64& OutTick);
+	/// 22.01: the autosave. Every AutosaveEvery day turns AdvanceDay saves the
+	/// world under the name `autosave` (the store keeps the one before as
+	/// `autosave.previous`, 16.15) and says so on LogVaelenWorld; 0 turns it
+	/// off. Counted in day turns, not in frames or seconds: the same play
+	/// autosaves at the same days.
+	void SetAutosaveEvery(int32 Days);
+	int32 AutosaveEvery() const;
 
 private:
 	// TPimplPtr and NOT TUniquePtr, and this is not a preference.
@@ -271,4 +282,7 @@ private:
 	/// The host's verb keys (19.10). Here and not in Held: the controller binds
 	/// them at SetupInputComponent, before any world is begun.
 	Vaelen::View::PanelKeys Keys_ = Vaelen::View::DefaultKeys;
+	/// 22.01: the autosave's cadence in day turns, and the turns since.
+	int32 AutosaveEvery_ = 10;
+	int32 DaysSinceAutosave_ = 0;
 };

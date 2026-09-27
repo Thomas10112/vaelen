@@ -220,6 +220,18 @@ MUTATIONS = [
         "void AShimProbeController::SetupInputComponent()",
         "static void Poke(APlayerController* P)\n{\n\tP->SetupInputComponent();\n}\nvoid AShimProbeController::SetupInputComponent()",
     ),
+    (
+        "22.01: a front-end key the engine does not have (F13)",
+        KEYS,
+        "InputComponent->BindKey(EKeys::F10, IE_Pressed, this, &AVaelenPlayerController::Quit);",
+        "InputComponent->BindKey(EKeys::F13, IE_Pressed, this, &AVaelenPlayerController::Quit);",
+    ),
+    (
+        "22.01: the deferral asked of an actor rather than the world's timers",
+        KEYS,
+        "GetWorld()->GetTimerManager().SetTimerForNextTick(this, &AVaelenPlayerController::RunPending);\n}\n\nvoid AVaelenPlayerController::Continue()",
+        "GetTimerManager().SetTimerForNextTick(this, &AVaelenPlayerController::RunPending);\n}\n\nvoid AVaelenPlayerController::Continue()",
+    ),
 ]
 
 

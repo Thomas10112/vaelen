@@ -23,6 +23,8 @@ public:
 	/// How a world reaches the subsystem that holds the simulation (14.08).
 	/// Declared, not defined: nothing here is linked.
 	UGameInstance* GetGameInstance() const;
+	/// 22.01 BELIEF: the world's timers (TimerManager.h).
+	class FTimerManager& GetTimerManager();
 	/// 19.06 BELIEF: the local player's controller, which Vaelen.Walk places on the ground.
 	class APlayerController* GetFirstPlayerController() const;
 	/// 19.11b BELIEF: the game mode of this world, on the authority.

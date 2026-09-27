@@ -57,6 +57,27 @@ private:
 	void WriteStream();
 
 public:
+	/// 22.01: THE FRONT END, as pages of text the HUD draws (section 27's
+	/// step 7: title, loading, pause; F5 saves; the title's Continue takes
+	/// the newest save up). Which page: Title until a world is begun, Loading
+	/// while the console line the page chose runs - drawn on this frame, run
+	/// on the next, since Begin blocks for seconds - Playing, and Paused,
+	/// where no verb, no day turn and no step reaches the world. The world is
+	/// the subsystem's; this only says which page is up and what the page
+	/// last did (Notice), and nothing here moves on a frame.
+	enum class EFront : uint8
+	{
+		Title,
+		Loading,
+		Playing,
+		Paused
+	};
+	EFront Front() const;
+	/// The words of the loading page, and the last outcome the pages show
+	/// (a save's path, a refused load, the newest save's tick).
+	const FString& LoadingWords() const { return Loading_; }
+	const FString& Notice() const { return Notice_; }
+	bool Paused() const { return bPaused_; }
 	/// What the camera is over, as a region, and how far it is worth detailing
 	/// around it. Read on every day turn and handed to the subsystem, which
 	/// hands it through the door - so where somebody is looking is an INPUT
@@ -146,6 +167,16 @@ protected:
 	/// 19.11b: after every retaking of the views (Begin, a day turned by any
 	/// path, a load, another life taken up) - the walk puts its body back here.
 	virtual void AfterViewsTaken() {}
+	/// 22.01: the console lines the front end runs, in order, for a new world
+	/// and for a continued one - the base's Vaelen.Play and Vaelen.Load; the
+	/// walk adds Vaelen.Walk, which builds the ground around whichever world
+	/// is begun. Through the console, so the UI names no module that holds a
+	/// world, and a sitting's typed lines and the page's keys are the same lines.
+	virtual void NewWorldLines(TArray<FString>& Out) const { Out.Add(TEXT("Vaelen.Play 128 120 1")); }
+	virtual void ContinueLines(const FString& Save, TArray<FString>& Out) const
+	{
+		Out.Add(FString::Printf(TEXT("Vaelen.Load %s"), *Save));
+	}
 
 private:
 	/// Through the page and then through the door, and nowhere else. The page
@@ -157,4 +188,17 @@ private:
 	/// company for the three that need a person, and into its neighbours for
 	/// the one that needs a place. Tab moves it; nothing else does.
 	uint32 Aim = 0;
+
+	/// 22.01: the front end's keys and its one deferral.
+	void NewWorld();	///< Enter on the title page
+	void Continue();	///< F8 on the title page: the newest save
+	void TogglePause(); ///< Escape: pause and resume; quit from the title
+	void QuickSave();	///< F5: Vaelen.Save quick, on the pause page and in play
+	void Quit();		///< F10 on the pause page
+	void RunPending();	///< the next frame after Enter or F8: the console line
+	bool bPaused_ = false;
+	bool bLoading_ = false;
+	TArray<FString> Pending_;
+	FString Loading_;
+	FString Notice_;
 };
