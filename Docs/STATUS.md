@@ -138,7 +138,10 @@ TASK (27.2) : the colony question measured — DONE 2026-09-27 (headless VALIDAT
   worlds, Run.Climate's cost). Three fixes ranked for the owner in ROADMAP "Section 27 step 2
   measured"; none applied. Replay.Bound: a bound life's month (Erdass, bound to Okigerdo) written by --stand
   --want-bound 1 and replayed with the rule TOLD (-DWANTBOUND=1, -DBOND the page's row); Replay.Bound.AsFree
-  the control (the same tape, free: Replay.Climate's digests). Gate 19 in run_gates.sh.
+  the control (the same tape, free: refused, one wrong taking). Gate 19 in run_gates.sh. The bound life's
+  larder measured: Erdass starts with 0 grain (7 of 46 bound in the window do; 43 of 472 free), taken
+  because TakeUp takes the lowest index; work brings 2, a meal costs 1 - the verbs are sound, the first
+  page is the owner's design call.
 
 TASK (22.03) : check_cook.py — DONE 2026-09-27 (VALIDATED for the script). A staged package
   checked against the assets the code names by string (derived from Source: the four basic shapes

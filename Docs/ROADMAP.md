@@ -9232,6 +9232,33 @@ WANTBOUND dropped against the bound line, one recorded Give re-aimed
 holder, a BOND too short to be a row - each refused by name; and the control
 replayed WITH the rule runs clean and fails the control for it.
 
+**The bound life's larder, measured the same evening (the third risk, the
+fun).** Replay.Bound's month reads "could not eat: nothing to do it with"
+six times, and a page that says so six times in thirty days is the risk
+section 27 names third. Measured with two scratch probes against the release
+libraries, on the --stand world (Play, climate on) at the moment of the
+start: Erdass (person 3610, family 393, twelve alive at the table) is taken
+up with a house stock of 0 grain and a region stock of 0, where Dokdahum
+(family 39) starts with 103. The verbs are sound - a day of work brings 2
+grain into the house, a meal takes 1, and nothing between days takes it
+back, so Erdass eats on any day after a day of work (10 days driven by hand:
+day 1 refused, every meal after a work day taken). The six refusals are the
+stand-in writer's order (Eat on days before any Work), not the world's. But
+the EMPTY LARDER is the world's, and it is not the rule for the bound: of
+the 46 bound aged 16-40 in region 26, 7 start with nothing in the house
+(median 60 grain, mean 68.5, households of 16), against 43 of 472 free
+(median 84, mean 89.9). Erdass is one of the seven because TakeUp takes the
+LOWEST person index the rules allow (Start.cpp), and 3610 is the lowest
+bound index in the window. So the premise life the product would start
+today is, by an accident of index order, one of the poorest houses of the
+region - "you own nothing, and the house owns nothing either" - and the
+first page a stranger reads says so. Whether that is the game (work first,
+eat after: the premise made concrete on day one) or a bad first page is a
+design decision and the owner's; the cheapest lever if it is the latter is
+in the start rules (a preference among the offered, as PreferOre already is
+- a house with grain, or the poorest on purpose), which moves the person
+every bound entry pins and is therefore a re-freeze. Not touched.
+
 The `--empty` play was the wrong instrument for this question and is
 written down as such: it takes nobody up by design (14.03), so its "0
 taking(s)" says nothing about the offer. The probe read the offer.
