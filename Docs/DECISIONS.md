@@ -10686,7 +10686,7 @@ The owner asked for a 3D world walked with ZQSD (ROADMAP section 24). The kernel
 
 ## ADR-0156 — Scene geometry is an integer function of view leaves in a pure module, and what it invents says so
 
-**Status:** PROPOSED (2026-09-25, Phase 19 plan; applied by 19.05, 19.08 and 19.09) **19.05's part APPLIED 2026-09-25**: VaelenScene, the terrain, R8.
+**Status:** APPLIED 2026-09-25 by 19.05 (VaelenScene, the terrain, R8), 19.08 (the layout: what is invented says so, in `Layout.h`'s own words) and 19.09 (the sky: snow, grass, sun and breath from the leaves alone, the sun from the world's hours); proposed 2026-09-25 by the Phase 19 plan. What it LOOKS like is sitting S2's, the winding a BELIEF until then.
 
 ### Context
 
@@ -10712,7 +10712,7 @@ MapView already carries elevation in metres and the hydrology flags (Land.h:44-8
 
 ## ADR-0157 — The engine side draws and presses keys and nothing else: a fenced actor module, the controller as the only door caller, an asset-free contract, and an exact `Super`
 
-**Status:** PROPOSED (2026-09-25, Phase 19 plan; applied by 19.02 and 19.06) **19.02's part APPLIED 2026-09-25**: the exact Super, the shim's contract headers (beliefs), the contract probe and the module-list check.
+**Status:** PROPOSED (2026-09-25, Phase 19 plan; applied by 19.02 and 19.06) **19.02's part APPLIED 2026-09-25**: the exact Super, the shim's contract headers (beliefs), the contract probe and the module-list check. **19.06's part WRITTEN 2026-09-25**: the fenced actor module (VaelenWalk, six more refused words), the controller as the only door caller (the walk's controller is a VaelenUI subclass and moves any pawn), the asset-free contract (mapping context, lights, PMC sections and the engine's vertex-colour material made in C++) - UNVERIFIED (engine) until sitting S2 builds it; one deviation the as-built note records: the game mode and the commands live in VaelenWalk, for the dependency direction.
 
 ### Context
 
@@ -10738,7 +10738,7 @@ The UI fence refuses `Tick(`, `DeltaSeconds` and clocks in VaelenUI (check_ui_fe
 
 ## ADR-0158 — The keys are the host's, and the default page is frozen
 
-**Status:** PROPOSED (2026-09-25, Phase 19 plan; applied by 19.10).
+**Status:** APPLIED 2026-09-25 by 19.10 for the page, the Atlas and the pins (proposed 2026-09-25 by the Phase 19 plan); its engine half - the subsystem's table and the controller bound from it - is written, parsed and UNVERIFIED (engine) until a sitting builds it. One deviation the as-built note records: the engine host holds DefaultKeys until 19.06 puts ZQSD on the keyboard, so that S2 sees the binding from the table on an unchanged page before the page moves.
 
 ### Context
 

@@ -256,13 +256,24 @@ compile error in those files is reported, not repaired - and an error inside
 Three engine calls were parsed and never run, and are the likeliest to need
 a report: `IFileManager::Move` with Replace, `FindFiles` over a directory
 (the store strips paths to leaves either way), and `FFileHelper`'s
-`SaveArrayToFile` / `LoadFileToArray`.
+`SaveArrayToFile` / `LoadFileToArray`. On `Move`, read after S1's first
+attempt: it is a delete of the old file and then a rename, not one step;
+since 19.10 a failed move keeps the `.writing` temporary instead of deleting
+it (ROADMAP, "Found by the 19.10 audit"), and since 16.15 the old save is
+set aside as `<name>.previous` before the new one is moved in and given back
+under its own name by `Vaelen.Load` and `Vaelen.Saves` if that move fails.
+If a `Vaelen.Save` over an existing name ever answers CannotWrite, bring back
+the listing of `Saved/Vaelen/`: the `.writing` file is the new save, the
+`.previous` file the old one, and `Vaelen.Saves` should still list the name
+once. Step 2 below saves `first` TWICE, a `Vaelen.Day` apart, so that the
+replace over an existing name runs on the engine at least once.
 
 1. Build the editor as for 14.08. The console should list three new commands:
    `Vaelen.Save`, `Vaelen.Load`, `Vaelen.Saves`.
 2. Under `-game` (a game instance is needed, as for `Vaelen.Play`):
    `Vaelen.Play 128 120 1`, a few `Vaelen.Day`, one or two `Vaelen.Do`, then
-   `Vaelen.Save first`. Bring back the TWO lines it prints:
+   `Vaelen.Save first`; one more `Vaelen.Day` and `Vaelen.Save first` again
+   (the replace, 16.15). Bring back the TWO lines the second one prints:
    ```
    LogVaelenPlay: saved first: state <16 hex>, log <16 hex>, life <16 hex>, panel <16 hex>; year Y day D, played P, daily cadence; <path>
    LogVaelenPlay: check it headless: VaelenAtlas --load-from "<path>" --size 128 --years 120 --prehistory 300 --then-days 0 --stream --climate
@@ -297,11 +308,40 @@ one cause. The standing rule above holds without exception: REPORT, do not
 repair - above all nothing in `Source/VaelenCore` ... `VaelenMilitary`, nor in
 `VaelenRun`, `VaelenView`, `VaelenScene` or below.
 
-0. Check out THE COMMIT OF 19.03, not the branch's head - the branch goes on
-   with headless work (19.04, 19.05) that this build must not see:
+THE FIRST ATTEMPT, 2026-09-25, on 19.03's commit `c000399`, stopped at step 1
+exactly as this sitting is meant to stop: `Result: Failed
+(OtherCompilationError)`, the first error
+
+    Source\VaelenRun\Public\Vaelen\Run\Aelvor.h(264,25): error C2487: 'Generations':
+    le membre d'une classe d'interface dll ne peut pas être déclaré avec une interface dll
+
+and the same for `AdoptResultToString`, `Adopt`, `GetRunState` and `SetRunState`
+(lines 318, 331, 334, 338), in `Aelvor.cpp` and `VaelenCheckpointStore.cpp`.
+Phase 16 had put `VAELEN_RUN_API` on five members of a class that is itself
+`VAELEN_RUN_API`; the macro is `dllexport` only in the editor's DLL build, so
+every headless leg, MSVC's included, compiled it. Repaired HERE, not on the
+owner's machine (the standing rule held), by commit `19.03b`, which also adds
+`Kernel.DllApi` (`Tools/check_dll_api.py`): it reads every header the way
+that build does and finds those five lines, and only those, in `c000399`.
+
+The retake builds `19.03b`. It is the branch's head of that moment, so it
+carries 19.04 to 19.08 too - headless work in kernel modules the CI builds
+on every leg, and one new module, `VaelenScene` (a `Build.cs`, a module file
+and integer code). A first error in VaelenScene is therefore a possible
+second cause: report which module a first error is in.
+
+THE RETAKE COMPILED on 2026-09-25 (`Result: Succeeded` on `9d1f81b`, step 2's
+digests printed: `frame ec18241b89c3d246, ground 8f7f4948f49b6e86`, the first
+engine ever to print them). NO REBUILD IS NEEDED: steps 3-6 below are typed on
+that build as it stands, and the log they leave is the one to bring back. The
+grey ground is `/Game/M_VaelenTile` missing from the disk (VaelenViewActor.cpp
+draws colourless rather than not at all); nothing in S1 depends on colour.
+
+0. Check out THE COMMIT OF 19.03b, not the branch's head - the branch goes on
+   with headless work that this build must not see:
    ```
    git fetch origin claude/vaelen-master-prompt-aw7zqj
-   git checkout $(git log origin/claude/vaelen-master-prompt-aw7zqj --grep="^19.03: " -1 --format=%H)
+   git checkout $(git log origin/claude/vaelen-master-prompt-aw7zqj --grep="^19.03b: " -1 --format=%H)
    git rev-parse HEAD
    ```
    The FIRST line of what you bring back is that `rev-parse` - the log is
@@ -320,6 +360,14 @@ repair - above all nothing in `Source/VaelenCore` ... `VaelenMilitary`, nor in
 5. `stat unit` twice, the camera at ground level: over `Vaelen.View 128 120`
    and during `Vaelen.Play`. Bring back the Frame / Game / Draw / GPU figures.
    They are the baseline Phase 19's frame-time question is measured against.
+   5b. THE RENDERER A/B, zero code, over the same ground-level view of
+   `Vaelen.View`: `stat gpu`, then type `r.DynamicGlobalIlluminationMethod 0`,
+   `r.ReflectionMethod 0`, `r.VolumetricCloud 0`, `sg.PostProcessQuality 1`,
+   and read `stat unit` again. Bring back both readings. DefaultEngine.ini
+   still carries Phase 00's provisional Lumen, Nanite and virtual textures,
+   never revisited by an ADR; if the second reading is the better one, the
+   config line is written here, with the ADR, in the one counted commit
+   before S3 (ROADMAP section 27, step 5).
 6. THE CONTROL. Copy `Tests/Run/Containers/host24-16.container` from the
    repository into `Saved/Vaelen/`, then `Vaelen.Load host24-16`. Its `check
    it headless` line must end with `--no-climate`: the world before the winter,
@@ -331,6 +379,142 @@ put first. It is committed as `Tests/Run/Sessions/s1-<date>.log` and re-read by
 --want-bound 0`, byte for byte after the category. Afterwards
 `Tools/engine_builds.txt` gains the row `s1` (RECORDED), and
 `check_engine_status.py` moves the files this build compiled to VALIDATED.
+
+### After S1: what the branch carries beyond 19.03b, for the build after it
+
+S1 is pinned to `19.03b` and sees none of this. The next build (sitting S2,
+19.06) will, and each is a possible first error of its own:
+
+- 19.09 (kernel, CI-built): `Source/VaelenScene/Public/Vaelen/Scene/Sky.h`
+  and `Private/Sky.cpp` - integers only, nothing Unreal.
+- 19.10 (engine, parsed only): `UVaelenWorldSubsystem::Keys()` - a plain
+  `Vaelen::View::PanelKeys` member of the UCLASS, NOT a UPROPERTY (its type
+  is no USTRUCT); every page the host composes takes it, and the `check it
+  headless` line gains ` --keys LLLLLLLL` only when the table is not 14.09's.
+  `AVaelenPlayerController::SetupInputComponent` binds the eight verbs from
+  that table through `FKey(FName(...))` instead of eight `EKeys::` literals -
+  the belief to report if it does not compile is that `FKey` has a constructor
+  from `FName` (InputCoreTypes.h) and that the key named "T" is `EKeys::T`.
+  The table is DefaultKeys until 19.06, so the page and the four digests of
+  every stream recorded so far are unchanged: if `Vaelen.Play` prints another
+  `panel` digest than the Atlas replays to, the binding moved the page and
+  that is the report.
+
+## PHASE 19 - sitting S2 (task 19.06): the engine contract, run once
+
+AFTER S1 has closed (its log committed, `Session.P19S1` green). Every API the
+phase rests on runs once, early: procedural-mesh sections and their complex
+collision under CharacterMovement, a mapping context made without an asset,
+ZQSD on AZERTY (believed: Unreal's letter keys follow the layout), a lit sky
+in a map with no light, the engine's vertex-colour material, and FKey(FName)
+from 19.10. If any fails, 19.07-19.10 stand headless and only the engine
+side is redesigned. The standing rule holds: REPORT, do not repair.
+
+0. Check out THE COMMIT OF 19.11b - not 19.06's: the review of 2026-09-26
+   (ROADMAP "19.11b") found and repaired, in the code S2 would have built,
+   a walker the engine destroys four minutes after launch, a ground painted
+   on one chunk of sixty-four, fence walls with holes on every slope, a
+   headless twin of the wrong world, and (in 19.11's scenery) a line MSVC
+   refuses. 19.06's commit as it stood would have spent the sitting on
+   those. 19.11b carries 19.06, 19.10 and 19.11 together, so S3's steps run
+   on THIS build if S2's do - no second build.
+   ```
+   git fetch origin claude/vaelen-master-prompt-aw7zqj
+   git checkout $(git log origin/claude/vaelen-master-prompt-aw7zqj --grep="^19.11b: " -1 --format=%H)
+   git rev-parse HEAD
+   ```
+   The FIRST line of what you bring back is that `rev-parse`.
+1. Build the editor as for 14.08. Thirteen new engine files (Source/VaelenWalk,
+   VaelenUI's walk controller) and six changed ones; the plugin
+   ProceduralMeshComponent is newly enabled in the uproject. Bring back the
+   UBT result line and, if it fails, the FIRST error verbatim AND WHICH
+   MODULE it is in, and stop there.
+2. Launch the walk - the game mode is chosen by the map URL, so no config
+   line changes:
+   ```
+   UnrealEditor.exe "D:\...\vaelen\Vaelen.uproject" /Engine/Maps/Entry?game=/Script/VaelenWalk.VaelenWalkGameMode -game -log
+   ```
+   You should be a capsule with a camera behind it, in the dark (no world
+   yet, no sky yet).
+3. `Vaelen.Walk 128 120` (seconds of work). Bring back its lines:
+   `LogVaelenWalk: walker on tile T of region R at (x, y, z)`, the
+   `LogVaelenScene: ... region R:` terrain line, the `LogVaelenClimate:`
+   line and the `LogVaelenScene: ... sky day` line. The terrain and climate
+   lines must equal, byte for byte after the category, the ones
+   ```
+   VaelenAtlas --empty --stream --climate --want-bound 0 --size 128 --years 120 --scene --scene-terrain R
+   ```
+   prints - the Atlas begun the way Vaelen.Walk begins (Play and Stream:
+   the plain `--scene-terrain R` run is another world by one cold death,
+   19.11b) - and `Session.P19S2` re-reads them so. In the raw log every
+   such line reads `LogVaelenWalk: LogVaelenScene: ...` (the engine's
+   category, then the line's own); the reader takes the last.
+4. `Vaelen.Probe 64`. Bring back `probe 64 of region R, bias 0 mm: max
+   |trace-builder| X cm, misses M`. X <= 1.0 and M = 0 is the pass; a miss
+   is a hole in the ground, a wide gap is a section uploaded at the wrong
+   place. THE CONTROL: `Vaelen.Probe 64 50` must print `max ... 5.0 cm` -
+   a probe that cannot fail is not a probe.
+5. `Log LogVaelenWalkKeys Verbose`, then Z, Q, S, D pressed once each:
+   four `LogVaelenWalk: move (x, y) facing f` lines, (0, 1), (-1, 0),
+   (0, -1), (1, 0) in that order on an AZERTY keyboard. Then `Log
+   LogVaelenWalkKeys Log` to quiet it. A `fence at (x, y)` line instead of a
+   step is the fence (ADR-0155): you stood at the region's edge.
+6. Walk up the steepest ground near you. Bring back whether the walker
+   climbs it or slides: the map has no triangle steeper than 44.76 deg
+   (`Atlas.SceneTerrain128`: steep 0), so a slide is a report.
+7. Space, three times: three `LogVaelenPlay: day` lines, and the ground
+   repainted (snow where it froze overnight, if any) and the sun moved.
+   Bring back the lines and say whether anything visibly changed.
+8. `stat unit` at eye level. Bring back Frame / Game / Draw / GPU.
+9. Two screenshots: the ground from the walker with the page over it, and
+   one looking at the horizon (the sky, the fog, the far land).
+10. THE CONTROL: close, relaunch WITHOUT the `?game=` part, and
+    `Vaelen.View 128 120`: the same `AELVOR digests:` line as S1's.
+
+Bring back the whole `Saved/Logs/Vaelen.log`, rev-parse first. It is
+committed as `Tests/Run/Sessions/s2-<date>.log`, `Session.P19S2` re-reads
+steps 3 and 4 against the Atlas, and the ledger gains the row `s2`.
+
+## PHASE 19 - sitting S3 (task 19.11): the world drawn is the world built
+
+AFTER S2 has closed - and on S2's own build when that build is 19.11b's
+commit or later, since it carries 19.11: skip step 1 then. Otherwise the
+commit of 19.11b (found by subject, `^19.11b: `), rev-parse first, the
+standing rule as always.
+
+1. Build as for 14.08; first error verbatim and its module.
+2. Launch with the walk mode (the `?game=` URL of S2), then `Vaelen.Walk 128
+   120` and `Vaelen.Scene`: FOUR LogVaelenScene lines - the played region's
+   terrain, the whole ground's (`region all`, the one `--replay --scene`
+   prints), the layout, the sky - and the `drawn houses ...` line. The
+   houses, figures, squares, road tiles and pits drawn must equal the layout
+   line's counts. You should see cubes with cones on them, cylinders with
+   spheres, slabs, the sea and the lakes - coloured, on every chunk.
+3. `Vaelen.Day 10`, `Vaelen.Scene` again: the layout line's day moved by ten,
+   the figures moved, the snow and the sun with them; `Vaelen.Stream.Write`.
+4. Days into the first frosts (`Vaelen.Day 30` at a time, watching the sky
+   line's snow count): a screenshot with snow on the ground and `Vaelen.Scene`;
+   then a summer screenshot the same way (the season is on the page's Weather
+   row).
+5. `stat unit` at eye level inside the settlement, the HUD on - clause (n)'s
+   figure for the scene.
+6. Four walks into the fence, from four sides: each must stop you (`Log
+   LogVaelenWalkKeys Verbose` shows `fence at (x, y)`), and the walls stop the
+   body even where the check does not look. Then M facing a Near region at the
+   fence: `LogVaelenUI: Move -> queued`, Space, and the walker put back inside
+   the new region (`day ... region R life R`).
+7. Speak facing a larger figure within 3 m: `LogVaelenUI: Speak -> queued`
+   without Tab; facing nobody, the page's own refusal.
+8. `Vaelen.Stream.Write`: the `LogVaelenWalk: N days on foot ...` line.
+9. CONTROL: relaunch without `?game=`, `Vaelen.View 128 120`, the same digests.
+
+Bring back the whole log, rev-parse first. `Session.P19S3` replays the stream
+(`--panel --want-bound 0 --stream --scene --climate`) and holds the Scene,
+Climate and Play lines byte-identical, every `day D ... region R life L
+looked K` line to R == L, with K the R of the line before (the Begin region
+on the first: the look is taken from the feet BEFORE the turn, so on the
+day of a crossing K is the region left and R the region arrived in - the
+step S3's item 6 asks for), and the instance counts to the layout line's.
 
 ## What the kernel half already hands you
 

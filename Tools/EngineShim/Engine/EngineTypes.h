@@ -16,3 +16,11 @@ enum ECollisionChannel : int
 	ECC_Vehicle,
 	ECC_Destructible,
 };
+
+/// 19.11b BELIEF: what a component answers a channel with.
+enum ECollisionResponse : int
+{
+	ECR_Ignore,
+	ECR_Overlap,
+	ECR_Block,
+};

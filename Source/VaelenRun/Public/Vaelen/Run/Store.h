@@ -1,8 +1,10 @@
 // VAELEN - VaelenRun
 // Where a checkpoint goes, asked of somebody else.
 //
-// STATUS: PROTOTYPE (Phase 16 task 16.07) - Tests/Run/Test_Store.cpp exercises
-//         the stdio implementation, including the arm that fills the disk.
+// STATUS: PROTOTYPE (Phase 16 task 16.07; 16.15 the rename-aside) -
+//         Tests/Run/Test_Store.cpp exercises the stdio implementation, including
+//         the arm that fills the disk; Tests/Run/Test_SaveAside.cpp the replace
+//         that fails halfway.
 //
 // Checkpoint.h deals in BYTES and says nothing about where they live. This is
 // the other half of that sentence: an interface the kernel can call and cannot
@@ -98,16 +100,36 @@ namespace Vaelen::Run
 		/// WAY TO FAILING. Write somewhere else and move it into place; a
 		/// truncating open over the only good save is how a full disk takes a
 		/// player's game rather than merely refusing them a new one.
+		///
+		/// AND THE PREVIOUS CHECKPOINT KEEPS ITS NAME (16.15). The replace is
+		/// not one step on every filesystem: the engine's Move is a delete of
+		/// the old file and then a rename, and a rename that fails after that
+		/// delete leaves the last good save nameless. So every store of this
+		/// interface renames the old save ASIDE first, to `<name>.previous`
+		/// (`PreviousSuffix`, refused by the name rule like `.writing`), then
+		/// moves the new one into place, then forgets the aside. A replace
+		/// that fails between those steps leaves the old save whole under the
+		/// aside name and the new one whole under `.writing`, and `Read` and
+		/// `List` give the old one back under its own name (below). Nothing a
+		/// player named is ever the file that is missing.
 		virtual StoreResult Write(const char* Name, const uint8* Bytes, usize Size) = 0;
 
 		/// Reads a checkpoint into Out. On any refusal Out is left as it was
 		/// found, per the rule this phase has followed since 16.02.
+		///
+		/// A name that is missing while `<name>.previous` is there is RESTORED
+		/// first - the aside is renamed back - and then read: what a failed or
+		/// interrupted replace left behind comes back under the name the
+		/// player gave it, without a word.
 		virtual StoreResult Read(const char* Name, std::vector<uint8>& Out) = 0;
 
-		/// What is here, newest first where the store can tell.
+		/// What is here, newest first where the store can tell. A save that
+		/// exists only as `<name>.previous` is listed as `<name>`.
 		virtual std::vector<StoreEntry> List() = 0;
 
-		/// Forgets one. NotFound is not an error to a caller trimming a ring.
+		/// Forgets one: the name, its `.previous` and its `.writing` alike, so
+		/// that a forgotten save cannot come back through `Read`'s restore.
+		/// NotFound is not an error to a caller trimming a ring.
 		virtual StoreResult Forget(const char* Name) = 0;
 	};
 
@@ -122,10 +144,19 @@ namespace Vaelen::Run
 	/// such a leftover as a save of tick 0).
 	inline constexpr const char* WritingSuffix = ".writing";
 
+	/// The suffix EVERY store renames the old save to while the new one is
+	/// moved into its place (16.15, `ICheckpointStore::Write`): `<name>.previous`,
+	/// in the same directory, forgotten once the new save is in place, and
+	/// renamed back by `Read` when the name it stands for is missing. Named
+	/// HERE for the same reason as `WritingSuffix`: the rule refuses it, so no
+	/// listing shows it and no caller can write under it.
+	inline constexpr const char* PreviousSuffix = ".previous";
+
 	/// A name this interface will accept: not empty, no separator, no parent
 	/// directory, nothing a shell or a filesystem would read as a path, and
-	/// not the name of a write in progress (`WritingSuffix`). Checked HERE so
-	/// that every implementation refuses the same names, rather than each one
-	/// inventing its own idea of what is safe.
+	/// not the name of a write in progress (`WritingSuffix`) nor of a save set
+	/// aside (`PreviousSuffix`). Checked HERE so that every implementation
+	/// refuses the same names, rather than each one inventing its own idea of
+	/// what is safe.
 	VAELEN_RUN_API bool IsUsableCheckpointName(const char* Name) noexcept;
 } // namespace Vaelen::Run

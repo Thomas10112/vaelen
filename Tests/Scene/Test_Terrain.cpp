@@ -483,3 +483,25 @@ VAELEN_TEST(Terrain, TheLineIsComposedOnceAllOrNothing)
 	VT_CHECK_EQ(TerrainLine(128, 0x41454c564f52ull, 7, S, Line, 40u), 0u);
 	VT_CHECK_EQ(Line[0], '\0');
 }
+
+VAELEN_TEST(Terrain, AMapWhoseFarEdgeOverflowsACentimetreIsRefused)
+{
+	// 19.09b, found by the review: a vertex's X is an int32 of centimetres,
+	// and 2148 tiles at 1e6 cm each wrapped one to the wrong side of the map.
+	// The scale stays usable; the map at that scale does not.
+	View::MapView Wide;
+	Wide.Width = 2148;
+	Wide.Height = 1;
+	Wide.Tiles.resize(2148);
+	SceneScale Huge;
+	Huge.CmPerTile = 1000000;
+	VT_CHECK(IsUsableScale(Huge));
+	Ground G;
+	VT_CHECK(!BuildGround(Wide, Huge, G));
+	VT_CHECK_EQ(G.Width, 0u);
+	// CONTROL: the same map two tiles narrower fits, and builds.
+	Wide.Width = 2146;
+	Wide.Tiles.resize(2146);
+	VT_CHECK(BuildGround(Wide, Huge, G));
+	VT_CHECK_EQ(G.Width, 2146u);
+}

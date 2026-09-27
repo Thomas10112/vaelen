@@ -18,7 +18,8 @@
 // World, a Run or a Take.
 //
 // STATUS: UNVERIFIED (engine) since 19.01's ledger - its code has changed after the last build
-// that compiled it (b0921, 15.10, 867a129): 16.14's save, load and store (c146c43). Parsed
+// that compiled it (b0921, 15.10, 867a129): 16.14's save, load and store (c146c43), 19.10's
+// keys. Parsed
 // against Tools/EngineShim, never compiled. Tools/check_engine_status.py holds this line to
 // Tools/engine_builds.txt; the record of what earlier builds validated follows.
 // BUILD: b0921
@@ -49,11 +50,24 @@
 #include "Vaelen/View/Frame.h"
 #include "Vaelen/View/Life.h"
 #include "Vaelen/View/Panel.h"
+#include "Vaelen/Scene/Layout.h"
+#include "Vaelen/Scene/Terrain.h"
+#include "Vaelen/View/Climate.h"
+#include "Vaelen/View/Land.h"
+#include "Vaelen/View/Net.h"
 
 #include "VaelenWorldSubsystem.generated.h"
 
 /// Held in the .cpp, where the World may be named.
 struct FVaelenHeld;
+
+/// 19.06: fired after every retaking of the views - Begin, AdvanceDay, Load -
+/// and never on a frame. What the walk repaints on (ADR-0138: the scene moves
+/// when the world does, and the world moves on a day turn).
+DECLARE_MULTICAST_DELEGATE(FVaelenViewsTaken);
+/// 19.11b: fired after the stream is written - by F9 or by Vaelen.Stream.Write
+/// alike - so that a controller's summary line follows both.
+DECLARE_MULTICAST_DELEGATE(FVaelenStreamWritten);
 
 UCLASS()
 class VAELENGAME_API UVaelenWorldSubsystem : public UGameInstanceSubsystem
@@ -158,6 +172,41 @@ public:
 	const Vaelen::View::LifeView& Life() const;
 	const Vaelen::View::ChronicleView& Chronicle() const;
 	const Vaelen::View::PanelView& Panel() const;
+	/// 19.06: what the walk reads. The map, taken ONCE at Begin (Land.h says
+	/// it is not a per-frame structure); the scene's ground, cut from it once
+	/// in integers (Terrain.h, ADR-0156); the climate and the net, retaken with
+	/// the other views. Empty before Begin.
+	const Vaelen::View::MapView& Ground() const;
+	const Vaelen::Scene::Ground& Scene() const;
+	const Vaelen::View::ClimateView& Climate() const;
+	const Vaelen::View::NetView& Net() const;
+	/// 19.11: what the scene invents from the views, laid out once per
+	/// retaking on the life's day (Layout.h: houses, figures, squares, roads,
+	/// pits). ONE layout for the scenery that draws it and the controller
+	/// that aims at it, so the figure spoken to is the figure drawn.
+	const Vaelen::Scene::SceneLayout& Layout() const;
+	/// The world's seed and size, for the lines the walk prints in the Atlas's
+	/// words. 0 before Begin.
+	uint64 Seed() const;
+	int32 Size() const;
+	/// 19.06: fired after every retaking of the views. See FVaelenViewsTaken.
+	/// Since 19.11b also after TakeSomebodyElse: the life moved, and what
+	/// follows the life (the fence, the body, the layout) must follow.
+	FVaelenViewsTaken OnViewsTaken;
+	/// 19.11b: fired after WriteStream succeeds. See FVaelenStreamWritten.
+	FVaelenStreamWritten OnStreamWritten;
+	/// 19.06: LogVaelenClimate, composed by Vaelen/View/Proof.h from facts this
+	/// module reads off the world (the winters and the dead of the cold are the
+	/// log's) - the bytes `VaelenAtlas` prints for the same world on the same
+	/// day, so a sitting compares them byte for byte. Empty without a climate
+	/// or before Begin.
+	FString ClimateLine() const;
+	/// 19.10 (ADR-0158): the letters that press the eight verbs - the host's
+	/// table, which every page this host composes prints and every key the
+	/// controller binds comes from. DefaultKeys until 19.06 puts ZQSD on the
+	/// keyboard (then WalkKeys, Speak on F); a table that is not the default
+	/// is said on the `check it headless` line as `--keys`, told, not read.
+	const Vaelen::View::PanelKeys& Keys() const;
 	/// Everything the host has done, in the order it did it (14.01).
 	const Vaelen::Player::InputStream& Stream() const;
 
@@ -219,4 +268,7 @@ private:
 	// unit ever needs the definition. It is the type Epic wrote for exactly
 	// this, and there is no path it leaves open.
 	TPimplPtr<FVaelenHeld> Held;
+	/// The host's verb keys (19.10). Here and not in Held: the controller binds
+	/// them at SetupInputComponent, before any world is begun.
+	Vaelen::View::PanelKeys Keys_ = Vaelen::View::DefaultKeys;
 };

@@ -1,12 +1,16 @@
 // VAELEN - VaelenGame module rules. Phase 14 task 14.08.
 //
-// STATUS: BUILT - compiled and linked by UnrealBuildTool on 2026-09-16 (UE 5.6,
+// STATUS: UNVERIFIED (engine) since 19.06 - its code has changed after the last build that
+// compiled it (b0921, 15.10, 867a129): VaelenScene joined its dependencies (the ground one
+// walks on is cut once by the subsystem). Parsed, never compiled; sitting S2 builds it.
+// BUILD: b0921 - Tools/engine_builds.txt
+//
+// UNTIL 19.06: BUILT - compiled and linked by UnrealBuildTool on 2026-09-16 (UE 5.6,
 // MSVC 19.51, Win64 Development Editor), after three defects nothing headless
 // could see: UnrealHeaderTool's generated destructor on an incomplete pimpl,
 // DEFINE_VTABLE_PTR_HELPER_CTOR instantiating the same one whatever the class
 // declares, and RegionGraphCache exported whole while emitting nothing. NOT yet
 // run: nothing here is VALIDATED until 14.10's two lines come out of a log.
-// BUILD: b0921 - Tools/engine_builds.txt; its code is what that build compiled (19.01).
 //
 // THE MODULE THAT HOLDS THE WORLD. VaelenUI (14.09) draws and presses keys and
 // has no name for a World in its whole vocabulary; this is where the World
@@ -41,6 +45,8 @@ public class VaelenGame : ModuleRules
 			"VaelenPlayer",
 			// The wiring of AELVOR: one world, one door, one graph cache.
 			"VaelenRun",
+			// 19.06: the ground one walks on, cut once from the map leaf (ADR-0156).
+			"VaelenScene",
 			"VaelenCore"
 		});
 

@@ -7,7 +7,7 @@
 // StdioLogSink uses it - so this placement is the layering rule's doing rather
 // than the checker's.
 //
-// STATUS: PROTOTYPE (Phase 16 task 16.07)
+// STATUS: PROTOTYPE (Phase 16 task 16.07; 16.15 the rename-aside)
 #pragma once
 
 #include "Vaelen/Run/Checkpoint.h"
@@ -43,7 +43,8 @@ namespace VaelenHost
 
 	/// Checkpoints as files in one directory.
 	///
-	/// A WRITE GOES SOMEWHERE ELSE FIRST AND IS MOVED INTO PLACE. That is the
+	/// A WRITE GOES SOMEWHERE ELSE FIRST AND IS MOVED INTO PLACE, AND SINCE
+	/// 16.15 THE OLD SAVE IS SET ASIDE RATHER THAN REPLACED (`Write`). That is the
 	/// whole reason this class is worth testing: fopen("wb") on the final name
 	/// truncates it before a single byte of the new save exists, so a disk that
 	/// fills halfway through has taken the player's previous game as well as
@@ -79,6 +80,7 @@ namespace VaelenHost
 			}
 			const std::string Final = Directory + Name;
 			const std::string Temp = Final + Run::WritingSuffix;
+			const std::string Aside = Final + Run::PreviousSuffix;
 
 			std::FILE* F = std::fopen(Temp.c_str(), "wb");
 			if (F == nullptr)
@@ -98,10 +100,36 @@ namespace VaelenHost
 				std::remove(Temp.c_str());
 				return Run::StoreResult::DiskFull;
 			}
-			if (std::rename(Temp.c_str(), Final.c_str()) != 0)
+			// 16.15: THE OLD SAVE IS SET ASIDE, NOT REPLACED IN PLACE. A rename
+			// over an existing name is one step on POSIX and is refused outright
+			// by the C library on Windows, and the engine twin's Move is a delete
+			// and then a rename; the one rule that holds on all three is to move
+			// the old save to `<name>.previous` first, put the new one where it
+			// was, and forget the aside. Should the second rename fail, the old
+			// save is whole under the aside and the new one whole under
+			// `.writing`, both KEPT, and Read gives the old one back under its
+			// own name. Should the FIRST rename fail, nothing has moved: the old
+			// save is where it was, and only the temporary goes.
+			const bool HadOne = Exists(Final);
+			if (HadOne)
 			{
-				std::remove(Temp.c_str());
+				std::remove(Aside.c_str());
+				if (!Rename(Final, Aside))
+				{
+					std::remove(Temp.c_str());
+					return Run::StoreResult::CannotWrite;
+				}
+			}
+			if (!Rename(Temp, Final))
+			{
 				return Run::StoreResult::CannotWrite;
+			}
+			if (HadOne)
+			{
+				// Best effort: an aside that lingers is hidden by the name rule
+				// and never restored while its name is there, and the next
+				// write of the name removes it before setting the new one aside.
+				std::remove(Aside.c_str());
 			}
 			// The rename IS the record. Nothing else needs telling: `List`
 			// reads the directory, so what is on the disk is what is listed.
@@ -114,7 +142,13 @@ namespace VaelenHost
 			{
 				return Run::StoreResult::BadName;
 			}
-			const std::string Path = Directory + Name;
+			// 16.15: a name that is missing while its aside is there is what a
+			// failed or interrupted replace left; the aside is renamed back and
+			// read under the player's name. If even that rename fails the aside
+			// is read where it lies - the bytes are the same bytes.
+			const std::string Final = Directory + Name;
+			const std::string Aside = Final + Run::PreviousSuffix;
+			const std::string Path = Restore(Final, Aside) ? Final : Aside;
 			std::FILE* F = std::fopen(Path.c_str(), "rb");
 			if (F == nullptr)
 			{
@@ -201,6 +235,11 @@ namespace VaelenHost
 			for (const std::filesystem::directory_entry& Entry : It)
 			{
 				const std::string Name = Entry.path().filename().string();
+				if (!Entry.is_regular_file(Code) || Code)
+				{
+					Code.clear();
+					continue;
+				}
 				// The name rule is the store's, so a stray file somebody
 				// dropped in the folder is skipped rather than reported as a
 				// save - and `.writing` temporaries from an interrupted write
@@ -208,18 +247,24 @@ namespace VaelenHost
 				// the rule `Run::WritingSuffix`; before that this sentence was
 				// a claim the rule did not keep, and such a leftover was
 				// listed as a save of tick 0.
-				if (!Run::IsUsableCheckpointName(Name.c_str()))
+				if (Run::IsUsableCheckpointName(Name.c_str()))
 				{
+					Names.push_back(Name);
 					continue;
 				}
-				if (!Entry.is_regular_file(Code) || Code)
+				// 16.15: a save that exists only as `<name>.previous` - what a
+				// failed replace left - is listed as `<name>`, and reading it
+				// (below) restores the name. One whose name IS there is the
+				// aside a write is in the middle of, or one it failed to
+				// remove, and is not a second save.
+				const std::string Stem = StemOfAside(Name);
+				if (!Stem.empty() && Run::IsUsableCheckpointName(Stem.c_str()) && !Exists(Directory + Stem))
 				{
-					Code.clear();
-					continue;
+					Names.push_back(Stem);
 				}
-				Names.push_back(Name);
 			}
 			std::sort(Names.begin(), Names.end());
+			Names.erase(std::unique(Names.begin(), Names.end()), Names.end());
 
 			Out.reserve(Names.size());
 			for (const std::string& Name : Names)
@@ -251,8 +296,13 @@ namespace VaelenHost
 			{
 				return Run::StoreResult::BadName;
 			}
+			// 16.15: the name, its aside and its temporary alike, so a save
+			// that was forgotten cannot come back through Read's restore.
 			const std::string Path = Directory + Name;
-			if (std::remove(Path.c_str()) != 0)
+			const bool HadName = std::remove(Path.c_str()) == 0;
+			const bool HadAside = std::remove((Path + Run::PreviousSuffix).c_str()) == 0;
+			const bool HadTemp = std::remove((Path + Run::WritingSuffix).c_str()) == 0;
+			if (!HadName && !HadAside && !HadTemp)
 			{
 				return Run::StoreResult::NotFound;
 			}
@@ -266,6 +316,48 @@ namespace VaelenHost
 		// cache of names can only ever disagree with it, and the one thing
 		// worse than a store that lists nothing is a store that lists something
 		// that is not there.
+	protected:
+		/// The one rename, as a seam: Tests/Run/Test_SaveAside.cpp derives a
+		/// store whose second rename fails, which is the failure this class
+		/// exists to survive and one no test can arrange on a real disk.
+		virtual bool Rename(const std::string& From, const std::string& To)
+		{
+			return std::rename(From.c_str(), To.c_str()) == 0;
+		}
+
+		static bool Exists(const std::string& Path)
+		{
+			std::error_code Code;
+			return std::filesystem::is_regular_file(Path, Code) && !Code;
+		}
+
+		/// True when `Final` is there to be read - as it was, or renamed back
+		/// from `Aside` just now. False when neither is, or the rename back
+		/// failed and the caller should read the aside where it lies.
+		bool Restore(const std::string& Final, const std::string& Aside)
+		{
+			if (Exists(Final))
+			{
+				return true;
+			}
+			if (!Exists(Aside))
+			{
+				return false;
+			}
+			return Rename(Aside, Final);
+		}
+
+		/// `<name>` of a `<name>.previous`, or empty when the name is no aside.
+		static std::string StemOfAside(const std::string& Name)
+		{
+			const std::string Suffix(Run::PreviousSuffix);
+			if (Name.size() <= Suffix.size() || Name.compare(Name.size() - Suffix.size(), Suffix.size(), Suffix) != 0)
+			{
+				return std::string();
+			}
+			return Name.substr(0, Name.size() - Suffix.size());
+		}
+
 	private:
 		std::string Directory;
 	};

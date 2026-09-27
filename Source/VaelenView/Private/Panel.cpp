@@ -210,12 +210,12 @@ namespace Vaelen::View
 			return Player::Refusal::None;
 		}
 
-		void FillVerbs(const LifeView& Life, PanelView& Out)
+		void FillVerbs(const LifeView& Life, const PanelKeys& Keys, PanelView& Out)
 		{
-			// The keys 14.09 binds, in Intent order: Wait, Work, Rest, Eat, Move,
-			// Speak, Give, Take. They live in the view so that the UI binds what
-			// the page says rather than agreeing with it by hand.
-			static const char Keys[PanelVerbs] = {'T', 'W', 'R', 'E', 'M', 'S', 'G', 'K'};
+			// The keys, in Intent order: Wait, Work, Rest, Eat, Move, Speak,
+			// Give, Take. They live in the view so that the UI binds what the
+			// page says rather than agreeing with it by hand; since 19.10 the
+			// table is the host's (DefaultKeys is 14.09's, byte for byte).
 			Out.Offered = 0;
 			for (uint32 i = 0; i < PanelVerbs; ++i)
 			{
@@ -224,7 +224,7 @@ namespace Vaelen::View
 				Slot = VerbView{};
 				Slot.Verb = static_cast<uint32>(Verb);
 				Slot.Cost = static_cast<uint32>(Verb) < IntentSlots ? Life.Cost[static_cast<uint32>(Verb)] : 0u;
-				Slot.Key = static_cast<uint8>(Keys[i]);
+				Slot.Key = Keys.Keys[i];
 				const Player::Refusal Why = Foresee(Life, Verb, Slot.Cost);
 				Slot.Foreseen = static_cast<uint32>(Why);
 				// The hours left are the one obstacle that is not a refusal:
@@ -235,7 +235,68 @@ namespace Vaelen::View
 		}
 	} // namespace
 
+	bool ValidKeys(const PanelKeys& Keys, const char* Reserved, char& Named)
+	{
+		Named = '\0';
+		for (uint32 i = 0; i < PanelVerbs; ++i)
+		{
+			const char C = static_cast<char>(Keys.Keys[i]);
+			bool Refused = C < 'A' || C > 'Z';
+			for (uint32 j = 0; !Refused && j < i; ++j)
+			{
+				Refused = Keys.Keys[j] == Keys.Keys[i];
+			}
+			for (const char* R = Reserved; !Refused && R != nullptr && *R != '\0'; ++R)
+			{
+				Refused = *R == C;
+			}
+			if (Refused)
+			{
+				Named = C;
+				return false;
+			}
+		}
+		return true;
+	}
+
+	void KeysText(const PanelKeys& Keys, char (&Out)[PanelVerbs + 1])
+	{
+		for (uint32 i = 0; i < PanelVerbs; ++i)
+		{
+			Out[i] = static_cast<char>(Keys.Keys[i]);
+		}
+		Out[PanelVerbs] = '\0';
+	}
+
+	bool KeysFromText(const char* Text, PanelKeys& Out)
+	{
+		if (Text == nullptr)
+		{
+			return false;
+		}
+		uint32 Length = 0;
+		while (Text[Length] != '\0' && Length <= PanelVerbs)
+		{
+			++Length;
+		}
+		if (Length != PanelVerbs)
+		{
+			return false;
+		}
+		for (uint32 i = 0; i < PanelVerbs; ++i)
+		{
+			Out.Keys[i] = static_cast<uint8>(Text[i]);
+		}
+		return true;
+	}
+
 	void TakePanel(const WorldView& World_, const LifeView& Life, const ChronicleView& Told, PanelView& Out)
+	{
+		TakePanel(World_, Life, Told, DefaultKeys, Out);
+	}
+
+	void TakePanel(const WorldView& World_, const LifeView& Life, const ChronicleView& Told, const PanelKeys& Keys,
+				   PanelView& Out)
 	{
 		Out = PanelView{};
 		Out.Tick = Life.Tick;
@@ -246,7 +307,7 @@ namespace Vaelen::View
 		Out.Left = Life.Left;
 		Out.Awake = Life.Awake;
 		Out.Held = Life.Held;
-		FillVerbs(Life, Out);
+		FillVerbs(Life, Keys, Out);
 
 		// Room is kept for the digest row, which is the one row the page must
 		// always be able to write: it is what a screenshot is checked by.

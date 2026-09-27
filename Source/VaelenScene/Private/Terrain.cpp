@@ -5,6 +5,8 @@
 // STATUS: VALIDATED headless (Phase 19 task 19.05)
 #include "Vaelen/Scene/Terrain.h"
 
+#include "Vaelen/Scene/LineWriter.h"
+
 namespace Vaelen::Scene
 {
 	namespace
@@ -127,8 +129,13 @@ namespace Vaelen::Scene
 	{
 		Out = Ground{};
 		const uint64 Count = uint64{Map.Width} * Map.Height;
+		// The far edge of the map, in centimetres, must fit a vertex's int32
+		// (19.09b, found by the review: 2148 tiles at 1e6 cm wrapped a vertex to
+		// the wrong side of the map and it took another tile's colour).
+		const uint64 Side = static_cast<uint64>(Map.Width > Map.Height ? Map.Width : Map.Height);
+		const uint64 FarCm = Side * static_cast<uint64>(Scale.CmPerTile) + static_cast<uint64>(Scale.CmPerTile) / 2u;
 		if (Map.Width == 0u || Map.Height == 0u || Map.Tiles.size() != Count || !IsUsableScale(Scale) ||
-			Map.Width > 8192u || Map.Height > 8192u)
+			Map.Width > 8192u || Map.Height > 8192u || FarCm > 2147483647ull)
 		{
 			return false;
 		}
@@ -531,64 +538,32 @@ namespace Vaelen::Scene
 		Into.Triangles += static_cast<uint32>(M.Triangles.size() / 3u);
 	}
 
-	namespace
+	void MeasureChunks(const Ground& G, uint32 Region, TerrainStats& Into)
 	{
-		struct Line
+		TerrainMesh Mesh;
+		for (uint32 CY = 0; CY < ChunksDown(G); ++CY)
 		{
-			char* Out;
-			uint32 Bytes;
-			uint32 At = 0;
-			bool Full = false;
-			void Char(char C)
+			for (uint32 CX = 0; CX < ChunksAcross(G); ++CX)
 			{
-				if (At + 1u >= Bytes)
+				bool Wanted = Region == 0u;
+				for (uint32 Y = CY * ChunkTiles; !Wanted && Y < (CY + 1u) * ChunkTiles && Y < G.Height; ++Y)
 				{
-					Full = true;
-					return;
+					for (uint32 X = CX * ChunkTiles; X < (CX + 1u) * ChunkTiles && X < G.Width; ++X)
+					{
+						if (G.Region[Y * G.Width + X] == Region)
+						{
+							Wanted = true;
+							break;
+						}
+					}
 				}
-				Out[At++] = C;
-			}
-			void Put(const char* S)
-			{
-				while (*S != '\0')
+				if (Wanted && BuildChunk(G, CX, CY, 1u, Mesh))
 				{
-					Char(*S++);
-				}
-			}
-			void Unsigned(uint64 N)
-			{
-				char D[20];
-				uint32 C = 0;
-				do
-				{
-					D[C++] = static_cast<char>('0' + N % 10u);
-					N /= 10u;
-				} while (N != 0u);
-				while (C > 0u)
-				{
-					Char(D[--C]);
+					MeasureTerrain(Mesh, Into);
 				}
 			}
-			void Signed(int64 N)
-			{
-				if (N < 0)
-				{
-					Char('-');
-					Unsigned(static_cast<uint64>(0) - static_cast<uint64>(N));
-					return;
-				}
-				Unsigned(static_cast<uint64>(N));
-			}
-			void Hex(uint64 N, uint32 Width)
-			{
-				static const char Nibbles[] = "0123456789abcdef";
-				for (uint32 Shift = Width; Shift > 0u; --Shift)
-				{
-					Char(Nibbles[(N >> ((Shift - 1u) * 4u)) & 0xFu]);
-				}
-			}
-		};
-	} // namespace
+		}
+	}
 
 	uint32 TerrainLine(uint32 Size, uint64 Seed, uint32 Region, const TerrainStats& S, char* Out, uint32 Bytes)
 	{
@@ -596,7 +571,7 @@ namespace Vaelen::Scene
 		{
 			return 0u;
 		}
-		Line W{Out, Bytes};
+		Detail::LineWriter W{Out, Bytes};
 		W.Put("LogVaelenScene: AELVOR ");
 		W.Unsigned(Size);
 		W.Put(" seed ");
@@ -626,12 +601,6 @@ namespace Vaelen::Scene
 		W.Unsigned(S.Triangles);
 		W.Put("; terrain ");
 		W.Hex(S.Digest, 16u);
-		if (W.Full)
-		{
-			Out[0] = '\0';
-			return 0u;
-		}
-		Out[W.At] = '\0';
-		return W.At;
+		return W.Finish();
 	}
 } // namespace Vaelen::Scene

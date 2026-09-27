@@ -15,4 +15,10 @@ public:
 	TSubclassOf<APlayerController> PlayerControllerClass;
 	/// 19.02 BELIEF: the walker a walk game mode spawns for its player.
 	TSubclassOf<AActor> DefaultPawnClass;
+	/// 19.11b BELIEF: spawns and possesses a pawn for the controller as the
+	/// game's start does - what Vaelen.Walk asks when the first pawn fell out
+	/// of the world (no floor under the origin before the land exists).
+	/// The engine takes an AController*, which this shim has none of
+	/// (PlayerController.h says so); a player controller converts to it there.
+	void RestartPlayer(class APlayerController* NewPlayer);
 };

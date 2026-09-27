@@ -5,6 +5,7 @@
 
 #include "Components/SceneComponent.h"
 #include "CoreMinimal.h"
+#include "Engine/EngineTypes.h"
 
 class UMaterialInterface;
 
@@ -32,6 +33,15 @@ public:
 									   const TArray<FVector2D>& UV0, const TArray<FLinearColor>& VertexColors,
 									   const TArray<FProcMeshTangent>& Tangents, bool bCreateCollision,
 									   bool bSRGBConversion = false);
+	/// 19.11b BELIEF: arrays whose Num() is not the section's vertex count are
+	/// ignored, and the collision is re-cooked only when the positions change
+	/// (so colours alone cost no cook) - ProceduralMeshComponent.cpp.
+	void UpdateMeshSection_LinearColor(int32 SectionIndex, const TArray<FVector>& Vertices,
+									   const TArray<FVector>& Normals, const TArray<FVector2D>& UV0,
+									   const TArray<FLinearColor>& VertexColors,
+									   const TArray<FProcMeshTangent>& Tangents, bool bSRGBConversion = false);
+	/// 19.11b BELIEF: UPrimitiveComponent's, per channel, for the whole component.
+	void SetCollisionResponseToChannel(ECollisionChannel Channel, ECollisionResponse NewResponse);
 	void ClearMeshSection(int32 SectionIndex);
 	void ClearAllMeshSections();
 	void SetMeshSectionVisible(int32 SectionIndex, bool bNewVisibility);

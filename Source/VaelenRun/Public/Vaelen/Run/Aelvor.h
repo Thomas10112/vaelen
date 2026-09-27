@@ -261,7 +261,7 @@ namespace Vaelen::Run
 		/// instrument 16.06 uses to prove `Adopt` restores rather than
 		/// re-derives - a claim that something was not done cannot be read off
 		/// the result.
-		VAELEN_RUN_API uint32 Generations() const noexcept;
+		uint32 Generations() const noexcept;
 
 		/// Why an Adopt refused. Named rather than a bare false, because the
 		/// six reasons want six different things from whoever asked: a
@@ -315,7 +315,7 @@ namespace Vaelen::Run
 			/// before 18.02) reads as Climate = false.
 			ClimateDiffers,
 		};
-		VAELEN_RUN_API static const char* AdoptResultToString(AdoptResult Result) noexcept;
+		static const char* AdoptResultToString(AdoptResult Result) noexcept;
 
 		/// Takes up a world this Aelvor did not generate, from the bytes
 		/// `BuildCheckpoint` wrote.
@@ -328,14 +328,14 @@ namespace Vaelen::Run
 		///
 		/// On any refusal this Aelvor is left exactly as it was found, which is
 		/// 16.03's promise carried up one level.
-		VAELEN_RUN_API AdoptResult Adopt(const uint8* Bytes, usize Size);
+		AdoptResult Adopt(const uint8* Bytes, usize Size);
 
 		/// What this run would need to be restored into another Aelvor.
-		VAELEN_RUN_API RunState GetRunState() const;
+		RunState GetRunState() const;
 		/// Replaces it. False when the state is not one this wiring can hold -
 		/// a region past the end of the map, or a detail request the world has
 		/// no region for.
-		VAELEN_RUN_API bool SetRunState(const RunState& In);
+		bool SetRunState(const RunState& In);
 
 	private:
 		Options Given_;

@@ -97,10 +97,18 @@ if(Python3_Interpreter_FOUND)
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_modules.py)
   add_test(NAME Kernel.ModuleListsSelfTest
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_modules.py --self-test)
+  # Sitting S1 (2026-09-25): the editor build refused five members of
+  # Run::Aelvor exported inside an exported class (MSVC C2487), which no
+  # headless build can see - the API macro is only dllexport in the editor's.
+  add_test(NAME Kernel.DllApi
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_dll_api.py)
+  add_test(NAME Kernel.DllApiSelfTest
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_dll_api.py --self-test)
   set_tests_properties(Kernel.Purity Kernel.PuritySelfTest Kernel.WorldWiring Kernel.UiFence
                        Kernel.UiFenceSelfTest Kernel.EventTypes Kernel.EventTypesSelfTest
                        Kernel.EngineStatus Kernel.EngineStatusSelfTest Kernel.ShimLedger
                        Kernel.ShimLedgerSelfTest Kernel.ModuleLists Kernel.ModuleListsSelfTest
+                       Kernel.DllApi Kernel.DllApiSelfTest
                        PROPERTIES TIMEOUT 120)
 elseif(VAELEN_REQUIRE_PURITY_CHECK)
   message(FATAL_ERROR "Python 3 is required for the Kernel.Purity test. Install it or configure with -DVAELEN_REQUIRE_PURITY_CHECK=OFF (the purity check is then NOT run).")
@@ -183,6 +191,30 @@ if(Python3_Interpreter_FOUND)
             --out ${CMAKE_CURRENT_BINARY_DIR}/atlas-scene-terrain-before.json)
   set_tests_properties(Atlas.SceneTerrain128Before PROPERTIES TIMEOUT 900
     PASS_REGULAR_EXPRESSION "; terrain 105208c54e3c6ea9\n")
+
+  # 19.08: what the scene invents - squares, houses, figures, roads - from the
+  # views of a sixty-year world, on day 100. Scene.Layout computes the same
+  # digest by another wiring (Run::Aelvor against the Atlas's own).
+  add_test(NAME Atlas.SceneLayout128
+    COMMAND VaelenAtlas --size 128 --prehistory 60 --years 10 --scene-layout 100
+            --out ${CMAKE_CURRENT_BINARY_DIR}/atlas-scene-layout.json)
+  set_tests_properties(Atlas.SceneLayout128 PROPERTIES TIMEOUT 900
+    PASS_REGULAR_EXPRESSION "layout day 100: squares 3, houses 565 \\(unplaced 0\\), figures 779 \\(company 0\\), roads 16 over 282 tiles \\(unrouted 0\\), pits 0; layout 8542fca56e445402\n")
+
+  # 19.09: the day's snow, grass and sun from the climate leaf, at noon of
+  # sixteen waking hours over region 1's centroid row. Scene.Sky computes the
+  # same digest by another wiring. CONTROL: the world before the winter has
+  # no sky line - the leaf is empty there.
+  add_test(NAME Atlas.SceneSky128
+    COMMAND VaelenAtlas --size 128 --prehistory 1 --years 1 --scene-sky 8
+            --out ${CMAKE_CURRENT_BINARY_DIR}/atlas-scene-sky.json)
+  set_tests_properties(Atlas.SceneSky128 PROPERTIES TIMEOUT 900
+    PASS_REGULAR_EXPRESSION "sky day 1: snow 1789 of 16384 tiles, growing 3454, sun azimuth 1800 elevation 95, breath 0 shiver 0; sky 160cbcc697d9dc4e\n")
+  add_test(NAME Atlas.SceneSky128Before
+    COMMAND VaelenAtlas --size 128 --prehistory 1 --years 1 --no-climate --scene-sky 8
+            --out ${CMAKE_CURRENT_BINARY_DIR}/atlas-scene-sky-before.json)
+  set_tests_properties(Atlas.SceneSky128Before PROPERTIES TIMEOUT 900
+    PASS_REGULAR_EXPRESSION "AELVOR" FAIL_REGULAR_EXPRESSION "sky day")
 
   # 14.03: the empty play - the Play wiring with nobody taken up and no
   # stream, written as a replay document. Running it is the test; what the

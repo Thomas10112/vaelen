@@ -105,6 +105,12 @@ MUTATIONS = [
         "Paint.Add(ColourOfPerson(P));",
     ),
     (
+        "a free function reading AActor::RootComponent, protected in the engine (19.11b)",
+        ACTOR,
+        "AVaelenViewActor::AVaelenViewActor()",
+        "static USceneComponent* PeekRoot(AActor* A) { return A->RootComponent; }\nAVaelenViewActor::AVaelenViewActor()",
+    ),
+    (
         "a UI that includes the header of the world it may not see",
         HUD,
         '#include "VaelenWorldSubsystem.h"',

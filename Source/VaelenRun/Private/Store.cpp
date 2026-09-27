@@ -2,7 +2,7 @@
 // The name rule, and the words for a refusal. Everything else about a store is
 // the host's - see Public/Vaelen/Run/Store.h.
 //
-// STATUS: PROTOTYPE (Phase 16 task 16.07)
+// STATUS: PROTOTYPE (Phase 16 task 16.07; 16.15 the rename-aside)
 #include "Vaelen/Run/Store.h"
 
 #include <cstring>
@@ -71,6 +71,15 @@ namespace Vaelen::Run
 		// of the name it hides behind would replace without a word.
 		const usize SuffixLength = std::strlen(WritingSuffix);
 		if (Length >= SuffixLength && std::strcmp(Name + (Length - SuffixLength), WritingSuffix) == 0)
+		{
+			return false;
+		}
+		// A SAVE SET ASIDE (16.15). Every store renames the old save to
+		// `<name>.previous` while the new one is moved into place and gives it
+		// back under its own name if that move fails; a listing must not show
+		// it twice and a caller must not be able to write over it by name.
+		const usize AsideLength = std::strlen(PreviousSuffix);
+		if (Length >= AsideLength && std::strcmp(Name + (Length - AsideLength), PreviousSuffix) == 0)
 		{
 			return false;
 		}

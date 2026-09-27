@@ -168,7 +168,10 @@ namespace Vaelen::Run
 		uint32 Section = 0;
 	};
 
-	/// Builds a checkpoint of the run into Out.
+	/// Builds a checkpoint of the run into Out - APPENDED to whatever Out
+	/// already holds, as `SaveSnapshot` appends: a caller that reuses a buffer
+	/// clears it first, or gets two containers end to end and a reader that
+	/// refuses both (20.01's soak did, once).
 	///
 	/// ON ANY REFUSAL Out IS LEFT EXACTLY AS IT WAS FOUND, which is the rule
 	/// 16.02 established for `SaveSnapshot` and for the same reason: a caller

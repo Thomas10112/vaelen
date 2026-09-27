@@ -179,6 +179,12 @@ namespace Vaelen::Scene
 	/// its triangles to the counts.
 	VAELEN_SCENE_API void MeasureTerrain(const TerrainMesh& Mesh, TerrainStats& Into);
 
+	/// Every chunk touching Region (0: all of them) at the full lattice, into
+	/// Into, in chunk order - the one measure behind `--scene-terrain` and the
+	/// engine's Vaelen.Scene (19.11b: it lived in the Atlas alone, and the
+	/// engine's "all" line had no way to be the Atlas's).
+	VAELEN_SCENE_API void MeasureChunks(const Ground& G, uint32 Region, TerrainStats& Into);
+
 	/// `LogVaelenScene: AELVOR <size> seed <12 hex> region <R|all>: chunks C,
 	/// vertices V, triangles T, z [a, b] cm, steep S of T; terrain <16 hex>` -
 	/// composed once for the Atlas and the engine (19.04's rule), all or nothing.

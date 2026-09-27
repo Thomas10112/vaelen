@@ -87,7 +87,16 @@ set_tests_properties(Run.Climate PROPERTIES COST 6000)
 # 4.5 minutes on a debug leg, one of this directory's long poles.
 set_tests_properties(Run.Walk PROPERTIES TIMEOUT 3600 COST 3000)
 set_tests_properties(Replay.Played PROPERTIES COST 4000)
-set_tests_properties(Run.Door PROPERTIES COST 3000)
+# Run.Door on the Windows MSVC Debug leg: 1747.83 s on CI run 308 (green) and
+# 1800.26 s on run 312 - the same test, the same day, the default 1800 s cut it
+# off by a quarter of a second. Given the margin Run.Walk, Run.Aelvor and
+# Run.Climate have (845 s on gcc debug); a regression would be a test twice as
+# slow, not 3 % slower.
+set_tests_properties(Run.Door PROPERTIES TIMEOUT 3600 COST 3000)
+# 20.01: three years of the product's world played a day at a time, a
+# container built and read back every year. Measured on gcc debug at the
+# figures in ROADMAP; declared here so it starts with the other long poles.
+set_tests_properties(Run.Soak PROPERTIES TIMEOUT 3600 COST 4000)
 # Phase 16's gate cell lives in Run.Checkpoint: 128 tiles with the full Play,
 # Stream, Lively and Colony wiring, generated once and adopted once. Measured at
 # about 95 seconds and a peak of 1.1 GB, which puts it between Run.Door and
@@ -147,6 +156,8 @@ file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/store)
 # 17.03's cold listing gets a directory of its own, so that Run.Store's files
 # cannot be counted by it and a stale run cannot make it pass.
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/store/cold)
+# 16.15's rename-aside gets one too, for the same reason.
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/store/aside)
 target_compile_definitions(VaelenRunTests PRIVATE VAELEN_STORE_DIR="${CMAKE_CURRENT_BINARY_DIR}/store")
 
 # VAELEN - Phase 15 task 15.10, HEADLESS HALF.
@@ -194,8 +205,33 @@ add_test(NAME Replay.Climate
           "-DVERBS=LogVaelenPlay: verbs work 8 rest 9 eat 9 wait 1 speak 2 give 1 take 1 move 1"
           # 19.04: the weather the replay came to, composed by Vaelen/View/Proof.h.
           "-DCLIMATE=LogVaelenClimate: AELVOR 128 seed 41454c564f52: day 31 of year 420, spring; coldest -20 warmest 29; frost 6844 of 16384 tiles, 7652 growing; hard winters 12864, cold deaths 1589; climate bf25b48823dbd83a"
+          # 19.09: the scene the replay came to (--scene): the map's ground, the
+          # same digest as Atlas.SceneTerrain128 since the ground is the map's;
+          # the layout on the life's day; the sky at the hour the stream left
+          # the played life - 1 of 16 waking hours, so the sun is 45 tenths up
+          # in the east, and Dokdahum's breath shows: region 2 is below zero.
+          "-DTERRAIN=LogVaelenScene: AELVOR 128 seed 41454c564f52 region all: chunks 64, vertices 1065024, triangles 2097152, z [-5000, 50636] cm, steep 0 of 2097152; terrain 105208c54e3c6ea9"
+          "-DLAYOUT=LogVaelenScene: AELVOR 128 seed 41454c564f52 layout day 31: squares 46, houses 7039 (unplaced 0), figures 1960 (company 16), roads 84 over 1236 tiles (unrouted 2), pits 0; layout ead1d4340f2cdd08"
+          "-DSKY=LogVaelenScene: AELVOR 128 seed 41454c564f52 sky day 31: snow 1116 of 16384 tiles, growing 4019, sun azimuth 1012 elevation 45, breath 1 shiver 0; sky 84ceea193452087c"
           -P ${CMAKE_CURRENT_LIST_DIR}/ReplayPlayed.cmake)
 set_tests_properties(Replay.Climate PROPERTIES TIMEOUT 1800 COST 2000)
+
+# 19.10 (ADR-0158): the keys are the host's, told to the replay like
+# --want-bound. The same month on the walk's table (Speak on F) comes to the
+# SAME state, log and life as Replay.Climate pins above, and another page -
+# a key is printed on the page and nowhere else in the world.
+add_test(NAME Atlas.Keys128
+  COMMAND ${CMAKE_COMMAND}
+          -DATLAS=$<TARGET_FILE:VaelenAtlas>
+          -DSTREAM=${PROJECT_SOURCE_DIR}/Tests/Run/Streams/aelvor128-climate-stand-2026-09-25.stream
+          -DOUT=${CMAKE_CURRENT_BINARY_DIR}/replay-keys.json
+          -DERA=--climate
+          "-DMORE=--keys;TWREMFGK"
+          "-DSAME=replay: 32 of 32 answered identically, 30 of 30 days"
+          "-DPLAYED=LogVaelenPlay: AELVOR 128 seed 41454c564f52: played Dokdahum (person 3588, region 2) 30 days, 32 intents (29 taken, 3 refused by the world, 0 dropped at the door), state a56776c2166d6de1, log 1ae67b101be35733, life 7406a01f544161f6, panel 9a400aead6539225"
+          "-DVERBS=LogVaelenPlay: verbs work 8 rest 9 eat 9 wait 1 speak 2 give 1 take 1 move 1"
+          -P ${CMAKE_CURRENT_LIST_DIR}/ReplayPlayed.cmake)
+set_tests_properties(Atlas.Keys128 PROPERTIES TIMEOUT 1800 COST 2000)
 
 add_test(NAME Replay.Walked
   COMMAND ${CMAKE_COMMAND}

@@ -29,17 +29,137 @@ PHASE       : 18 — CLIMATE & SEASONS, CLOSED headless 2026-09-25, read clause 
               shim, UNVERIFIED (engine) until Phase 19's first sitting.
               NOW: Phase 19 WORLD IN 3D (ROADMAP section 26, ADR-0155 to ADR-0159):
               twelve tasks, four sittings on the owner's machine. 19.01 and 19.02
-              DONE; 19.03 WAITS ON THE OWNER (sitting S1, ENGINE_HANDOFF). Headless
-              work goes on meanwhile: 19.04 and 19.05 DONE; NEXT 19.06 is sitting S2
-              (the engine contract: VaelenWalk, the walker, ZQSD) - its code is written
-              here after S1 has built 19.03; 19.07 (the fence and the walk contract,
-              headless) can go first. Ten owner questions, the tile
+              DONE; 19.03 WAITS ON THE OWNER (sitting S1, ENGINE_HANDOFF; its first
+              attempt found C2487 in Aelvor.h, repaired by 19.03b - the retake builds that). Headless
+              work goes on meanwhile: 19.04, 19.05, 19.07, 19.08, 19.09 and 19.10 DONE; NEXT 19.06 is sitting S2
+              (the engine contract: VaelenWalk, the walker, ZQSD) - its code is WRITTEN
+              (S1 built 19.03b on 2026-09-25); the sitting is the owner's. Ten owner questions, the tile
               scale first.
-              (17 CLOSED 2026-09-24; 16 SAVE/PERSISTENCE: fourteen tasks built, its
+              (17 CLOSED 2026-09-24; 16 SAVE/PERSISTENCE: fifteen tasks built, its
                GATE still open - clause (j)'s migration half deferred to the v4 bump,
-               and 16.14's sitting on the owner's Windows machine. Section 22.
+               and 16.14's sitting on the owner's Windows machine; the name promise
+               the 19.10 audit found unkept is met by 16.15. Section 22.
                15 CLOSED 2026-09-21; 14 CLOSED 2026-09-16)
-TASK        : 19.07 — DONE 2026-09-25. The body is not an input, proven headless.
+TASK        : 19.11b — DONE 2026-09-26 (headless). The engine code reviewed before it is built.
+
+              A read-only fleet (six lenses, three refuters per finding, 81 agents)
+              over the 3 745 engine lines never compiled: 22 findings stood, all
+              repaired. One stops the build (a free function reading the protected
+              AActor::RootComponent - the shim now says protected and its self-test
+              refuses it); the rest would have spent S2: the walker destroyed by
+              KillZ before Vaelen.Walk, a material on one chunk of sixty-four, walls
+              with holes on slopes, near chunks never rebuilt after a crossing, the
+              wrong headless twin (1581 against 1582 cold deaths), Stream.Write and
+              Vaelen.Day bypassing the controller's hooks, Load without a ground,
+              the session reader reading the wrong category. ENGINE_HANDOFF: S2
+              builds 19.11b's commit and S3 runs on the same build.
+
+TASK        : 20.01 — DONE 2026-09-26 (headless). The soak: three years of the product's world, a day at a time.
+
+              Phase 20 OPENED by its instrument rather than planned around it (ROADMAP
+              section 28): Run.Soak plays the subsystem's own world (128, 300+120,
+              Play, Stream, climate) through the door for 1080 days with the eight
+              verbs in turn, builds and reads back a container every year, prints a
+              line a year (ms/day, resident, container, log, alive) and pins the
+              state after three years, 16954db42400b164, on every CI leg. Measured:
+              day mean 0.1 ms release / 0.3 ms debug, flat; resident +1 MiB over
+              three years (+4 over ten); container +2 % a year; log +0.8 % a year -
+              at this wiring the log question is not urgent. 19 s release, 30 s
+              debug. The instrument lied twice first (the allocator's kept buffers;
+              BuildCheckpoint appending), both fixed in the test and written down.
+
+TASK        : 16.15 — DONE 2026-09-25 (headless). The last good save keeps its name.
+
+              The 19.10 audit found the engine's replace (a delete, then a rename)
+              could leave the last good save nameless while its bytes were whole.
+              Every store now sets the old save aside as `<name>.previous` (hidden
+              by the name rule like `.writing`) before the new one is moved in,
+              forgets the aside after, restores it under its own name on Read and
+              List when the name is missing, and Forget takes all three names.
+              Both stores line for line; Run.SaveAside (6 cases, 81 checks, on
+              real files, the pre-fix arm kept) holds the stdio one to it; the
+              engine one is UNVERIFIED (engine), parsed (25 TUs). Failed on
+              purpose four ways, each built. Phase 16's gate gains row (n), met.
+
+TASK        : 19.11 — WRITTEN 2026-09-25, UNVERIFIED (engine), reviewed and corrected 2026-09-26 (19.11b): S3 builds it.
+
+              AVaelenScenery draws the subsystem's one layout as basic shapes (houses
+              with collision, figures, the company a size larger, squares, roads,
+              pits), the sea at 0 and the lakes at their surfaces; the fence also as
+              invisible collision walls; the walk controller aims M by CrossingOf and
+              Speak/Give/Take by AimAt with Tab as fallback, puts the walker back after
+              every day (counted) and says one line a day; Vaelen.Scene prints the
+              three scene lines and the instances drawn; Stream.Write says the days on
+              foot. 25 TUs parse; fence, lists and ledgers hold. Keys still DefaultKeys.
+
+TASK        : PATH  — PROPOSED 2026-09-25: the path to a first sale, judged by the fleet (ROADMAP 27).
+
+              Three proposals, one judge, the repository re-read: 5-8 owner sittings
+              from S1-close to a Steam Early Access upload, Phase 20 reduced to a soak,
+              21 cut, 22 reduced to the ship items (front end as text pages, autosave,
+              rename-aside, cook config). Full text in Docs/Reviews/. The owner decides;
+              step 0 (the S1-close kit, no rebuild) is done here.
+
+TASK        : 19.06 — WRITTEN 2026-09-25, UNVERIFIED (engine): the walk, parsed and fenced; sitting S2 builds it.
+
+              Source/VaelenWalk: AVaelenLand (the scene's chunks as PMC sections, the
+              played region's at the full lattice with collision - the Atlas's
+              --scene-terrain R bytes - the day's snow repainted on OnViewsTaken),
+              AVaelenSky (sun from Scene::SunOf at the life's hour, sky light,
+              atmosphere, fog), AVaelenWalker (no Tick), AVaelenWalkGameMode (by map
+              URL), Vaelen.Walk and Vaelen.Probe (with a bias that must show). VaelenUI:
+              AVaelenWalkController - ZQSD at run time, every step fenced (ADR-0155),
+              the look from the walker's feet. VaelenGame: Scene(), Climate(), Net(),
+              OnViewsTaken, ClimateLine() on Play/Day/Walk. 24 TUs parse; the fence,
+              the module lists, the status and shim ledgers hold (94 beliefs listed).
+              ENGINE_HANDOFF "sitting S2" says what to type and bring back.
+
+TASK        : 19.10 — DONE 2026-09-25 (headless); its engine half UNVERIFIED until a sitting. The keys are the host's.
+
+              Vaelen/View/Panel.h: PanelKeys, DefaultKeys (14.09's, byte for byte),
+              WalkKeys (Speak on F), ValidKeys naming the refused letter, TakePanel
+              with a table (the four-argument form = DefaultKeys, no pin moves).
+              Atlas --keys, told like --want-bound. View.Panel pins the walk's page
+              77038fcf880e61c7 (one row moved); Atlas.Keys128: the recorded month on
+              TWREMFGK comes to the same state, log and life and page 9a400aead6539225.
+              Engine: the subsystem holds the table (DefaultKeys until 19.06), the
+              check line says --keys when it is not the default, the controller binds
+              the eight verbs from it (FKey(FName), a listed belief). Three sabotages
+              caught - two of them redone after an unbuildable first attempt.
+
+TASK (19.09b): 19.09b — DONE 2026-09-25. The review's findings: one rule for the paint and the count.
+
+              MeasureSky counted grass on lakes and rivers that ApplyClimate never
+              greened; one rule now serves both, and a view that does not fit the
+              ground counts nothing. BuildGround refuses a map whose far edge
+              overflows a centimetre (found latent, reproduced). Five test holes closed
+              (every vertex compared, the sun's direction, the body in the digest, the
+              equinox on every row, the flags against the bytes). Re-pinned once:
+              Atlas.SceneSky128 growing 3454 / 160cbcc697d9dc4e, Replay.Climate's sky
+              4019 / 84ceea193452087c. Four sabotages caught.
+
+TASK (19.09): 19.09 — DONE 2026-09-25. The cold and the heat can be seen: snow, grass, sun, breath.
+
+              Vaelen/Scene/Sky.h: SnowOf (today's Frost flag, 255 at -5, a ramp to
+              0), GrassOf, ApplyClimate over a built mesh (the sea untouched; an
+              empty view changes nothing - 19.05's digest), SunOf from Spent/Awake and
+              the day of the year by an integer sine table, BodyOf (breath below zero,
+              shiver from the chill), MeasureSky and SkyLine. Atlas --scene-sky and
+              --replay --scene (terrain, layout, sky at the replay's end; Replay.Climate
+              pins the three - Dokdahum's breath shows on day 31). Atlas.SceneSky128
+              b6f8dce3d92162c3 from two wirings; Scene.Sky 5 cases; three sabotages
+              caught. What it LOOKS like is sitting S2's.
+
+TASK (19.08): 19.08 — DONE 2026-09-25. Towns, houses, roads, figures - invented, and said so.
+
+              Vaelen/Scene/Layout.h: a square per settlement, a house per living family
+              (stable under a later death), a road per open route, a pit per colony, a
+              figure per living person at a slot of the day. At 128 (60+10 years, day
+              100): 565 houses, 779 figures, 16 roads, layout 8542fca56e445402 - the same
+              from two wirings and two compilers, pinned by Atlas.SceneLayout128. Three
+              failures on purpose.
+
+TASK (19.07): 19.07 — DONE 2026-09-25. The body is not an input, proven headless.
 
               Vaelen/Scene/Fence.h fences the walker to its region's walkable tiles and
               lets it cross only towards a Near region; Run.Walk walks 90 days in the
@@ -69,6 +189,16 @@ TASK (19.04): 19.04 — DONE 2026-09-25. One composer for every engine line.
               Vaelen.Play will call it (19.06). View.Proof: 1000 of 1000 seeded fact
               sets equal to the old format through snprintf, the widest line, all or
               nothing. Replay.Climate now pins its climate line too.
+
+TASK (19.03b): 19.03b — DONE 2026-09-25. S1's first attempt stopped at step 1; its error repaired here.
+
+              c000399's editor build: MSVC C2487 on five members of Run::Aelvor that
+              carried VAELEN_RUN_API inside a VAELEN_RUN_API class (Phase 16). dllexport
+              exists only in the editor build, so no headless leg could see it. Macros
+              removed; Kernel.DllApi (Tools/check_dll_api.py, + SelfTest, verify_fast)
+              refuses any *_API on a member of an exported class - on c000399's header
+              it names the same five lines MSVC did, and none elsewhere. The retake
+              builds the commit of 19.03b (ENGINE_HANDOFF, step 0).
 
 TASK (19.03): 19.03 — INCOMPLETE 2026-09-25: the headless half is written; sitting S1 is the owner's.
 
@@ -1044,7 +1174,12 @@ COMPLETED
   (debug), so the entry stays on windows-msvc-debug and clause (e) names eight legs
 ✓ ADR-0136 to ADR-0139
 
-NEXT
+NEXT (2026-09-26)
+→ The owner's sittings S1 (close: the log), S2 (19.06), S3 (19.11), S4 (19.12); the
+  owner's decisions on ROADMAP section 27 and on Q2 (WalkKeys). Headless meanwhile:
+  Phase 20's next soak cells once the owner says which wiring ships (Lively, the
+  colony, 256), 19.12's replay entries the day the S4 stream lands.
+  (What follows is the NEXT of 2026-09-16, kept as the record of Phase 15's opening.)
 → Phase 15 — STREAMING & LOD. Nothing is asked of the engine machine any more: the build
   happened, the month was played, the frame rate was read. The phase-15 breakdown is planned
   headless-first and opens on three defects the planning itself found, all three confirmed in

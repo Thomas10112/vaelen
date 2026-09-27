@@ -5,7 +5,10 @@
 // ON PURPOSE: a write lands in `<name>.writing` in the SAME directory and is
 // moved into place whole, so a disk that fills halfway through has refused the
 // new save and kept the old one - the promise Run::StoreResult::DiskFull
-// makes. Listing reads the directory (17.03: a store that lists what it wrote
+// makes - and since 16.15 the old save is set aside as `<name>.previous`
+// while the new one is moved in, and given back under its own name when the
+// name is missing, so a move that fails halfway loses the bytes of neither
+// and the name of neither. Listing reads the directory (17.03: a store that lists what it wrote
 // this process lists nothing for a player who reopened the game), and the
 // digest it reports is the image trailer through Run::ImageTrailer, the one
 // reader.
@@ -15,8 +18,9 @@
 // Private, and this file is one reason that seam is where it is.
 //
 // STATUS: UNVERIFIED (engine) - written and PARSED against Tools/EngineShim on
-// 2026-09-24, not yet built by UnrealBuildTool nor run. The sitting of 16.14
-// is what turns this line; Docs/ENGINE_HANDOFF.md says what it types.
+// 2026-09-24 (16.15 on 2026-09-25), not yet built by UnrealBuildTool nor run.
+// The sitting of 16.14 is what turns this line; Docs/ENGINE_HANDOFF.md says
+// what it types.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -40,6 +44,10 @@ public:
 
 private:
 	FString PathOf(const char* Name) const;
+	/// True when `Final` is there to be read - as it was, or moved back from
+	/// `Aside` just now (16.15). False when neither is, or the move back
+	/// failed and the caller should read the aside where it lies.
+	bool Restore(const FString& Final, const FString& Aside) const;
 
 	FString Directory;
 };
