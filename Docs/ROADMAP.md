@@ -8690,6 +8690,17 @@ nothing (that is what row 19.11 orders); `Vaelen.Probe` traces meeting
 houses and the capsule (S2 runs before the scenery exists, and the walls
 now ignore visibility).
 
+CI run 318 green on f0c75b1, ten legs of ten. The S2-close kit followed on
+2026-09-27: `Tests/Run/Sessions/s2.session` (the twin above, region 26 - where
+the played life of the 128/120 world stands at Begin, Run.Soak's world - the
+head of 19.11b, two line prefixes), proven with a stand-in log made of the
+twin's own lines dressed `[ts][f]LogVaelenWalk: LogVaelenScene: ...` as the
+engine writes; every self-test control held, the other-world arm (the plain
+`--scene-terrain 26` run) refused as it must. The control that changes one
+hex digit took its digit from the head line on the first session that has
+one and refused for the wrong reason; it takes it from an expected line
+now, and the committed s0916 pair still holds every control.
+
 Held after: 25 TUs parse against the tightened shim; the ledger 130
 beliefs (eight new: the mesh update, the channel response and its enum,
 the camera channel, GetAuthGameMode, RestartPlayer,

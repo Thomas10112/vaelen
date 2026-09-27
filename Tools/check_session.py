@@ -144,8 +144,16 @@ def self_test(session, log_text, headless_text):
     expect("CONTROL: the committed log agrees with the headless command", not got, "; ".join(got))
 
     # One hex digit changed on the engine's side: refused, naming the column.
-    m = re.search(r"[0-9a-f]{16}", log_text)
-    digit = m.start() + 7
+    # The digit is taken from one of the EXPECTED lines and never from the
+    # head line (a session with a `head` has a 40-hex commit first, and a
+    # digit changed there is refused for the other reason - found when
+    # s2.session, the first session with a head, ran this control).
+    at = next((i for i, l in enumerate(log_text.split("\n"))
+               if any(p in l for p in session.lines) and re.search(r"[0-9a-f]{16}", l)), None)
+    assert at is not None, "the self-test needs an expected line with a 16-hex digest in it"
+    before = sum(len(l) + 1 for l in log_text.split("\n")[:at])
+    m = re.search(r"[0-9a-f]{16}", log_text.split("\n")[at])
+    digit = before + m.start() + 7
     flipped = "0" if log_text[digit] != "0" else "1"
     got = compare(session, log_text[:digit] + flipped + log_text[digit + 1:], headless_text)
     expect("one hex digit changed in the log is refused, naming the column",

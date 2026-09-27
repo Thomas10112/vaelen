@@ -472,8 +472,11 @@ side is redesigned. The standing rule holds: REPORT, do not repair.
     `Vaelen.View 128 120`: the same `AELVOR digests:` line as S1's.
 
 Bring back the whole `Saved/Logs/Vaelen.log`, rev-parse first. It is
-committed as `Tests/Run/Sessions/s2-<date>.log`, `Session.P19S2` re-reads
-steps 3 and 4 against the Atlas, and the ledger gains the row `s2`.
+committed as `Tests/Run/Sessions/s2-2026-09-27.log` (rename the date to the
+day it was typed, in the file and in `s2.session`), `Session.P19S2` re-reads
+step 3 against the Atlas by `Tests/Run/Sessions/s2.session` - written on
+2026-09-27 and proven against a stand-in log dressed as the engine writes,
+so the log is adopted the day it lands - and the ledger gains the row `s2`.
 
 ## PHASE 19 - sitting S3 (task 19.11): the world drawn is the world built
 

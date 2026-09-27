@@ -1,0 +1,19 @@
+# VAELEN - sitting S2 (19.06, build of 19.11b), 2026-09-27. 19.01, ADR-0159.
+#
+# Written BEFORE the log landed, as s1.session was: the owner builds the commit of 19.11b, launches
+# the walk mode (ENGINE_HANDOFF "sitting S2"), types `Vaelen.Walk 128 120`, and the whole
+# Saved/Logs/Vaelen.log comes back with `git rev-parse HEAD` as its first line. Until the log is
+# committed under the name below, no CTest entry names this file; Session.P19S2 is added with it.
+#
+# The twin is the Atlas begun THE WAY Vaelen.Walk BEGINS - Play and Stream, the climate on, the
+# daily cadence (`--empty --stream`), which is not the world `--scene-terrain R` alone builds:
+# measured on 2026-09-26, that world is one cold death from this one (1581 against 1582). Region
+# 26 is where the played life of the 128/120 world stands at Begin (Run.Soak, the same wiring).
+# In the raw log every line reads `LogVaelenWalk: LogVaelenScene: ...` - the engine's category,
+# then the line's own; Tools/check_session.py reads from the last (19.11b).
+log s2-2026-09-27.log
+head f0c75b12e24d03f82a241f281e8f66e9b462b946
+run --empty --stream --climate --want-bound 0 --size 128 --years 120 --scene --scene-terrain 26
+line LogVaelenScene: AELVOR 128 seed 41454c564f52 region 26:
+line LogVaelenClimate: AELVOR 128
+other --size 128 --prehistory 300 --years 120 --scene-terrain 26
