@@ -9317,3 +9317,8 @@ wording re-pins: Replay.Bound, Replay.Bound.AsFree, Session.SelfTest with
 `moved`, the two pages and the life text all green on every leg that ran
 its suite), the tenth cancelled by the timeout above; 327, 328, 330 and 331
 cancelled by the pushes after them.
+
+CI run 333 (c306851), read 2026-09-28 07:46 UTC: ten legs of ten green, the
+parse job in 7 min 44 s under its new line. The first fully green run since
+329, with Replay.Bound, Replay.Bound.AsFree, the `moved` session key and the
+re-pinned pages and life texts on every compiler.
