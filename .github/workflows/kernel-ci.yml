@@ -65,7 +65,12 @@ jobs:
     name: engine modules parse (clang 18)
     runs-on: ubuntu-24.04
     # Seconds, not minutes: it is a front end over nine translation units.
-    timeout-minutes: 10
+    # 20, not 10: the shim self-test compiles the engine modules once per
+    # mutation (30 since 22.02) and took 9 min 21 s on run 332's runner, so the
+    # step after it was cancelled at 10:00 exactly (ROADMAP, "Found on CI run
+    # 332"). A parse that takes twice its usual time is worth the line; one
+    # that takes a slow runner's time is not.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6

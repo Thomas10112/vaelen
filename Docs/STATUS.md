@@ -129,6 +129,10 @@ TASK        : 19.10 — DONE 2026-09-25 (headless); its engine half UNVERIFIED u
               the eight verbs from it (FKey(FName), a listed belief). Three sabotages
               caught - two of them redone after an unbuildable first attempt.
 
+TASK (CI 332) : the parse job's timeout 10 -> 20 minutes — DONE 2026-09-28. Run 332 (05f2ca7) nine
+  legs of ten green; the parse job cancelled by its own limit after a 9 min 21 s shim self-test.
+  ROADMAP "Found on CI run 332".
+
 TASK (wording) : "could not eat", not "could not ate" — DONE 2026-09-28. PlayerHistory.cpp words a
   refused doing in the infinitive (Meant) rather than the past tense (Told). No world digest moved
   (244 of 254 release entries green untouched); the ten that hash a view's text re-pinned: the life

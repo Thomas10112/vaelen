@@ -9297,3 +9297,23 @@ naming a wrong new value is refused (it does only the work it says). The
 world's digests never move this way, and a session that said so of them
 would be refused by the same control. Streams/README.md and ENGINE_HANDOFF
 keep the line the engine printed and say what its life digest reads as now.
+
+### Found on CI run 332 (05f2ca7), 2026-09-28: the parse job's long pole sat 39 seconds past its timeout
+
+Run 332 came back nine legs of ten green - Windows, macOS, both releases,
+both noasserts, both debugs, the format - and "cancelled" as a whole because
+`engine modules parse (clang 18)` was cancelled by its own `timeout-minutes:
+10`: the shim self-test (30 mutations since 22.02, each a compile of the
+engine modules) took 9 min 21 s on that runner, against 6 min 13 s on run
+331's, and the `Kernel modules` step after it was cut at 02:03:10, ten
+minutes to the second after the job began. Not a regression of ours: the
+same self-test, the same mutations, a slower runner - the same class as run
+312's Windows edge. The job gets 20 minutes, with the two measurements
+beside it, and the leg's suite is untouched.
+
+CI so far this stretch: run 325 green (ed087b9, 22.01); run 329 green
+(7f2aaa4, Run.Bound on ten legs); run 332 nine of ten on 05f2ca7 (the
+wording re-pins: Replay.Bound, Replay.Bound.AsFree, Session.SelfTest with
+`moved`, the two pages and the life text all green on every leg that ran
+its suite), the tenth cancelled by the timeout above; 327, 328, 330 and 331
+cancelled by the pushes after them.
