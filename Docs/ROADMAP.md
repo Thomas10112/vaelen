@@ -9344,3 +9344,10 @@ the fast leg. Eleven jobs, nine of them CTest. The first run says what it
 costs; the leg's `timeout-minutes: 180` bounds it as the others'. If a
 digest differs there, that is the finding this leg exists for, and it is
 worked as a defect of ours before anything else ships.
+
+CI run 335 (5151013), read 2026-09-28 21:46 UTC: eleven legs of eleven
+green. The release leg's first numbers: build 8 min 32 s, the whole suite
+with the shuffles 35 min 59 s, 45 minutes end to end - against 1 h 59 min
+for the MSVC debug suite without them, and 27 minutes for gcc release on
+Linux. Every frozen digest in the tree now agrees under the compiler and
+optimiser the product ships with; nothing moved.

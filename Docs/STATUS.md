@@ -129,7 +129,8 @@ TASK        : 19.10 — DONE 2026-09-25 (headless); its engine half UNVERIFIED u
               the eight verbs from it (FKey(FName), a listed belief). Three sabotages
               caught - two of them redone after an unbuildable first attempt.
 
-TASK (CI 335) : the Windows MSVC release leg — ADDED 2026-09-28, UNVERIFIED until its first run. The
+TASK (CI 335) : the Windows MSVC release leg — DONE 2026-09-28 (VALIDATED by run 335: eleven of eleven
+  green; the release suite with shuffles in 36 min, 45 min end to end). The
   configuration the product ships had a preset since Phase 00 and no job; the Windows job is a matrix of
   the debug preset (as before, -E Shuffled) and the release preset (the whole suite). Runs 333 and 334
   green. ROADMAP "The eleventh leg".
