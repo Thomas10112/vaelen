@@ -153,11 +153,29 @@ jobs:
           test "$(grep -c '^\[purity\] module ' purity.log)" = 14
 
   windows:
-    name: Windows (MSVC)
+    name: Windows (${{ matrix.preset }})
     runs-on: windows-2022
     # An MSVC debug build runs the suite about four times slower than Linux
     # debug does, and it is the one leg that cannot be parallelised away.
     timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Everything but the shuffled re-runs on the debug leg: those re-run
+          # every suite a second time to catch order dependence between tests,
+          # which is a property of the tests and not of the compiler, and the
+          # leg already runs an hour. Every Linux leg runs them.
+          - preset: windows-msvc-debug
+            exclude: -E Shuffled
+          # 2026-09-28: the configuration the product SHIPS - MSVC with the
+          # optimiser on (RelWithDebInfo; the Shipping package is this kernel
+          # under noasserts) - had a preset since Phase 00 and no job. Every
+          # frozen digest in the tree had been agreed by MSVC Debug, Linux
+          # release and Linux noasserts, never by MSVC release. Whole suite,
+          # shuffles included: release is the fast leg.
+          - preset: windows-msvc-release
+            exclude: ""
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -166,12 +184,9 @@ jobs:
       - name: Configure
         run: cmake --preset windows-msvc
       - name: Build
-        run: cmake --build --preset windows-msvc-debug
+        run: cmake --build --preset ${{ matrix.preset }}
       - name: Test
-        # Everything but the shuffled re-runs: those re-run every suite a second
-        # time to catch order dependence between tests, which is a property of
-        # the tests and not of the compiler. Every Linux leg runs them.
-        run: ctest --preset windows-msvc-debug -E Shuffled
+        run: ctest --preset ${{ matrix.preset }} ${{ matrix.exclude }}
 
   macos:
     name: macOS (AppleClang)

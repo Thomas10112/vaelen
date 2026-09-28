@@ -129,6 +129,11 @@ TASK        : 19.10 — DONE 2026-09-25 (headless); its engine half UNVERIFIED u
               the eight verbs from it (FKey(FName), a listed belief). Three sabotages
               caught - two of them redone after an unbuildable first attempt.
 
+TASK (CI 335) : the Windows MSVC release leg — ADDED 2026-09-28, UNVERIFIED until its first run. The
+  configuration the product ships had a preset since Phase 00 and no job; the Windows job is a matrix of
+  the debug preset (as before, -E Shuffled) and the release preset (the whole suite). Runs 333 and 334
+  green. ROADMAP "The eleventh leg".
+
 TASK (CI 332) : the parse job's timeout 10 -> 20 minutes — DONE 2026-09-28. Run 332 (05f2ca7) nine
   legs of ten green; the parse job cancelled by its own limit after a 9 min 21 s shim self-test.
   ROADMAP "Found on CI run 332".
@@ -1270,7 +1275,7 @@ NEXT (2026-09-27)
 
 TESTS
 ✓ 181 CTest entries on linux-gcc-release, every gate of fifteen phases, Run.Checkpoint among them
-✓ CI: 10 jobs - six Linux presets, clang-format 18, Windows MSVC, macOS AppleClang, and the engine
+✓ CI: 11 jobs (2026-09-28) - six Linux presets, clang-format 18, Windows MSVC debug AND release, macOS AppleClang, and the engine
   modules parse (clang 18) that builds nothing and reads everything
 ✓ verify_fast (counts of 2026-09-27): purity clean · shim self-test 27 mutations · 25 translation
   units parsed · shim ledger 130 beliefs · 4 wirings of AELVOR agree · UI fence 33 files · frozen

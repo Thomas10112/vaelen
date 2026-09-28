@@ -9322,3 +9322,25 @@ CI run 333 (c306851), read 2026-09-28 07:46 UTC: ten legs of ten green, the
 parse job in 7 min 44 s under its new line. The first fully green run since
 329, with Replay.Bound, Replay.Bound.AsFree, the `moved` session key and the
 re-pinned pages and life texts on every compiler.
+
+### The eleventh leg, 2026-09-28: MSVC release, the configuration that ships, run by CI at last
+
+CI run 334 (9135c95): ten legs of ten green, as 333 was. And then the
+review of 2026-09-14 (section "eight CTest legs named") said it in one
+clause and nothing followed: `windows-msvc-release` has had a preset since
+Phase 00 (`CMakePresets.json:150,226`, RelWithDebInfo) and no job ran it.
+The product ships MSVC with the optimiser on - the Shipping package is this
+kernel under the noasserts presets' flags - and every frozen digest in the
+tree had been agreed by MSVC Debug, Linux release, Linux noasserts and
+AppleClang, never by the compiler and optimiser a stranger's copy carries.
+Fix64, the seeded PRNG and `-ffp-contract=off` are how the kernel keeps
+ten compilers on one digest; an optimiser nobody ran is the one place they
+had not been asked.
+
+The Windows job becomes a matrix of two presets: `windows-msvc-debug` as
+it was (`-E Shuffled`, the leg already runs an hour) and
+`windows-msvc-release`, the whole suite with the shuffles, since release is
+the fast leg. Eleven jobs, nine of them CTest. The first run says what it
+costs; the leg's `timeout-minutes: 180` bounds it as the others'. If a
+digest differs there, that is the finding this leg exists for, and it is
+worked as a defect of ours before anything else ships.
