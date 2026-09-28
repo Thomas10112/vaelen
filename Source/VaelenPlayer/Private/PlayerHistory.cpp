@@ -73,6 +73,39 @@ namespace Vaelen::Player
 			return "did something";
 		}
 
+		/// "eat", "walk", "give to": the verb as it was MEANT, for what could
+		/// not be done. Told() above is the past tense, and "could not ate" is
+		/// what the page read for a year before anybody's month was refused
+		/// often enough to notice (section 27 step 2, the bound life's month:
+		/// six of thirty days). A stranger reads this row first.
+		const char* Meant(Intent Kind) noexcept
+		{
+			switch (Kind)
+			{
+			case Intent::Wait:
+				return "let the day go by";
+			case Intent::Work:
+				return "work";
+			case Intent::Rest:
+				return "rest";
+			case Intent::Eat:
+				return "eat";
+			case Intent::Move:
+				return "walk";
+			case Intent::Speak:
+				return "speak with";
+			case Intent::Give:
+				return "give to";
+			case Intent::Take:
+				return "take from";
+			case Intent::None:
+			case Intent::Count:
+			default:
+				break;
+			}
+			return "do it";
+		}
+
 		bool AimedAtSomebody(Intent Kind) noexcept
 		{
 			return Kind == Intent::Speak || Kind == Intent::Give || Kind == Intent::Take;
@@ -256,7 +289,7 @@ namespace Vaelen::Player
 		if (E.Is(PlayerRefusedEvent))
 		{
 			Out += " could not ";
-			Out += Told(Kind);
+			Out += Meant(Kind);
 			if (AimedAtSomebody(Kind) && A.Target != 0)
 			{
 				Out += ' ';

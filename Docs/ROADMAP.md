@@ -9262,3 +9262,38 @@ every bound entry pins and is therefore a re-freeze. Not touched.
 The `--empty` play was the wrong instrument for this question and is
 written down as such: it takes nobody up by design (14.03), so its "0
 taking(s)" says nothing about the offer. The probe read the offer.
+
+### The page's wording, 2026-09-28: "could not eat", and the view digests that moved with it
+
+Replay.Bound's page read "Erdass could not ate: nothing to do it with" six
+times, and Test_Panel pinned "Eikha could not walked: too far to walk" as
+the row a refusal makes. `PlayerHistory.cpp` had one verb table, `Told` -
+the past tense, "ate", "walked", "took from" - and used it after "could
+not". A stranger reads that row first (section 27, the third risk), so the
+refused sentence now takes `Meant`, the infinitive: "could not eat", "could
+not walk", "could not take from". Nothing in the world moved: the chronicle
+composes its text from the event log at read time, so every STATE and LOG
+digest in the tree is the same byte, and the release suite says so - 244 of
+254 entries green with no pin touched, and the 10 red ones exactly the
+entries that hash a VIEW's text:
+
+| moved | before | after | why |
+|---|---|---|---|
+| `VAELEN_LIFE_FROZEN_TEXT` (Player.LifeHistory) | 3727cebce1fc782c | 7b2fd0311b38a004 | the exported life's twelve records, one of them a refusal |
+| `VAELEN_PANEL_FROZEN_PLAYED` / `_WALK` (View.Panel) | 777351768a3a4fc6 / 77038fcf880e61c7 | fbc0e50f6b16ee9c / 890302c885b31b9d | the page's refused row |
+| Replay.Played, life | 654e2de6455d8b7a | 3039c736974e7503 | the life view carries the chronicle's text; state, log, PANEL unmoved |
+| Replay.Climate, Atlas.Keys128, Replay.Bound.AsFree, life | 7406a01f544161f6 | b351e2246441036a | as above; both pages unmoved |
+| Replay.Bound, life and panel | 8818b318eb76441b / 41268c2b1206c449 | 313303cf74469015 / 64a084c49b348f45 | the only page in the tree with a refusal among its last rows |
+
+**The engine's log of 2026-09-16 cannot be rewritten**, and Session.SelfTest
+compares it to the headless line byte for byte, life digest included. The
+session reader learns one key, `moved <old> <new>`: a VIEW digest the log
+carries for a wording the view no longer has, read as the new one - that
+16-hex token exactly, nothing else on the line. `s0916.session` carries
+`moved 654e2de6455d8b7a 3039c736974e7503` with the reason beside it, and the
+self-test holds the key to two new controls: with the `moved` taken out the
+log is refused at that digest (the substitution does work), and a `moved`
+naming a wrong new value is refused (it does only the work it says). The
+world's digests never move this way, and a session that said so of them
+would be refused by the same control. Streams/README.md and ENGINE_HANDOFF
+keep the line the engine printed and say what its life digest reads as now.

@@ -52,6 +52,7 @@ class Session:
         self.run = None
         self.other = None
         self.lines = []
+        self.moved = []  # (old, new) 16-hex digests: a view's wording changed since the sitting
         with open(path, encoding="utf-8") as f:
             for number, raw in enumerate(f, 1):
                 raw = raw.rstrip("\r\n")
@@ -68,6 +69,11 @@ class Session:
                     self.other = rest.strip()
                 elif key == "line":
                     self.lines.append(rest)
+                elif key == "moved":
+                    old, new = rest.split()[:2]
+                    if not (re.fullmatch(r"[0-9a-f]{16}", old) and re.fullmatch(r"[0-9a-f]{16}", new)):
+                        raise ValueError("{}:{}: moved takes two 16-hex digests".format(path, number))
+                    self.moved.append((old, new))
                 else:
                     raise ValueError("{}:{}: unknown key '{}'".format(path, number, key))
         if not self.log or not self.run or not self.lines:
@@ -114,6 +120,15 @@ def compare(session, log_text, headless_text):
         if not got.endswith(session.head):
             refused.append("the log's first line is '{}', not the sitting's commit {}".format(got[:60], session.head))
     engine, headless = normal(log_text), normal(headless_text)
+    # A digest of a VIEW (the life, the page) moves when the view's wording
+    # does, and the engine's log is a record that cannot be rewritten: `moved
+    # <old> <new>` in the session says which digest the log carries for a
+    # wording the view no longer has, and the old one is read as the new one -
+    # that token exactly, nothing else on the line. The world's digests (state,
+    # log) never move this way, and a session that said so of them would be
+    # lying: the self-test holds a wrong `moved` to a refusal.
+    for old, new in session.moved:
+        engine = [l.replace(old, new) for l in engine]
     for prefix in session.lines:
         e = [l for l in engine if l.startswith(prefix)]
         h = [l for l in headless if l.startswith(prefix)]
@@ -193,6 +208,22 @@ def self_test(session, log_text, headless_text):
     expect("a log whose first line is not the sitting's commit is refused",
            any("not the sitting's commit" in r for r in got), str(got))
 
+    # `moved`: the substitution must do work, and only the work it says. With
+    # the moved list emptied the log must be refused at the moved digest (or
+    # the session carries a `moved` nothing needs); with a wrong new value it
+    # must be refused as well.
+    if session.moved:
+        saved_moved = session.moved
+        session.moved = []
+        got = compare(session, log_text, headless_text)
+        expect("without its `moved` the log is refused at the moved digest",
+               len(got) >= 1 and all("differs" in r for r in got), str(got))
+        session.moved = [(old, "0123456789abcdef") for old, _ in saved_moved]
+        got = compare(session, log_text, headless_text)
+        expect("a `moved` naming a wrong new value is refused",
+               len(got) >= 1 and all("differs" in r for r in got), str(got))
+        session.moved = saved_moved
+
     if session.other:
         got = compare(session, log_text, run_headless(session, ATLAS[0], session.other))
         expect("the same log against another world's command is refused ({})".format(session.other.split()[-1]),
@@ -225,8 +256,10 @@ def main():
         print("[session] REFUSED " + r)
     if refused:
         return 1
-    print("[session] {}: {} line(s) the engine printed, printed again headless byte for byte".format(
-        os.path.basename(args.session), len(session.lines)))
+    print("[session] {}: {} line(s) the engine printed, printed again headless byte for byte{}".format(
+        os.path.basename(args.session), len(session.lines),
+        "" if not session.moved else " ({} view digest(s) read as moved: {})".format(
+            len(session.moved), ", ".join("{} -> {}".format(o, n) for o, n in session.moved))))
     return 0
 
 

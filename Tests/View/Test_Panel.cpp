@@ -33,9 +33,11 @@
 // C4127 forbids `if (constexpr != 0)`. 0 means "not frozen yet", and then the
 // test prints what it saw instead of asserting.
 #define VAELEN_PANEL_FROZEN_EMPTY 0xd7e7149e65ceb69aull
-#define VAELEN_PANEL_FROZEN_PLAYED 0x777351768a3a4fc6ull
+// Re-frozen 2026-09-28 (PLAYED 777351768a3a4fc6, WALK 77038fcf880e61c7 before):
+// the page's refused row reads "could not walk", not "could not walked".
+#define VAELEN_PANEL_FROZEN_PLAYED 0xfbc0e50f6b16ee9cull
 // 19.10: the same thirty days on the walk's keys (Speak on F), ADR-0158.
-#define VAELEN_PANEL_FROZEN_WALK 0x77038fcf880e61c7ull
+#define VAELEN_PANEL_FROZEN_WALK 0x890302c885b31b9dull
 
 using namespace Vaelen;
 using namespace Vaelen::Run;
@@ -648,7 +650,7 @@ VAELEN_TEST(Panel, EveryRowSaysWhatTheViewsSay)
 	Told.Lines[0].Kind = static_cast<uint32>(LineKind::Refused);
 	Told.Lines[0].Verb = static_cast<uint32>(Player::Intent::Move);
 	Told.Lines[0].Refused = static_cast<uint32>(Player::Refusal::TooFar);
-	const std::string Said = "Year 301: Eikha could not walked: too far to walk.";
+	const std::string Said = "Year 301: Eikha could not walk: too far to walk.";
 	std::memcpy(Told.Text, Said.data(), Said.size());
 	Told.Lines[0].Length = static_cast<uint32>(Said.size());
 	Told.Used = static_cast<uint32>(Said.size()) + 1;

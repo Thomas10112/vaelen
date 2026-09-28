@@ -129,6 +129,13 @@ TASK        : 19.10 — DONE 2026-09-25 (headless); its engine half UNVERIFIED u
               the eight verbs from it (FKey(FName), a listed belief). Three sabotages
               caught - two of them redone after an unbuildable first attempt.
 
+TASK (wording) : "could not eat", not "could not ate" — DONE 2026-09-28. PlayerHistory.cpp words a
+  refused doing in the infinitive (Meant) rather than the past tense (Told). No world digest moved
+  (244 of 254 release entries green untouched); the ten that hash a view's text re-pinned: the life
+  text, the two pages, five replay life digests, Replay.Bound's page. check_session.py learns
+  `moved <old> <new>` for the engine log of 2026-09-16 (two new self-test controls). ROADMAP "The
+  page's wording, 2026-09-28".
+
 TASK (27.2) : the colony question measured — DONE 2026-09-27 (headless VALIDATED; the fix is the
   owner's). Play+Colony offers nobody bound at 128 because Aelvor::Begin details the busiest region
   WITH ORE (75) instead of the busiest (26), and region 75 is 1359 people of culture 3, whose customs

@@ -20,8 +20,13 @@ LogVaelenPlay: AELVOR 256 seed 41454c564f52: played Dukem (person 15019, region 
 LogVaelenPlay: verbs work 34 rest 1 eat 2 wait 2 speak 5 give 2 take 26 move 27
 ```
 
-`Tools/Atlas --replay … --panel --want-bound 0` prints those two lines back,
-byte for byte — same MD5 — from a world rebuilt out of the header alone. That
+`Tools/Atlas --replay … --panel --want-bound 0` printed those two lines back,
+byte for byte, until 2026-09-28; since then the LIFE digest reads
+`3039c736974e7503` headless, because the life view carries the chronicle's
+text and a refused doing now reads "could not take from" rather than "could
+not took from" (`Meant` in PlayerHistory.cpp). State, log and panel are still
+the engine's bytes, and `Sessions/s0916.session` says so with a `moved` line.
+The replay prints the lines back, byte for byte — same MD5 — from a world rebuilt out of the header alone. That
 is the claim of ADR-0136 met in the one way that counts: a played life is a
 function of what came through the door, and of nothing else the engine did.
 

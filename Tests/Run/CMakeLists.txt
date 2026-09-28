@@ -55,6 +55,11 @@ set_tests_properties(Run.Bound PROPERTIES TIMEOUT 3600)
 # headless replay prints the same bytes - which is the whole claim of ADR-0136
 # and the reason Phase 14 has a gate at all. The stand-in that stood here until
 # the month arrived is gone; Tests/Run/Streams/README.md keeps its story.
+# 2026-09-28: the LIFE digest of this line is 3039c736974e7503 here where the
+# engine printed 654e2de6455d8b7a on 2026-09-16 - the life view carries the
+# chronicle's text, and a refused doing reads "could not take from" now, not
+# "could not took from" (PlayerHistory.cpp, Meant). State, log and panel are
+# the engine's to the byte; Sessions/s0916.session says the same with `moved`.
 add_test(NAME Replay.Played
   COMMAND ${CMAKE_COMMAND}
           -DATLAS=$<TARGET_FILE:VaelenAtlas>
@@ -69,7 +74,7 @@ add_test(NAME Replay.Played
           # 14.10 review; the driver now also refuses an expectation too short
           # to contain a digest, so the same mistake cannot be silent twice.
           "-DSAME=replay: 99 of 99 answered identically, 83 of 83 days"
-          "-DPLAYED=LogVaelenPlay: AELVOR 256 seed 41454c564f52: played Dukem (person 15019, region 37) 83 days, 99 intents (76 taken, 23 refused by the world, 0 dropped at the door), state 2ffed5236a593c1b, log 1fdd4211695649bc, life 654e2de6455d8b7a, panel 7de2c5faf3cc1813"
+          "-DPLAYED=LogVaelenPlay: AELVOR 256 seed 41454c564f52: played Dukem (person 15019, region 37) 83 days, 99 intents (76 taken, 23 refused by the world, 0 dropped at the door), state 2ffed5236a593c1b, log 1fdd4211695649bc, life 3039c736974e7503, panel 7de2c5faf3cc1813"
           "-DVERBS=LogVaelenPlay: verbs work 34 rest 1 eat 2 wait 2 speak 5 give 2 take 26 move 27"
           -P ${PROJECT_SOURCE_DIR}/Tests/Run/ReplayPlayed.cmake)
 # Its own line: line 25 applies 1800 to ${VAELEN_RUN_TEST_NAMES}, which is the
@@ -204,7 +209,7 @@ add_test(NAME Replay.Climate
           -DOUT=${CMAKE_CURRENT_BINARY_DIR}/replay-climate.json
           -DERA=--climate
           "-DSAME=replay: 32 of 32 answered identically, 30 of 30 days"
-          "-DPLAYED=LogVaelenPlay: AELVOR 128 seed 41454c564f52: played Dokdahum (person 3588, region 2) 30 days, 32 intents (29 taken, 3 refused by the world, 0 dropped at the door), state a56776c2166d6de1, log 1ae67b101be35733, life 7406a01f544161f6, panel a24da97168077746"
+          "-DPLAYED=LogVaelenPlay: AELVOR 128 seed 41454c564f52: played Dokdahum (person 3588, region 2) 30 days, 32 intents (29 taken, 3 refused by the world, 0 dropped at the door), state a56776c2166d6de1, log 1ae67b101be35733, life b351e2246441036a, panel a24da97168077746"
           "-DVERBS=LogVaelenPlay: verbs work 8 rest 9 eat 9 wait 1 speak 2 give 1 take 1 move 1"
           # 19.04: the weather the replay came to, composed by Vaelen/View/Proof.h.
           "-DCLIMATE=LogVaelenClimate: AELVOR 128 seed 41454c564f52: day 31 of year 420, spring; coldest -20 warmest 29; frost 6844 of 16384 tiles, 7652 growing; hard winters 12864, cold deaths 1589; climate bf25b48823dbd83a"
@@ -233,7 +238,7 @@ add_test(NAME Atlas.Keys128
           -DERA=--climate
           "-DMORE=--keys;TWREMFGK"
           "-DSAME=replay: 32 of 32 answered identically, 30 of 30 days"
-          "-DPLAYED=LogVaelenPlay: AELVOR 128 seed 41454c564f52: played Dokdahum (person 3588, region 2) 30 days, 32 intents (29 taken, 3 refused by the world, 0 dropped at the door), state a56776c2166d6de1, log 1ae67b101be35733, life 7406a01f544161f6, panel 9a400aead6539225"
+          "-DPLAYED=LogVaelenPlay: AELVOR 128 seed 41454c564f52: played Dokdahum (person 3588, region 2) 30 days, 32 intents (29 taken, 3 refused by the world, 0 dropped at the door), state a56776c2166d6de1, log 1ae67b101be35733, life b351e2246441036a, panel 9a400aead6539225"
           "-DVERBS=LogVaelenPlay: verbs work 8 rest 9 eat 9 wait 1 speak 2 give 1 take 1 move 1"
           -P ${CMAKE_CURRENT_LIST_DIR}/ReplayPlayed.cmake)
 set_tests_properties(Atlas.Keys128 PROPERTIES TIMEOUT 1800 COST 2000)
@@ -256,7 +261,7 @@ add_test(NAME Replay.Bound
           -DERA=--climate
           -DWANTBOUND=1
           "-DSAME=replay: 32 of 32 answered identically, 30 of 30 days"
-          "-DPLAYED=LogVaelenPlay: AELVOR 128 seed 41454c564f52: played Erdass (person 3610, region 2) 30 days, 32 intents (19 taken, 13 refused by the world, 0 dropped at the door), state fa3a942904aaeb26, log 0ccf228b6b72f976, life 8818b318eb76441b, panel 41268c2b1206c449"
+          "-DPLAYED=LogVaelenPlay: AELVOR 128 seed 41454c564f52: played Erdass (person 3610, region 2) 30 days, 32 intents (19 taken, 13 refused by the world, 0 dropped at the door), state fa3a942904aaeb26, log 0ccf228b6b72f976, life 313303cf74469015, panel 64a084c49b348f45"
           "-DVERBS=LogVaelenPlay: verbs work 8 rest 9 eat 9 wait 1 speak 2 give 1 take 1 move 1"
           "-DBOND=bound to Okigerdo since year 420"
           "-DCLIMATE=LogVaelenClimate: AELVOR 128 seed 41454c564f52: day 31 of year 420, spring; coldest -20 warmest 29; frost 6844 of 16384 tiles, 7652 growing; hard winters 12864, cold deaths 1589; climate bf25b48823dbd83a"
@@ -279,7 +284,7 @@ add_test(NAME Replay.Bound.AsFree
           -DERA=--climate
           "-DWRONG=32 answered, 1 wrong, 30 day(s), 1 taking(s), 0 left, refused 0"
           "-DSAME=replay: 32 of 32 answered identically, 30 of 30 days"
-          "-DPLAYED=LogVaelenPlay: AELVOR 128 seed 41454c564f52: played Dokdahum (person 3588, region 2) 30 days, 32 intents (29 taken, 3 refused by the world, 0 dropped at the door), state a56776c2166d6de1, log 1ae67b101be35733, life 7406a01f544161f6, panel a24da97168077746"
+          "-DPLAYED=LogVaelenPlay: AELVOR 128 seed 41454c564f52: played Dokdahum (person 3588, region 2) 30 days, 32 intents (29 taken, 3 refused by the world, 0 dropped at the door), state a56776c2166d6de1, log 1ae67b101be35733, life b351e2246441036a, panel a24da97168077746"
           "-DVERBS=LogVaelenPlay: verbs work 8 rest 9 eat 9 wait 1 speak 2 give 1 take 1 move 1"
           -P ${CMAKE_CURRENT_LIST_DIR}/ReplayPlayed.cmake)
 set_tests_properties(Replay.Bound.AsFree PROPERTIES TIMEOUT 1800 COST 2000)

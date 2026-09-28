@@ -45,8 +45,11 @@ using namespace Vaelen::WorldGen;
 
 // Recorded on clang 18 / Linux x86_64 on 2026-09-09 (10.07): AELVOR 128, the
 // player of 10.02, twenty days of a life with the doings of 10.05 and the
-// opinions of 10.06 in it, written by ExportLife.
-#define VAELEN_LIFE_FROZEN_TEXT 0x3727cebce1fc782cull
+// opinions of 10.06 in it, written by ExportLife. Re-frozen 2026-09-28 from
+// 3727cebce1fc782c: a refused doing reads "could not eat" and no longer
+// "could not ate" (the wording of section 27 step 2's bound month); the twelve
+// records are the same records.
+#define VAELEN_LIFE_FROZEN_TEXT 0x7b2fd0311b38a004ull
 #define VAELEN_LIFE_FROZEN_RECORDS 12u
 
 namespace

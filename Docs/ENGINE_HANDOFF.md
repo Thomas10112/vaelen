@@ -187,6 +187,10 @@ LogVaelenPlay: AELVOR 256 seed 41454c564f52: played Dukem (person 15019, region 
 LogVaelenPlay: verbs work 34 rest 1 eat 2 wait 2 speak 5 give 2 take 26 move 27
 ```
 
+(2026-09-28: the life digest of the first line reads `3039c736974e7503`
+headless since a refused doing is worded "could not take from"; state, log
+and panel are unmoved. `Tests/Run/Sessions/s0916.session` carries the `moved`.)
+
 `Tools/Atlas --replay Tests/Run/Streams/aelvor256-2026-09-16.stream --panel
 --want-bound 0` printed those two lines back on Linux, from a world rebuilt out
 of the stream's header alone. Compared as files rather than by eye: same MD5,
