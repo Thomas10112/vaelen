@@ -129,6 +129,13 @@ TASK        : 19.10 — DONE 2026-09-25 (headless); its engine half UNVERIFIED u
               the eight verbs from it (FKey(FName), a listed belief). Three sabotages
               caught - two of them redone after an unbuildable first attempt.
 
+TASK (27.3) : the bound life played three years — MEASURED 2026-09-29 (probe; no code). Esvuhurdu
+  (3580, bound to 2892) by Run.Soak's round-robin: alive, every meal taken, house grain 64 -> 154, still
+  bound, the holder alive; the free control reproduces Run.Soak's pin 16954db42400b164. In the product's
+  wiring the bond is read by nothing that plays: the premise is a row on the page. The cheapest rule that
+  makes it play (a holder's share of a day's work, and a way out) is the owner's design call. ROADMAP
+  "The bound life played three years".
+
 TASK (CI 335) : the Windows MSVC release leg — DONE 2026-09-28 (VALIDATED by run 335: eleven of eleven
   green; the release suite with shuffles in 36 min, 45 min end to end). The
   configuration the product ships had a preset since Phase 00 and no job; the Windows job is a matrix of

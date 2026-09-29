@@ -9351,3 +9351,51 @@ with the shuffles 35 min 59 s, 45 minutes end to end - against 1 h 59 min
 for the MSVC debug suite without them, and 27 minutes for gcc release on
 Linux. Every frozen digest in the tree now agrees under the compiler and
 optimiser the product ships with; nothing moved.
+
+### The bound life played three years, 2026-09-29: the premise is a row on the page and nothing else
+
+CI run 336 (cae78ef): eleven of eleven green. Then the question the two
+larder probes left open, measured the same way: what does the premise life
+come to when it is PLAYED - not thirty days of a stand-in but the three
+years Run.Soak gives the free life, in the product's world (Play+Stream, the
+climate, 128/300+120), by the same round-robin of the eight verbs through
+the Door. A scratch probe against the release libraries; the free control
+comes to Run.Soak's own pin, `16954db42400b164`, so the probe is the soak.
+
+| three years by the round-robin | bound (WantBound 1) | free (WantBound 0, Run.Soak's life) |
+|---|---|---|
+| who | Esvuhurdu, person 3580, family 65 (30 at the table), region 26, held by 2892 | Dikrisso, person 3575, family 316 (22), region 26 |
+| alive / food / health / rest after 3 years | 1 / 255 / 255 / 255 | 1 / 255 / 255 / 255 |
+| meals refused | 0 of 135 | 0 of 135 |
+| house grain, year 1 / 2 / 3 | 64 / 114 / 154 | 94 / 137 / 185 |
+| bond after 3 years | still Bonded to 2892, who is alive | free |
+| state | `6e9f76c02755513c` | `16954db42400b164` |
+
+The bound life is as safe as the free one: it eats every meal, its house
+grows by fifty grain a year, nobody frees it, nobody hardens it (fifteen
+years for that), the holder outlives the three years. And that is the
+finding: **in the product's wiring the bond is read by nothing that plays.**
+`Start.cpp` records it and the page prints "bound to Okigerdo since year
+420"; `Bondage.cpp` rolls manumission and flight once a year and hardens
+after fifteen; `Production.cpp` reads a bond only where ore is mined (the
+colony's hands); `Judgement.cpp` binds and frees by a verdict, and it is
+Lively's, which the product does not wire. No verb costs a bound life more,
+no holder asks for a day's work or a share of the grain, no page row moves
+from year to year. A stranger who takes the bound start and plays a season
+sees "bound to X" on day one and the same row on day 1080, with nothing
+between that the free start did not also show. The larder measured the day
+before was the accident of an index; this is the design: the premise
+section 27 sells is, today, a label.
+
+What follows is the owner's, and it is the third risk's answer rather than
+the second's: the cheapest thing that makes the bond PLAY is one rule in
+`Doings.cpp` - a holder's share of a bound life's day of work (the yield
+split, `WorkYield` 2 becoming 1 to the house and 1 to the holder's), which
+the page can say in one row ("worked, 4 hours of it; 1 grain to Okigerdo")
+and which gives the second row of the page a reason to exist - and its
+mirror, a way out (the debt paid, `BondExit::Manumission` by the played
+person's own grain rather than the yearly draw). Both move the state
+digest of every played world and the life digest of every bound page; both
+are a Phase 10/11 design decision; neither is written. The 3-year probe
+stays in the scratchpad: the numbers above are its output and the free
+column pins it to Run.Soak.
