@@ -129,6 +129,11 @@ TASK        : 19.10 — DONE 2026-09-25 (headless); its engine half UNVERIFIED u
               the eight verbs from it (FKey(FName), a listed belief). Three sabotages
               caught - two of them redone after an unbuildable first attempt.
 
+TASK (22.01b) : Vaelen.Walk says when typed arguments are ignored — DONE 2026-09-29, UNVERIFIED (engine).
+  A walk typed with a size and years on a world already begun (Continue's `Vaelen.Load` then
+  `Vaelen.Walk`, or a Vaelen.Play before) walked it as it was and said nothing of the numbers; it now
+  warns "the world is begun already (AELVOR N); the typed S Y are ignored". Parsed, fenced.
+
 TASK (27.3) : the bound life played three years — MEASURED 2026-09-29 (probe; no code). Esvuhurdu
   (3580, bound to 2892) by Run.Soak's round-robin: alive, every meal taken, house grain 64 -> 154, still
   bound, the holder alive; the free control reproduces Run.Soak's pin 16954db42400b164. In the product's

@@ -113,6 +113,14 @@ namespace
 				return;
 			}
 			Size = World->Size();
+			if (Args.Num() > 0)
+			{
+				// Typed arguments cannot begin a second world; say so rather
+				// than walk a 128 someone asked for as 64.
+				UE_LOG(LogVaelenWalk, Warning,
+					   TEXT("LogVaelenWalk: the world is begun already (AELVOR %d); the typed %s %d are ignored"), Size,
+					   *Args[0], Years);
+			}
 			UE_LOG(LogVaelenWalk, Log, TEXT("LogVaelenWalk: walking the world already begun (AELVOR %d)"), Size);
 		}
 		else if (!World->Begin(Size, Years, true))
