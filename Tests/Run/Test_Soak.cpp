@@ -37,6 +37,7 @@
 #include "Vaelen/View/Take.h"
 
 #include <chrono>
+#include <memory>
 #include <cstdio>
 #include <vector>
 
@@ -53,8 +54,11 @@ namespace
 
 	/// THE PIN: the state digest after three years of the round-robin at 128,
 	/// 300+120 years, Play and Stream, the climate on. Measured 2026-09-26 on
-	/// gcc debug and release alike; every CI leg must come to it.
-	constexpr Hash64 SoakFrozenState = 0x16954db42400b164ull;
+	/// gcc debug and release alike; every CI leg must come to it. Re-pinned
+	/// 2026-09-29 when the life became the bound one (16954db42400b164 was
+	/// Dikrisso's, the free life the subsystem used to take; the scratch probe
+	/// of "The bound life played three years" measured this value first).
+	constexpr Hash64 SoakFrozenState = 0x6e9f76c02755513cull;
 
 	constexpr uint32 SoakYears = 3;
 	constexpr uint32 DaysPerYear = 360;
@@ -125,10 +129,22 @@ VAELEN_TEST(Soak, ThreeYearsOfTheProductsWorldPlayedADayAtATime)
 	const double Built = Ms(T0);
 	const uint64 ResidentAfterBegin = ResidentBytes();
 
+	// As the subsystem asks (section 27 step 2, 2026-09-29): the premise
+	// first - a bound life, StartRules{} - and whoever the world offers only
+	// when it holds nobody bound, said. Here the world offers Esvuhurdu,
+	// person 3580, bound to 2892 (Run.Bound pins the offer); the fallback arm
+	// is exercised by Run.Bound's colony world, where nobody is bound.
 	Player::StartRules Rules;
-	Rules.WantBound = 0; // whoever the world offers, as the subsystem asks
-	Door D(A, Rules);
-	const uint32 First = D.TakeUp();
+	std::unique_ptr<Door> Taken = std::make_unique<Door>(A, Rules);
+	uint32 First = Taken->TakeUp();
+	if (First == 0u)
+	{
+		std::printf("LogRunSoak: nobody bound to take up; whoever the world offers instead\n");
+		Rules.WantBound = 0;
+		Taken = std::make_unique<Door>(A, Rules);
+		First = Taken->TakeUp();
+	}
+	Door& D = *Taken;
 	VT_CHECK_MSG(First != 0u, "the product's world offers nobody at 128 - nothing to soak");
 	VT_REQUIRE(First != 0u);
 

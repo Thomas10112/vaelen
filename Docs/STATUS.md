@@ -129,6 +129,12 @@ TASK        : 19.10 — DONE 2026-09-25 (headless); its engine half UNVERIFIED u
               the eight verbs from it (FKey(FName), a listed belief). Three sabotages
               caught - two of them redone after an unbuildable first attempt.
 
+TASK (27.fix1) : the host takes a bound life first — DONE 2026-09-29 (headless VALIDATED by Run.Soak's
+  new pin 6e9f76c02755513c, predicted by the probe; engine UNVERIFIED). VaelenWorldSubsystem::Begin
+  asks StartRules{} (WantBound 1) and falls back to whoever the world offers with a printed
+  LogVaelenWorld line; Run.Soak begins the same way (Esvuhurdu, 3580, bound to 2892). ENGINE_HANDOFF S3's
+  twin is --want-bound 1. ROADMAP "Section 27 fix 1 applied".
+
 TASK (22.01b) : Vaelen.Walk says when typed arguments are ignored — DONE 2026-09-29, UNVERIFIED (engine).
   A walk typed with a size and years on a world already begun (Continue's `Vaelen.Load` then
   `Vaelen.Walk`, or a Vaelen.Play before) walked it as it was and said nothing of the numbers; it now

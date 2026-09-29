@@ -530,7 +530,11 @@ reviewed`), rev-parse first, the standing rule as always.
 9. CONTROL: relaunch without `?game=`, `Vaelen.View 128 120`, the same digests.
 
 Bring back the whole log, rev-parse first. `Session.P19S3` replays the stream
-(`--panel --want-bound 0 --stream --scene --climate`) and holds the Scene,
+(`--panel --want-bound 1 --stream --scene --climate`: since 2026-09-29 the
+host takes a BOUND life first and falls back to whoever the world offers
+only when it holds nobody bound, saying so with a `LogVaelenWorld: nobody
+bound to take up` line - if that line is in the log, the twin is
+`--want-bound 0`) and holds the Scene,
 Climate and Play lines byte-identical, every `day D ... region R life L
 looked K` line to R == L, with K the R of the line before (the Begin region
 on the first: the look is taken from the feet BEFORE the turn, so on the
@@ -538,6 +542,11 @@ day of a crossing K is the region left and R the region arrived in - the
 step S3's item 6 asks for), and the instance counts to the layout line's.
 
 ## PHASE 19 - sitting S4 (task 19.12, with 22.01's front end): a life from the title page
+
+(2026-09-29: Enter on the title page begins the world and takes up a BOUND
+life - Esvuhurdu, person 3580, held by 2892, on AELVOR 128/120 as measured
+headless - with the fallback of S3's note; `Run.Soak` plays the same life
+three years and pins it, `Run.Bound` pins the offer.)
 
 AFTER S3. The build of 22.01's commit or later (found by subject,
 `^22.01: `), rev-parse first, the standing rule as always. Two things are

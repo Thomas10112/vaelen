@@ -9399,3 +9399,38 @@ digest of every played world and the life digest of every bound page; both
 are a Phase 10/11 design decision; neither is written. The 3-year probe
 stays in the scratchpad: the numbers above are its output and the free
 column pins it to Run.Soak.
+
+### Section 27 fix 1 applied, 2026-09-29: the host takes a bound life first, and says when it cannot
+
+Five "continue"s after the measurement and its three fixes were put to the
+owner, with no word against any of them: the proposal answers, as section
+27 says of Q1, Q2 and Q9, until the owner says otherwise. Fix 1 was the
+cheapest and the one step 2 had named from the start - "Rules.WantBound =
+1, falling back to 0 with a printed line" - and it is applied:
+
+- `UVaelenWorldSubsystem::Begin` builds its door with `StartRules{}` (a
+  bound life aged 16 to 40) and takes up; when the world offers nobody it
+  prints `LogVaelenWorld: nobody bound to take up on AELVOR N; whoever the
+  world offers instead (--want-bound 0 headless)`, builds a second door
+  with `WantBound = 0` and takes up with that. The first door recorded
+  nothing (`Door::TakeUp` writes a taking only for a person), so the second
+  door's tape is the whole tape and its rules are what a save carries and
+  a replay is told. The untaped load path keeps `WantBound = 0`, since a
+  save without a tape carries a life already taken up and those rules take
+  nobody up.
+- `Run.Soak`, the headless twin of the subsystem's world, begins its life
+  the same way and now plays Esvuhurdu, person 3580, bound to 2892, three
+  years: its pin moves from Dikrisso's `16954db42400b164` to
+  `6e9f76c02755513c`, the value the scratch probe of "The bound life played
+  three years" had measured the day before, so the pin was predicted
+  before the test was run. The fallback arm is the one `Run.Bound`'s colony
+  world exercises (nobody bound, whoever comes offered): both arms have a
+  test.
+- ENGINE_HANDOFF: S3's twin becomes `--want-bound 1` unless the fallback
+  line is in the log; S4 says whose life Enter begins. S1 and S2 are built
+  on commits before this one and their twins keep `--want-bound 0`.
+
+What this does NOT do: make the bond play. "The bound life played three
+years" stands - the premise is on the page from day one now, and it is
+still a row. The rule that makes it cost or offer something is the design
+decision named there, and it stays the owner's.

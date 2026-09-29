@@ -157,10 +157,27 @@ bool UVaelenWorldSubsystem::Begin(int32 Size, int32 Years, bool bStreaming)
 		return false;
 	}
 	Held->Streaming = bStreaming;
+	// Section 27 step 2 (2026-09-29): the premise of the game is a bound life,
+	// and StartRules{} asks for one. The world as measured offers it at 128
+	// (region 26: 119 bound after 120 years, 45 in the window - Run.Bound),
+	// and a map that holds nobody bound falls back to whoever it offers and
+	// SAYS SO, since a silent fallback is how the premise went unmeasured for
+	// a phase. The door that took nobody up recorded nothing (Door::TakeUp
+	// writes a taking only for a person), so the second door's tape is the
+	// whole tape and its rules are the ones a save carries and a replay is
+	// told. Headless twin: Run.Soak begins its life the same way.
 	Vaelen::Player::StartRules Rules;
-	Rules.WantBound = 0; // whoever the world offers: a map may hold nobody bound
 	Held->Door = MakeUnique<Vaelen::Run::Door>(*Held->World, Rules);
-	Held->Door->TakeUp();
+	if (Held->Door->TakeUp() == 0u)
+	{
+		UE_LOG(LogVaelenWorld, Warning,
+			   TEXT("LogVaelenWorld: nobody bound to take up on AELVOR %d; whoever the world offers instead "
+					"(--want-bound 0 headless)"),
+			   Size);
+		Rules.WantBound = 0;
+		Held->Door = MakeUnique<Vaelen::Run::Door>(*Held->World, Rules);
+		Held->Door->TakeUp();
+	}
 	// Once, here: the ground of a begun world does not change, and taking it
 	// on a frame would be taking half a megabyte on a frame.
 	Vaelen::View::TakeMapView(Held->World->Instance(), Held->World->Sources(), Held->Ground);
@@ -665,6 +682,10 @@ bool UVaelenWorldSubsystem::Load(const FString& Name, FString& Out, FString& Out
 	const bool Taped = Vaelen::Run::ReadStreamSection(View, Tape, Rules);
 	if (!Taped)
 	{
+		// A save without a tape carries a life already taken up, so these
+		// rules take nobody up and only name what a later save records;
+		// whoever-comes is the honest word for a life whose start was not
+		// recorded (16.11).
 		Rules = Vaelen::Player::StartRules{};
 		Rules.WantBound = 0;
 	}
