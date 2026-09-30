@@ -91,11 +91,12 @@ void AVaelenPlayerController::SetupInputComponent()
 	// 19.11b: the hooks a subclass fills follow the SUBSYSTEM's signals, not
 	// this controller's keys, so that Vaelen.Stream.Write, Vaelen.Day and
 	// Vaelen.TakeUp reach them as F9 and Space do. AddUObject: the bindings
-	// die with the controller.
-	if (UVaelenWorldSubsystem* World = Held(GetWorld()))
+	// die with the controller. Its own name: the owner's build of 3ee975a
+	// stopped on a second `World` in the scope of line 72's (MSVC C4456).
+	if (UVaelenWorldSubsystem* Signals = Held(GetWorld()))
 	{
-		World->OnStreamWritten.AddUObject(this, &AVaelenPlayerController::AfterStreamWritten);
-		World->OnViewsTaken.AddUObject(this, &AVaelenPlayerController::AfterViewsTaken);
+		Signals->OnStreamWritten.AddUObject(this, &AVaelenPlayerController::AfterStreamWritten);
+		Signals->OnViewsTaken.AddUObject(this, &AVaelenPlayerController::AfterViewsTaken);
 	}
 	bShowMouseCursor = true;
 	RefreshFront(); // 22.01: the title page, before any key

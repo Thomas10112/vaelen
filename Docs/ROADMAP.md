@@ -9539,3 +9539,31 @@ page begins Esvuhurdu's life bound to 2892, and the bond is on the page a
 row in five from the first day of work. The numbers are the first cut and
 the owner's to tune; the flip is one place, and the pins are the record of
 what it costs.
+
+### Found on the owner's build of 3ee975a, 2026-09-30: two errors the parse had passed
+
+The owner built the commit of "The bond plays" on the machine that has the
+engine (UE 5.6, MSVC, Win64 Development Editor) and brought back
+`Result: Failed (OtherCompilationError)` with two errors, both in modules
+this side owns:
+
+| where | error | cause | fix |
+|---|---|---|---|
+| `UnrealEditor-VaelenGame.dll`, from `VaelenWorldSubsystem.cpp.obj` | LNK2019 ×2, `__imp_?MeasureNeeds@Population@...`, `__imp_?MeasureWinters@Economy@...`, unresolved in `UVaelenWorldSubsystem::ClimateLine` (LNK1120) | 19.04's ClimateLine() calls both measures itself; `VaelenGame.Build.cs` named VaelenRun and let its public dependencies carry the rest. A modular MSVC build imports a symbol only from a module the .Build.cs NAMES; the monolithic headless link and the clang parse both passed | `VaelenPopulation` and `VaelenEconomy` named in VaelenGame's public dependencies, the header comment rewritten to say why the fence still stands |
+| `VaelenPlayerController.cpp(95,29)` | C4456 as error: the `World` of line 95 shadows line 72's | 19.11b's signal hookup declared a second `World` in the scope of 19.10's | the inner one is `Signals` |
+
+The instrument that should have caught the second: `Tools/parse_engine_modules.py`
+parses every engine module with clang and `-Werror`, and clang does not warn
+on a shadowed local unless asked. It is asked now: `-Wshadow` sits in its
+flags, and on the tree as the owner built it the parse reports exactly
+`VaelenPlayerController.cpp:95:29: error: declaration shadows a local
+variable [-Werror,-Wshadow]` and every other module OK - the instrument shown
+red on the fault before the fix (ADR-0149), green after. The first error has
+no headless instrument: nothing on this side links modules as DLLs, and the
+dependency the .Build.cs must name is a fact about UnrealBuildTool. What
+stands in for one: the rule, written where the next reader looks, that a
+module which calls a kernel function DIRECTLY names that function's module.
+`Tools/verify_fast.sh` clean (parse 0 errors, wiring, fence, engine status,
+census). The commit of this note is the one to build; CI runs 339 (f5ea470)
+and 342 (9495b21) green, eleven legs each; run 343 (3ee975a) in flight.
+

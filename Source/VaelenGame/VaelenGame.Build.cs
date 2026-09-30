@@ -18,10 +18,16 @@
 //
 // What it depends on is the point: VaelenRun, which is the wiring of AELVOR
 // (14.03), and VaelenView and VaelenPlayer for the views and the command
-// surface. It does NOT depend on VaelenSim, VaelenPopulation or any other
+// surface. It did NOT depend on VaelenSim, VaelenPopulation or any other
 // kernel module by name - VaelenRun's own public dependencies bring what the
 // wiring needs, and naming them here would invite this module to reach past
-// the Run into the world itself.
+// the Run into the world itself. Two are named since 2026-09-30 all the same:
+// 19.04's ClimateLine() calls MeasureNeeds (VaelenPopulation) and
+// MeasureWinters (VaelenEconomy) itself, and a modular MSVC build imports a
+// symbol only from a module the .Build.cs names - the owner's build of
+// 3ee975a stopped on those two (LNK2019), where clang's parse and the
+// monolithic headless link had both passed. The fence stands where it stood:
+// this module composes lines from what the Run holds, and does not tick it.
 //
 // Tools/check_ui_fence.py reads this module's PUBLIC directory with the UI's,
 // and deliberately not its Private: the header may not name a World, and the
@@ -47,6 +53,9 @@ public class VaelenGame : ModuleRules
 			"VaelenRun",
 			// 19.06: the ground one walks on, cut once from the map leaf (ADR-0156).
 			"VaelenScene",
+			// 2026-09-30: what ClimateLine() measures directly (see the header comment).
+			"VaelenPopulation",
+			"VaelenEconomy",
 			"VaelenCore"
 		});
 

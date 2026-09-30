@@ -294,6 +294,12 @@ def parse_modules(args, shared):
                 "-fsyntax-only",
                 "-Wall",
                 "-Wextra",
+                # 2026-09-30: MSVC's C4456/C4457/C4458 (a local, a parameter or
+                # a member shadowed) are warnings UE builds as errors, and the
+                # owner's build of 3ee975a died on one this parse had passed
+                # (VaelenPlayerController.cpp:95, a second `World` inside the
+                # scope of the first). clang's -Wshadow is the same class.
+                "-Wshadow",
                 "-Werror",
                 # The shim's stand-in bodies do nothing with what they are
                 # handed, which is the whole idea; the warnings that produces

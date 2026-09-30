@@ -442,6 +442,13 @@ side is redesigned. The standing rule holds: REPORT, do not repair.
    git rev-parse HEAD
    ```
    The FIRST line of what you bring back is that `rev-parse`.
+   (2026-09-30: the build of 3ee975a - "The bond plays" - FAILED on two
+   errors this side owned, LNK2019 on MeasureNeeds/MeasureWinters from
+   VaelenGame and a shadowed `World` in VaelenPlayerController.cpp; both
+   are repaired in the commit "Found on the owner's build of 3ee975a", and
+   THAT is the commit to check out - the tip of the branch, so
+   `git checkout origin/claude/vaelen-master-prompt-aw7zqj` reaches it.
+   Everything below is unchanged.)
 1. Build the editor as for 14.08. Thirteen new engine files (Source/VaelenWalk,
    VaelenUI's walk controller) and six changed ones; the plugin
    ProceduralMeshComponent is newly enabled in the uproject. Bring back the

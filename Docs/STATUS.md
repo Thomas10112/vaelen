@@ -139,6 +139,11 @@ TASK (27.bond) : the bond that plays — ON in the host 2026-09-30 (Aelvor: Hold
   the page's "bound to" row becomes "freed of X"), LifeChronicleRules::RecordBondExits (how the bond
   ended, in the life's chronicle). Doings::ObserveBonds wired in Aelvor; four sabotages caught. Turning them on is the owner's re-freeze: ROADMAP "The bond that plays" has the
   digests it moves.
+TASK (27.build) : the owner's build of 3ee975a FAILED (LNK2019 MeasureNeeds/MeasureWinters from VaelenGame;
+  C4456 World shadowed in VaelenPlayerController.cpp) — repaired 2026-09-30, both modules this side's:
+  VaelenGame.Build.cs names VaelenPopulation and VaelenEconomy, the inner World is Signals. The parse gained
+  -Wshadow and was shown red on the fault. ROADMAP "Found on the owner's build of 3ee975a". UNVERIFIED until
+  the owner's next build compiles it.
 
 TASK (27.fix1) : the host takes a bound life first — DONE 2026-09-29 (headless VALIDATED by Run.Soak's
   new pin 6e9f76c02755513c, predicted by the probe; engine UNVERIFIED). VaelenWorldSubsystem::Begin
