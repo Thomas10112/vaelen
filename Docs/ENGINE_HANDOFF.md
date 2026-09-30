@@ -548,6 +548,12 @@ life - Esvuhurdu, person 3580, held by 2892, on AELVOR 128/120 as measured
 headless - with the fallback of S3's note; `Run.Soak` plays the same life
 three years and pins it, `Run.Bound` pins the offer.)
 
+(2026-09-30: and the bond PLAYS - after a day of work the page adds "1
+grain of Esvuhurdu's work went to <holder>.", and twenty grain given to
+the holder in one gift ends the bond, the row reading "freed of <holder>".
+Bring back one such share row verbatim; `Replay.Bound` pins the headless
+twin's.)
+
 AFTER S3. The build of 22.01's commit or later (found by subject,
 `^22.01: `), rev-parse first, the standing rule as always. Two things are
 new at launch and cost no typing: the title page, and Escape.

@@ -189,9 +189,20 @@ namespace Vaelen::Run
 					std::make_unique<PlayerDaySystem>(Instance, Ages.Types(), W.Persons, W.Played, W.Hour, HourRules{});
 				Acts = std::make_unique<PlayerOrderSystem>(Instance, Ages.Types(), W.Persons, W.Played, W.Hour, W.Order,
 														   OrderRules{});
-				Hands =
-					std::make_unique<Doings>(Ages.Types(), W.Persons, W.Families, W.Needs, W.Economy_, DoingRules{});
-				Hands->ObserveBonds(W.Bondage); // section 27 step 2: the rules that read a bond, off by default
+				// Section 27 step 2 (2026-09-30, the bond that plays): THE HOST'S
+				// numbers, on. Of a bound life's day of work one grain of two goes
+				// to the holder's house, and twenty grain given to the holder in
+				// one gift pays the debt. The kernel's defaults stay 0, so every
+				// wiring that is not this one (the gates, the Atlas cells) keeps
+				// its digests; what this moves is the played BOUND worlds of this
+				// wiring alone - Replay.Bound and Run.Soak, re-pinned in the same
+				// commit with the values measured the day before (ROADMAP "The
+				// bond that plays"). A life the world offers free plays as it did.
+				DoingRules Played;
+				Played.HolderShare = 1;
+				Played.DebtPrice = 20;
+				Hands = std::make_unique<Doings>(Ages.Types(), W.Persons, W.Families, W.Needs, W.Economy_, Played);
+				Hands->ObserveBonds(W.Bondage);
 				if (Given.Climate)
 				{
 					Hands->ObserveWarmth(W.Warmth, WorldGen::ClimateRules{}); // 18.08: work cold, rest warm
@@ -214,6 +225,7 @@ namespace Vaelen::Run
 				// not let them do is a line of the screen, not only a count.
 				LifeChronicleRules Kept;
 				Kept.RecordRefusals = 1;
+				Kept.RecordBondExits = 1; // and how its bond ended, since the bond plays here
 				Told = std::make_unique<LifeChronicle>(Instance, Ages.Types(), Chron, W.LifeRecords, Kept);
 			}
 			if (Given.Lively)

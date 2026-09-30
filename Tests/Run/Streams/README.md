@@ -308,6 +308,14 @@ Okigerdo, and the page's own row says so (`-DBOND`). Thirteen of the 32 come
 back refused by the world - "could not eat: nothing to do it with" - where the
 free life's month has three: what a bound life at 128 is like today.
 
+Since 2026-09-30 the bond PLAYS in the host's wiring (ROADMAP "The bond
+that plays": a grain of each day's work to the holder, twenty grain given in
+one gift pays the debt), so `Replay.Bound`'s four digests are those of the
+rules on - `1b1c9315233bc67f / ffaa210cb64fd386 / 6f966c69c941d2e8 /
+94fc1d4c23070042` - and the page carries "1 grain of Erdass's work went to
+Okigerdo." after each day of work; the tape, the intents and their verdicts
+are the same.
+
 `WantBound` is not in the file, as the first section says, so the same tape
 replayed without it (`Replay.Bound.AsFree`) is REFUSED - exit 1, one wrong
 taking: the tape says Erdass was taken up and a host asking for whoever comes

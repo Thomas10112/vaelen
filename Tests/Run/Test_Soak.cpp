@@ -58,7 +58,11 @@ namespace
 	/// 2026-09-29 when the life became the bound one (16954db42400b164 was
 	/// Dikrisso's, the free life the subsystem used to take; the scratch probe
 	/// of "The bound life played three years" measured this value first).
-	constexpr Hash64 SoakFrozenState = 0x6e9f76c02755513cull;
+	/// Re-pinned again 2026-09-30, the bond that plays: the host's rules on
+	/// (a grain of each day's work to the holder, twenty grain given pays the
+	/// debt) move Esvuhurdu's three years from 6e9f76c02755513c to this, the
+	/// value measured with the rules on before the wiring carried them.
+	constexpr Hash64 SoakFrozenState = 0xf1fd01a63ba1fbe8ull;
 
 	constexpr uint32 SoakYears = 3;
 	constexpr uint32 DaysPerYear = 360;

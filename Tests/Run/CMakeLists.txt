@@ -253,6 +253,13 @@ set_tests_properties(Atlas.Keys128 PROPERTIES TIMEOUT 1800 COST 2000)
 # "could not eat: nothing to do it with" - what a bound life at 128 is like
 # today, pinned rather than argued. The climate line is Replay.Climate's:
 # the same world on the same day, another life in it.
+# 2026-09-30, the bond that plays: the host's rules are ON (Aelvor.cpp -
+# one grain of a day's work to the holder, twenty grain given in one gift
+# pays the debt), so the four digests moved from fa3a942904aaeb26 /
+# 0ccf228b6b72f976 / 313303cf74469015 / 64a084c49b348f45 to the values
+# measured with the rules on the day before, and the page carries "1 grain
+# of Erdass's work went to Okigerdo." after each of the five days of work.
+# The free control below is unmoved: the rules read a bond, and it has none.
 add_test(NAME Replay.Bound
   COMMAND ${CMAKE_COMMAND}
           -DATLAS=$<TARGET_FILE:VaelenAtlas>
@@ -261,7 +268,7 @@ add_test(NAME Replay.Bound
           -DERA=--climate
           -DWANTBOUND=1
           "-DSAME=replay: 32 of 32 answered identically, 30 of 30 days"
-          "-DPLAYED=LogVaelenPlay: AELVOR 128 seed 41454c564f52: played Erdass (person 3610, region 2) 30 days, 32 intents (19 taken, 13 refused by the world, 0 dropped at the door), state fa3a942904aaeb26, log 0ccf228b6b72f976, life 313303cf74469015, panel 64a084c49b348f45"
+          "-DPLAYED=LogVaelenPlay: AELVOR 128 seed 41454c564f52: played Erdass (person 3610, region 2) 30 days, 32 intents (19 taken, 13 refused by the world, 0 dropped at the door), state 1b1c9315233bc67f, log ffaa210cb64fd386, life 6f966c69c941d2e8, panel 94fc1d4c23070042"
           "-DVERBS=LogVaelenPlay: verbs work 8 rest 9 eat 9 wait 1 speak 2 give 1 take 1 move 1"
           "-DBOND=bound to Okigerdo since year 420"
           "-DCLIMATE=LogVaelenClimate: AELVOR 128 seed 41454c564f52: day 31 of year 420, spring; coldest -20 warmest 29; frost 6844 of 16384 tiles, 7652 growing; hard winters 12864, cold deaths 1589; climate bf25b48823dbd83a"

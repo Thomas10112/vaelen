@@ -9509,3 +9509,33 @@ on the debug build, the variable kept: the holder's house never credited
 case red), the freed row keyed on the wrong bond (its case red), the bond's
 end recorded whatever the rule says (the default control red). All four
 back.
+
+### The bond plays, 2026-09-30: the host's numbers on, two pins moved as predicted
+
+CI run 342 (9495b21): eleven legs of eleven green with the three rules at
+zero. Eight "continue"s, the prototype in the tree and its cost measured:
+the proposal answers. The rules are ON in the host's wiring - `Aelvor.cpp`
+builds its doings with `HolderShare 1`, `DebtPrice 20` and its life
+chronicle with `RecordBondExits 1` - and nowhere else: the kernel's defaults
+stay 0, every gate and Atlas cell keeps its digests, and what moves is the
+played BOUND worlds of this wiring. The release suite's every entry that
+plays a life was run first (seventeen: the replays, the gates, Run.Aelvor,
+Run.Door, Run.Walk, Run.Bound, the soak, the session self-test): fifteen
+green untouched, two red - exactly the two the section before predicted,
+and to exactly the values it measured:
+
+| entry | before | with the bond playing |
+|---|---|---|
+| Replay.Bound state / log / life / panel | fa3a942904aaeb26 / 0ccf228b6b72f976 / 313303cf74469015 / 64a084c49b348f45 | 1b1c9315233bc67f / ffaa210cb64fd386 / 6f966c69c941d2e8 / 94fc1d4c23070042 |
+| Run.Soak, Esvuhurdu's three years | 6e9f76c02755513c | f1fd01a63ba1fbe8 |
+
+Replay.Bound.AsFree, Replay.Played, Climate, Lived, Walked, Atlas.Keys128,
+Run.Gate, Run.Gate.Lived: unmoved - a free life plays as it did. The same
+tape, the same 32 intents, the same 19 taken and 13 refused; the page now
+reads "1 grain of Erdass's work went to Okigerdo." after each of the five
+days of work, and a gift of twenty grain to Okigerdo would end the bond,
+which no recorded month yet makes. The product's world: Enter on the title
+page begins Esvuhurdu's life bound to 2892, and the bond is on the page a
+row in five from the first day of work. The numbers are the first cut and
+the owner's to tune; the flip is one place, and the pins are the record of
+what it costs.

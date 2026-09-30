@@ -129,8 +129,10 @@ TASK        : 19.10 — DONE 2026-09-25 (headless); its engine half UNVERIFIED u
               the eight verbs from it (FKey(FName), a listed belief). Three sabotages
               caught - two of them redone after an unbuildable first attempt.
 
-TASK (27.bond) : the bond that plays, PROTOTYPE behind three rules at zero — BUILT 2026-09-30 (headless
-  VALIDATED with the rules on in Player.Doings; every frozen digest unmoved with them at their defaults).
+TASK (27.bond) : the bond that plays — ON in the host 2026-09-30 (Aelvor: HolderShare 1, DebtPrice 20,
+  RecordBondExits 1; kernel defaults 0). Replay.Bound and Run.Soak re-pinned to the values measured the
+  day before, fifteen other life-playing entries unmoved. ROADMAP "The bond plays". Built first as a
+  PROTOTYPE behind three rules at zero (CI 342 green, eleven legs; every frozen digest unmoved).
   DoingRules::HolderShare (of a bound life's day of work, this many grain to the holder's house; the event
   WorkShared, the chronicle's and the page's row "N grain of X's work went to Y") and DoingRules::DebtPrice
   (a Bonded life that gives its holder the price in one gift is freed - Manumission, the gift as cause;
