@@ -2,10 +2,24 @@
 // The container. See Public/Vaelen/Run/Checkpoint.h for the layout and for why
 // nothing is ever added to the image itself.
 //
-// STATUS: PROTOTYPE (Phase 16 task 16.04) - Tests/Run/Test_Checkpoint.cpp round
-//         trips it at three wirings, checks the table against the bytes, and
-//         sweeps 180 flipped bytes past a recomputed container trailer. The
-//         RUN, HOST and STREAM section kinds are declared and not yet written.
+// STATUS: PROTOTYPE (Phase 16, begun at task 16.04) -
+//         Tests/Run/Test_Checkpoint.cpp round trips it at three wirings,
+//         checks the table against the bytes, and sweeps 180 flipped bytes
+//         past a recomputed container trailer.
+//
+//         ALL FOUR SECTION KINDS ARE WRITTEN. This line used to say the RUN,
+//         HOST and STREAM kinds were "declared and not yet written", which was
+//         true when 16.04 laid out the container and stopped being true three
+//         tasks later. STATE, RUN (16.05) and HOST (16.10) are written on every
+//         save; STREAM (16.11) only when the caller hands over a tape, so a
+//         save that carries none says so by the section's ABSENCE rather than
+//         by a present, empty one asserting four default numbers nobody chose.
+//         None of the three cost a container version, which is what the
+//         variable-length section table was for.
+//
+//         Migrate and BuiltInUpgrades (16.09) live here too, and the upgrade
+//         path is deliberately empty: nothing has shipped that is older than
+//         the container this build writes.
 #include "Vaelen/Run/Checkpoint.h"
 
 #include "Vaelen/Run/Aelvor.h"
