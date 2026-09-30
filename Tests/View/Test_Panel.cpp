@@ -707,6 +707,11 @@ VAELEN_TEST(Panel, EveryRowSaysWhatTheViewsSay)
 	// today", and the page says the kernel's word for it.
 	LifeView Free = Life;
 	Free.Bond = 0;
+	// 2026-09-30: Bond 0 with a holder's name kept is a life FREED since its
+	// start, and has its own row ("freed of ...", the case at the end of this
+	// file); a free person never had a holder.
+	Free.Holder = 0;
+	Free.HolderName[0] = '\0';
 	PanelView F;
 	TakePanel(Frame, Free, Told, F);
 	VT_CHECK_EQ(RowOf(F, RowKind::Self, 1), std::string());
@@ -906,4 +911,34 @@ VAELEN_TEST(Panel, TheWeatherRowIsComposedFromTheLeavesAndSaysTheSign)
 	TakePanel(Frame, Life, Told, Page);
 	VT_CHECK_EQ(Page.Rows[1].Kind, static_cast<uint32>(RowKind::Self));
 	VT_CHECK(Rows(Page, RowKind::Weather) == 0u);
+}
+
+// Section 27 step 2 (2026-09-30): a life that began bound and is free now
+// (Life.cpp reads the bond as it is: Bond 0, the holder's name kept) says so
+// in the row the bond used to fill; a life free from the start has no holder
+// and no row, as before.
+VAELEN_TEST(Panel, TheFreedRowSaysWhoHeldThem)
+{
+	WorldView Frame;
+	Frame.Year = 301;
+	LifeView Life;
+	Life.Person = 7;
+	Life.Alive = 1;
+	Named(Life.Name, "Eikha of Iakhas");
+	Life.Bond = 0;
+	Life.Holder = 12;
+	Life.StartYear = 275;
+	Named(Life.HolderName, "Ordihumen");
+	ChronicleView Told;
+	PanelView V;
+	TakePanel(Frame, Life, Told, V);
+	VT_CHECK_EQ(RowOf(V, RowKind::Self, 1), std::string("freed of Ordihumen"));
+
+	// CONTROL: no holder ever - no second Self row at all.
+	LifeView Free = Life;
+	Free.Holder = 0;
+	Free.HolderName[0] = '\0';
+	PanelView F;
+	TakePanel(Frame, Free, Told, F);
+	VT_CHECK(RowOf(F, RowKind::Self, 1).empty());
 }

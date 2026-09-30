@@ -147,9 +147,38 @@ namespace Vaelen::Player
 			break; // the hours were the whole of it
 
 		case Intent::Work:
+		{
 			// 06.01 owns units of a good; this is the one call that moves them.
-			Economy::AddStock(W, Types, Families, Economy, Region, House, Good, static_cast<int32>(Rules.WorkYield),
-							  Now, Cause);
+			// Section 27 step 2: of a bound life's day, the holder's share goes
+			// to the holder's house first, and the event says so - the one
+			// thing a bond costs, when the rule is on.
+			uint32 Share = 0;
+			uint32 Holder = 0;
+			if (HasBonds && Rules.HolderShare != 0)
+			{
+				const Society::BondState* B = Society::BondOf(W, Persons, Bonds, Person);
+				const Population::PersonInfo* Held =
+					B != nullptr && B->Kind != static_cast<uint8>(Society::BondKind::Free) && B->Holder != 0
+						? Population::FindPerson(W, Persons, B->Holder)
+						: nullptr;
+				if (Held != nullptr && Held->State == static_cast<uint8>(Population::LifeState::Alive))
+				{
+					Share = std::min(Rules.HolderShare, Rules.WorkYield);
+					Holder = B->Holder;
+				}
+			}
+			if (Rules.WorkYield > Share)
+			{
+				Economy::AddStock(W, Types, Families, Economy, Region, House, Good,
+								  static_cast<int32>(Rules.WorkYield - Share), Now, Cause);
+			}
+			if (Share != 0)
+			{
+				Economy::AddStock(W, Types, Families, Economy, RegionOf(W, Holder), HouseOf(W, Holder), Good,
+								  static_cast<int32>(Share), Now, Cause);
+				W.Events().Publish(Now, WorkSharedEvent,
+								   ActPayload{Person, static_cast<uint32>(Intent::Work), Holder, Share}, {}, Cause);
+			}
 			// And a day of it costs the body what eating and resting give back.
 			// The yearly ration of 04.04 still tops everyone up once a year, so
 			// a hungry day inside a fed year is levelled out at the year's turn -
@@ -169,6 +198,7 @@ namespace Vaelen::Player
 				}
 			}
 			break;
+		}
 
 		case Intent::Rest:
 			Population::RestPerson(W, Persons, Needs, Person, Rules.RestGain);
@@ -215,6 +245,20 @@ namespace Vaelen::Player
 			{
 				Economy::AddStock(W, Types, Families, Economy, Region, Into, Good, static_cast<int32>(Left), Now,
 								  Cause);
+			}
+			// Section 27 step 2: the debt paid. A Bonded life that gives its
+			// holder the price in one gift is freed, the gift as the cause -
+			// the way out the bond needed, and the only one the played person
+			// decides. Enslaved is past paying (05.04: bondage unredeemed
+			// hardens), and the price is the whole of what arrived.
+			if (Kind == Intent::Give && HasBonds && Rules.DebtPrice != 0 && Left >= Rules.DebtPrice)
+			{
+				const Society::BondState* B = Society::BondOf(W, Persons, Bonds, Person);
+				if (B != nullptr && B->Kind == static_cast<uint8>(Society::BondKind::Bonded) && B->Holder != 0 &&
+					B->Holder == Command.Target)
+				{
+					Society::FreePerson(W, Persons, Bonds, Person, Society::BondExit::Manumission, Now, Cause);
+				}
 			}
 			break;
 		}

@@ -96,6 +96,11 @@ namespace Vaelen::Player
 	inline constexpr EventType<ActPayload> PlayerActedEvent = MakeEventType<ActPayload>("PlayerActed");
 	/// What the world would not let them do (Amount = the Refusal).
 	inline constexpr EventType<ActPayload> PlayerRefusedEvent = MakeEventType<ActPayload>("PlayerRefused");
+	/// Section 27 step 2 (2026-09-30): of a bound life's day of work, what went
+	/// to the holder's house (Target = the holder, Amount = the grain). Published
+	/// only when DoingRules::HolderShare is not 0, so a world with the rule at
+	/// its default carries no such event and every digest it had.
+	inline constexpr EventType<ActPayload> WorkSharedEvent = MakeEventType<ActPayload>("WorkShared");
 
 	/// What turns an allowed intent into a change in the world.
 	///

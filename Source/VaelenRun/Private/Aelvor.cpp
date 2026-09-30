@@ -191,6 +191,7 @@ namespace Vaelen::Run
 														   OrderRules{});
 				Hands =
 					std::make_unique<Doings>(Ages.Types(), W.Persons, W.Families, W.Needs, W.Economy_, DoingRules{});
+				Hands->ObserveBonds(W.Bondage); // section 27 step 2: the rules that read a bond, off by default
 				if (Given.Climate)
 				{
 					Hands->ObserveWarmth(W.Warmth, WorldGen::ClimateRules{}); // 18.08: work cold, rest warm

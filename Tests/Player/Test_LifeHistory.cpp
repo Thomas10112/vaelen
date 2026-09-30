@@ -749,3 +749,70 @@ VAELEN_TEST(LifeHistory, TheSameLifeIsWrittenTheSameWayEveryTime)
 	VT_CHECK_EQ(A.Kept_().Records, B.Kept_().Records);
 	VT_CHECK_EQ(ComputeStateDigest(A.Instance), ComputeStateDigest(B.Instance));
 }
+
+// Section 27 step 2 (2026-09-30): how the played life's bond ended is its
+// history when LifeChronicleRules::RecordBondExits says so, and nothing at
+// the default - the yearly bondage frees people in every world, and a
+// record of it moved the colony gate's century before this rule existed.
+VAELEN_TEST(LifeHistory, TheBondsEndIsRecordedOnlyWhenAsked)
+{
+	// Rule on: the life Living() takes up is the bound one StartRules{} asks
+	// for; freed by the caller, the chronicle says so.
+	{
+		LifeChronicleRules Ends;
+		Ends.RecordBondExits = 1;
+		Run W(AelvorSeed, BondageRules{}, HourRules{}, OrderRules{}, DoingRules{}, RegardRules{}, Ends);
+		const uint32 Who = Living(W);
+		VT_REQUIRE(Who != 0);
+		VT_REQUIRE(W.Bond(Who) != nullptr);
+		W.GiveHands();
+		W.Day();
+		const uint32 Before = W.Kept_().Records;
+		VT_REQUIRE(FreePerson(W.Instance, W.Persons, W.Bondage, Who, BondExit::Manumission, W.Instance.Now()));
+		W.Day(); // the bus delivers on the tick
+		VT_CHECK_EQ(W.Kept_().Records, Before + 1u);
+		const std::string Text = W.Chronicle();
+		VT_CHECK_MSG(Text.find("was set free") != std::string::npos, "%s", Text.c_str());
+	}
+	// CONTROL: the default - the same freeing, no record, no line.
+	{
+		Run W(AelvorSeed);
+		const uint32 Who = Living(W);
+		VT_REQUIRE(Who != 0);
+		VT_REQUIRE(W.Bond(Who) != nullptr);
+		W.GiveHands();
+		W.Day();
+		const uint32 Before = W.Kept_().Records;
+		VT_REQUIRE(FreePerson(W.Instance, W.Persons, W.Bondage, Who, BondExit::Manumission, W.Instance.Now()));
+		W.Day(); // the bus delivers on the tick
+		VT_CHECK_EQ(W.Kept_().Records, Before);
+		VT_CHECK(W.Chronicle().find("was set free") == std::string::npos);
+	}
+	// CONTROL 2: the rule on, somebody ELSE freed - not this life's history.
+	{
+		LifeChronicleRules Ends;
+		Ends.RecordBondExits = 1;
+		Run W(AelvorSeed, BondageRules{}, HourRules{}, OrderRules{}, DoingRules{}, RegardRules{}, Ends);
+		const uint32 Who = Living(W);
+		VT_REQUIRE(Who != 0);
+		W.GiveHands();
+		W.Day();
+		uint32 Other = 0;
+		W.Instance.Components()
+			.GetPool(W.Persons.Person)
+			.ForEach(
+				[&](EntityHandle H, const PersonInfo& P)
+				{
+					if (Other == 0 && P.Index != Who && P.State == static_cast<uint8>(LifeState::Alive) &&
+						W.Instance.Components().GetPool(W.Bondage.Bond).TryGet(H) != nullptr)
+					{
+						Other = P.Index;
+					}
+				});
+		VT_REQUIRE(Other != 0);
+		const uint32 Before = W.Kept_().Records;
+		VT_REQUIRE(FreePerson(W.Instance, W.Persons, W.Bondage, Other, BondExit::Manumission, W.Instance.Now()));
+		W.Day(); // the bus delivers on the tick
+		VT_CHECK_EQ(W.Kept_().Records, Before);
+	}
+}

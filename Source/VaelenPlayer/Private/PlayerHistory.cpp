@@ -6,6 +6,7 @@
 #include "Vaelen/Player/PlayerHistory.h"
 
 #include "Vaelen/Population/Lod.h"
+#include "Vaelen/Society/Bondage.h"
 #include "Vaelen/Sim/HistoryText.h"
 #include "Vaelen/Sim/World.h"
 
@@ -40,7 +41,8 @@ namespace Vaelen::Player
 
 		bool IsLifeEvent(const Event& E)
 		{
-			return E.Is(PlayerActedEvent) || E.Is(PlayerRefusedEvent) || E.Is(Population::PersonMovedEvent);
+			return E.Is(PlayerActedEvent) || E.Is(PlayerRefusedEvent) || E.Is(Population::PersonMovedEvent) ||
+				   E.Is(WorkSharedEvent) || E.Is(Society::BondLeftEvent);
 		}
 
 		/// "gave", "took", "spoke with": the verb as it is remembered rather
@@ -126,6 +128,12 @@ namespace Vaelen::Player
 		Bus.Subscribe(PlayerActedEvent.TypeHash, this);
 		Bus.Subscribe(PlayerRefusedEvent.TypeHash, this);
 		Bus.Subscribe(Population::PersonMovedEvent.TypeHash, this);
+		// Section 27 step 2 (2026-09-30): what a bond costs and how it ends are
+		// the played life's history. Neither event exists in a world whose
+		// DoingRules keep their defaults and whose played life stays bound, so
+		// nothing recorded before this line moved.
+		Bus.Subscribe(WorkSharedEvent.TypeHash, this);
+		Bus.Subscribe(Society::BondLeftEvent.TypeHash, this);
 	}
 
 	bool LifeChronicle::Matters(const Event& E, uint32& Person) const
@@ -139,6 +147,23 @@ namespace Vaelen::Player
 			// Everybody's walk is a fact; only the played person's is this
 			// chronicle's business.
 			return Rules.RecordDoings != 0 && Played != 0 && P.Person == Played;
+		}
+		if (E.Is(Society::BondLeftEvent))
+		{
+			// Freed, fled, or the holder dead: the played life's, and the way
+			// a bond ends is never small.
+			const Society::BondPayload B = E.Get<Society::BondPayload>();
+			Person = B.Person;
+			return Rules.RecordBondExits != 0 && Played != 0 && B.Person == Played &&
+				   B.Reason != static_cast<uint32>(Society::BondExit::Death) &&
+				   B.Reason != static_cast<uint32>(Society::BondExit::Departure);
+		}
+		if (E.Is(WorkSharedEvent))
+		{
+			// The holder's share is what touched somebody else in a day of work.
+			const ActPayload A = E.Get<ActPayload>();
+			Person = A.Person;
+			return Rules.RecordDoings != 0 && Played != 0 && A.Person == Played;
 		}
 		const ActPayload A = E.Get<ActPayload>();
 		Person = A.Person;
@@ -154,6 +179,22 @@ namespace Vaelen::Player
 	void LifeChronicle::OnEvent(const Event& E)
 	{
 		World& W = *Owner;
+		// The state entity below is created on the FIRST event this chronicle
+		// hears, whether it matters or not, and every world's digest has that
+		// entity where the first act put it. The two events subscribed on
+		// 2026-09-30 arrive from the yearly bondage of anybody, years before
+		// a life is played: they must not be the first, or the entity moves
+		// and the state digest of every replayed month with it (it did, on
+		// the first run: Replay.Climate and Replay.Bound, log and life the
+		// same, state moved). So those two create nothing unless they matter.
+		if (!(E.Is(PlayerActedEvent) || E.Is(PlayerRefusedEvent) || E.Is(Population::PersonMovedEvent)))
+		{
+			uint32 Whom = 0;
+			if (!Matters(E, Whom))
+			{
+				return;
+			}
+		}
 		LifeChronicleState* S = nullptr;
 		W.Components()
 			.GetPool(State.State)
@@ -283,8 +324,39 @@ namespace Vaelen::Player
 			Out += '.';
 			return;
 		}
+		if (E.Is(Society::BondLeftEvent))
+		{
+			const Society::BondPayload B = E.Get<Society::BondPayload>();
+			AppendPerson(W, Types, Context, B.Person, Out, Index);
+			switch (static_cast<Society::BondExit>(B.Reason))
+			{
+			case Society::BondExit::Manumission:
+				Out += " was set free.";
+				break;
+			case Society::BondExit::Flight:
+				Out += " fled the bond.";
+				break;
+			case Society::BondExit::HolderDied:
+				Out += " was freed by the holder's death.";
+				break;
+			default:
+				Out += " left the bond.";
+				break;
+			}
+			return;
+		}
 		const ActPayload A = E.Get<ActPayload>();
 		const Intent Kind = static_cast<Intent>(A.Kind);
+		if (E.Is(WorkSharedEvent))
+		{
+			AppendNumber(Out, A.Amount);
+			Out += A.Amount == 1 ? " grain of " : " grain of ";
+			AppendPerson(W, Types, Context, A.Person, Out, Index);
+			Out += "'s work went to ";
+			AppendPerson(W, Types, Context, A.Target, Out, Index);
+			Out += '.';
+			return;
+		}
 		AppendPerson(W, Types, Context, A.Person, Out, Index);
 		if (E.Is(PlayerRefusedEvent))
 		{

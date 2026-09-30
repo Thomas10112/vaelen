@@ -394,6 +394,15 @@ namespace Vaelen::View
 			P.Number(Life.StartYear);
 			P.End();
 		}
+		else if (Out.Person != 0 && Life.Bond == 0 && Life.HolderName[0] != '\0' && P.Begin(RowKind::Self))
+		{
+			// Section 27 step 2: began bound, free now (Life.cpp reads the bond
+			// as it is). The holder's name is the start's; who freed them is
+			// the chronicle's row.
+			P.Put("freed of ");
+			P.Put(Life.HolderName);
+			P.End();
+		}
 
 		if (P.Begin(RowKind::Body))
 		{

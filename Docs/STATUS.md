@@ -129,6 +129,15 @@ TASK        : 19.10 — DONE 2026-09-25 (headless); its engine half UNVERIFIED u
               the eight verbs from it (FKey(FName), a listed belief). Three sabotages
               caught - two of them redone after an unbuildable first attempt.
 
+TASK (27.bond) : the bond that plays, PROTOTYPE behind three rules at zero — BUILT 2026-09-30 (headless
+  VALIDATED with the rules on in Player.Doings; every frozen digest unmoved with them at their defaults).
+  DoingRules::HolderShare (of a bound life's day of work, this many grain to the holder's house; the event
+  WorkShared, the chronicle's and the page's row "N grain of X's work went to Y") and DoingRules::DebtPrice
+  (a Bonded life that gives its holder the price in one gift is freed - Manumission, the gift as cause;
+  the page's "bound to" row becomes "freed of X"), LifeChronicleRules::RecordBondExits (how the bond
+  ended, in the life's chronicle). Doings::ObserveBonds wired in Aelvor; four sabotages caught. Turning them on is the owner's re-freeze: ROADMAP "The bond that plays" has the
+  digests it moves.
+
 TASK (27.fix1) : the host takes a bound life first — DONE 2026-09-29 (headless VALIDATED by Run.Soak's
   new pin 6e9f76c02755513c, predicted by the probe; engine UNVERIFIED). VaelenWorldSubsystem::Begin
   asks StartRules{} (WantBound 1) and falls back to whoever the world offers with a printed

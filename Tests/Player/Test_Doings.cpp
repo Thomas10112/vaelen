@@ -96,6 +96,7 @@ namespace
 			// seven verbs it asks, each of which goes through somebody else.
 			Acts_ = std::make_unique<PlayerOrderSystem>(Instance, Ages.Types(), Persons, One, Clock, Queue, InOrders);
 			Hands = std::make_unique<Doings>(Ages.Types(), Persons, Families, Needs, Goods, InDoings);
+			Hands->ObserveBonds(Bondage); // section 27 step 2: as Aelvor wires it
 			if (WithWarmth)
 			{
 				// The line at frozen through and no yearly recovery: what the
@@ -676,4 +677,190 @@ VAELEN_TEST(Doings, AColdDaysWorkChillsAndARestWarms)
 	VT_CHECK_EQ(P.ChillOf(Plain), 256u);
 	VAELEN_LOG_INFO(LogDoings, "a cold day's work: chill %u -> %u -> %u after a rest; on a mild world %u stays %u", C0,
 					C0 + R.WorkChill, C0 + R.WorkChill > R.RestWarm ? C0 + R.WorkChill - R.RestWarm : 0u, N0, N0);
+}
+
+// ── Section 27 step 2 (2026-09-30): the two rules that make a bond play ──────
+namespace
+{
+	uint32 SharedEvents(const Run& W)
+	{
+		uint32 N = 0;
+		for (const Event& E : W.Instance.Log().All())
+		{
+			N += E.Is(WorkSharedEvent) ? 1u : 0u;
+		}
+		return N;
+	}
+
+	/// The life Living() takes up is the bound one StartRules{} asks for
+	/// (section 27 fix 1). This puts it in the bond a case needs - the same
+	/// holder, the kind asked - and says who holds it; 0 when the world gave
+	/// no holder or the holder is of the same house (the arithmetic below
+	/// needs two houses).
+	uint32 Rebound(Run& W, uint32 Who, BondKind Kind)
+	{
+		const PlayerStart* St = W.Started();
+		if (St == nullptr || St->Holder == 0 || W.HouseOfPerson(St->Holder) == W.HouseOfPerson(Who))
+		{
+			return 0;
+		}
+		FreePerson(W.Instance, W.Persons, W.Bondage, Who, BondExit::Manumission, W.Instance.Now());
+		if (Kind != BondKind::Free &&
+			!BindPerson(W.Instance, W.Persons, W.Bondage, Who, Kind, BondEntry::Debt, St->Holder, W.Instance.Now()))
+		{
+			return 0;
+		}
+		return St->Holder;
+	}
+} // namespace
+
+VAELEN_TEST(Doings, AHoldersShareOfADaysWork)
+{
+	// Rule on: of a bound life's day of work, HolderShare goes to the holder's
+	// house and the rest to their own, and the log says so.
+	DoingRules Share;
+	Share.HolderShare = 1;
+	Run W(AelvorSeed, BondageRules{}, HourRules{}, OrderRules{}, Share);
+	const uint32 Who = Living(W);
+	VT_REQUIRE(Who != 0);
+	const uint32 Holder = Rebound(W, Who, BondKind::Bonded);
+	VT_REQUIRE(Holder != 0);
+	W.GiveHands();
+	const uint32 Mine = W.GoodsOf(Who);
+	const uint32 Theirs = W.GoodsOf(Holder);
+	VT_CHECK(W.Mean(Intent::Work) == Refusal::None);
+	W.Day();
+	VT_CHECK_EQ(W.GoodsOf(Who), Mine + Share.WorkYield - 1u);
+	VT_CHECK_EQ(W.GoodsOf(Holder), Theirs + 1u);
+	VT_CHECK_EQ(SharedEvents(W), 1u);
+	VT_CHECK_EQ(W.Acts().Refused, 0u);
+
+	// CONTROL 1: the rule at its default, the same bound life - the whole
+	// yield is theirs and no event is written. This is every world before
+	// today.
+	Run Off(AelvorSeed);
+	const uint32 Who2 = Living(Off);
+	VT_REQUIRE(Who2 == Who);
+	VT_REQUIRE(Rebound(Off, Who2, BondKind::Bonded) == Holder);
+	Off.GiveHands();
+	const uint32 Mine2 = Off.GoodsOf(Who2);
+	const uint32 Theirs2 = Off.GoodsOf(Holder);
+	VT_CHECK(Off.Mean(Intent::Work) == Refusal::None);
+	Off.Day();
+	VT_CHECK_EQ(Off.GoodsOf(Who2), Mine2 + DoingRules{}.WorkYield);
+	VT_CHECK_EQ(Off.GoodsOf(Holder), Theirs2);
+	VT_CHECK_EQ(SharedEvents(Off), 0u);
+
+	// CONTROL 2: the rule on, the same life FREED - nothing to share.
+	Run Free(AelvorSeed, BondageRules{}, HourRules{}, OrderRules{}, Share);
+	const uint32 Who3 = Living(Free);
+	VT_REQUIRE(Who3 == Who);
+	VT_REQUIRE(Rebound(Free, Who3, BondKind::Free) == Holder);
+	Free.GiveHands();
+	const uint32 Mine3 = Free.GoodsOf(Who3);
+	const uint32 Theirs3 = Free.GoodsOf(Holder);
+	VT_CHECK(Free.Mean(Intent::Work) == Refusal::None);
+	Free.Day();
+	VT_CHECK_EQ(Free.GoodsOf(Who3), Mine3 + Share.WorkYield);
+	VT_CHECK_EQ(Free.GoodsOf(Holder), Theirs3);
+	VT_CHECK_EQ(SharedEvents(Free), 0u);
+
+	// CONTROL 3: a share larger than the day - capped at the yield, the house
+	// gets nothing and the holder the whole day.
+	DoingRules All;
+	All.HolderShare = 99;
+	Run Whole(AelvorSeed, BondageRules{}, HourRules{}, OrderRules{}, All);
+	const uint32 Who4 = Living(Whole);
+	VT_REQUIRE(Who4 == Who);
+	VT_REQUIRE(Rebound(Whole, Who4, BondKind::Bonded) == Holder);
+	Whole.GiveHands();
+	const uint32 Mine4 = Whole.GoodsOf(Who4);
+	const uint32 Theirs4 = Whole.GoodsOf(Holder);
+	VT_CHECK(Whole.Mean(Intent::Work) == Refusal::None);
+	Whole.Day();
+	VT_CHECK_EQ(Whole.GoodsOf(Who4), Mine4);
+	VT_CHECK_EQ(Whole.GoodsOf(Holder), Theirs4 + All.WorkYield);
+}
+
+VAELEN_TEST(Doings, TheDebtPaidInOneGiftFrees)
+{
+	// Rule on: a Bonded life that gives its holder DebtPrice in one gift is
+	// free the same day, the gift as the cause.
+	DoingRules Price;
+	Price.DebtPrice = 5;
+	auto Bound = [&](Run& W, uint32& Who, uint32& Holder, BondKind Kind)
+	{
+		Who = Living(W);
+		VT_REQUIRE(Who != 0);
+		Holder = Rebound(W, Who, Kind);
+		VT_REQUIRE(Holder != 0);
+		W.GiveHands();
+		// Something to pay with: ten grain into the house.
+		AddStock(W.Instance, W.Ages.Types(), W.Families, W.Goods, W.RegionOfPerson(Who), W.HouseOfPerson(Who),
+				 Good::Grain, 10, W.Instance.Now());
+		VT_REQUIRE(W.GoodsOf(Who) >= 10u);
+	};
+
+	{
+		Run W(AelvorSeed, BondageRules{}, HourRules{}, OrderRules{}, Price);
+		uint32 Who = 0, Holder = 0;
+		Bound(W, Who, Holder, BondKind::Bonded);
+		const uint32 Theirs = W.GoodsOf(Holder);
+		VT_CHECK(W.Mean(Intent::Give, Holder, 5) == Refusal::None);
+		W.Day();
+		VT_CHECK_EQ(W.Acts().Refused, 0u);
+		VT_CHECK_EQ(W.GoodsOf(Holder), Theirs + 5u);
+		VT_CHECK_MSG(BondOf(W.Instance, W.Persons, W.Bondage, Who) == nullptr, "the debt paid, the life is free");
+	}
+	{
+		// CONTROL 1: four is not five - still bound, the four still given.
+		Run W(AelvorSeed, BondageRules{}, HourRules{}, OrderRules{}, Price);
+		uint32 Who = 0, Holder = 0;
+		Bound(W, Who, Holder, BondKind::Bonded);
+		const uint32 Theirs = W.GoodsOf(Holder);
+		VT_CHECK(W.Mean(Intent::Give, Holder, 4) == Refusal::None);
+		W.Day();
+		VT_CHECK_EQ(W.GoodsOf(Holder), Theirs + 4u);
+		VT_CHECK(BondOf(W.Instance, W.Persons, W.Bondage, Who) != nullptr);
+	}
+	{
+		// CONTROL 2: five to somebody who is not the holder frees nobody.
+		Run W(AelvorSeed, BondageRules{}, HourRules{}, OrderRules{}, Price);
+		uint32 Who = 0, Holder = 0;
+		Bound(W, Who, Holder, BondKind::Bonded);
+		uint32 Other = 0;
+		W.Instance.Components()
+			.GetPool(W.Persons.Person)
+			.ForEach(
+				[&](EntityHandle, const PersonInfo& P)
+				{
+					if (Other == 0 && P.Index != Who && P.Index != Holder && P.Region == W.RegionOfPerson(Who) &&
+						P.State == static_cast<uint8>(LifeState::Alive) && P.Born <= W.Instance.Now())
+					{
+						Other = P.Index;
+					}
+				});
+		VT_REQUIRE(Other != 0);
+		VT_CHECK(W.Mean(Intent::Give, Other, 5) == Refusal::None);
+		W.Day();
+		VT_CHECK(BondOf(W.Instance, W.Persons, W.Bondage, Who) != nullptr);
+	}
+	{
+		// CONTROL 3: Enslaved is past paying.
+		Run W(AelvorSeed, BondageRules{}, HourRules{}, OrderRules{}, Price);
+		uint32 Who = 0, Holder = 0;
+		Bound(W, Who, Holder, BondKind::Enslaved);
+		VT_CHECK(W.Mean(Intent::Give, Holder, 5) == Refusal::None);
+		W.Day();
+		VT_CHECK(BondOf(W.Instance, W.Persons, W.Bondage, Who) != nullptr);
+	}
+	{
+		// CONTROL 4: the rule at its default - the same gift buys nothing.
+		Run W(AelvorSeed);
+		uint32 Who = 0, Holder = 0;
+		Bound(W, Who, Holder, BondKind::Bonded);
+		VT_CHECK(W.Mean(Intent::Give, Holder, 5) == Refusal::None);
+		W.Day();
+		VT_CHECK(BondOf(W.Instance, W.Persons, W.Bondage, Who) != nullptr);
+	}
 }

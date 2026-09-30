@@ -38,6 +38,7 @@
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/Regions.h"
+#include "Vaelen/Society/Bondage.h"
 
 namespace Vaelen
 {
@@ -59,6 +60,19 @@ namespace Vaelen::Player
 		uint32 TakeMost = 5;										 ///< units one taking can move
 		uint32 WorkChill = 6; ///< 18.08: chill a day of work outside costs, on a day below the cold line
 		uint32 RestWarm = 20; ///< 18.08: chill a rest takes off
+		/// Section 27 step 2 (2026-09-30): what makes a bond PLAY, both off by
+		/// default so that no world moves until a host asks. The measurement
+		/// "The bound life played three years" found the bond read by nothing
+		/// that plays; these are the two cheapest rules that read it.
+		///
+		/// Of a bound life's day of work, this many units go to the holder's
+		/// house instead of their own (capped at WorkYield; 0 = the bond costs
+		/// nothing). Needs ObserveBonds, else no bond is seen.
+		uint32 HolderShare = 0;
+		/// A Bonded (not Enslaved) life that GIVES its holder at least this much
+		/// in one gift is freed - the debt paid (BondExit::Manumission, with the
+		/// gift as cause). 0 = no price, never freed this way. Needs ObserveBonds.
+		uint32 DebtPrice = 0;
 	};
 
 	/// The seven verbs, each one a call into the module that owns that change.
@@ -87,6 +101,13 @@ namespace Vaelen::Player
 			Climate = InClimate;
 			HasWarmth = true;
 		}
+		/// Section 27 step 2: told where the bonds are, HolderShare and DebtPrice
+		/// can read them; untold, both rules are inert whatever their value.
+		void ObserveBonds(Society::BondageTypes InBonds) noexcept
+		{
+			Bonds = InBonds;
+			HasBonds = true;
+		}
 		/// What was actually done, for the tests and for 10.07: counted per kind.
 		const uint32* Done() const noexcept { return Tally; }
 		uint32 DoneOf(Intent Kind) const noexcept
@@ -112,6 +133,8 @@ namespace Vaelen::Player
 		Population::WarmthTypes Warmth;
 		WorldGen::ClimateRules Climate;
 		bool HasWarmth = false;
+		Society::BondageTypes Bonds;
+		bool HasBonds = false;
 		mutable WorldGen::RegionGraphCache Ways; ///< who a region's neighbours are (02.06)
 		uint32 Tally[IntentCount] = {};
 	};

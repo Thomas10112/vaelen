@@ -73,6 +73,7 @@ namespace Vaelen
 		{0x3b6234eb160360d7ull, "RegionPinned"},
 		{0x3c0fb8f2ae73228aull, "FortuneChanged"},
 		{0x3d2dc5a7a2f26d01ull, "SeamWorkedOut"},
+		{0x3d7b7d536e527e9dull, "WorkShared"},
 		{0x3ef5d37d60fbb6d1ull, "ArmyBroken"},
 		{0x4200f34b136055d4ull, "Pardoned"},
 		{0x4288c8135de7434bull, "HeadSeated"},

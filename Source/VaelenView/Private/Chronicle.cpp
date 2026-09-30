@@ -54,6 +54,20 @@ namespace Vaelen::View
 					   : E.Is(Population::PersonBornEvent) ? LineKind::Born
 														   : LineKind::Died;
 			}
+			// Section 27 step 2 (2026-09-30): what a bond costs is a line of the
+			// played life, told as an act with the verb Work. No such event
+			// exists while DoingRules keep their defaults. How a bond ENDS is
+			// not a line here: the page says it by itself as "freed of X", from
+			// the bond as it is (Life.cpp), and the yearly bondage ends bonds in
+			// every world - a line for it would move the page of any played life
+			// the world happened to free.
+			if (E.Is(Player::WorkSharedEvent))
+			{
+				const Player::ActPayload A = E.Get<Player::ActPayload>();
+				Person = A.Person;
+				Verb = A.Kind;
+				return LineKind::Acted;
+			}
 			return LineKind::None;
 		}
 

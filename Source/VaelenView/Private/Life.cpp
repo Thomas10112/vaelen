@@ -15,6 +15,7 @@
 #include "Vaelen/Population/PersonHistory.h"
 #include "Vaelen/Population/Persons.h"
 #include "Vaelen/Sim/Climate.h"
+#include "Vaelen/Society/Bondage.h"
 #include "Vaelen/Sim/HistoryText.h"
 #include "Vaelen/Sim/PreHistory.h"
 #include "Vaelen/Sim/Regions.h"
@@ -142,6 +143,18 @@ namespace Vaelen::View
 				Text.clear();
 				Population::NamePerson(W, From.Types, From.Persons, S->Holder, Text, &Index);
 				Put(Out.HolderName, Text);
+			}
+			// Section 27 step 2 (2026-09-30): the bond as it IS. A life that
+			// began bound and was freed since reads Bond 0 with the holder's
+			// name kept, which the page words as "freed of X"; a life still
+			// bound reads exactly what it did, so no frozen page moved.
+			if (From.HasBondage && S->Bond != static_cast<uint32>(Society::BondKind::Free))
+			{
+				const Society::BondState* Now = Society::BondOf(W, From.Persons, From.Bondage, Out.Person);
+				if (Now == nullptr)
+				{
+					Out.Bond = static_cast<uint32>(Society::BondKind::Free);
+				}
 			}
 		}
 

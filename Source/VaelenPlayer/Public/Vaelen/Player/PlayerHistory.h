@@ -65,6 +65,13 @@ namespace Vaelen::Player
 		/// What the world would not let them do. Off by default - a life is what
 		/// happened, not what was attempted - and worth having while playing.
 		uint32 RecordRefusals = 0;
+		/// Section 27 step 2 (2026-09-30): how the played life's bond ended -
+		/// set free, fled, the holder dead. Off by default, because the yearly
+		/// bondage frees people in every world and a record of it moved the
+		/// colony gate's century (its played life is freed in it); a host that
+		/// turns the bond's rules on turns this on with them. The page says the
+		/// same thing by itself, as "freed of X", from the bond as it is.
+		uint32 RecordBondExits = 0;
 		uint32 MaxRecordsPerYear = 12; ///< of a life
 	};
 

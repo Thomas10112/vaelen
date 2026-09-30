@@ -9434,3 +9434,78 @@ What this does NOT do: make the bond play. "The bound life played three
 years" stands - the premise is on the page from day one now, and it is
 still a row. The rule that makes it cost or offer something is the design
 decision named there, and it stays the owner's.
+
+### The bond that plays, 2026-09-30: a prototype behind two rules at zero, and what turning them on moves
+
+"The bound life played three years" ended on the bond being read by nothing
+that plays, and named the two cheapest rules that would read it. Seven
+"continue"s later they are built - as a PROTOTYPE behind two `DoingRules`
+fields that default to 0, so that no world moves until a host asks, and
+the owner's decision is a default flipped with the prediction below
+already measured.
+
+**The rules** (`Vaelen/Player/Doings.h`):
+
+- `HolderShare` - of a bound life's day of work, this many grain go to the
+  holder's house instead of their own, capped at `WorkYield`; the rest is
+  theirs. Published as `WorkSharedEvent` (Person, Work, the holder, the
+  grain) with the act as cause, which the life's chronicle records and the
+  page tells as its own row: "1 grain of Erdass's work went to Okigerdo."
+  A dead or absent holder shares nothing.
+- `DebtPrice` - a Bonded (not Enslaved: 05.04's hardening is past paying)
+  life that GIVES its holder at least the price in one gift is freed the
+  same day, `BondExit::Manumission` with the gift as cause. The page's
+  "bound to X since year N" row becomes "freed of X" - `Life.cpp` reads
+  the bond as it IS, not only as it began - and the life's chronicle can
+  record how the bond ended ("was set free.", "fled the bond.", "was freed
+  by the holder's death.") behind a third rule at zero,
+  `LifeChronicleRules::RecordBondExits`, because the yearly bondage frees
+  people in every world: recorded unconditionally, the colony gate's
+  century moved (its played life is freed in it, 20796fed5720627b against
+  915df627394d53c5) - the second thing the defaults had to be taught.
+- `Doings::ObserveBonds(BondageTypes)` tells the doings where the bonds
+  are; untold, both rules are inert. `Aelvor` tells them. Nothing else
+  changed in any wiring.
+
+**Nothing moved at the defaults**, and that was not free: the first build
+moved the STATE digest of every replayed month (Replay.Climate and
+Replay.Bound red, log and life the same). The life chronicle creates its
+state entity on the first event it hears, and the two events it now
+subscribes to - the bond's end, anybody's, from the yearly bondage - arrive
+years before a life is played. The entity moved, and every entity index
+after it. Those two now create nothing unless they matter; the old three
+create it where they always did. Then the whole release suite, 254
+entries, ran with the rules at zero: 253 green, no pin moved; the one red
+was `Kernel.EventTypes`, the generated table of event names one short of
+the tree (`WorkShared`), regenerated with `gen_event_names.py --write`, and
+`Run.EventTypes`' count pin moved 117 -> 118 with the name written beside
+it. Every gate that plays a life - Player, Colony, Gameplay, the soak, the
+five replays - came to the digest it had.
+
+**Turned on** (`HolderShare = 1`, `DebtPrice = 20`, measured on gcc debug,
+the defaults put back after):
+
+| entry | at the defaults | with the rules on |
+|---|---|---|
+| Replay.Bound, state / log / life / panel | fa3a942904aaeb26 / 0ccf228b6b72f976 / 313303cf74469015 / 64a084c49b348f45 | 1b1c9315233bc67f / ffaa210cb64fd386 / 6f966c69c941d2e8 / 94fc1d4c23070042 |
+| Replay.Bound, the page's rows | "Erdass worked, 4 hours of it." | "Erdass worked, 4 hours of it." then "1 grain of Erdass's work went to Okigerdo." - after each of the five days of work |
+| Run.Soak, the state after three years of the bound life | 6e9f76c02755513c | f1fd01a63ba1fbe8 |
+| Replay.Played, Climate, Lived, Walked, Atlas.Keys128 (free lives) | unmoved | unmoved - the rules read a bond, and there is none |
+
+So the flip costs exactly the pins of the played BOUND worlds - the bound
+month and the three-year soak here, and whatever bound month the owner's
+S3 and S4 sittings record - and nothing of the free ones or of the world
+before play. What it buys is the bond on the page every fifth row, and a
+way out the player decides: twenty grain given to the holder in one gift,
+which at two grain a day of work is ten days of a bound life's labour
+after its own meals. Whether 1 and 20 are the numbers, and whether the
+holder should ask for more than grain, is design; the instruments are
+`Player.Doings` (the share with three controls: off, freed, capped; the
+price with four: four is not five, the wrong person, Enslaved, off),
+`View.Panel`'s freed row, and `Player.LifeHistory`'s bond's end (recorded
+with the rule, not at the default, not for somebody else's bond). Sabotaged
+on the debug build, the variable kept: the holder's house never credited
+(two checks red), the price to be exceeded rather than met (the five-gift
+case red), the freed row keyed on the wrong bond (its case red), the bond's
+end recorded whatever the rule says (the default control red). All four
+back.
