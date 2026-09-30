@@ -12,4 +12,8 @@ log s0916-2026-09-16.log
 run --replay {streams}/aelvor256-2026-09-16.stream --panel --want-bound 0 --no-climate
 line LogVaelenPlay: AELVOR 256
 line LogVaelenPlay: verbs
+# 2026-09-28: the life view's wording changed (a refused doing reads "could not take from", not
+# "could not took from"), and the life digest with it; the engine's line keeps the digest it
+# printed, and this says what it reads as. State, log and panel are the same bytes.
+moved 654e2de6455d8b7a 3039c736974e7503
 other --replay {streams}/aelvor256-2026-09-16.stream --panel --want-bound 0 --climate

@@ -17,12 +17,10 @@
 // below is a view leaf, the command surface or Core, and nothing here names a
 // World, a Run or a Take.
 //
-// STATUS: UNVERIFIED (engine) since 19.01's ledger - its code has changed after the last build
-// that compiled it (b0921, 15.10, 867a129): 16.14's save, load and store (c146c43), 19.10's
-// keys. Parsed
-// against Tools/EngineShim, never compiled. Tools/check_engine_status.py holds this line to
-// Tools/engine_builds.txt; the record of what earlier builds validated follows.
-// BUILD: b0921
+// STATUS: UNVERIFIED (engine) since 19.01's ledger (and 22.01: the front end's pages, keys and autosave) - its code has
+// changed after the last build that compiled it (b0921, 15.10, 867a129): 16.14's save, load and store
+// (c146c43), 19.10's keys. Parsed against Tools/EngineShim, never compiled. Tools/check_engine_status.py holds this
+// line to Tools/engine_builds.txt; the record of what earlier builds validated follows. BUILD: b0921
 //
 // UNTIL 19.01: VALIDATED (Phase 14) for what Phase 14 left here - built by
 // UnrealBuildTool and RUN on 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development
@@ -158,7 +156,14 @@ public:
 
 	/// Days day-turns, each recorded as a DayTurned, then every view retaken.
 	/// Nothing when no world is begun.
-	void AdvanceDay(int32 Days);
+	/// bAutosave: whether these turns count toward the autosave (22.01). A
+	/// command that turns N days one at a time to time each passes false
+	/// and calls CountForAutosave(N) once after: a batch of N counts as one
+	/// step of N and saves at most once, at its end - where a hundred presses
+	/// of Space, one turn each, save at every tenth.
+	void AdvanceDay(int32 Days, bool bAutosave = true);
+	/// 22.01: Days more day turns toward the next autosave, saving when due.
+	void CountForAutosave(int32 Days);
 
 	/// One intent through the door, which stamps it with the world's clock and
 	/// records it. The life and the page are retaken after every call, so a
@@ -248,6 +253,17 @@ public:
 	/// chooser: name, bytes, tick, container version, sections, state digest.
 	/// Empty when the folder is not there yet. Returns how many.
 	int32 Saves(TArray<FString>& Out);
+	/// 22.01: the save with the highest tick under Saved/Vaelen (the lowest
+	/// name of two at one tick), for the title page's Continue. False, Out
+	/// untouched, when there is none. Ticks, not file times: no clock.
+	bool NewestSave(FString& OutName, uint64& OutTick);
+	/// 22.01: the autosave. Every AutosaveEvery day turns AdvanceDay saves the
+	/// world under the name `autosave` (the store keeps the one before as
+	/// `autosave.previous`, 16.15) and says so on LogVaelenWorld; 0 turns it
+	/// off. Counted in day turns, not in frames or seconds: the same play
+	/// autosaves at the same days.
+	void SetAutosaveEvery(int32 Days);
+	int32 AutosaveEvery() const;
 
 private:
 	// TPimplPtr and NOT TUniquePtr, and this is not a preference.
@@ -271,4 +287,7 @@ private:
 	/// The host's verb keys (19.10). Here and not in Held: the controller binds
 	/// them at SetupInputComponent, before any world is begun.
 	Vaelen::View::PanelKeys Keys_ = Vaelen::View::DefaultKeys;
+	/// 22.01: the autosave's cadence in day turns, and the turns since.
+	int32 AutosaveEvery_ = 10;
+	int32 DaysSinceAutosave_ = 0;
 };

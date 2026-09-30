@@ -40,7 +40,10 @@ void AVaelenSky::Aim(const Vaelen::Scene::Sun& Where, bool bEquatorIsPlusY)
 	Sun->SetWorldRotation(FRotator(-Elevation, Bearing + 180.0, 0.0));
 	// Night: the sun under the ground gives nothing; the sky light carries
 	// what little there is.
-	Sun->SetIntensity(Where.Elevation > 0 ? 10.0f : 0.0f);
+	// On from the horizon up: dawn (elevation 0, the day's first hour) lights
+	// the sky; night is under the horizon (SunOf: -100) and lights nothing
+	// (the review of 2026-09-27: at 0 the walk opened black).
+	Sun->SetIntensity(Where.Elevation >= 0 ? 10.0f : 0.0f);
 }
 
 void AVaelenSky::Recapture()

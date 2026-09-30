@@ -9,11 +9,15 @@
 // Tools/check_ui_fence.py reads this file: every Vaelen include here is a view
 // leaf, and nothing in this module names a World.
 //
-// STATUS: VALIDATED (Phase 14) - built by UnrealBuildTool and RUN on
+// STATUS: UNVERIFIED (engine) since 22.01 - its code has changed after the last build that
+// compiled it (b0921, 15.10, 867a129): the front end's pages (title, loading, pause) drawn before
+// the world's page. Parsed against Tools/EngineShim, never compiled; sitting S4 builds it.
+// BUILD: b0921 - Tools/engine_builds.txt
+//
+// UNTIL 22.01: VALIDATED (Phase 14) - built by UnrealBuildTool and RUN on
 // 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development Editor): eighty-three days
 // played at the keyboard, and Tools/Atlas replayed the stream headlessly to the
 // same four digests, byte for byte. Tests/Run/Streams/README.md has the lines.
-// BUILD: b0921 - Tools/engine_builds.txt; its code is what that build compiled (19.01).
 #pragma once
 
 #include "CoreMinimal.h"
@@ -21,6 +25,8 @@
 #include "Vaelen/View/Panel.h"
 
 #include "VaelenHUD.generated.h"
+
+class AVaelenPlayerController;
 
 UCLASS()
 class VAELENUI_API AVaelenHUD : public AHUD
@@ -31,6 +37,12 @@ public:
 	virtual void DrawHUD() override;
 
 private:
+	/// 22.01: the front end's page - title, loading, pause - drawn instead of
+	/// the world's page while the controller says one is up, from the rows the
+	/// controller composed: this HUD composes nothing, still. Host text, not
+	/// digested, not part of any pinned line.
+	void DrawFront(const AVaelenPlayerController& Front);
+
 	/// The page's rows, rewritten every frame from the subsystem's cached
 	/// PanelView - which the subsystem retakes only when something moved.
 	/// Sized by the view's own constant, so a page that grows cannot overrun

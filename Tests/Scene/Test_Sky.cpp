@@ -237,6 +237,103 @@ VAELEN_TEST(Sky, TheMeshTurnsWhiteWhereItSnowsAndOnlyThere)
 	VT_CHECK(Kept > 0u);
 	VT_CHECK(SeaFrozen > 0u); // the case is not empty: there is sea below freezing
 	VT_CHECK_EQ(Unchanged, ChunksAcross(W.G) * ChunksDown(W.G));
+	// At the FULL lattice, the engine's near stride (the review of
+	// 2026-09-27: the loop above ran at the far stride, and skipped every
+	// vertex on the map's far edge, which is off the map by a half tile
+	// and painted as the last tile's): one chunk on the map's south-east
+	// corner, every vertex against the tile it is in, clamped to the map.
+	{
+		TerrainMesh Before;
+		VT_REQUIRE(BuildChunk(W.G, ChunksAcross(W.G) - 1u, ChunksDown(W.G) - 1u, 1u, Before));
+		TerrainMesh After = Before;
+		ApplyClimate(W.G, Winter, After);
+		const int64 C = W.G.Scale.CmPerTile;
+		uint32 Clamped = 0, Painted = 0;
+		for (usize i = 0; i < Before.Vertices.size(); ++i)
+		{
+			const TerrainVertex& B = Before.Vertices[i];
+			const TerrainVertex& A = After.Vertices[i];
+			// The tile under the vertex, the last tile past the far edge.
+			int64 TX = (int64{B.X} + C / 2) / C, TY = (int64{B.Y} + C / 2) / C;
+			const bool Off = TX >= W.G.Width || TY >= W.G.Height;
+			TX = TX >= W.G.Width ? W.G.Width - 1u : TX;
+			TY = TY >= W.G.Height ? W.G.Height - 1u : TY;
+			const uint32 T = static_cast<uint32>(TY) * W.G.Width + static_cast<uint32>(TX);
+			Clamped += Off ? 1u : 0u;
+			const uint8 Kind = W.G.Kind[T];
+			const uint32 Snow = Kind == GroundKind::Sea ? 0u : SnowOf(Winter.Tiles[T]);
+			if (Kind == GroundKind::Sea)
+			{
+				VT_CHECK(A.R == B.R && A.G == B.G && A.B == B.B);
+			}
+			else if (Snow == 255u)
+			{
+				VT_CHECK(A.R == 236u && A.G == 240u && A.B == 246u);
+				++Painted;
+			}
+			else if (Snow != 0u)
+			{
+				VT_CHECK_EQ(A.R, static_cast<uint8>((B.R * (255u - Snow) + 236u * Snow) / 255u));
+				VT_CHECK_EQ(A.G, static_cast<uint8>((B.G * (255u - Snow) + 240u * Snow) / 255u));
+				VT_CHECK_EQ(A.B, static_cast<uint8>((B.B * (255u - Snow) + 246u * Snow) / 255u));
+				++Painted;
+			}
+			else
+			{
+				const uint32 Grass = Kind == GroundKind::Land ? GrassOf(Winter.Tiles[T]) : 0u;
+				const uint32 Green = B.G + Grass;
+				VT_CHECK(A.R == B.R && A.B == B.B);
+				VT_CHECK_EQ(A.G, static_cast<uint8>(Green > 255u ? 255u : Green));
+				Painted += Grass != 0u ? 1u : 0u;
+			}
+		}
+		// The far edge is there: 129 + 128 vertices past the map, and painted.
+		VT_CHECK_EQ(Clamped, 2u * 129u - 1u);
+		VT_CHECK_EQ(Before.Vertices.size(), 129u * 129u);
+		VAELEN_LOG_INFO(LogSceneSky, "stride 1, the south-east chunk: %u vertices past the map's edge, %u painted",
+						Clamped, Painted);
+	}
+	// CONTROL, with a known answer: AELVOR's rim is sea, so the clamp above
+	// paints nothing there either way. A 4 x 4 all-land map, frost on its
+	// last tile alone, one chunk at the full lattice (33 x 33): the tile's
+	// own 8 x 8 points are white, and so are the 9 points past the east edge
+	// on its rows and the 8 past the south edge on its columns - 81 in all,
+	// 17 of them off the map. A paint that skipped the rim would leave 64.
+	{
+		View::MapView Flat;
+		Flat.Width = 4;
+		Flat.Height = 4;
+		Flat.Tiles.resize(16);
+		for (View::TileView& Tile : Flat.Tiles)
+		{
+			Tile.Ground = View::GroundFlag::Land;
+			Tile.Elevation = 10 * 65536;
+		}
+		Ground G;
+		VT_REQUIRE(BuildGround(Flat, SceneScale{}, G));
+		View::ClimateView Frost;
+		Frost.Width = 4;
+		Frost.Height = 4;
+		Frost.Tiles.resize(16);
+		Frost.Tiles[15].Flags = View::ClimateFlag::Frost;
+		Frost.Tiles[15].Now = -30;
+		VT_CHECK_EQ(SnowOf(Frost.Tiles[15]), 255u);
+		TerrainMesh M;
+		VT_REQUIRE(BuildChunk(G, 0, 0, 1u, M));
+		VT_REQUIRE(M.Vertices.size() == 33u * 33u);
+		ApplyClimate(G, Frost, M);
+		const int64 C = G.Scale.CmPerTile;
+		uint32 White = 0, WhiteOff = 0;
+		for (const TerrainVertex& V : M.Vertices)
+		{
+			const bool IsWhite = V.R == 236u && V.G == 240u && V.B == 246u;
+			const bool Off = int64{V.X} + C / 2 >= 4 * C || int64{V.Y} + C / 2 >= 4 * C;
+			White += IsWhite ? 1u : 0u;
+			WhiteOff += IsWhite && Off ? 1u : 0u;
+		}
+		VT_CHECK_EQ(White, 81u);
+		VT_CHECK_EQ(WhiteOff, 17u);
+	}
 	VAELEN_LOG_INFO(LogSceneSky,
 					"mid-winter: %u vertices under full snow, %u under thin, %u greened, %u kept; %u chunks unchanged "
 					"without a climate",
@@ -248,7 +345,26 @@ VAELEN_TEST(Sky, TheSunRisesAndSetsWithinTheDaysHours)
 	const uint32 Height = 128;
 	const uint32 Row = 32; // half-way to the pole
 	// Nobody awake, no sun.
-	VT_CHECK_EQ(SunOf(Row, Height, 135, 0, 0).Elevation, 0);
+	VT_CHECK(SunOf(Row, Height, 135, 0, 0).Elevation < 0);
+	VT_CHECK_EQ(SunOf(Row, Height, 135, 0, 0).Azimuth, 1800);
+	// A LIFE's sun (the review of 2026-09-27): alive with no hours yet is the
+	// day's first hour, dawn in the east at the horizon - the sky every walk
+	// opens on; nobody, and a dead life, are the night above.
+	View::LifeView Fresh;
+	Fresh.Person = 7;
+	Fresh.Alive = 1;
+	VT_CHECK_EQ(SunOfLife(Row, Height, 135, Fresh).Azimuth, 900);
+	VT_CHECK_EQ(SunOfLife(Row, Height, 135, Fresh).Elevation, 0);
+	Fresh.Awake = 16;
+	Fresh.Spent = 8;
+	VT_CHECK_EQ(SunOfLife(Row, Height, 135, Fresh).Elevation, SunOf(Row, Height, 135, 8, 16).Elevation);
+	VT_CHECK_EQ(SunOfLife(Row, Height, 135, Fresh).Azimuth, 1800);
+	View::LifeView Nobody;
+	VT_CHECK(SunOfLife(Row, Height, 135, Nobody).Elevation < 0);
+	View::LifeView Dead = Fresh;
+	Dead.Alive = 0;
+	Dead.Awake = 0;
+	VT_CHECK(SunOfLife(Row, Height, 135, Dead).Elevation < 0);
 	// Over sixteen waking hours: from the horizon in the east, up to the south
 	// at the middle, back to the horizon in the west.
 	int32 Last = -1;

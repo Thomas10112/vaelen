@@ -50,4 +50,11 @@ namespace EKeys
 	extern const FKey Up;
 	extern const FKey Down;
 	extern const FKey Mouse2D;
+	// 22.01 BELIEFS: the front end's keys - Enter and Escape for the pages, F5
+	// to save, F8 to continue from the newest save, F10 to quit.
+	extern const FKey Enter;
+	extern const FKey Escape;
+	extern const FKey F5;
+	extern const FKey F8;
+	extern const FKey F10;
 } // namespace EKeys

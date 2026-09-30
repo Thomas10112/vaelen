@@ -54,8 +54,11 @@ namespace Vaelen::Run
 	{
 		std::string Name;
 		uint64 Bytes = 0;
-		/// From the container's own header, so a chooser can show a save's tick
-		/// and version without loading two gigabytes to find out.
+		/// From the container's own head, read alone (22.02, `DescribeSave`): a
+		/// listing reads under two kilobytes of a save and its trailer's eight
+		/// bytes, not the file - which both stores read whole and digested
+		/// until then, a hundred megabytes a title page at the ship cell. A
+		/// listing BELIEVES the head; Read verifies every byte.
 		uint64 Tick = 0;
 		/// THE IMAGE'S TRAILER: the last eight bytes of the STATE section, which
 		/// is what `ComputeStateDigest` returns and what every frozen digest in
@@ -126,6 +129,12 @@ namespace Vaelen::Run
 		/// What is here, newest first where the store can tell. A save that
 		/// exists only as `<name>.previous` is listed as `<name>`.
 		virtual std::vector<StoreEntry> List() = 0;
+		/// 22.02: Length bytes of a save from Offset, for a listing that reads a
+		/// head and a trailer and not the file. The default reads the whole and
+		/// copies the part, so a store with no better way still answers; the
+		/// two real stores seek. NotFound as Read; ShortRead when the file ends
+		/// before Offset + Length; Out untouched on any refusal.
+		virtual StoreResult ReadPart(const char* Name, uint64 Offset, usize Length, std::vector<uint8>& Out);
 
 		/// Forgets one: the name, its `.previous` and its `.writing` alike, so
 		/// that a forgotten save cannot come back through `Read`'s restore.
@@ -159,4 +168,14 @@ namespace Vaelen::Run
 	/// refuses the same names, rather than each one inventing its own idea of
 	/// what is safe.
 	VAELEN_RUN_API bool IsUsableCheckpointName(const char* Name) noexcept;
+	/// 22.02: one entry of a listing, from two partial reads - the head and
+	/// the table (at most CheckpointListingBytes), then the STATE trailer's
+	/// eight bytes - and Bytes as the store measured the file. The fields stay
+	/// 0 when the head is not a container this build reads (a .stream beside
+	/// the saves, another build's save, a file cut short of what its table
+	/// claims - the first half of a save is no save): the
+	/// entry is still listed, by name and size. ONE describer for both stores,
+	/// as ImageTrailer is one reader (16.14's lesson).
+	VAELEN_RUN_API void DescribeSave(ICheckpointStore& Store, const char* Name, uint64 Bytes, StoreEntry& Out);
+
 } // namespace Vaelen::Run

@@ -272,6 +272,46 @@ namespace Vaelen::Run
 	/// entitled to decide what a section means.
 	VAELEN_RUN_API CheckpointRefusal ReadCheckpoint(const uint8* Bytes, usize Size, CheckpointView& Out);
 
+	/// 22.02: the container's fixed head, one table row, and how much of a file
+	/// a LISTING reads - the head and the table's cap of 64 rows: under two
+	/// kilobytes of a save that may be gigabytes.
+	inline constexpr usize CheckpointHeadBytes = 8u + 4u + 4u + 4u + 8u + 8u + 8u + 8u + 4u;
+	inline constexpr usize CheckpointRowBytes = 2u + 4u + 8u + 8u + 8u;
+	inline constexpr uint32 CheckpointMostSections = 64u;
+	inline constexpr usize CheckpointListingBytes = CheckpointHeadBytes + CheckpointMostSections * CheckpointRowBytes;
+
+	/// What the head and the table say, read from the container's FIRST bytes
+	/// alone (22.02): the fields a chooser shows, and where the STATE section's
+	/// trailer lies - its last eight bytes are the image's digest (ImageTrailer).
+	struct CheckpointHeading
+	{
+		uint32 Version = 0;
+		uint32 Flags = 0;
+		uint32 InnerFormat = 0;
+		uint64 Seed = 0;
+		uint64 Tick = 0;
+		uint64 LogEvents = 0;
+		uint64 LogBytes = 0;
+		uint32 SectionCount = 0;
+		bool HasState = false;
+		uint64 StateOffset = 0; ///< from the container's first byte
+		uint64 StateLength = 0;
+		/// Where the last section ends and the eight-byte trailer begins: a
+		/// container is PayloadEnd + 8 bytes long, and a file shorter than that
+		/// is one cut short of what its own table claims.
+		uint64 PayloadEnd = 0;
+	};
+
+	/// Reads the head and the section table from a container's first bytes -
+	/// at most CheckpointListingBytes of them - and NOTHING ELSE: no trailer,
+	/// no section digest, no payload. A listing believes the head; Read
+	/// verifies. Refused: Truncated when Size holds less than the head or the
+	/// table; BadMagic; VersionMismatch; InnerVersionMismatch;
+	/// UnknownRequiredFlag; BadSectionTable when the count is past
+	/// CheckpointMostSections or a row is out of order (a row's payload lying
+	/// beyond the file is the caller's to find, when it reads the trailer).
+	VAELEN_RUN_API CheckpointRefusal ReadCheckpointHeading(const uint8* Bytes, usize Size, CheckpointHeading& Out);
+
 	/// THE IMAGE'S OWN TRAILER: the last eight bytes of the STATE section,
 	/// little-endian - what `ComputeStateDigest` returns and what every frozen
 	/// digest in this repository is. NOT the STATE row's section digest, which

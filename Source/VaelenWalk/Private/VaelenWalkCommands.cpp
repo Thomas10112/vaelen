@@ -15,7 +15,7 @@
 // Nothing here turns the day or means a verb: those are the controller's and
 // the subsystem's, and the fence refuses the words (check_ui_fence.py).
 //
-// STATUS: UNVERIFIED (engine) - written and PARSED against Tools/EngineShim on
+// STATUS: UNVERIFIED (engine) - written (and 22.01: the front end) and PARSED against Tools/EngineShim on
 // 2026-09-25 (reviewed and corrected 2026-09-26, 19.11b), not yet built by
 // UnrealBuildTool nor run: sitting S2 builds it.
 #include "Engine/Engine.h"
@@ -33,6 +33,7 @@
 #include "VaelenLand.h"
 #include "VaelenScenery.h"
 #include "VaelenSky.h"
+#include "VaelenWalkController.h"
 #include "VaelenWalker.h"
 #include "VaelenWorldSubsystem.h"
 
@@ -73,9 +74,17 @@ namespace
 		return Row;
 	}
 
-	/// The land and the sky of this level, spawned by Vaelen.Walk; null before it.
+	/// The land and the sky of this level, spawned by Vaelen.Walk; null before
+	/// it - and null for no world at all, tested BEFORE the iterator: the
+	/// engine's TActorIterator asserts on a null world in its constructor
+	/// (the shim audit of 2026-09-27), and a console command can be run with
+	/// none.
 	AVaelenLand* LandOf(UWorld* World_)
 	{
+		if (World_ == nullptr)
+		{
+			return nullptr;
+		}
 		for (TActorIterator<AVaelenLand> It(World_); It; ++It)
 		{
 			return *It;
@@ -90,9 +99,31 @@ namespace
 		{
 			return;
 		}
-		const int32 Size = NumberAt(Args, 0, 128);
+		// 22.01: a world already begun - by Vaelen.Load, which is the title
+		// page's Continue (`Vaelen.Load <save>` then `Vaelen.Walk`), or by a
+		// Vaelen.Play typed before - is walked as it is; the walk loads
+		// nothing itself. Otherwise one is begun, as before.
+		int32 Size = NumberAt(Args, 0, 128);
 		const int32 Years = NumberAt(Args, 1, 120);
-		if (!World->Begin(Size, Years, true))
+		if (World->Begun())
+		{
+			if (LandOf(World_) != nullptr)
+			{
+				UE_LOG(LogVaelenWalk, Warning, TEXT("LogVaelenWalk: this world is walked already"));
+				return;
+			}
+			Size = World->Size();
+			if (Args.Num() > 0)
+			{
+				// Typed arguments cannot begin a second world; say so rather
+				// than walk a 128 someone asked for as 64.
+				UE_LOG(LogVaelenWalk, Warning,
+					   TEXT("LogVaelenWalk: the world is begun already (AELVOR %d); the typed %s %d are ignored"), Size,
+					   *Args[0], Years);
+			}
+			UE_LOG(LogVaelenWalk, Log, TEXT("LogVaelenWalk: walking the world already begun (AELVOR %d)"), Size);
+		}
+		else if (!World->Begin(Size, Years, true))
 		{
 			UE_LOG(LogVaelenWalk, Warning,
 				   TEXT("LogVaelenWalk: no world begun (one per host, and the map must generate)"));
@@ -100,6 +131,15 @@ namespace
 		}
 		const Vaelen::View::LifeView& Life = World->Life();
 		const Vaelen::Scene::Ground& G = World->Scene();
+		if (Life.Region == 0u)
+		{
+			// Nobody taken up (the world had nobody to take, or the save
+			// carried no tape): there is no region to build the ground
+			// around, and AVaelenLand::Build refuses 0 (the review of 2026-09-27).
+			UE_LOG(LogVaelenWalk, Warning,
+				   TEXT("LogVaelenWalk: nobody is played (life region 0): no ground to walk - Vaelen.TakeUp first"));
+			return;
+		}
 		AVaelenLand* Land = World_->SpawnActor<AVaelenLand>();
 		AVaelenSky* Sky = World_->SpawnActor<AVaelenSky>();
 		AVaelenScenery* Scenery = World_->SpawnActor<AVaelenScenery>();
@@ -161,7 +201,7 @@ namespace
 				Vaelen::Scene::PlaceAfterDay(G, Life.Region, X, Y);
 				Vaelen::Scene::TileOfPoint(G, X, Y, Tile);
 				const double Z = static_cast<double>(Vaelen::Scene::HeightAt(G, X, Y)) +
-								 static_cast<double>(Walker->StandingHalfHeight()) + 10.0;
+								 static_cast<double>(Walker->StandingHalfHeight()) + VaelenWalkBody::ClearanceCm;
 				Walker->SetActorLocation(FVector(static_cast<double>(X), static_cast<double>(Y), Z));
 				// Whatever speed the fall gave it stays in the void: the body
 				// stands on the ground it was put on.
@@ -214,6 +254,10 @@ namespace
 
 	AVaelenScenery* SceneryOf(UWorld* World_)
 	{
+		if (World_ == nullptr)
+		{
+			return nullptr;
+		}
 		for (TActorIterator<AVaelenScenery> It(World_); It; ++It)
 		{
 			return *It;

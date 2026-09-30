@@ -16,7 +16,6 @@ public:
 	UInputComponent* InputComponent = nullptr;
 	bool bShowMouseCursor = false;
 
-	virtual void SetupInputComponent();
 	/// Where the person at the keyboard is looking from and at. 15.10 reads it
 	/// on the day turn, which is the only moment this module reads anything of
 	/// the frame - there is no Tick here and the fence refuses one.
@@ -34,5 +33,15 @@ public:
 	APawn* GetPawn() const;
 	void Possess(APawn* InPawn);
 	FRotator GetControlRotation() const;
+	/// 22.01 BELIEF: a console line run as this controller - `quit` is how the
+	/// front end leaves, which the editor turns into "stop playing" and a
+	/// package into an orderly exit.
+	FString ConsoleCommand(const FString& Command, bool bWriteToLog = true);
 	void SetControlRotation(const FRotator& NewRotation);
+
+protected:
+	/// Protected in the engine (GameFramework/PlayerController.h): overridden
+	/// by a controller, called by nobody outside one. Public here until the
+	/// shim audit of 2026-09-27.
+	virtual void SetupInputComponent();
 };

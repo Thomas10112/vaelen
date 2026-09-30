@@ -108,12 +108,34 @@ VAELEN_TEST(Fence, EveryRegionIsClosedAndCountedTwice)
 		{
 			std::vector<FenceEdge> Fence;
 			BuildFence(*G, R, Fence);
-			// Every edge has a walkable tile on one side and not on the other.
+			// Every region of the frame has a tile to stand on, so PlaceAfterDay
+			// never has nowhere to put the body (the review of 2026-09-27).
+			VT_CHECK_MSG(!Fence.empty(), "region %u has no walkable tile", R);
+			// Every edge has a walkable tile on one side and not on the other -
+			// and the edge IS the side between them: a centimetre either way
+			// from its middle, across it, is the one tile and the other (the
+			// review of 2026-09-27: the corners of a lone tile's four sides
+			// could be permuted among the sides and every check below hold).
 			std::map<std::pair<int32, int32>, uint32> Degree;
 			for (const FenceEdge& E : Fence)
 			{
 				VT_CHECK(IsWalkable(*G, E.Inside, R));
 				VT_CHECK(E.Outside == NoTile || !IsWalkable(*G, E.Outside, R));
+				VT_CHECK(E.X0 == E.X1 || E.Y0 == E.Y1);
+				const int64 MX = (int64{E.X0} + E.X1) / 2, MY = (int64{E.Y0} + E.Y1) / 2;
+				const int64 NX = E.X0 == E.X1 ? 1 : 0, NY = E.X0 == E.X1 ? 0 : 1;
+				uint32 A = NoTile, B = NoTile;
+				if (!TileOfPoint(*G, MX - NX, MY - NY, A))
+				{
+					A = NoTile;
+				}
+				if (!TileOfPoint(*G, MX + NX, MY + NY, B))
+				{
+					B = NoTile;
+				}
+				VT_CHECK_MSG((A == E.Inside && B == E.Outside) || (A == E.Outside && B == E.Inside),
+							 "region %u: the edge (%d, %d)-(%d, %d) lies between tiles %u and %u, not %u and %u", R,
+							 E.X0, E.Y0, E.X1, E.Y1, A, B, E.Inside, E.Outside);
 				++Degree[{E.X0, E.Y0}];
 				++Degree[{E.X1, E.Y1}];
 				LakeTilesKept += E.Outside != NoTile && G->Kind[E.Outside] == GroundKind::Lake ? 1u : 0u;
@@ -235,15 +257,18 @@ VAELEN_TEST(Fence, CrossingOnlyTowardsARegionTheLifeListsAsNear)
 	VT_CHECK_EQ(CrossingOf(G, Life, AX, AY).Why, CrossingWhy::Home);
 	// Facing off the map.
 	VT_CHECK_EQ(CrossingOf(G, Life, -10000000, AY).Why, CrossingWhy::OffMap);
-	// Facing the sea: find any sea tile.
-	for (uint32 T = 0; T < G.Width * G.Height; ++T)
+	// Facing the sea: find any sea tile - and say that one was found (ADR-0149
+	// rule 1: a loop that may run zero times asserts nothing).
+	bool FoundSea = false;
+	for (uint32 T = 0; T < G.Width * G.Height && !FoundSea; ++T)
 	{
 		if (G.Kind[T] == GroundKind::Sea)
 		{
 			int64 SX = 0, SY = 0;
 			PointOfTile(G, T, SX, SY);
 			VT_CHECK_EQ(CrossingOf(G, Life, SX, SY).Why, CrossingWhy::Water);
-			break;
+			FoundSea = true;
 		}
 	}
+	VT_CHECK(FoundSea);
 }

@@ -7,13 +7,11 @@
 // simulation. Tools/check_ui_fence.py reads Public and deliberately not
 // Private, which is that seam written down.
 //
-// STATUS: UNVERIFIED (engine) since 19.01's ledger - its code has changed after the last build
-// that compiled it (b0921, 15.10, 867a129): 16.14's save, load and store (c146c43) and 18.02's
-// climate byte in the host check (5292edd), and 19.03's era flag said both ways in that check.
-// Parsed against Tools/EngineShim, never compiled.
-// Tools/check_engine_status.py holds this line to Tools/engine_builds.txt; the record of what
-// earlier builds validated follows.
-// BUILD: b0921
+// STATUS: UNVERIFIED (engine) since 19.01's ledger (and 22.01: the front end's pages, keys and autosave) - its code has
+// changed after the last build that compiled it (b0921, 15.10, 867a129): 16.14's save, load and store (c146c43)
+// and 18.02's climate byte in the host check (5292edd), and 19.03's era flag said both ways in that check. Parsed
+// against Tools/EngineShim, never compiled. Tools/check_engine_status.py holds this line to Tools/engine_builds.txt;
+// the record of what earlier builds validated follows. BUILD: b0921
 //
 // UNTIL 19.01: VALIDATED (Phase 14) for what Phase 14 left here - built by
 // UnrealBuildTool and RUN on 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development
@@ -43,6 +41,8 @@
 
 #include <string>
 #include <vector>
+
+DEFINE_LOG_CATEGORY_STATIC(LogVaelenWorld, Log, All);
 
 /// Everything the subsystem owns. One world, one door, one graph cache, and
 /// the five views a host reads - retaken when something moved and never on a
@@ -157,10 +157,27 @@ bool UVaelenWorldSubsystem::Begin(int32 Size, int32 Years, bool bStreaming)
 		return false;
 	}
 	Held->Streaming = bStreaming;
+	// Section 27 step 2 (2026-09-29): the premise of the game is a bound life,
+	// and StartRules{} asks for one. The world as measured offers it at 128
+	// (region 26: 119 bound after 120 years, 45 in the window - Run.Bound),
+	// and a map that holds nobody bound falls back to whoever it offers and
+	// SAYS SO, since a silent fallback is how the premise went unmeasured for
+	// a phase. The door that took nobody up recorded nothing (Door::TakeUp
+	// writes a taking only for a person), so the second door's tape is the
+	// whole tape and its rules are the ones a save carries and a replay is
+	// told. Headless twin: Run.Soak begins its life the same way.
 	Vaelen::Player::StartRules Rules;
-	Rules.WantBound = 0; // whoever the world offers: a map may hold nobody bound
 	Held->Door = MakeUnique<Vaelen::Run::Door>(*Held->World, Rules);
-	Held->Door->TakeUp();
+	if (Held->Door->TakeUp() == 0u)
+	{
+		UE_LOG(LogVaelenWorld, Warning,
+			   TEXT("LogVaelenWorld: nobody bound to take up on AELVOR %d; whoever the world offers instead "
+					"(--want-bound 0 headless)"),
+			   Size);
+		Rules.WantBound = 0;
+		Held->Door = MakeUnique<Vaelen::Run::Door>(*Held->World, Rules);
+		Held->Door->TakeUp();
+	}
 	// Once, here: the ground of a begun world does not change, and taking it
 	// on a frame would be taking half a megabyte on a frame.
 	Vaelen::View::TakeMapView(Held->World->Instance(), Held->World->Sources(), Held->Ground);
@@ -268,7 +285,7 @@ int32 UVaelenWorldSubsystem::RegionUnderGround(double GroundX, double GroundY, d
 	return Tile != nullptr ? static_cast<int32>(Tile->Region) : 0;
 }
 
-void UVaelenWorldSubsystem::AdvanceDay(int32 Days)
+void UVaelenWorldSubsystem::AdvanceDay(int32 Days, bool bAutosave)
 {
 	if (!Held || !Held->Door)
 	{
@@ -315,6 +332,35 @@ void UVaelenWorldSubsystem::AdvanceDay(int32 Days)
 	}
 	Held->TakeAll(Keys_);
 	OnViewsTaken.Broadcast();
+	// 22.01: the autosave, every AutosaveEvery_ day turns, AFTER the views
+	// are retaken - what is saved is what is shown. Section 27's step 7.
+	if (bAutosave)
+	{
+		CountForAutosave(Days);
+	}
+}
+
+void UVaelenWorldSubsystem::CountForAutosave(int32 Days)
+{
+	if (AutosaveEvery_ <= 0 || Days <= 0 || !Begun())
+	{
+		return;
+	}
+	DaysSinceAutosave_ += Days;
+	if (DaysSinceAutosave_ < AutosaveEvery_)
+	{
+		return;
+	}
+	DaysSinceAutosave_ = 0;
+	FString Where, Check;
+	if (Save(TEXT("autosave"), Where, Check))
+	{
+		UE_LOG(LogVaelenWorld, Log, TEXT("LogVaelenWorld: autosave %s"), *Where);
+	}
+	else
+	{
+		UE_LOG(LogVaelenWorld, Warning, TEXT("LogVaelenWorld: autosave refused: %s"), *Where);
+	}
 }
 
 Vaelen::Player::Refusal UVaelenWorldSubsystem::Mean(const Vaelen::Player::PlayerCommand& What)
@@ -636,6 +682,10 @@ bool UVaelenWorldSubsystem::Load(const FString& Name, FString& Out, FString& Out
 	const bool Taped = Vaelen::Run::ReadStreamSection(View, Tape, Rules);
 	if (!Taped)
 	{
+		// A save without a tape carries a life already taken up, so these
+		// rules take nobody up and only name what a later save records;
+		// whoever-comes is the honest word for a life whose start was not
+		// recorded (16.11).
 		Rules = Vaelen::Player::StartRules{};
 		Rules.WantBound = 0;
 	}
@@ -654,6 +704,48 @@ bool UVaelenWorldSubsystem::Load(const FString& Name, FString& Out, FString& Out
 	Out = FPaths::Combine(Store.Where(), Name);
 	OutCheck = HeadlessCheck(Declared, Keys_, Out);
 	return true;
+}
+
+bool UVaelenWorldSubsystem::NewestSave(FString& OutName, uint64& OutTick)
+{
+	FVaelenCheckpointStore Store(SaveFolder());
+	bool Found = false;
+	std::string Name;
+	uint64 Tick = 0;
+	for (const Vaelen::Run::StoreEntry& Entry : Store.List())
+	{
+		// A file the store lists but this build could not read as a container
+		// (its version is then 0: a .stream written beside the saves, a save
+		// of another build) is nothing to continue from.
+		if (Entry.ContainerVersion == 0u)
+		{
+			continue;
+		}
+		if (!Found || Entry.Tick > Tick || (Entry.Tick == Tick && Entry.Name < Name))
+		{
+			Found = true;
+			Name = Entry.Name;
+			Tick = Entry.Tick;
+		}
+	}
+	if (!Found)
+	{
+		return false;
+	}
+	OutName = FString(ANSI_TO_TCHAR(Name.c_str()));
+	OutTick = Tick;
+	return true;
+}
+
+void UVaelenWorldSubsystem::SetAutosaveEvery(int32 Days)
+{
+	AutosaveEvery_ = Days < 0 ? 0 : Days;
+	DaysSinceAutosave_ = 0;
+}
+
+int32 UVaelenWorldSubsystem::AutosaveEvery() const
+{
+	return AutosaveEvery_;
 }
 
 int32 UVaelenWorldSubsystem::Saves(TArray<FString>& Out)

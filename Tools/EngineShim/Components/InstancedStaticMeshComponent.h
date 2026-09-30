@@ -3,7 +3,7 @@
 // stands for UE 5.6's Components/InstancedStaticMeshComponent.h.
 #pragma once
 
-#include "Components/SceneComponent.h"
+#include "Components/PrimitiveComponent.h"
 #include "CoreMinimal.h"
 
 class UStaticMesh;
@@ -13,7 +13,9 @@ class UMaterialInterface;
 /// draws houses and figures as plain ISMs, and UE includes the two apart.
 /// AddInstances returns the indices it placed; SetCustomDataValue takes an
 /// index, a channel, a value and a flag.
-class UInstancedStaticMeshComponent : public USceneComponent
+/// UStaticMeshComponent and UMeshComponent stand between in the engine; the
+/// shim keeps the one base that carries the verbs this project calls.
+class UInstancedStaticMeshComponent : public UPrimitiveComponent
 {
 public:
 	int32 NumCustomDataFloats = 0;

@@ -89,10 +89,10 @@ public:
 
 private:
 	/// One section per chunk, in chunk order (CY * Across + CX): the near
-	/// ones remember it so that Repaint touches them and only them. With
-	/// Recolour, the section's colours are updated in place instead.
+	/// ones remember it, and keep their bare mesh, so that Repaint touches
+	/// them and only them - and rebuilds nothing.
 	void Upload(const Vaelen::Scene::Ground& G, const Vaelen::View::ClimateView& Climate, uint32 CX, uint32 CY,
-				bool Near, bool Recolour);
+				bool Near);
 	/// The project's tile material, or the engine's vertex-colour one.
 	UMaterialInterface* PaintFor() const;
 
@@ -106,6 +106,12 @@ private:
 	uint32 Down_ = 0;
 	/// Per chunk: 1 when it is a near chunk (full lattice, collision).
 	TArray<uint8> NearChunks;
+	/// Per chunk, the near ones only: the mesh as built, BEFORE the day's
+	/// snow, so that Repaint paints a copy of it rather than building the
+	/// chunk again at the full lattice (the review of 2026-09-27: 2.5 ms a
+	/// near chunk a day, for colours). One to five of them, under a
+	/// megabyte each; the far chunks keep nothing.
+	TArray<Vaelen::Scene::TerrainMesh> NearMeshes;
 	/// The near chunks' stats, measured as uploaded: what TerrainLine says.
 	Vaelen::Scene::TerrainStats NearStats;
 	/// Whose fence the walls are.

@@ -187,6 +187,10 @@ LogVaelenPlay: AELVOR 256 seed 41454c564f52: played Dukem (person 15019, region 
 LogVaelenPlay: verbs work 34 rest 1 eat 2 wait 2 speak 5 give 2 take 26 move 27
 ```
 
+(2026-09-28: the life digest of the first line reads `3039c736974e7503`
+headless since a refused doing is worded "could not take from"; state, log
+and panel are unmoved. `Tests/Run/Sessions/s0916.session` carries the `moved`.)
+
 `Tools/Atlas --replay Tests/Run/Streams/aelvor256-2026-09-16.stream --panel
 --want-bound 0` printed those two lines back on Linux, from a world rebuilt out
 of the stream's header alone. Compared as files rather than by eye: same MD5,
@@ -417,10 +421,24 @@ side is redesigned. The standing rule holds: REPORT, do not repair.
    headless twin of the wrong world, and (in 19.11's scenery) a line MSVC
    refuses. 19.06's commit as it stood would have spent the sitting on
    those. 19.11b carries 19.06, 19.10 and 19.11 together, so S3's steps run
-   on THIS build if S2's do - no second build.
+   on THIS build if S2's do - no second build. Then the shim was audited
+   against UE 5.6 (2026-09-27, ROADMAP "The shim audited"): the engine's
+   Engine/Engine.h only forward-declares UMaterial, and VaelenLand.cpp
+   handed `GEngine->VertexColorMaterial` to `SetMaterial` without including
+   Materials/Material.h - MSVC would have refused the conversion. Then
+   the scene was reviewed (2026-09-27, ROADMAP "VaelenScene reviewed";
+   and 22.01 put a TITLE PAGE at launch - `Enter` runs the same
+   `Vaelen.Walk 128 120` this sitting types, and `Escape` now pauses, so
+   type at the console as written or press Enter, either is the sitting):
+   the walk opened in the dark (the sun is at dawn now, in the east, on
+   the first sky line: `sun azimuth 900 elevation 0`), the land refuses
+   to build for nobody (`Vaelen.Walk` says "nobody is played ...
+   Vaelen.TakeUp first" instead), the walker's 106 cm is one constant,
+   and the day's repaint no longer rebuilds the near chunks. The commit
+   of the review carries all of it; build IT:
    ```
    git fetch origin claude/vaelen-master-prompt-aw7zqj
-   git checkout $(git log origin/claude/vaelen-master-prompt-aw7zqj --grep="^19.11b: " -1 --format=%H)
+   git checkout $(git log origin/claude/vaelen-master-prompt-aw7zqj --grep="^VaelenScene reviewed" -1 --format=%H)
    git rev-parse HEAD
    ```
    The FIRST line of what you bring back is that `rev-parse`.
@@ -472,15 +490,18 @@ side is redesigned. The standing rule holds: REPORT, do not repair.
     `Vaelen.View 128 120`: the same `AELVOR digests:` line as S1's.
 
 Bring back the whole `Saved/Logs/Vaelen.log`, rev-parse first. It is
-committed as `Tests/Run/Sessions/s2-<date>.log`, `Session.P19S2` re-reads
-steps 3 and 4 against the Atlas, and the ledger gains the row `s2`.
+committed as `Tests/Run/Sessions/s2-2026-09-27.log` (rename the date to the
+day it was typed, in the file and in `s2.session`), `Session.P19S2` re-reads
+step 3 against the Atlas by `Tests/Run/Sessions/s2.session` - written on
+2026-09-27 and proven against a stand-in log dressed as the engine writes,
+so the log is adopted the day it lands - and the ledger gains the row `s2`.
 
 ## PHASE 19 - sitting S3 (task 19.11): the world drawn is the world built
 
-AFTER S2 has closed - and on S2's own build when that build is 19.11b's
-commit or later, since it carries 19.11: skip step 1 then. Otherwise the
-commit of 19.11b (found by subject, `^19.11b: `), rev-parse first, the
-standing rule as always.
+AFTER S2 has closed - and on S2's own build when that build is the scene
+review's commit or later, since it carries 19.11 and 19.11b: skip step 1
+then. Otherwise the commit of the review (found by subject, `^VaelenScene
+reviewed`), rev-parse first, the standing rule as always.
 
 1. Build as for 14.08; first error verbatim and its module.
 2. Launch with the walk mode (the `?game=` URL of S2), then `Vaelen.Walk 128
@@ -509,12 +530,71 @@ standing rule as always.
 9. CONTROL: relaunch without `?game=`, `Vaelen.View 128 120`, the same digests.
 
 Bring back the whole log, rev-parse first. `Session.P19S3` replays the stream
-(`--panel --want-bound 0 --stream --scene --climate`) and holds the Scene,
+(`--panel --want-bound 1 --stream --scene --climate`: since 2026-09-29 the
+host takes a BOUND life first and falls back to whoever the world offers
+only when it holds nobody bound, saying so with a `LogVaelenWorld: nobody
+bound to take up` line - if that line is in the log, the twin is
+`--want-bound 0`) and holds the Scene,
 Climate and Play lines byte-identical, every `day D ... region R life L
 looked K` line to R == L, with K the R of the line before (the Begin region
 on the first: the look is taken from the feet BEFORE the turn, so on the
 day of a crossing K is the region left and R the region arrived in - the
 step S3's item 6 asks for), and the instance counts to the layout line's.
+
+## PHASE 19 - sitting S4 (task 19.12, with 22.01's front end): a life from the title page
+
+(2026-09-29: Enter on the title page begins the world and takes up a BOUND
+life - Esvuhurdu, person 3580, held by 2892, on AELVOR 128/120 as measured
+headless - with the fallback of S3's note; `Run.Soak` plays the same life
+three years and pins it, `Run.Bound` pins the offer.)
+
+AFTER S3. The build of 22.01's commit or later (found by subject,
+`^22.01: `), rev-parse first, the standing rule as always. Two things are
+new at launch and cost no typing: the title page, and Escape.
+
+0. THE PACKAGE (22.03), once the editor build of step 1 is green - the
+   Development package a stranger will run, from the engine's own tool:
+   ```
+   "<UE_5.6>\Engine\Build\BatchFiles\RunUAT.bat" BuildCookRun -project="<repo>\Vaelen.uproject" -platform=Win64 -clientconfig=Development -build -cook -stage -pak -archive -archivedirectory="<somewhere>\VaelenPackage"
+   python Tools\check_cook.py "<somewhere>\VaelenPackage\Windows"
+   ```
+   Bring back UAT's last twenty lines (`BUILD SUCCESSFUL` or the first
+   error) and check_cook's lines verbatim. It refuses a package missing any
+   file the code names by string - the four basic shapes above all, which
+   no map references. If they are refused, the line
+   `+DirectoriesToAlwaysCook=(Path="/Engine/BasicShapes")` under
+   `[/Script/UnrealEd.ProjectPackagingSettings]` in Config/DefaultGame.ini
+   is the fix, and it is yours to add (a config line, section 27); then
+   cook again. `Vaelen\Binaries\Win64\Vaelen.exe` in the archive is what
+   steps 2-6 run from the title page - `-game` is implied, and the console
+   opens with the tilde as in the editor.
+1. Build as for 14.08; first error verbatim and its module. 22.01 touches
+   VaelenUI (the controller, the HUD, the walk controller), VaelenGame (the
+   subsystem) and VaelenWalk (Vaelen.Walk); seventeen beliefs are compiled
+   for the first time (ROADMAP 22.01 lists ten, 22.02 seven: the file
+   reader the listing seeks with) - the ones most likely to be wrong are
+   `UEngine::Exec`'s signature, the next-tick timer's template form and
+   `IFileManager::CreateFileReader`'s.
+2. Launch with the walk mode UNDER `-game` (as S2): under play-in-editor
+   the editor takes Escape and F8 for itself. The TITLE PAGE is up: `Enter` (the page says
+   what it runs: `Vaelen.Walk 128 120`). Bring back the loading page's
+   words as you saw them and the first LogVaelenWalk lines - they must be
+   the same lines S2 brought back.
+3. Play 19.12's thirty days (its own row): Space turns days; every tenth
+   turn the log prints `LogVaelenWorld: autosave <path>` - bring back the
+   first of those lines and `dir Saved\Vaelen`.
+4. `Escape`: the pause page. `F5`: the page says `saved: <path>`. `Escape`
+   again: the world. Report the pause page's first row verbatim.
+5. `Escape`, then `F10`: the game quits. Relaunch: the title page names
+   `autosave` or `quick` (whichever has the higher tick) - `F8`. Bring back
+   the loading page's words and the LogVaelenUI lines `front end ran ...`.
+   The walk must be where the save left it: `Vaelen.Scene` prints the
+   same layout digest as before the quit.
+6. Then 19.12 as written: `Vaelen.Stream.Write` and its LogVaelenWalk
+   summary, the screenshot, `stat unit`.
+
+**Report rather than repair**, as always: a key that does nothing, a page
+that does not go away, a line that differs.
 
 ## What the kernel half already hands you
 

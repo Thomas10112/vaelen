@@ -1,7 +1,7 @@
 // VAELEN - VaelenUI
 // Phase 19 task 19.06: the keyboard of the walk. See VaelenWalkController.h.
 //
-// STATUS: UNVERIFIED (engine) - written and PARSED against Tools/EngineShim on
+// STATUS: UNVERIFIED (engine) - written (and 22.01: the front end) and PARSED against Tools/EngineShim on
 // 2026-09-25 (reviewed and corrected 2026-09-26, 19.11b), not yet built by
 // UnrealBuildTool nor run: sitting S2 builds it.
 #include "VaelenWalkController.h"
@@ -20,6 +20,21 @@
 #include "Vaelen/Scene/Fence.h"
 #include "Vaelen/Scene/Layout.h"
 #include "VaelenWorldSubsystem.h"
+
+#include <cmath>
+
+namespace
+{
+	/// A centimetre coordinate from the engine's double, FLOORED, as
+	/// TileOfPoint floors (the review of 2026-09-27): a static_cast truncates
+	/// toward zero, which is a floor only at X >= 0, so a point a hair west
+	/// or north of the map read as tile 0's. Every walkable tile is at
+	/// X, Y >= 0 today; the difference is in the contract, not on the ground.
+	Vaelen::int64 Cm(double V)
+	{
+		return static_cast<Vaelen::int64>(std::floor(V));
+	}
+} // namespace
 
 DEFINE_LOG_CATEGORY_STATIC(LogVaelenWalkKeys, Log, All);
 
@@ -90,7 +105,7 @@ void AVaelenWalkController::OnMove(const FInputActionValue& Value)
 	const FVector2D Axis = Value.Get<FVector2D>();
 	APawn* Body = GetPawn();
 	UVaelenWorldSubsystem* World = HeldWorld(GetWorld());
-	if (Body == nullptr)
+	if (Body == nullptr || Paused())
 	{
 		return;
 	}
@@ -108,8 +123,7 @@ void AVaelenWalkController::OnMove(const FInputActionValue& Value)
 		const FVector At = Body->GetActorLocation();
 		const FVector Next = At + Ahead * static_cast<double>(StepCm);
 		const Vaelen::Scene::Ground& G = World->Scene();
-		if (!Vaelen::Scene::Inside(G, World->Life().Region, static_cast<Vaelen::int64>(Next.X),
-								   static_cast<Vaelen::int64>(Next.Y)))
+		if (!Vaelen::Scene::Inside(G, World->Life().Region, Cm(Next.X), Cm(Next.Y)))
 		{
 			++Walked.Fence;
 			UE_LOG(LogVaelenWalkKeys, Verbose, TEXT("LogVaelenWalk: fence at (%.0f, %.0f)"), Next.X, Next.Y);
@@ -125,7 +139,8 @@ void AVaelenWalkController::OnMove(const FInputActionValue& Value)
 void AVaelenWalkController::OnLook(const FInputActionValue& Value)
 {
 	const FVector2D Axis = Value.Get<FVector2D>();
-	if (APawn* Body = GetPawn())
+	APawn* Body = GetPawn();
+	if (Body != nullptr && !Paused())
 	{
 		Body->AddControllerYawInput(static_cast<float>(Axis.X));
 		Body->AddControllerPitchInput(static_cast<float>(-Axis.Y));
@@ -145,8 +160,7 @@ int32 AVaelenWalkController::RegionTheCameraIsOver(int32& OutReach)
 	// world point is a map point (VaelenLand.h). RegionAt is the scene's own
 	// answer - the same one the fence uses - and 0 where there is no land.
 	const FVector At = Body->GetActorLocation();
-	return static_cast<int32>(
-		Vaelen::Scene::RegionAt(World->Scene(), static_cast<Vaelen::int64>(At.X), static_cast<Vaelen::int64>(At.Y)));
+	return static_cast<int32>(Vaelen::Scene::RegionAt(World->Scene(), Cm(At.X), Cm(At.Y)));
 }
 
 bool AVaelenWalkController::Feet(Vaelen::int64& X, Vaelen::int64& Y, Vaelen::int64& DirX, Vaelen::int64& DirY) const
@@ -159,8 +173,8 @@ bool AVaelenWalkController::Feet(Vaelen::int64& X, Vaelen::int64& Y, Vaelen::int
 	const FVector At = Body->GetActorLocation();
 	const FRotator Yaw(0.0, GetControlRotation().Yaw, 0.0);
 	const FVector Ahead = Yaw.Vector();
-	X = static_cast<Vaelen::int64>(At.X);
-	Y = static_cast<Vaelen::int64>(At.Y);
+	X = Cm(At.X);
+	Y = Cm(At.Y);
 	// The direction as integers: a thousandth of a unit is enough for AimAt's
 	// 30 degrees and CrossingOf's one step ahead.
 	DirX = static_cast<Vaelen::int64>(Ahead.X * 1000.0);
@@ -220,8 +234,8 @@ void AVaelenWalkController::AfterTheDay(int32 Looked)
 	// AfterViewsTaken as the turn's views were retaken (19.11b); here only
 	// the line, from where the body stands now.
 	const FVector At = Body->GetActorLocation();
-	const Vaelen::int64 X = static_cast<Vaelen::int64>(At.X);
-	const Vaelen::int64 Y = static_cast<Vaelen::int64>(At.Y);
+	const Vaelen::int64 X = Cm(At.X);
+	const Vaelen::int64 Y = Cm(At.Y);
 	uint32 Tile = 0;
 	Vaelen::Scene::TileOfPoint(G, X, Y, Tile);
 	UE_LOG(LogVaelenWalkKeys, Log, TEXT("LogVaelenWalk: day %u tile %u region %u life %u looked %d"),
@@ -244,8 +258,8 @@ void AVaelenWalkController::AfterViewsTaken()
 	const Vaelen::View::LifeView& Life = World->Life();
 	const Vaelen::Scene::Ground& G = World->Scene();
 	const FVector At = Body->GetActorLocation();
-	Vaelen::int64 X = static_cast<Vaelen::int64>(At.X);
-	Vaelen::int64 Y = static_cast<Vaelen::int64>(At.Y);
+	Vaelen::int64 X = Cm(At.X);
+	Vaelen::int64 Y = Cm(At.Y);
 	// Counted from where the body STOOD against where the life IS, on every
 	// path alike, and not on the first placing (the body arrives from the
 	// origin, which is nobody's region): a crossing is a turn that moved the
@@ -264,7 +278,8 @@ void AVaelenWalkController::AfterViewsTaken()
 	if (Vaelen::Scene::PlaceAfterDay(G, Life.Region, X, Y))
 	{
 		Walked.PutBack += bPlaced ? 1u : 0u;
-		const double Z = static_cast<double>(Vaelen::Scene::HeightAt(G, X, Y)) + 106.0;
+		const double Z = static_cast<double>(Vaelen::Scene::HeightAt(G, X, Y)) +
+						 static_cast<double>(VaelenWalkBody::CapsuleHalfHeightCm) + VaelenWalkBody::ClearanceCm;
 		Body->SetActorLocation(FVector(static_cast<double>(X), static_cast<double>(Y), Z));
 	}
 	bPlaced = true;

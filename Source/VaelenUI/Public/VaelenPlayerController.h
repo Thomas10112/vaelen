@@ -8,8 +8,8 @@
 // one host input that is not a gameplay command (ADR-0138); F9 writes the
 // stream.
 //
-// STATUS: UNVERIFIED (engine) since 19.06 - its code has changed after the last build that
-// compiled it (b0921, 15.10, 867a129): RegionTheCameraIsOver is virtual and protected, so the
+// STATUS: UNVERIFIED (engine) since 19.06 (and 22.01: the front end's pages, keys and autosave) - its code has changed
+// after the last build that compiled it (b0921, 15.10, 867a129): RegionTheCameraIsOver is virtual and protected, so the
 // walk's controller can answer with the region under the walker's feet. Parsed, never
 // compiled; sitting S2 builds it.
 // BUILD: b0921 - Tools/engine_builds.txt
@@ -57,6 +57,32 @@ private:
 	void WriteStream();
 
 public:
+	/// 22.01: THE FRONT END, as pages of text the HUD draws (section 27's
+	/// step 7: title, loading, pause; F5 saves; the title's Continue takes
+	/// the newest save up). Which page: Title until a world is begun, Loading
+	/// while the console line the page chose runs - drawn on this frame, run
+	/// on the next, since Begin blocks for seconds - Playing, and Paused,
+	/// where no verb, no day turn and no step reaches the world. The world is
+	/// the subsystem's; this only says which page is up and what the page
+	/// last did (Notice), and nothing here moves on a frame.
+	enum class EFront : uint8
+	{
+		Title,
+		Loading,
+		Playing,
+		Paused
+	};
+	EFront Front() const;
+	/// The page's rows, composed HERE when the page changes and never per
+	/// frame (the review of 22.01: the HUD composes nothing, and a title page
+	/// that read every save on every frame read a hundred megabytes a frame).
+	/// Empty while Playing: the world's page is the HUD's then.
+	const TArray<FString>& FrontRows() const { return FrontRows_; }
+	bool Paused() const { return bPaused_; }
+	/// UNDER THE EDITOR'S PLAY-IN-EDITOR, Escape stops the session and F8
+	/// ejects the player before the game sees either: the pause and the
+	/// Continue exist under `-game` and in a package, which is where the
+	/// sittings run (ENGINE_HANDOFF). Enter, F5, F9 and F10 are free everywhere.
 	/// What the camera is over, as a region, and how far it is worth detailing
 	/// around it. Read on every day turn and handed to the subsystem, which
 	/// hands it through the door - so where somebody is looking is an INPUT
@@ -146,6 +172,20 @@ protected:
 	/// 19.11b: after every retaking of the views (Begin, a day turned by any
 	/// path, a load, another life taken up) - the walk puts its body back here.
 	virtual void AfterViewsTaken() {}
+	/// 22.01: the console lines the front end runs, in order, for a new world
+	/// and for a continued one - the base's Vaelen.Play and Vaelen.Load; the
+	/// walk adds Vaelen.Walk, which builds the ground around whichever world
+	/// is begun. Through the console, so the UI names no module that holds a
+	/// world, and a sitting's typed lines and the page's keys are the same lines.
+	virtual void NewWorldLines(TArray<FString>& Out) const { Out.Add(TEXT("Vaelen.Play 128 120 1")); }
+	virtual void ContinueLines(const FString& Save, TArray<FString>& Out) const
+	{
+		Out.Add(FString::Printf(TEXT("Vaelen.Load %s"), *Save));
+	}
+	/// 22.01: whether the lines did what the page promised - a world begun
+	/// for the base; the walk asks more (a body, placed), since Vaelen.Walk
+	/// can leave a world begun and unwalked and there is no way back.
+	virtual bool LinesLanded() const;
 
 private:
 	/// Through the page and then through the door, and nowhere else. The page
@@ -157,4 +197,19 @@ private:
 	/// company for the three that need a person, and into its neighbours for
 	/// the one that needs a place. Tab moves it; nothing else does.
 	uint32 Aim = 0;
+
+	/// 22.01: the front end's keys and its one deferral.
+	void NewWorld();	 ///< Enter on the title page
+	void Continue();	 ///< F8 on the title page: the newest save
+	void TogglePause();	 ///< Escape: pause and resume; quit from the title
+	void QuickSave();	 ///< F5: Vaelen.Save quick, on the pause page and in play
+	void Quit();		 ///< F10 on the pause page, Escape on the title page
+	void RunPending();	 ///< the next frame after Enter or F8: the console lines
+	void RefreshFront(); ///< the rows of the page that is up, composed once
+	bool bPaused_ = false;
+	bool bLoading_ = false;
+	TArray<FString> Pending_;
+	FString Loading_;
+	FString Notice_;
+	TArray<FString> FrontRows_;
 };

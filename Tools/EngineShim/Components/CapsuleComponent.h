@@ -3,10 +3,11 @@
 // stands for UE 5.6's Components/CapsuleComponent.h.
 #pragma once
 
-#include "Components/SceneComponent.h"
+#include "Components/PrimitiveComponent.h"
 #include "CoreMinimal.h"
 
-class UCapsuleComponent : public USceneComponent
+/// UShapeComponent stands between in the engine.
+class UCapsuleComponent : public UPrimitiveComponent
 {
 public:
 	void InitCapsuleSize(float InRadius, float InHalfHeight);

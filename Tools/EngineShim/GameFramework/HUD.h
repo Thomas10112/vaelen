@@ -20,6 +20,9 @@ public:
 
 	UCanvas* Canvas = nullptr;
 	APlayerController* PlayerOwner = nullptr;
+	/// 22.01 BELIEF: the controller this HUD draws for - the front end's page
+	/// state lives there.
+	APlayerController* GetOwningPlayerController() const;
 
 	virtual void DrawHUD();
 };

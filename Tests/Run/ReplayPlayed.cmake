@@ -29,17 +29,47 @@
 if(NOT DEFINED ERA)
   set(ERA --no-climate)
 endif()
+# Section 27 step 2: StartRules::WantBound is the host's, told to the replay
+# and never read from the stream (Door.h). Every month before this one was
+# recorded under 0 - whoever the world offers - and the drivers passed it as a
+# literal. A month of a BOUND life is replayed with -DWANTBOUND=1; replay it
+# without and the same stream plays another person (Replay.Bound.AsFree pins
+# who), which is the proof that the rule is the host's and not the tape's.
+if(NOT DEFINED WANTBOUND)
+  set(WANTBOUND 0)
+endif()
 # 19.09: an entry that pins a scene line asks the replay for the scene.
 if(DEFINED TERRAIN OR DEFINED LAYOUT OR DEFINED SKY)
   set(SCENE --scene)
 endif()
 execute_process(
-  COMMAND ${ATLAS} --replay ${STREAM} --panel --want-bound 0 ${ERA} ${MORE} ${SCENE} --out ${OUT}
+  COMMAND ${ATLAS} --replay ${STREAM} --panel --want-bound ${WANTBOUND} ${ERA} ${MORE} ${SCENE} --out ${OUT}
   RESULT_VARIABLE Ran
   OUTPUT_VARIABLE Said
   ERROR_VARIABLE Wrote)
 
-if(NOT Ran EQUAL 0)
+# Section 27 step 2: an entry may hold a replay to a REFUSAL instead. A tape
+# replayed under another host rule than it was recorded with is refused by
+# RunReplay (exit 1: the recorded taking names one person, the host offered
+# another - "1 wrong, ... 1 taking(s)" in its summary), and the lines it
+# printed on the way say whose month it would have been. -DWRONG=<text> asks
+# for exactly that: a non-zero exit AND the text in what was printed, so that
+# a replay reading the rule from the tape (and therefore running clean)
+# fails this entry, as does one refusing for another reason.
+if(DEFINED WRONG)
+  if(Ran EQUAL 0)
+    message(FATAL_ERROR "the replay ran clean where it had to refuse (WRONG=${WRONG}):\n${Said}\n${Wrote}")
+  endif()
+  string(LENGTH "${WRONG}" Long)
+  if(Long LESS 20)
+    message(FATAL_ERROR "WRONG reached this script as ${Long} characters, fewer than the 20 a summary "
+                        "with its counts has - most likely an unquoted argument. Value: [${WRONG}]")
+  endif()
+  string(FIND "${Said}\n${Wrote}" "${WRONG}" At)
+  if(At EQUAL -1)
+    message(FATAL_ERROR "the replay refused (exit ${Ran}) but not for the reason expected:\n  ${WRONG}\nit printed:\n${Said}\n${Wrote}")
+  endif()
+elseif(NOT Ran EQUAL 0)
   message(FATAL_ERROR "the replay did not run clean (exit ${Ran}):\n${Said}\n${Wrote}")
 endif()
 
@@ -74,6 +104,18 @@ if(DEFINED CLIMATE)
 endif()
 # 19.09: the scene the replay came to - the ground, what stands on it and the
 # day's sky over the played life - in the three lines the engine prints.
+# Section 27 step 2: the page's own row about the bond ("bound to <holder>
+# since year N", Panel.cpp), so that a replay held to a bound life is held to
+# the LIFE being bound and not only to its digests. Optional, for the months
+# of free lives. The row is at least "bound to X since year 1" long.
+if(DEFINED BOND)
+  string(LENGTH "${BOND}" Long)
+  if(Long LESS 24)
+    message(FATAL_ERROR "BOND reached this script as ${Long} characters, fewer than the 24 a whole "
+                        "bond row has - most likely an unquoted argument. Value: [${BOND}]")
+  endif()
+  list(APPEND Expected "${BOND}")
+endif()
 foreach(Pair IN ITEMS "TERRAIN;120" "LAYOUT;120" "SKY;120")
   list(GET Pair 0 Name)
   list(GET Pair 1 Least)

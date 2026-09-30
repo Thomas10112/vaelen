@@ -6,17 +6,22 @@
 // Press() through that same module. What is drawn is exactly what Lines()
 // wrote - one Canvas->DrawText per row, in order, no formatting of our own.
 //
-// STATUS: VALIDATED (Phase 14) - built by UnrealBuildTool and RUN on
+// STATUS: UNVERIFIED (engine) since 22.01 - its code has changed after the last build that
+// compiled it (b0921, 15.10, 867a129): the front end's pages (title, loading, pause) drawn before
+// the world's page. Parsed against Tools/EngineShim, never compiled; sitting S4 builds it.
+// BUILD: b0921 - Tools/engine_builds.txt
+//
+// UNTIL 22.01: VALIDATED (Phase 14) - built by UnrealBuildTool and RUN on
 // 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development Editor): eighty-three days
 // played at the keyboard, and Tools/Atlas replayed the stream headlessly to the
 // same four digests, byte for byte. Tests/Run/Streams/README.md has the lines.
-// BUILD: b0921 - Tools/engine_builds.txt; its code is what that build compiled (19.01).
 #include "VaelenHUD.h"
 
 #include "Engine/Canvas.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
+#include "VaelenPlayerController.h"
 #include "VaelenWorldSubsystem.h"
 
 void AVaelenHUD::DrawHUD()
@@ -30,6 +35,17 @@ void AVaelenHUD::DrawHUD()
 	if (Held == nullptr)
 	{
 		return;
+	}
+	// 22.01: the front end's pages come before the world's page. Host text,
+	// not the world's: nothing here is digested, and the panel below is drawn
+	// only when the front end says the world is up and not paused.
+	if (const AVaelenPlayerController* Front = Cast<AVaelenPlayerController>(GetOwningPlayerController()))
+	{
+		if (Front->Front() != AVaelenPlayerController::EFront::Playing)
+		{
+			DrawFront(*Front);
+			return;
+		}
 	}
 	const Vaelen::View::PanelView& Page = Held->Panel();
 	const Vaelen::uint32 Written = Vaelen::View::Lines(Page, Rows, Vaelen::View::PanelTextBytes);
@@ -54,5 +70,18 @@ void AVaelenHUD::DrawHUD()
 		Canvas->DrawText(GEngine->GetSmallFont(), FString(ANSI_TO_TCHAR(Rows + Start)), 16.0f, Y);
 		Y += Line;
 		Start = i + 1;
+	}
+}
+
+void AVaelenHUD::DrawFront(const AVaelenPlayerController& Front)
+{
+	// The front end's rows, composed by the controller when its page changed
+	// and drawn here as the panel's are: one DrawText a row, nothing of ours.
+	const float Line = 14.0f;
+	float Y = 16.0f;
+	for (const FString& Row : Front.FrontRows())
+	{
+		Canvas->DrawText(GEngine->GetSmallFont(), Row, 16.0f, Y);
+		Y += Line;
 	}
 }

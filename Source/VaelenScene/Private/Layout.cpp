@@ -54,31 +54,109 @@ namespace Vaelen::Scene
 			Y += static_cast<int64>((H >> 42) % static_cast<uint64>(Span)) - Span / 2;
 		}
 
+		/// At most 20 degrees across the house's 8 m along either axis AND
+		/// along either diagonal (the review of 2026-09-27: along the axes
+		/// alone, a house stood on a 27 degree diagonal while the roadmap
+		/// promised 20). A diagonal is 8 * sqrt 2 m long, so its bound is
+		/// HouseSlopeCm * sqrt 2, held exactly as squares.
 		bool Level(const Ground& G, int64 X, int64 Y)
 		{
 			const int64 DX = int64{HeightAt(G, X + HouseHalfCm, Y)} - HeightAt(G, X - HouseHalfCm, Y);
 			const int64 DY = int64{HeightAt(G, X, Y + HouseHalfCm)} - HeightAt(G, X, Y - HouseHalfCm);
-			return (DX < 0 ? -DX : DX) <= HouseSlopeCm && (DY < 0 ? -DY : DY) <= HouseSlopeCm;
+			const int64 D1 =
+				int64{HeightAt(G, X + HouseHalfCm, Y + HouseHalfCm)} - HeightAt(G, X - HouseHalfCm, Y - HouseHalfCm);
+			const int64 D2 =
+				int64{HeightAt(G, X + HouseHalfCm, Y - HouseHalfCm)} - HeightAt(G, X - HouseHalfCm, Y + HouseHalfCm);
+			constexpr int64 Diagonal2 = 2 * int64{HouseSlopeCm} * HouseSlopeCm;
+			return (DX < 0 ? -DX : DX) <= HouseSlopeCm && (DY < 0 ? -DY : DY) <= HouseSlopeCm && D1 * D1 <= Diagonal2 &&
+				   D2 * D2 <= Diagonal2;
 		}
 
-		bool Overlaps(const std::vector<Placed>& Houses, usize From, int64 X, int64 Y)
+		/// One region's houses so far, by the land tile each stands in (the
+		/// review of 2026-09-27): Overlaps used to ask every house of the
+		/// region about every plot, H^2/2 comparisons a region, and the count
+		/// of houses follows the population, which grows with the years - on
+		/// every day turn. A house's centre is HouseHalfCm inside its tile, so
+		/// two houses in different tiles are at least 2 * HouseHalfCm apart on
+		/// the axis that parts their tiles and never overlap: only the plot's
+		/// own tile is asked, by the slot PlaceHouse drew it from - no search.
+		/// (A tile narrower than a house cannot keep that margin; then the
+		/// tiles within Reach are asked too, found in the region's ascending
+		/// land by binary search.) The same predicate: every house that could
+		/// overlap is among those asked, and the ones not asked could not.
+		struct Plots
 		{
-			for (usize i = From; i < Houses.size(); ++i)
+			const std::vector<uint32>* Land = nullptr; ///< the region's land, ascending: the buckets' keys
+			std::vector<std::vector<uint32>> ByTile;   ///< per Land slot, indices into Houses
+			int64 Reach = 0;
+
+			void Begin(const Ground& G, const std::vector<uint32>& RegionLand)
 			{
-				const int64 DX = X - Houses[i].X;
-				const int64 DY = Y - Houses[i].Y;
-				if ((DX < 0 ? -DX : DX) < 2 * HouseHalfCm && (DY < 0 ? -DY : DY) < 2 * HouseHalfCm)
-				{
-					return true;
-				}
+				Land = &RegionLand;
+				ByTile.assign(RegionLand.size(), std::vector<uint32>());
+				Reach = G.Scale.CmPerTile > 2 * int64{HouseHalfCm}
+							? 0
+							: (2 * int64{HouseHalfCm} + G.Scale.CmPerTile - 1) / G.Scale.CmPerTile;
 			}
-			return false;
-		}
+
+			static bool Near(const Placed& H, int64 X, int64 Y)
+			{
+				const int64 HX = X - H.X;
+				const int64 HY = Y - H.Y;
+				return (HX < 0 ? -HX : HX) < 2 * HouseHalfCm && (HY < 0 ? -HY : HY) < 2 * HouseHalfCm;
+			}
+
+			bool Overlaps(const Ground& G, const std::vector<Placed>& Houses, usize Slot, int64 X, int64 Y) const
+			{
+				for (const uint32 i : ByTile[Slot])
+				{
+					if (Near(Houses[i], X, Y))
+					{
+						return true;
+					}
+				}
+				if (Reach == 0)
+				{
+					return false;
+				}
+				const uint32 Tile = (*Land)[Slot];
+				const int64 TX = Tile % G.Width;
+				const int64 TY = Tile / G.Width;
+				for (int64 DY = -Reach; DY <= Reach; ++DY)
+				{
+					for (int64 DX = -Reach; DX <= Reach; ++DX)
+					{
+						const int64 NX = TX + DX;
+						const int64 NY = TY + DY;
+						if ((DX == 0 && DY == 0) || NX < 0 || NY < 0 || NX >= G.Width || NY >= G.Height)
+						{
+							continue;
+						}
+						const uint32 Other = static_cast<uint32>(NY * G.Width + NX);
+						const auto At = std::lower_bound(Land->begin(), Land->end(), Other);
+						if (At == Land->end() || *At != Other)
+						{
+							continue;
+						}
+						for (const uint32 i : ByTile[static_cast<usize>(At - Land->begin())])
+						{
+							if (Near(Houses[i], X, Y))
+							{
+								return true;
+							}
+						}
+					}
+				}
+				return false;
+			}
+
+			void Add(usize Slot, uint32 HouseIndex) { ByTile[Slot].push_back(HouseIndex); }
+		};
 
 		/// One house for Key in Region, or false after HouseTries plots. Only the
-		/// houses from index From on (this region's, placed before it) are in its way.
+		/// houses in Taken (this region's, placed before it) are in its way.
 		bool PlaceHouse(const Ground& G, const std::vector<uint32>& Land, uint32 Region, uint32 Key, Hash64 Salt,
-						uint32 Flags, usize From, std::vector<Placed>& Houses)
+						uint32 Flags, Plots& Taken, std::vector<Placed>& Houses)
 		{
 			if (Land.empty())
 			{
@@ -87,10 +165,11 @@ namespace Vaelen::Scene
 			for (uint32 Try = 0; Try < HouseTries; ++Try)
 			{
 				const Hash64 H = Mix64(HashCombine(HashCombine(Salt, HashUInt64(Key)), HashUInt64(Try)));
-				const uint32 Tile = Land[static_cast<usize>(H % Land.size())];
+				const usize Slot = static_cast<usize>(H % Land.size());
+				const uint32 Tile = Land[Slot];
 				int64 X = 0, Y = 0;
 				PointIn(G, Tile, H, HouseHalfCm, X, Y);
-				if (!Level(G, X, Y) || Overlaps(Houses, From, X, Y))
+				if (!Level(G, X, Y) || Taken.Overlaps(G, Houses, Slot, X, Y))
 				{
 					continue;
 				}
@@ -101,25 +180,25 @@ namespace Vaelen::Scene
 				P.Region = Region;
 				P.Key = Key;
 				P.Flags = Flags;
+				Taken.Add(Slot, static_cast<uint32>(Houses.size()));
 				Houses.push_back(P);
 				return true;
 			}
 			return false;
 		}
 
-		/// The land tile of a region nearest its centroid tile's centre.
-		bool Middle(const Ground& G, const View::RegionView& R, uint32& Tile)
+		/// The land tile of a region nearest its centroid tile's centre, over
+		/// the region's own land - ascending, so the first least distance wins
+		/// as it did when this scanned the whole map (once per settlement, per
+		/// colony and per route end; the review of 2026-09-27).
+		bool Middle(const Ground& G, const std::vector<uint32>& Land, const View::RegionView& R, uint32& Tile)
 		{
 			int64 X = 0, Y = 0;
 			PointOfTile(G, R.CentroidTile, X, Y);
 			bool Found = false;
 			uint64 Best = 0;
-			for (uint32 T = 0; T < G.Width * G.Height; ++T)
+			for (const uint32 T : Land)
 			{
-				if (G.Region[T] != R.Index || G.Kind[T] != GroundKind::Land)
-				{
-					continue;
-				}
 				int64 CX = 0, CY = 0;
 				PointOfTile(G, T, CX, CY);
 				const uint64 D = static_cast<uint64>((CX - X) * (CX - X) + (CY - Y) * (CY - Y));
@@ -146,9 +225,21 @@ namespace Vaelen::Scene
 			return P;
 		}
 
+		/// The A*'s two per-tile arrays, kept from road to road and reset on
+		/// the tiles a search touched rather than on all N (the review of
+		/// 2026-09-27: two N-word fills per road were the second cost of the
+		/// layout at 512). Every search still starts from Unreached everywhere.
+		struct PathScratch
+		{
+			std::vector<uint32> Cost;
+			std::vector<uint32> Came;
+			std::vector<uint32> Touched;
+		};
+		constexpr uint32 Unreached = 0xFFFFFFFFu;
+
 		/// Integer A* over land and river tiles, four-connected, cost one a step,
 		/// ties on the lower tile index. Empty when no land path joins them.
-		std::vector<uint32> Path(const Ground& G, uint32 From, uint32 To)
+		std::vector<uint32> Path(const Ground& G, uint32 From, uint32 To, PathScratch& Scratch)
 		{
 			const uint32 N = G.Width * G.Height;
 			const auto Passable = [&](uint32 T)
@@ -159,11 +250,26 @@ namespace Vaelen::Scene
 				const int64 DY = static_cast<int64>(T / G.Width) - static_cast<int64>(To / G.Width);
 				return static_cast<uint32>((DX < 0 ? -DX : DX) + (DY < 0 ? -DY : DY));
 			};
-			std::vector<uint32> Cost(N, 0xFFFFFFFFu);
-			std::vector<uint32> Came(N, 0xFFFFFFFFu);
+			if (Scratch.Cost.size() != N)
+			{
+				Scratch.Cost.assign(N, Unreached);
+				Scratch.Came.assign(N, Unreached);
+				Scratch.Touched.clear();
+			}
+			std::vector<uint32>& Cost = Scratch.Cost;
+			std::vector<uint32>& Came = Scratch.Came;
+			const auto Reach = [&](uint32 T, uint32 At, uint32 Via)
+			{
+				if (Cost[T] == Unreached)
+				{
+					Scratch.Touched.push_back(T);
+				}
+				Cost[T] = At;
+				Came[T] = Via;
+			};
 			using Entry = std::pair<uint64, uint32>; // (f << 32 | tile) for ordering, tile
 			std::priority_queue<Entry, std::vector<Entry>, std::greater<Entry>> Open;
-			Cost[From] = 0;
+			Reach(From, 0u, Unreached);
 			Open.push({(uint64{Guess(From)} << 32) | From, From});
 			while (!Open.empty())
 			{
@@ -188,22 +294,26 @@ namespace Vaelen::Scene
 					{
 						continue;
 					}
-					Cost[Next] = Cost[T] + 1u;
-					Came[Next] = T;
+					Reach(Next, Cost[T] + 1u, T);
 					Open.push({(uint64{Cost[Next] + Guess(Next)} << 32) | Next, Next});
 				}
 			}
 			std::vector<uint32> Out;
-			if (Cost[To] == 0xFFFFFFFFu)
+			if (Cost[To] != Unreached)
 			{
-				return Out;
+				for (uint32 T = To; T != From; T = Came[T])
+				{
+					Out.push_back(T);
+				}
+				Out.push_back(From);
+				std::reverse(Out.begin(), Out.end());
 			}
-			for (uint32 T = To; T != From; T = Came[T])
+			for (const uint32 T : Scratch.Touched)
 			{
-				Out.push_back(T);
+				Cost[T] = Unreached;
+				Came[T] = Unreached;
 			}
-			Out.push_back(From);
-			std::reverse(Out.begin(), Out.end());
+			Scratch.Touched.clear();
 			return Out;
 		}
 	} // namespace
@@ -245,20 +355,43 @@ namespace Vaelen::Scene
 			List.erase(std::unique(List.begin(), List.end()), List.end());
 		}
 
+		// Each region's middle once (the first region of an index, as RegionIn
+		// answers): the squares, the pits and both ends of every route ask for it.
+		std::map<uint32, uint32> Middles;
 		for (const View::RegionView& R : World_.Regions)
 		{
 			uint32 Tile = 0;
-			if (R.Settlement != 0u && Middle(G, R, Tile))
+			if (Middle(G, LandIn(R.Index), R, Tile))
+			{
+				Middles.emplace(R.Index, Tile);
+			}
+		}
+		const auto MiddleOf = [&](uint32 Region, uint32& Tile)
+		{
+			const auto Found = Middles.find(Region);
+			if (Found == Middles.end())
+			{
+				return false;
+			}
+			Tile = Found->second;
+			return true;
+		};
+
+		Plots Taken;
+		for (const View::RegionView& R : World_.Regions)
+		{
+			uint32 Tile = 0;
+			if (R.Settlement != 0u && MiddleOf(R.Index, Tile))
 			{
 				Out.Squares.push_back(At(G, Tile, R.Index, R.Settlement));
 			}
-			if (View::ColonyIn(Net, R.Index) != nullptr && Middle(G, R, Tile))
+			if (View::ColonyIn(Net, R.Index) != nullptr && MiddleOf(R.Index, Tile))
 			{
 				Out.Pits.push_back(At(G, Tile, R.Index, R.Index));
 			}
 			// Houses: a family's own, in ascending family order, each yielding only
 			// to the ones before it; a coarse region's, ceil(people / 5) of them.
-			const usize First = Out.Houses.size();
+			Taken.Begin(G, LandIn(R.Index));
 			if (R.Detailed != 0u)
 			{
 				const auto Found = Families.find(R.Index);
@@ -267,7 +400,7 @@ namespace Vaelen::Scene
 					for (const uint32 Family : Found->second)
 					{
 						Out.Unplaced +=
-							PlaceHouse(G, LandIn(R.Index), R.Index, Family, HouseSalt, 0u, First, Out.Houses) ? 0u : 1u;
+							PlaceHouse(G, LandIn(R.Index), R.Index, Family, HouseSalt, 0u, Taken, Out.Houses) ? 0u : 1u;
 					}
 				}
 			}
@@ -277,7 +410,7 @@ namespace Vaelen::Scene
 				for (uint32 k = 0; k < Count; ++k)
 				{
 					Out.Unplaced += PlaceHouse(G, LandIn(R.Index), R.Index, k, HashCombine(CoarseSalt, R.Index), 1u,
-											   First, Out.Houses)
+											   Taken, Out.Houses)
 										? 0u
 										: 1u;
 				}
@@ -315,6 +448,7 @@ namespace Vaelen::Scene
 			}
 		}
 
+		PathScratch Scratch;
 		for (const View::RouteView& Route : Net.Routes)
 		{
 			if (Route.Open == 0u)
@@ -324,14 +458,14 @@ namespace Vaelen::Scene
 			const View::RegionView* A = View::RegionIn(World_, Route.From);
 			const View::RegionView* B = View::RegionIn(World_, Route.To);
 			uint32 TA = 0, TB = 0;
-			if (A == nullptr || B == nullptr || !Middle(G, *A, TA) || !Middle(G, *B, TB))
+			if (A == nullptr || B == nullptr || !MiddleOf(A->Index, TA) || !MiddleOf(B->Index, TB))
 			{
 				++Out.Unrouted;
 				continue;
 			}
 			RoadPath Road;
 			Road.Route = Route.Index;
-			Road.Tiles = Path(G, TA, TB);
+			Road.Tiles = Path(G, TA, TB, Scratch);
 			if (Road.Tiles.empty())
 			{
 				++Out.Unrouted;

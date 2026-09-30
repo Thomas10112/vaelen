@@ -36,7 +36,7 @@ namespace Vaelen::Scene
 
 	/// 0..255: how white a tile is today. Zero unless the tile's Frost flag is set.
 	VAELEN_SCENE_API uint8 SnowOf(const View::TileClimate& T);
-	/// 0..255: how much greener a tile is today. Zero unless its Growing flag is set.
+	/// 0..255: how much greener a tile is today. Zero unless its Growing flag is set and its Frost flag clear.
 	VAELEN_SCENE_API uint8 GrassOf(const View::TileClimate& T);
 
 	/// Repaints a built mesh with the day's snow and grass, in place, from the
@@ -51,10 +51,19 @@ namespace Vaelen::Scene
 		int32 Elevation = 0; ///< above the horizon; <= 0 before dawn and after dusk
 	};
 	/// The sun over row Row of a map Height rows high, on the life's day of the
-	/// year, Spent of Awake waking hours into it. Awake 0 is night: elevation 0.
-	/// Held to its domain: a row past the map is its last row, a day past the
-	/// year its day of the year, Spent past Awake is Awake.
+	/// year, Spent of Awake waking hours into it. Awake 0 is night: the sun ten
+	/// degrees UNDER the horizon (elevation -100; it was 0 until the review of
+	/// 2026-09-27, which no light could tell from dawn). Held to its domain: a
+	/// row past the map is its last row, a day past the year its day of the
+	/// year, Spent past Awake is Awake.
 	VAELEN_SCENE_API Sun SunOf(uint32 Row, uint32 Height, uint32 DayOfYear, uint32 Spent, uint32 Awake);
+	/// The sun at a LIFE's hour. A life alive whose day has not yet given it
+	/// its hours - Awake 0, from the taking-up to the first day turn, which is
+	/// the life every walk begins on - stands at the day's FIRST hour, dawn in
+	/// the east, not in the night; nobody, and a dead life, are night as SunOf
+	/// says (the review of 2026-09-27: the walk opened in the dark, whatever
+	/// the day). MeasureSky and the engine's sky both go through this.
+	VAELEN_SCENE_API Sun SunOfLife(uint32 Row, uint32 Height, uint32 DayOfYear, const View::LifeView& Life);
 
 	struct BodyWeather
 	{

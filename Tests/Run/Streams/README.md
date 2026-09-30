@@ -20,8 +20,13 @@ LogVaelenPlay: AELVOR 256 seed 41454c564f52: played Dukem (person 15019, region 
 LogVaelenPlay: verbs work 34 rest 1 eat 2 wait 2 speak 5 give 2 take 26 move 27
 ```
 
-`Tools/Atlas --replay … --panel --want-bound 0` prints those two lines back,
-byte for byte — same MD5 — from a world rebuilt out of the header alone. That
+`Tools/Atlas --replay … --panel --want-bound 0` printed those two lines back,
+byte for byte, until 2026-09-28; since then the LIFE digest reads
+`3039c736974e7503` headless, because the life view carries the chronicle's
+text and a refused doing now reads "could not take from" rather than "could
+not took from" (`Meant` in PlayerHistory.cpp). State, log and panel are still
+the engine's bytes, and `Sessions/s0916.session` says so with a `moved` line.
+The replay prints the lines back, byte for byte — same MD5 — from a world rebuilt out of the header alone. That
 is the claim of ADR-0136 met in the one way that counts: a played life is a
 function of what came through the door, and of nothing else the engine did.
 
@@ -289,3 +294,27 @@ in the world before Phase 18, carries no Options, and is replayed with
 `--no-climate` (the four drivers default to it). The first month the owner
 plays in a climate build replaces this file, as the real month replaced the
 14.10 stand-in.
+
+## `aelvor128-bound-stand-2026-09-27.stream` - a bound life's month (section 27 step 2)
+
+Written by `VaelenAtlas --stand --size 128 --years 120 --want-bound 1` on the
+day the colony question was measured (ROADMAP "Section 27 step 2 measured"),
+for the reason the climate stand-in was: so that a replay of a BOUND life - the
+premise of the game, which `StartRules{}` asks for and no month in this
+directory had - is held by an entry (`Replay.Bound`, `-DERA=--climate
+-DWANTBOUND=1`) before anybody has played one in Unreal. Thirty days, 32
+intents, nobody's hand on it. The life is Erdass of Krukraldord, 40, bound to
+Okigerdo, and the page's own row says so (`-DBOND`). Thirteen of the 32 come
+back refused by the world - "could not eat: nothing to do it with" - where the
+free life's month has three: what a bound life at 128 is like today.
+
+`WantBound` is not in the file, as the first section says, so the same tape
+replayed without it (`Replay.Bound.AsFree`) is REFUSED - exit 1, one wrong
+taking: the tape says Erdass was taken up and a host asking for whoever comes
+offers Dokdahum - and the month it prints on the way is Dokdahum's, exactly
+`Replay.Climate`'s four digests: the thirty-two intents are the same, who
+lives them is the host's rule. That entry is the control, and it is held to
+the refusal (`-DWRONG`), so a replay that read the rule from the tape and ran
+clean would fail it. The first month the
+owner plays bound in a build whose host asks for it replaces this file, as
+the real month replaced the 14.10 stand-in.

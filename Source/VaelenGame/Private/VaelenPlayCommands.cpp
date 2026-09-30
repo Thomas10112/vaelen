@@ -121,7 +121,7 @@ namespace
 		for (int32 i = 0; i < Days; ++i)
 		{
 			const double Started = FPlatformTime::Seconds();
-			World->AdvanceDay(1);
+			World->AdvanceDay(1, false); // 22.01: counted once below, so N days save once
 			const double Took = (FPlatformTime::Seconds() - Started) * 1000.0;
 			const Vaelen::View::LifeView& Life = World->Life();
 			UE_LOG(LogVaelenPlay, Log, TEXT("LogVaelenPlay: day %u year %u: %u held, %u taken, %u refused, %.1f ms"),
@@ -129,6 +129,7 @@ namespace
 				   static_cast<unsigned>(Life.Held), static_cast<unsigned>(Life.Taken),
 				   static_cast<unsigned>(Life.Refused), Took);
 		}
+		World->CountForAutosave(Days);
 		// 19.06: and the weather the days came to, once, in the Atlas's bytes.
 		const FString Weather = World->ClimateLine();
 		if (!Weather.IsEmpty())

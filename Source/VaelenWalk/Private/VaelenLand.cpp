@@ -12,6 +12,7 @@
 #include "Engine/HitResult.h"
 #include "Engine/World.h"
 #include "Materials/MaterialInterface.h"
+#include "Materials/Material.h"
 #include "ProceduralMeshComponent.h"
 #include "Engine/GameInstance.h"
 #include "EngineUtils.h"
@@ -53,7 +54,11 @@ AVaelenLand::AVaelenLand()
 
 bool AVaelenLand::Build(const Vaelen::Scene::Ground& G, const Vaelen::View::ClimateView& Climate, uint32 Region)
 {
-	if (G.Width == 0u || G.Height == 0u)
+	// Region 0 is nobody's (the review of 2026-09-27): to the scene it means
+	// the whole map, to this loop it meant every chunk holding sea, 59 of 64
+	// - cooked, walled by nothing, and printed under a line saying "all".
+	// Nothing is built for it; Vaelen.Walk says so when nobody was taken up.
+	if (G.Width == 0u || G.Height == 0u || Region == 0u)
 	{
 		return false;
 	}
@@ -61,6 +66,8 @@ bool AVaelenLand::Build(const Vaelen::Scene::Ground& G, const Vaelen::View::Clim
 	Across_ = Vaelen::Scene::ChunksAcross(G);
 	Down_ = Vaelen::Scene::ChunksDown(G);
 	NearChunks.Empty();
+	NearMeshes.Empty();
+	NearMeshes.SetNum(static_cast<int32>(Across_ * Down_));
 	NearStats = Vaelen::Scene::TerrainStats{};
 	Mesh->ClearAllMeshSections();
 	for (uint32 CY = 0; CY < Down_; ++CY)
@@ -68,23 +75,9 @@ bool AVaelenLand::Build(const Vaelen::Scene::Ground& G, const Vaelen::View::Clim
 		for (uint32 CX = 0; CX < Across_; ++CX)
 		{
 			// Near: a chunk holding a tile of the played region - exactly the
-			// chunks `VaelenAtlas --scene-terrain R` measures, so the two lines
-			// can be compared byte for byte.
-			bool Near = false;
-			for (uint32 Y = CY * Vaelen::Scene::ChunkTiles;
-				 !Near && Y < (CY + 1u) * Vaelen::Scene::ChunkTiles && Y < G.Height; ++Y)
-			{
-				for (uint32 X = CX * Vaelen::Scene::ChunkTiles;
-					 X < (CX + 1u) * Vaelen::Scene::ChunkTiles && X < G.Width; ++X)
-				{
-					if (G.Region[Y * G.Width + X] == Region)
-					{
-						Near = true;
-						break;
-					}
-				}
-			}
-			NearChunks.Add(Near ? 1u : 0u);
+			// chunks `VaelenAtlas --scene-terrain R` measures, BY THE SAME RULE
+			// (Scene::ChunkHolds), so the two lines can be compared byte for byte.
+			NearChunks.Add(Vaelen::Scene::ChunkHolds(G, CX, CY, Region) ? 1u : 0u);
 		}
 	}
 	// The far chunks first and the near ones last (19.11b): every section
@@ -100,7 +93,7 @@ bool AVaelenLand::Build(const Vaelen::Scene::Ground& G, const Vaelen::View::Clim
 				const bool Near = NearChunks[static_cast<int32>(CY * Across_ + CX)] != 0u;
 				if (Near == (Pass == 1))
 				{
-					Upload(G, Climate, CX, CY, Near, false);
+					Upload(G, Climate, CX, CY, Near);
 				}
 			}
 		}
@@ -118,7 +111,7 @@ UMaterialInterface* AVaelenLand::PaintFor() const
 }
 
 void AVaelenLand::Upload(const Vaelen::Scene::Ground& G, const Vaelen::View::ClimateView& Climate, uint32 CX, uint32 CY,
-						 bool Near, bool Recolour)
+						 bool Near)
 {
 	Vaelen::Scene::TerrainMesh Cut;
 	const uint32 Stride = Near ? 1u : static_cast<uint32>(G.Scale.Steps);
@@ -126,14 +119,16 @@ void AVaelenLand::Upload(const Vaelen::Scene::Ground& G, const Vaelen::View::Cli
 	{
 		return;
 	}
+	const int32 Section = static_cast<int32>(CY * Across_ + CX);
 	if (Near)
 	{
 		// Measured BEFORE the snow, and once: the terrain line is the ground's,
 		// the same one whatever the day (Atlas.SceneTerrain128's rule). The
-		// snow goes on the copy that is uploaded.
-		if (!Recolour)
+		// bare mesh is kept for Repaint; the snow goes on the copy uploaded.
+		Vaelen::Scene::MeasureTerrain(Cut, NearStats);
+		if (NearMeshes.IsValidIndex(Section))
 		{
-			Vaelen::Scene::MeasureTerrain(Cut, NearStats);
+			NearMeshes[Section] = Cut;
 		}
 		Vaelen::Scene::ApplyClimate(G, Climate, Cut);
 	}
@@ -158,17 +153,6 @@ void AVaelenLand::Upload(const Vaelen::Scene::Ground& G, const Vaelen::View::Cli
 	{
 		Triangles.Add(static_cast<int32>(Index));
 	}
-	const int32 Section = static_cast<int32>(CY * Across_ + CX);
-	if (Recolour)
-	{
-		// Colours alone: empty arrays are not applied, the positions stand,
-		// and no collision is re-cooked (the engine's UpdateMeshSection).
-		const TArray<FVector> NoVertices;
-		const TArray<FVector2D> NoUV;
-		const TArray<FProcMeshTangent> NoTangents;
-		Mesh->UpdateMeshSection_LinearColor(Section, NoVertices, NoVertices, NoUV, Colours, NoTangents);
-		return;
-	}
 	Mesh->CreateMeshSection_LinearColor(Section, Vertices, Triangles, Normals, UV0, Colours, Tangents, Near);
 	// A material PER SECTION (19.11b): a procedural mesh takes one for each,
 	// and a section without one is drawn with the engine's default, which
@@ -185,16 +169,28 @@ void AVaelenLand::Repaint(const Vaelen::Scene::Ground& G, const Vaelen::View::Cl
 	// The near chunks' colours again, snow and all, in place: the section's
 	// vertices stand and its collision is not re-cooked (19.11b: clearing and
 	// re-creating each near section cost two cooks of every near chunk, per
-	// chunk, per day).
-	for (uint32 CY = 0; CY < Down_; ++CY)
+	// chunk, per day). Painted on a copy of the mesh kept at Build - the
+	// chunk is not built again (the review of 2026-09-27). Colours alone:
+	// empty arrays are not applied and the positions stand (the engine's
+	// UpdateMeshSection).
+	const TArray<FVector> NoVertices;
+	const TArray<FVector2D> NoUV;
+	const TArray<FProcMeshTangent> NoTangents;
+	for (int32 Section = 0; Section < NearChunks.Num() && Section < NearMeshes.Num(); ++Section)
 	{
-		for (uint32 CX = 0; CX < Across_; ++CX)
+		if (NearChunks[Section] == 0u || NearMeshes[Section].Vertices.empty())
 		{
-			if (NearChunks[static_cast<int32>(CY * Across_ + CX)] != 0u)
-			{
-				Upload(G, Climate, CX, CY, true, true);
-			}
+			continue;
 		}
+		Vaelen::Scene::TerrainMesh Snowed = NearMeshes[Section];
+		Vaelen::Scene::ApplyClimate(G, Climate, Snowed);
+		TArray<FLinearColor> Colours;
+		for (const Vaelen::Scene::TerrainVertex& V : Snowed.Vertices)
+		{
+			Colours.Add(FLinearColor(static_cast<float>(V.R) / 255.0f, static_cast<float>(V.G) / 255.0f,
+									 static_cast<float>(V.B) / 255.0f, 1.0f));
+		}
+		Mesh->UpdateMeshSection_LinearColor(Section, NoVertices, NoVertices, NoUV, Colours, NoTangents);
 	}
 }
 
@@ -356,7 +352,7 @@ void AVaelenLand::OnViewsTaken()
 	}
 	for (TActorIterator<AVaelenSky> It(Level); It; ++It)
 	{
-		It->Aim(Vaelen::Scene::SunOf(Row, G.Height, World->Climate().Day, Life.Spent, Life.Awake), 2u * Row < G.Height);
+		It->Aim(Vaelen::Scene::SunOfLife(Row, G.Height, World->Climate().Day, Life), 2u * Row < G.Height);
 		It->Recapture();
 	}
 }

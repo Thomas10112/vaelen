@@ -41,9 +41,11 @@ TOTAL=0
 # list would close Phase 18 without seeing the default world at all.
 # Run.Gate.Lived and Replay.Lived carry the walk a person played in Unreal on
 # 2026-09-21 - the only entries here that came off another machine.
+# Replay.Bound (section 27 step 2) is the only entry in the list with the
+# premise in it: a BOUND life, replayed with the rule told (-DWANTBOUND=1).
 for G in Sim.HistoryGate Population.PopulationGate Society.SocietyGate Economy.EconomyGate \
          Politics.PoliticsGate Military.MilitaryGate Infrastructure.InfrastructureGate Player.PlayerGate \
-         Run.Golden Replay.Played Replay.Walked Replay.Lived Run.Gate Run.Gate.Lived Replay.Climate \
+         Run.Golden Replay.Played Replay.Walked Replay.Lived Run.Gate Run.Gate.Lived Replay.Climate Replay.Bound \
          Colony.ColonyGate Gameplay.GameplayGate View.ViewGate \
          ${SELFTEST:+Nonexistent.GateThatMustFail}; do
   OUT=$(ctest --preset "$PRESET" -R "^${G}$" 2>&1 | grep -E "tests passed|tests failed" | head -1)

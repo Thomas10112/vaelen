@@ -156,6 +156,46 @@ Vaelen::Run::StoreResult FVaelenCheckpointStore::Read(const char* Name, std::vec
 	return StoreResult::Ok;
 }
 
+Vaelen::Run::StoreResult FVaelenCheckpointStore::ReadPart(const char* Name, Vaelen::uint64 Offset, Vaelen::usize Length,
+														  std::vector<Vaelen::uint8>& Out)
+{
+	using Vaelen::Run::StoreResult;
+	if (!Vaelen::Run::IsUsableCheckpointName(Name))
+	{
+		return StoreResult::BadName;
+	}
+	const FString Final = PathOf(Name);
+	FString Aside = Final;
+	Aside += ANSI_TO_TCHAR(Vaelen::Run::PreviousSuffix);
+	const FString Path = Restore(Final, Aside) ? Final : Aside;
+	FArchive* Reader = IFileManager::Get().CreateFileReader(*Path);
+	if (Reader == nullptr)
+	{
+		return StoreResult::NotFound;
+	}
+	const int64 Total = Reader->TotalSize();
+	if (Total < 0 || Offset > static_cast<Vaelen::uint64>(Total) ||
+		Length > static_cast<Vaelen::uint64>(Total) - Offset)
+	{
+		delete Reader;
+		return StoreResult::ShortRead;
+	}
+	std::vector<Vaelen::uint8> Scratch(Length);
+	Reader->Seek(static_cast<int64>(Offset));
+	if (!Scratch.empty())
+	{
+		Reader->Serialize(Scratch.data(), static_cast<int64>(Scratch.size()));
+	}
+	const bool Failed = Reader->IsError();
+	delete Reader;
+	if (Failed)
+	{
+		return StoreResult::ShortRead;
+	}
+	Out.swap(Scratch);
+	return StoreResult::Ok;
+}
+
 std::vector<Vaelen::Run::StoreEntry> FVaelenCheckpointStore::List()
 {
 	std::vector<Vaelen::Run::StoreEntry> Out;
@@ -198,22 +238,19 @@ std::vector<Vaelen::Run::StoreEntry> FVaelenCheckpointStore::List()
 	Out.reserve(Names.size());
 	for (const std::string& Name : Names)
 	{
-		std::vector<Vaelen::uint8> Bytes;
-		if (Read(Name.c_str(), Bytes) != Vaelen::Run::StoreResult::Ok)
+		// 22.02: the head and the trailer, not the file (Run::DescribeSave, the
+		// one describer both stores share); the size is the disk's.
+		const FString Final = PathOf(Name.c_str());
+		FString Aside = Final;
+		Aside += ANSI_TO_TCHAR(Vaelen::Run::PreviousSuffix);
+		const FString Path = Restore(Final, Aside) ? Final : Aside;
+		const int64 Size = Files.FileSize(*Path);
+		if (Size < 0)
 		{
 			continue;
 		}
 		Vaelen::Run::StoreEntry Entry;
-		Entry.Name = Name;
-		Entry.Bytes = static_cast<Vaelen::uint64>(Bytes.size());
-		Vaelen::Run::CheckpointView View;
-		if (Vaelen::Run::ReadCheckpoint(Bytes.data(), Bytes.size(), View).Result == Vaelen::Run::CheckpointResult::Ok)
-		{
-			Entry.Tick = View.Tick;
-			Entry.ContainerVersion = View.Version;
-			Entry.SectionCount = static_cast<Vaelen::uint32>(View.Sections.size());
-			Entry.Digest = Vaelen::Run::ImageTrailer(View);
-		}
+		Vaelen::Run::DescribeSave(*this, Name.c_str(), static_cast<Vaelen::uint64>(Size), Entry);
 		Out.push_back(std::move(Entry));
 	}
 	return Out;

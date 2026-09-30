@@ -9,11 +9,12 @@
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "VaelenWalkController.h"
 
 AVaelenWalker::AVaelenWalker()
 {
 	PrimaryActorTick.bCanEverTick = false;
-	GetCapsuleComponent()->InitCapsuleSize(42.0f, 96.0f);
+	GetCapsuleComponent()->InitCapsuleSize(VaelenWalkBody::CapsuleRadiusCm, VaelenWalkBody::CapsuleHalfHeightCm);
 	bUseControllerRotationYaw = false;
 
 	UCharacterMovementComponent* Legs = GetCharacterMovement();

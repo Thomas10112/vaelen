@@ -200,6 +200,44 @@ MUTATIONS = [
         '#include "ShimProbeLand.generated.h"',
         "",
     ),
+    # The shim audit of 2026-09-27: three declarations the shim had looser
+    # than the engine, each shown to matter.
+    (
+        "audit: a shadow verb called on a light - SetCastShadow is UPrimitiveComponent's, a light is not one",
+        LAND,
+        "Sun->SetIntensity(10.0f);",
+        "Sun->SetIntensity(10.0f);\n\tSun->SetCastShadow(false);",
+    ),
+    (
+        "audit: VertexColorMaterial handed to SetMaterial without Materials/Material.h - Engine.h only forward-declares UMaterial",
+        LAND,
+        '#include "Materials/Material.h"\n',
+        "",
+    ),
+    (
+        "audit: SetupInputComponent called from outside the controller - protected in the engine",
+        INPUT,
+        "void AShimProbeController::SetupInputComponent()",
+        "static void Poke(APlayerController* P)\n{\n\tP->SetupInputComponent();\n}\nvoid AShimProbeController::SetupInputComponent()",
+    ),
+    (
+        "22.01: a front-end key the engine does not have (F13)",
+        KEYS,
+        "InputComponent->BindKey(EKeys::F10, IE_Pressed, this, &AVaelenPlayerController::Quit);",
+        "InputComponent->BindKey(EKeys::F13, IE_Pressed, this, &AVaelenPlayerController::Quit);",
+    ),
+    (
+        "22.02: the file reader asked of FFileHelper, which has none, rather than the file manager",
+        STORE,
+        "IFileManager::Get().CreateFileReader(*Path)",
+        "FFileHelper::CreateFileReader(*Path)",
+    ),
+    (
+        "22.01: the deferral asked of an actor rather than the world's timers",
+        KEYS,
+        "GetWorld()->GetTimerManager().SetTimerForNextTick(this, &AVaelenPlayerController::RunPending);\n}\n\nvoid AVaelenPlayerController::Continue()",
+        "GetTimerManager().SetTimerForNextTick(this, &AVaelenPlayerController::RunPending);\n}\n\nvoid AVaelenPlayerController::Continue()",
+    ),
 ]
 
 

@@ -158,6 +158,11 @@ namespace Vaelen::Scene
 									 uint32 Stride, TerrainMesh& Out);
 	/// Chunk (CX, CY): tiles [CX * ChunkTiles, ...), clipped to the map.
 	VAELEN_SCENE_API bool BuildChunk(const Ground& G, uint32 CX, uint32 CY, uint32 Stride, TerrainMesh& Out);
+	/// Whether chunk (CX, CY) holds a tile of Region: THE rule of which chunks
+	/// are a region's - MeasureChunks's, and the engine's near chunks' (the
+	/// review of 2026-09-27: the engine kept a copy of the loop, which could
+	/// drift). Region 0 is the whole map, every chunk; a chunk off the map, none.
+	VAELEN_SCENE_API bool ChunkHolds(const Ground& G, uint32 CX, uint32 CY, uint32 Region);
 
 	/// 44.76 deg, CharacterMovement's default walkable floor, as the rational
 	/// test 119 K^2 < 121 (dx^2 + dy^2) on a triangle's reduced normal: cos^2 of
@@ -168,9 +173,9 @@ namespace Vaelen::Scene
 	struct TerrainStats
 	{
 		uint32 Chunks = 0;
-		uint32 Vertices = 0;
-		uint32 Triangles = 0;
-		uint32 Steep = 0; ///< triangles steeper than IsSteep's 44.76 deg
+		uint64 Vertices = 0;  ///< 64-bit: a map BuildGround admits (8192 tiles a side) has 2^33 of them
+		uint64 Triangles = 0; ///< (the review of 2026-09-27; TerrainLine printed through uint64 already)
+		uint32 Steep = 0;	  ///< triangles steeper than IsSteep's 44.76 deg
 		int32 MinZ = 0;
 		int32 MaxZ = 0;
 		Hash64 Digest = 0; ///< every mesh measured, in the order measured

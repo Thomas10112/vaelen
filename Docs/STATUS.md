@@ -40,6 +40,8 @@ PHASE       : 18 — CLIMATE & SEASONS, CLOSED headless 2026-09-25, read clause 
                and 16.14's sitting on the owner's Windows machine; the name promise
                the 19.10 audit found unkept is met by 16.15. Section 22.
                15 CLOSED 2026-09-21; 14 CLOSED 2026-09-16)
+TASK        : S2 kit — DONE 2026-09-27. s2.session written before the log, proven on a stand-in.
+
 TASK        : 19.11b — DONE 2026-09-26 (headless). The engine code reviewed before it is built.
 
               A read-only fleet (six lenses, three refuters per finding, 81 agents)
@@ -127,6 +129,99 @@ TASK        : 19.10 — DONE 2026-09-25 (headless); its engine half UNVERIFIED u
               the eight verbs from it (FKey(FName), a listed belief). Three sabotages
               caught - two of them redone after an unbuildable first attempt.
 
+TASK (27.fix1) : the host takes a bound life first — DONE 2026-09-29 (headless VALIDATED by Run.Soak's
+  new pin 6e9f76c02755513c, predicted by the probe; engine UNVERIFIED). VaelenWorldSubsystem::Begin
+  asks StartRules{} (WantBound 1) and falls back to whoever the world offers with a printed
+  LogVaelenWorld line; Run.Soak begins the same way (Esvuhurdu, 3580, bound to 2892). ENGINE_HANDOFF S3's
+  twin is --want-bound 1. ROADMAP "Section 27 fix 1 applied".
+
+TASK (22.01b) : Vaelen.Walk says when typed arguments are ignored — DONE 2026-09-29, UNVERIFIED (engine).
+  A walk typed with a size and years on a world already begun (Continue's `Vaelen.Load` then
+  `Vaelen.Walk`, or a Vaelen.Play before) walked it as it was and said nothing of the numbers; it now
+  warns "the world is begun already (AELVOR N); the typed S Y are ignored". Parsed, fenced.
+
+TASK (27.3) : the bound life played three years — MEASURED 2026-09-29 (probe; no code). Esvuhurdu
+  (3580, bound to 2892) by Run.Soak's round-robin: alive, every meal taken, house grain 64 -> 154, still
+  bound, the holder alive; the free control reproduces Run.Soak's pin 16954db42400b164. In the product's
+  wiring the bond is read by nothing that plays: the premise is a row on the page. The cheapest rule that
+  makes it play (a holder's share of a day's work, and a way out) is the owner's design call. ROADMAP
+  "The bound life played three years".
+
+TASK (CI 335) : the Windows MSVC release leg — DONE 2026-09-28 (VALIDATED by run 335: eleven of eleven
+  green; the release suite with shuffles in 36 min, 45 min end to end). The
+  configuration the product ships had a preset since Phase 00 and no job; the Windows job is a matrix of
+  the debug preset (as before, -E Shuffled) and the release preset (the whole suite). Runs 333 and 334
+  green. ROADMAP "The eleventh leg".
+
+TASK (CI 332) : the parse job's timeout 10 -> 20 minutes — DONE 2026-09-28. Run 332 (05f2ca7) nine
+  legs of ten green; the parse job cancelled by its own limit after a 9 min 21 s shim self-test.
+  ROADMAP "Found on CI run 332".
+
+TASK (wording) : "could not eat", not "could not ate" — DONE 2026-09-28. PlayerHistory.cpp words a
+  refused doing in the infinitive (Meant) rather than the past tense (Told). No world digest moved
+  (244 of 254 release entries green untouched); the ten that hash a view's text re-pinned: the life
+  text, the two pages, five replay life digests, Replay.Bound's page. check_session.py learns
+  `moved <old> <new>` for the engine log of 2026-09-16 (two new self-test controls). ROADMAP "The
+  page's wording, 2026-09-28".
+
+TASK (27.2) : the colony question measured — DONE 2026-09-27 (headless VALIDATED; the fix is the
+  owner's). Play+Colony offers nobody bound at 128 because Aelvor::Begin details the busiest region
+  WITH ORE (75) instead of the busiest (26), and region 75 is 1359 people of culture 3, whose customs
+  allow no bondage at all (NormSet::BondageAllowed 0); every entry in Bondage.cpp asks the culture
+  first. The subsystem's world has no colony: region 26 (culture 1, bits 7) holds 119 bound, 45 in
+  the window, and TakeUp(WantBound=1) is offered person 3580. Run.Bound pins both worlds (two 128
+  worlds, Run.Climate's cost). Three fixes ranked for the owner in ROADMAP "Section 27 step 2
+  measured"; none applied. Replay.Bound: a bound life's month (Erdass, bound to Okigerdo) written by --stand
+  --want-bound 1 and replayed with the rule TOLD (-DWANTBOUND=1, -DBOND the page's row); Replay.Bound.AsFree
+  the control (the same tape, free: refused, one wrong taking). Gate 19 in run_gates.sh. The bound life's
+  larder measured: Erdass starts with 0 grain (7 of 46 bound in the window do; 43 of 472 free), taken
+  because TakeUp takes the lowest index; work brings 2, a meal costs 1 - the verbs are sound, the first
+  page is the owner's design call.
+
+TASK (22.03) : check_cook.py — DONE 2026-09-27 (VALIDATED for the script). A staged package
+  checked against the assets the code names by string (derived from Source: the four basic shapes
+  and the engine materials), the default map, the configs, the executable; Game assets optional and
+  noted. Kernel.CookSelfTest, fourteen controls. The UAT BuildCookRun line is S4's step 0 in
+  ENGINE_HANDOFF. ROADMAP "22.03".
+
+TASK (22.02) : a listing reads heads and trailers — DONE 2026-09-27 (headless VALIDATED, engine
+  UNVERIFIED). ReadCheckpointHeading reads a container's head and table from its first two kilobytes;
+  ICheckpointStore::ReadPart seeks (stdio: fseek; engine: FArchive, seven beliefs, 147); DescribeSave
+  is the one describer both List's use. Measured by the store's byte count: two saves listed for
+  under 4 KB, a Read costs the file; the listing believes the head, Read verifies. Three sabotages
+  caught. ROADMAP "22.02".
+
+TASK (22.01) : the front end as pages of text — WRITTEN 2026-09-27, UNVERIFIED (engine). Title
+  (Enter new world, F8 continue from the newest save, Escape quit), loading page drawn a frame before
+  the blocking Begin (console lines run on the next tick), pause page (Escape, F5 save `quick`, F9,
+  F10 quit) during which nothing reaches the world; the autosave every ten day turns under
+  `autosave` (rename-aside keeps the previous); Vaelen.Walk walks a world already begun, so the
+  walk's Continue is Vaelen.Load then Vaelen.Walk. Reviewed by two read-only agents the same day
+  (the per-frame save listing, the editor-closing quit, ten autosaves in one Vaelen.Day, a .stream
+  offered as a save: all moved). 25 TUs parse, 29 mutations, 140 beliefs (10 new).
+  Sitting S4 builds it. ROADMAP "22.01". CI run 323 green on 71702f2 (the scene review).
+
+TASK (scene) : VaelenScene reviewed — DONE 2026-09-27. 96 agents (six lenses, three refuters a
+  claim) on Terrain, Fence, Layout, Sky and their tests: 25 findings applied, 4 refuted. The house
+  rule held 20 degrees on the axes only (27 on a diagonal): the diagonals too now, and the two
+  layout pins moved (Atlas.SceneLayout128 6917612c1344027f, Replay.Climate LAYOUT 6e23ade67f848db7,
+  counts unmoved). The walk opened in the dark (Awake 0 before the first day turn read as night):
+  SunOfLife, dawn for a life without hours, night under the horizon. The day turn's one growing
+  term (house overlaps, H^2 a region) bucketed by tile; Middle once per region; the A*'s arrays
+  kept; Repaint from kept meshes. Region 0 one rule (Scene::ChunkHolds), refused by the land.
+  Tests: 32 Scene cases from 26, every new instrument shown failing in two sabotaged builds.
+  ROADMAP "VaelenScene reviewed, 2026-09-27".
+
+TASK (shim)  : the shim audited — DONE 2026-09-27. Every header of Tools/EngineShim read
+  against UE 5.6 by 52 agents (43 auditors, three refuters per claim): 4 confirmed and applied,
+  2 refuted. The one that mattered: the engine's Engine/Engine.h only FORWARD-DECLARES UMaterial,
+  the shim included it, and the three files handing GEngine->VertexColorMaterial to SetMaterial
+  (VaelenLand.cpp among them - S2's land) would have failed under MSVC and parsed here. Also:
+  TActorIterator asserts on a null world in its constructor and two console commands built it
+  before testing the world; SetCollisionEnabled/SetCastShadow are UPrimitiveComponent's, not every
+  scene component's; SetupInputComponent is protected. Three new mutations of the shim self-test
+  (27), each caught. S2 builds the audit's commit. ROADMAP "The shim audited, 2026-09-27".
+
 TASK (19.09b): 19.09b — DONE 2026-09-25. The review's findings: one rule for the paint and the count.
 
               MeasureSky counted grass on lakes and rivers that ApplyClimate never
@@ -156,7 +251,8 @@ TASK (19.08): 19.08 — DONE 2026-09-25. Towns, houses, roads, figures - invente
               (stable under a later death), a road per open route, a pit per colony, a
               figure per living person at a slot of the day. At 128 (60+10 years, day
               100): 565 houses, 779 figures, 16 roads, layout 8542fca56e445402 - the same
-              from two wirings and two compilers, pinned by Atlas.SceneLayout128. Three
+              from two wirings and two compilers, pinned by Atlas.SceneLayout128 (re-pinned
+              6917612c1344027f on 2026-09-27: the slope rule on the diagonals too). Three
               failures on purpose.
 
 TASK (19.07): 19.07 — DONE 2026-09-25. The body is not an input, proven headless.
@@ -1174,8 +1270,8 @@ COMPLETED
   (debug), so the entry stays on windows-msvc-debug and clause (e) names eight legs
 ✓ ADR-0136 to ADR-0139
 
-NEXT (2026-09-26)
-→ The owner's sittings S1 (close: the log), S2 (19.06), S3 (19.11), S4 (19.12); the
+NEXT (2026-09-27)
+→ The owner's sittings S1 (close: the log), S2 (19.06, on the scene review's commit), S3 (19.11), S4 (19.12); the
   owner's decisions on ROADMAP section 27 and on Q2 (WalkKeys). Headless meanwhile:
   Phase 20's next soak cells once the owner says which wiring ships (Lively, the
   colony, 256), 19.12's replay entries the day the S4 stream lands.
@@ -1198,10 +1294,11 @@ NEXT (2026-09-26)
 
 TESTS
 ✓ 181 CTest entries on linux-gcc-release, every gate of fifteen phases, Run.Checkpoint among them
-✓ CI: 10 jobs - six Linux presets, clang-format 18, Windows MSVC, macOS AppleClang, and the engine
+✓ CI: 11 jobs (2026-09-28) - six Linux presets, clang-format 18, Windows MSVC debug AND release, macOS AppleClang, and the engine
   modules parse (clang 18) that builds nothing and reads everything
-✓ verify_fast: purity 216 files 0 violations · shim self-test 13 mutations · 13 translation units
-  parsed · 4 wirings of AELVOR agree · UI fence 8 files, 16 mutations · AND, since 2026-09-21,
+✓ verify_fast (counts of 2026-09-27): purity clean · shim self-test 27 mutations · 25 translation
+  units parsed · shim ledger 130 beliefs · 4 wirings of AELVOR agree · UI fence 33 files · frozen
+  census 572 sites · AND, since 2026-09-21,
   every TU the change reaches COMPILED, syntax-only, with the build's own flags (ADR-0148). The
   six checks above it all read the source as text; none had ever handed a file to a compiler, and
   two commits shipped that would not build while all six were green. It refuses rather than skips

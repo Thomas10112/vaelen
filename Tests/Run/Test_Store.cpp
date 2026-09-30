@@ -16,6 +16,7 @@
 #include "Vaelen/Run/Store.h"
 
 #include <cstdio>
+#include <filesystem>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -188,4 +189,112 @@ VAELEN_TEST(Store, AFullDiskTakesTheNewSaveAndNotTheOldOne)
 	}
 	VT_CHECK(FoundPrecious);
 	Good.Forget("precious");
+}
+
+VAELEN_TEST(Store, AListingReadsHeadsAndTrailersAndNotFiles)
+{
+	// 22.02: StoreEntry promised fields "from the container's own header, so
+	// a chooser can show a save's tick and version without loading two
+	// gigabytes" - and both stores loaded every file whole and digested it,
+	// a hundred megabytes a title page at the ship cell. The instrument is
+	// the store's own count of bytes pulled off the disk: a listing of N
+	// saves reads under two kilobytes and eight bytes of each, and says of
+	// each exactly what a whole read says.
+	StdioCheckpointStore Store(Somewhere() + "listing/");
+	std::filesystem::create_directories(Somewhere() + "listing/");
+	const std::vector<uint8> Image = APlausibleCheckpoint();
+	VT_REQUIRE(!Image.empty());
+	VT_REQUIRE(Store.Write("alpha", Image.data(), Image.size()) == StoreResult::Ok);
+	VT_REQUIRE(Store.Write("beta", Image.data(), Image.size()) == StoreResult::Ok);
+	// The whole read's description, the CONTROL this listing is held to.
+	CheckpointView View;
+	VT_REQUIRE(ReadCheckpoint(Image.data(), Image.size(), View).Result == CheckpointResult::Ok);
+	const uint64 WholeDigest = ImageTrailer(View);
+	VT_CHECK(WholeDigest != 0u);
+
+	Store.BytesRead = 0;
+	const std::vector<StoreEntry> Listed = Store.List();
+	VT_REQUIRE(Listed.size() == 2u);
+	for (const StoreEntry& E : Listed)
+	{
+		VT_CHECK_EQ(E.Bytes, static_cast<uint64>(Image.size()));
+		VT_CHECK_EQ(E.Tick, View.Tick);
+		VT_CHECK_EQ(E.ContainerVersion, View.Version);
+		VT_CHECK_EQ(E.SectionCount, static_cast<uint32>(View.Sections.size()));
+		VT_CHECK_DIGEST_EQ(E.Digest, WholeDigest);
+	}
+	// Under two kilobytes plus eight bytes a save, against a save many times that.
+	VT_CHECK(Image.size() > 4u * CheckpointListingBytes);
+	VT_CHECK_MSG(Store.BytesRead <= 2u * (CheckpointListingBytes + 8u),
+				 "the listing read %llu bytes of two saves of %zu", static_cast<unsigned long long>(Store.BytesRead),
+				 Image.size());
+	VT_CHECK(Store.BytesRead > 0u);
+	// CONTROL: a whole read costs the file.
+	Store.BytesRead = 0;
+	std::vector<uint8> Back;
+	VT_REQUIRE(Store.Read("alpha", Back) == StoreResult::Ok);
+	VT_CHECK_EQ(Store.BytesRead, static_cast<uint64>(Image.size()));
+
+	// A listing BELIEVES the head: a byte of the payload flipped is not seen
+	// by List and IS by Read's container - the division of labour, stated.
+	std::vector<uint8> Flipped = Image;
+	Flipped[Flipped.size() / 2u] ^= 0xFFu;
+	VT_REQUIRE(Store.Write("gamma", Flipped.data(), Flipped.size()) == StoreResult::Ok);
+	bool GammaListed = false;
+	for (const StoreEntry& E : Store.List())
+	{
+		if (E.Name == "gamma")
+		{
+			GammaListed = true;
+			VT_CHECK_EQ(E.Tick, View.Tick);
+		}
+	}
+	VT_CHECK(GammaListed);
+	VT_REQUIRE(Store.Read("gamma", Back) == StoreResult::Ok);
+	CheckpointView Refused;
+	VT_CHECK(ReadCheckpoint(Back.data(), Back.size(), Refused).Result == CheckpointResult::Corrupt);
+
+	// A file that is no container - a stream beside the saves, a save cut
+	// inside its table - is listed by name and size with every field 0.
+	const std::string Stream = Somewhere() + "listing/notes";
+	std::FILE* F = std::fopen(Stream.c_str(), "wb");
+	VT_REQUIRE(F != nullptr);
+	std::fwrite("not a container", 1, 15, F);
+	std::fclose(F);
+	const std::string Cut = Somewhere() + "listing/cut";
+	F = std::fopen(Cut.c_str(), "wb");
+	VT_REQUIRE(F != nullptr);
+	std::fwrite(Image.data(), 1, CheckpointHeadBytes + 3u, F);
+	std::fclose(F);
+	// And the first half of a save, whose head and table read whole and whose
+	// payload does not: no save either (what a write interrupted mid-copy
+	// leaves under a plain name; Run.StoreColdProcess's control).
+	const std::string Half = Somewhere() + "listing/half";
+	F = std::fopen(Half.c_str(), "wb");
+	VT_REQUIRE(F != nullptr);
+	std::fwrite(Image.data(), 1, Image.size() / 2u, F);
+	std::fclose(F);
+	uint32 Zeroed = 0;
+	for (const StoreEntry& E : Store.List())
+	{
+		if (E.Name == "notes" || E.Name == "cut" || E.Name == "half")
+		{
+			VT_CHECK(E.Tick == 0u && E.ContainerVersion == 0u && E.SectionCount == 0u && E.Digest == 0u);
+			VT_CHECK(E.Bytes == (E.Name == "notes" ? 15u
+								 : E.Name == "cut" ? CheckpointHeadBytes + 3u
+												   : Image.size() / 2u));
+			++Zeroed;
+		}
+	}
+	VT_CHECK_EQ(Zeroed, 3u);
+	// ReadPart's own edges: past the end is ShortRead, a missing name NotFound.
+	std::vector<uint8> Part;
+	VT_CHECK(Store.ReadPart("alpha", static_cast<uint64>(Image.size()) - 4u, 8u, Part) == StoreResult::ShortRead);
+	VT_CHECK(Store.ReadPart("alpha", static_cast<uint64>(Image.size()) - 8u, 8u, Part) == StoreResult::Ok);
+	VT_CHECK(Part.size() == 8u && std::memcmp(Part.data(), Image.data() + Image.size() - 8u, 8u) == 0);
+	VT_CHECK(Store.ReadPart("nobody", 0, 8u, Part) == StoreResult::NotFound);
+	for (const char* Name : {"alpha", "beta", "gamma", "notes", "cut", "half"})
+	{
+		Store.Forget(Name);
+	}
 }

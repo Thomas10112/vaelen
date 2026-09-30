@@ -11,6 +11,7 @@
 #include "Engine/GameInstance.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
+#include "Materials/Material.h"
 #include "ProceduralMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
 #include "VaelenWorldSubsystem.h"

@@ -13,6 +13,7 @@
 #include "Vaelen/Run/Checkpoint.h"
 #include "Vaelen/Run/Store.h"
 
+#include <climits>
 #include <cstdio>
 #include <cstring>
 // 17.03: LISTING READS THE DIRECTORY, so the directory has to be readable.
@@ -136,6 +137,39 @@ namespace VaelenHost
 			return Run::StoreResult::Ok;
 		}
 
+		/// 22.02: how many bytes Read and ReadPart have pulled off the disk
+		/// since this store was made - the instrument that says a listing
+		/// reads heads and not files (Run.Store).
+		uint64 BytesRead = 0;
+
+		Run::StoreResult ReadPart(const char* Name, uint64 Offset, usize Length, std::vector<uint8>& Out) override
+		{
+			if (!Run::IsUsableCheckpointName(Name))
+			{
+				return Run::StoreResult::BadName;
+			}
+			const std::string Final = Directory + Name;
+			const std::string Aside = Final + Run::PreviousSuffix;
+			const std::string Path = Restore(Final, Aside) ? Final : Aside;
+			std::FILE* F = std::fopen(Path.c_str(), "rb");
+			if (F == nullptr)
+			{
+				return Run::StoreResult::NotFound;
+			}
+			std::vector<uint8> Scratch(Length);
+			const bool Sought =
+				Offset <= static_cast<uint64>(LONG_MAX) && std::fseek(F, static_cast<long>(Offset), SEEK_SET) == 0;
+			const usize Got = Sought && !Scratch.empty() ? std::fread(Scratch.data(), 1, Scratch.size(), F) : 0u;
+			std::fclose(F);
+			BytesRead += Got;
+			if (!Sought || Got != Length)
+			{
+				return Run::StoreResult::ShortRead;
+			}
+			Out.swap(Scratch);
+			return Run::StoreResult::Ok;
+		}
+
 		Run::StoreResult Read(const char* Name, std::vector<uint8>& Out) override
 		{
 			if (!Run::IsUsableCheckpointName(Name))
@@ -167,6 +201,7 @@ namespace VaelenHost
 			std::vector<uint8> Scratch(static_cast<usize>(End));
 			const usize Got = Scratch.empty() ? 0u : std::fread(Scratch.data(), 1, Scratch.size(), F);
 			std::fclose(F);
+			BytesRead += Got;
 			if (Got != Scratch.size())
 			{
 				return Run::StoreResult::ShortRead;
@@ -269,22 +304,20 @@ namespace VaelenHost
 			Out.reserve(Names.size());
 			for (const std::string& Name : Names)
 			{
-				std::vector<uint8> Bytes;
-				if (Read(Name.c_str(), Bytes) != Run::StoreResult::Ok)
+				// 22.02: the head and the trailer, not the file (DescribeSave);
+				// the size is the disk's. A name whose file is gone between the
+				// listing and the read is left out, as before.
+				const std::string Final = Directory + Name;
+				const std::string Aside = Final + Run::PreviousSuffix;
+				const std::string Path = Restore(Final, Aside) ? Final : Aside;
+				const std::uintmax_t Size = std::filesystem::file_size(Path, Code);
+				if (Code)
 				{
+					Code.clear();
 					continue;
 				}
 				Run::StoreEntry Entry;
-				Entry.Name = Name;
-				Entry.Bytes = static_cast<uint64>(Bytes.size());
-				Run::CheckpointView View;
-				if (Run::ReadCheckpoint(Bytes.data(), Bytes.size(), View).Result == Run::CheckpointResult::Ok)
-				{
-					Entry.Tick = View.Tick;
-					Entry.ContainerVersion = View.Version;
-					Entry.SectionCount = static_cast<uint32>(View.Sections.size());
-					Entry.Digest = TrailerOf(View);
-				}
+				Run::DescribeSave(*this, Name.c_str(), static_cast<uint64>(Size), Entry);
 				Out.push_back(std::move(Entry));
 			}
 			return Out;

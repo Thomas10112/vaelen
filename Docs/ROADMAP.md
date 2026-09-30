@@ -8012,7 +8012,10 @@ MEASURED at AELVOR 128 after 60+10 years, day 100: 3 squares, 565 houses
 (0 unplaced), 779 figures, 16 roads over 282 tiles, layout 8542fca56e445402 -
 the same digest from Scene.Layout (Run::Aelvor's wiring), from the Atlas's own
 wiring and from the clang build; with --colony, 1 pit. Pinned by
-Atlas.SceneLayout128. Scene.Layout, 6 cases: nothing on water or in another
+Atlas.SceneLayout128. (Re-pinned 6917612c1344027f on 2026-09-27, the counts
+unmoved, when the slope rule took in a house's diagonals - and asserted by
+Scene.Layout from that day, which had only logged it: see "VaelenScene
+reviewed".) Scene.Layout, 6 cases: nothing on water or in another
 region (every house's four corners on its tile's land), no two houses
 overlapping, every road step a neighbour on land or river; houses + unplaced
 equal to the families and coarse shares counted independently, figures equal
@@ -8072,7 +8075,7 @@ the same digest from `Scene.Sky` by Run::Aelvor's wiring; `Atlas.SceneSky128Befo
 now holds the three scene lines of the recorded month too:
 
     LogVaelenScene: AELVOR 128 seed 41454c564f52 region all: chunks 64, vertices 1065024, triangles 2097152, z [-5000, 50636] cm, steep 0 of 2097152; terrain 105208c54e3c6ea9
-    LogVaelenScene: AELVOR 128 seed 41454c564f52 layout day 31: squares 46, houses 7039 (unplaced 0), figures 1960 (company 16), roads 84 over 1236 tiles (unrouted 2), pits 0; layout ead1d4340f2cdd08
+    LogVaelenScene: AELVOR 128 seed 41454c564f52 layout day 31: squares 46, houses 7039 (unplaced 0), figures 1960 (company 16), roads 84 over 1236 tiles (unrouted 2), pits 0; layout 6e23ade67f848db7 (ead1d4340f2cdd08 until 2026-09-27: the diagonals)
     LogVaelenScene: AELVOR 128 seed 41454c564f52 sky day 31: snow 1116 of 16384 tiles, growing 4475, sun azimuth 1012 elevation 45, breath 1 shiver 0; sky 8f48a6844f33fc3f
 
 - the terrain digest is `Atlas.SceneTerrain128`'s, since the ground is the
@@ -8385,7 +8388,9 @@ LFS unless a playtest names the look as the blocker.
 THE RISKS, first three: 24 engine files never compiled and 112 beliefs (the
 sittings, pinned by subject, REPORT not repair); the premise not in the
 world as measured (WantBound=1 with the colony offers nobody at 128 - a
-measured timebox, then the cheapest fix); the fun unproven (a page that
+measured timebox, then the cheapest fix; MEASURED 2026-09-27, below: the
+colony's ground has a culture that binds nobody, and the subsystem's world,
+which has no colony, offers person 3580 bound); the fun unproven (a page that
 reads "X ate" sixteen times after 30 days - LivelyFrom with a prediction,
 then strangers).
 
@@ -8690,6 +8695,17 @@ nothing (that is what row 19.11 orders); `Vaelen.Probe` traces meeting
 houses and the capsule (S2 runs before the scenery exists, and the walls
 now ignore visibility).
 
+CI run 318 green on f0c75b1, ten legs of ten. The S2-close kit followed on
+2026-09-27: `Tests/Run/Sessions/s2.session` (the twin above, region 26 - where
+the played life of the 128/120 world stands at Begin, Run.Soak's world - the
+head of 19.11b, two line prefixes), proven with a stand-in log made of the
+twin's own lines dressed `[ts][f]LogVaelenWalk: LogVaelenScene: ...` as the
+engine writes; every self-test control held, the other-world arm (the plain
+`--scene-terrain 26` run) refused as it must. The control that changes one
+hex digit took its digit from the head line on the first session that has
+one and refused for the wrong reason; it takes it from an expected line
+now, and the committed s0916 pair still holds every control.
+
 Held after: 25 TUs parse against the tightened shim; the ledger 130
 beliefs (eight new: the mesh update, the channel response and its enum,
 the camera channel, GetAuthGameMode, RestartPlayer,
@@ -8699,3 +8715,722 @@ fence, the module lists, the status ledger; Scene and Atlas entries green
 on gcc debug and release with `Replay.Climate`'s three scene lines
 unmoved. ENGINE_HANDOFF: S2 builds the commit of 19.11b, and S3 runs on
 that build. Two sittings' worth of dead ends, found by reading.
+
+### The shim audited, 2026-09-27: 43 headers read against UE 5.6 by 52 agents - 4 confirmed, 2 refuted, all four applied
+
+19.11b's review had just shown what one false declaration in the shim costs:
+`ClearMeshSection` parsed here and does not exist there, and the sitting
+that would have found it is the owner's. So before S2 the whole of
+Tools/EngineShim was read against the engine's own headers - one auditor
+per shim header (43), then three refuters on each claim, an audit of what
+is claimed and of what is missing. Six claims came out; two were refuted
+on reading (an `FString ==` case-insensitive in the engine and sensitive in
+the shim, harmless because every comparison of ours is of equal spellings;
+the other a duplicate of the material finding keyed on another file). The
+four that stood, each now applied AND each now a mutation of
+Tools/test_engine_shim.py (27, from 24) that the pristine tree parses and
+the broken one does not:
+
+1. **`TActorIterator` on a null world is a fatal assert in the engine**, in
+   the constructor, before any `operator bool` is asked (medium). The shim
+   stood it and answered false, and two console commands of VaelenWalk -
+   `Vaelen.Probe` and `Vaelen.Scene` - built the iterator (`LandOf`,
+   `SceneryOf`) BEFORE testing the world for null. Both helpers now return
+   null on a null world, first; the shim's constructor says the
+   precondition and takes `const UWorld*` as the engine's does. A parse
+   cannot see the order of a test and a construction, so this one is
+   documented in the shim rather than mutated.
+2. **`SetCollisionEnabled`, `SetCastShadow` and the channel responses are
+   `UPrimitiveComponent`'s**, and the shim had them on every
+   `USceneComponent` - so a call on a light, a fog, a camera or a spring
+   arm parsed here and fails there (low). New
+   `Tools/EngineShim/Components/PrimitiveComponent.h`; the ISM, the capsule
+   and the procedural mesh derive from it (the engine's intermediate
+   classes named in comments, not shimmed); the lights, the sky, the
+   fog, the camera and the arm stay scene components. Mutation:
+   `Sun->SetCastShadow(false)` on the probe's directional light - caught.
+3. **`Engine/Engine.h` only forward-declares `UMaterial`** in the engine
+   (medium); the shim's included Materials/Material.h, so the three files
+   that hand `GEngine->VertexColorMaterial` (a `TObjectPtr<UMaterial>`) to
+   `SetMaterial` (a `UMaterialInterface*`) would compile here and not
+   under MSVC, where the derived-to-base conversion needs the complete
+   type. The shim's Engine.h forward-declares now, and VaelenLand.cpp,
+   VaelenScenery.cpp and the probe's ShimProbeLand.cpp include
+   Materials/Material.h themselves. Mutation: that include removed from
+   the probe - caught. THIS IS THE ONE THAT WOULD HAVE COST S2: 19.06's
+   land is one of the three files.
+4. **`APlayerController::SetupInputComponent` is protected** in the engine
+   and was public in the shim (low): an override is fine either way, a
+   call from outside a controller is not. Protected now. Mutation: a free
+   function calling it - caught.
+
+Held after: 25 TUs parse against the tightened shim; the shim self-test
+27 mutations all caught, control clean, the reverse control still
+refusing; the ledger 130 beliefs, no name added and none struck (the
+verbs moved between shim classes are the same names); the fence, the
+module lists, the status ledger, the census 572 sites; the 17 Kernel
+entries; verify_fast clean. Nothing of the kernel moved. S2 builds THIS
+commit now, not 19.11b's, for finding 3; ENGINE_HANDOFF step 0 and
+s2.session's `head` say so.
+
+### VaelenScene reviewed, 2026-09-27: 96 agents on 19.05 to 19.09 - 25 findings applied, 4 refuted, two pins moved
+
+The scene module (Terrain, Fence, Layout, Sky; 2,126 lines of code and
+headers, 2,223 of tests, after the review) read by six finders, one lens each - integer math,
+determinism, the day-turn's cost, the strength of the tests, the contract
+against the docs, the edges the engine reaches - and every claim put to
+three refuters (code as written, the numbers re-measured, the docs and
+the pins). 29 distinct claims; 25 stood, 4 fell. All 25 applied here, and
+every new instrument shown failing on purpose (ADR-0149) in two
+sabotaged builds recorded below.
+
+**The code (VaelenScene, and its use by VaelenWalk and VaelenUI):**
+
+- **The 20-degree rule held a house's axes only** (Layout.cpp `Level`;
+  medium). Along X and along Y at most 291 cm over 8 m - and up to 27
+  degrees on the diagonal, measured 69 houses over 20 degrees on the
+  `Vaelen.Walk 128 120` world, the steepest 29.7. The roadmap promised
+  20. Now the two diagonals too, at 291 * sqrt 2 held exactly as squares.
+  THIS MOVED THE LAYOUT DIGESTS, the counts unmoved: Atlas.SceneLayout128
+  8542fca56e445402 -> 6917612c1344027f (and Scene.Layout, which now
+  asserts it), Replay.Climate's LAYOUT line ead1d4340f2cdd08 ->
+  6e23ade67f848db7. Two pins, one cause, one commit.
+- **The walk opened in the dark** (Sky.cpp `SunOf`; medium). A played life
+  has Awake 0 from its taking-up to its first day turn, and SunOf called
+  Awake 0 night - so `Vaelen.Walk`'s first sky, and AVaelenLand's after
+  Begin, had the sun at elevation 0 and the light off, whatever the day.
+  Now `SunOfLife`: a life alive without hours yet stands at the day's
+  first hour, dawn in the east; nobody, and a dead life, are night - and
+  night is UNDER the horizon (elevation -100; it was 0, which no light
+  could tell from dawn), the engine's sun on from the horizon up.
+  MeasureSky and AVaelenLand go through the one function. No pinned
+  line reads Awake 0 (the Atlas's sky pins set 16, Replay.Climate's sky
+  is day 31); the S2 twin's sky line, in no kit, now says `azimuth 900`.
+- **The day turn's one growing term** (Layout.cpp `Overlaps`; medium).
+  Every plot asked every house of its region, H^2/2 a region, and the
+  houses follow the coarse population, which grows with the years: 34 ms
+  at 256 after 800 years. Houses are bucketed by land tile now, and a
+  plot asks its own tile's bucket alone - by the slot it was drawn from,
+  no search - since a house's centre is 4 m inside its tile and two
+  houses in different tiles are 8 m apart on the axis that parts them
+  (a tile narrower than a house asks its neighbours too). The same
+  predicate: every house that could overlap is among those asked.
+  Digest-neutral, proven by the pins above and the S2 twin's lines. A
+  first version found the neighbouring tiles by binary search and was
+  SLOWER than the scan it replaced (31.9 ms against 22.6 at 256/420
+  years): nine searches a plot cost more than four hundred comparisons.
+  MEASURED with the review's own harness, AELVOR 256 after 300 + 120
+  years, best of five: BuildLayout 22.6 ms before, 15.3 ms after - WITH
+  the diagonal rule's four extra HeightAt a plot (about 6.6 ms of the
+  23,415 plots) inside it; at 128, 5.8 ms before, 5.0 after.
+- **`Middle` rescanned the whole map per call** (201 x 65536 tile visits
+  at 256, 6.3 ms; 27.7 ms at 512) and **`Path` zero-filled two N-word
+  arrays per road** (2 MB a road at 512). Each region's middle is found
+  once over its own land (ascending, the same first minimum), and the
+  A*'s arrays are kept across roads and reset on the tiles touched.
+  Digest-neutral, the same pins.
+- **`Repaint` rebuilt each near chunk at the full lattice every day**
+  (VaelenLand.cpp; 2.5 ms a chunk) to recolour it. The near chunks' bare
+  meshes are kept from Build and the snow painted on a copy.
+- **`TActorIterator`-style edges of the scene:** `BuildChunk` guarded on
+  `CX * 16` in uint32 - CX = 2^28 wrapped to chunk 0 and answered true;
+  guarded on the chunk index now. `TerrainStats`' vertex and triangle
+  tallies were uint32 and a map BuildGround admits (8192 a side) has 2^33
+  triangles; uint64 now, the line printed through uint64 already.
+  `LatticeZ` read "is this a tile centre" AFTER the rim's clamp, so the
+  west and north outer half tiles lost the wrinkle on every centre row
+  and column while the east and south kept it - cosmetic, latent (AELVOR's
+  rim is sea, no digest moved), fixed and instrumented on a hand-drawn
+  all-land map. `Placed` is hashed raw and had no `static_assert` on its
+  size where `TerrainVertex` has one; it has.
+- **Region 0 meant three things** (VaelenLand.cpp `Build`): the scene's
+  "whole map", the fence's "no tile", and the engine's near loop's "every
+  chunk holding sea" - 59 of 64, cooked, under a line that would say
+  "all". One rule now, `Scene::ChunkHolds`, used by MeasureChunks and by
+  the engine's near chunks alike; Build refuses region 0 and `Vaelen.Walk`
+  says "nobody is played ... Vaelen.TakeUp first" instead of building.
+- **The engine's `static_cast<int64>` of a double truncates toward zero**
+  where TileOfPoint floors: a floor only at X >= 0. `Cm()` floors, at the
+  controller's five sites. **The walker's 106 cm** was 96 + 10 written by
+  hand in two modules: `VaelenWalkBody` (VaelenUI's header, since
+  VaelenWalk depends on it) holds the capsule and the clearance, and the
+  walker, the controller and Vaelen.Walk read it.
+
+**The tests (Tests/Scene; 32 cases from 26, 1.58 M checks):**
+
+- Test_Layout: the layout digest ASSERTED (it was logged, and the CMake
+  comment "the same digest by another wiring" described a check that did
+  not exist); the slope rule asserted for every house on the real ground
+  and on one four times steeper, where the rule is shown to have had plots
+  to refuse; the roads' endpoints in their route's regions and each road
+  as long as a breadth-first search's shortest walk; `Roads + Unrouted ==
+  Net.Open`; a colony's pit, on the region's middle, the very tile of its
+  square (the pit branch ran under no pinned world); the played person
+  standing nowhere and the company flagged, through the life and through
+  the world's Played alike; AimAt's cone at 29.7 and 30.1 degrees, its
+  reach at 300 and 301 cm, its tie in both orders (the four figures it had
+  sat at 0, 5, 90 and 180 degrees, and a cone of 60 answered them all the
+  same); floors under two loops that could run zero times.
+- Test_Terrain: the lake surface - the one thing 19.05 invents - asserted
+  from a flood fill of the map's own lake flags, and by a hand-drawn
+  five-by-five map with the answers worked out by hand (the old clause
+  compared a centre to the bound it is DEFINED as, and could not fail);
+  HeightAt against the triangle the mesh's OWN index list holds under the
+  point, the outer half tiles sampled (the old second instrument
+  hard-coded the diagonal, and a mesh cut the other way would have passed
+  it); the winding consistent - every interior edge walked once each way,
+  a triangle turned over caught in-test where the unordered count is
+  blind; `MeasureChunks` by region against a plain scan, region 9 at 128
+  pinned (05f5e0cefbe78608, two chunks) and the engine's line rule under
+  a headless test at last; IsSteep's threshold by known answers (0.9917
+  not steep, 0.9918 steep); the 64-bit tally; the rim's wrinkle on all
+  four sides; the two whole-map terrain digests pinned in the test.
+- Test_Fence: each edge IS the side between its two tiles (a centimetre
+  either way from its middle); every region of the frame has a walkable
+  tile (the premise `PlaceAfterDay` rests on, a measured fact now); the
+  sea search's floor.
+- Test_Sky: night under the horizon, a life's dawn; the paint at the full
+  lattice on the map's south-east chunk, the far edge included; a
+  known-answer control on a four-by-four all-land map with frost on its
+  last tile - 81 white points, 17 of them past the map's edge.
+
+**Shown failing on purpose (ADR-0149), two sabotaged builds, the
+variables kept:** (1) Level never refusing, a cone of 60 degrees, the
+company flag never set, the played person standing like anybody, roads
+over land alone, the north and south sides' corners swapped, the rim
+left unpainted, no dawn, night at 0 - Layout 5 cases of 9 failed
+(766 slope failures, 4 shortest-path, 6 played-and-company, 2 cone, the
+pin), Fence 1 of 4 (16,084 side failures), Sky 1 of 5 (the 4 sun
+checks); the rim control needed the hand-drawn map to bite (AELVOR's rim
+is sea, painted the same either way) and fails with it: 64 white of 81.
+(2) The quad cut on the other diagonal, the region next door counted in,
+the highest shore for the lowest, the threshold at 131, the tally in 32
+bits, the chunk guard on the wrapped product, the centre read after the
+clamp - Terrain 7 cases of 14 failed, each the one aimed at (3,963
+triangle failures, 1,933 lake, 14 chunk, 3 tally, the rim, the two known
+answers, the pins). Every case passes on the restored tree.
+
+**Refuted (4):** AimAt's int64 squares overflow only 30,000 km from a
+figure (the map is 32 km); `PlaceAfterDay`'s two-cause false is the
+documented contract and no map has a region without a walkable tile
+(now asserted); the two header comments were the project's own
+convention, the unassigned land they described does not exist on any
+map; and the engine's "region 0 as every chunk" was a second reading of
+the finding above, moot once fixed. One of the 25 was found by two
+lenses at once (the rim).
+
+**Held after:** the four Scene suites (33 cases), Atlas.SceneTerrain128
+and its Before, Atlas.SceneLayout128 (re-pinned), Replay.Climate
+(re-pinned LAYOUT, TERRAIN and SKY unmoved), the S2 twin's climate and
+terrain lines byte for byte (`cold deaths 1582`, region 26
+7fce7d5a0851289f, all 105208c54e3c6ea9); 25 TUs parse, the ledger 130,
+the fence, the census. S2 builds THIS commit (`^VaelenScene reviewed`):
+it carries the shim audit's include and the engine changes above.
+
+CI run 323 green on 71702f2, ten legs of ten: the two moved layout pins
+agree on every compiler.
+
+### 22.01, 2026-09-27: the front end as pages of text - title, loading, pause; F5, the autosave, Continue
+
+Section 27's step 7, headless for S4: the product's first screen without an
+asset, a Blueprint or UMG, in the words the HUD already draws with. STATUS:
+UNVERIFIED (engine) - parsed against the shim (25 TUs, 29 self-test
+mutations, 140 beliefs: ten new), never compiled; sitting S4 builds it.
+
+**What a player meets.** The HUD draws the front end's page BEFORE the
+world's page (Vaelen/View/Panel.h's, digested and pinned; the front end's
+rows are host text and pinned by nothing):
+
+- **Title** (no world begun): `Enter` a new world (AELVOR 128, 120 years);
+  `F8` continue from the newest save - named on the page with its tick, or
+  "no save yet"; `Escape` quit.
+- **Loading**: drawn on the frame of the key, and the console lines the page
+  chose run on the NEXT frame (the one deferral in the UI, a next-tick
+  timer: it fires once, and the world moves on the same `Vaelen.Play` or
+  `Vaelen.Walk` line a sitting would type - ADR-0138 holds, nothing moves on
+  a frame). Through the console on purpose: the UI names no module that
+  holds a world (the fence), and a typed line and a pressed key are one line.
+  The base controller runs `Vaelen.Play 128 120 1` and `Vaelen.Load <save>`;
+  the walk's runs `Vaelen.Walk 128 120`, and for Continue `Vaelen.Load <save>`
+  then `Vaelen.Walk` - which now WALKS a world already begun (builds the
+  ground, the sky, the scenery and places the walker around it) instead of
+  refusing to begin a second; the walk loads nothing itself, as the fence
+  says.
+- **Playing**: the world's page as before; `Escape` pauses, `F5` saves as
+  `quick` (the store keeps the one before as `quick.previous`, 16.15).
+- **Paused**: year, day and days lived; `Escape` back; `F5` save; `F9` the
+  stream; `F10` quit. While paused no verb, no day turn, no Tab and no step
+  or look of the walker reaches the world - the stream is exactly what it
+  would be without the pause, since a pause is no input.
+
+**The autosave** (VaelenWorldSubsystem::AdvanceDay): every ten DAY TURNS,
+after the views are retaken, `Save("autosave")` - counted in turns and not
+in frames or seconds, so the same play autosaves at the same days
+(`Vaelen.Day 100` counts a hundred at once and saves at most once, at its end); `SetAutosaveEvery(0)`
+turns it off (a batch of N days at the console counts once); `LogVaelenWorld:
+autosave <path>` or the refusal by name. The
+store's rename-aside keeps `autosave.previous`. Cost: a container of the
+128 Play+Stream world is tens of megabytes (16.01, 20.01), a fraction of a
+second every ten Space presses; measured only on the owner's disk.
+`NewestSave` picks the highest TICK from the containers' own headers (the
+lowest name at a tie): no clock, no file time.
+
+**What S2 and S3 see of it.** At launch the title page is up; typing
+`Vaelen.Walk 128 120` at the console still works and prints the same lines
+(the page goes away once a world is begun) - or `Enter` does the same. The
+one key that changed meaning is `Escape`: it pauses the world (and, on the
+title page, quits) - the console's own key is untouched.
+
+**Beliefs (ten), until S4 compiles them:** `EKeys::Enter`, `Escape`,
+`F5`, `F8`, `F10`; `UEngine::Exec(UWorld*, const TCHAR*)` (the engine's
+third parameter defaults to the log); `UWorld::GetTimerManager()` and
+`FTimerManager::SetTimerForNextTick(Obj, &Class::Method)`;
+`APlayerController::ConsoleCommand` (quit goes through the console's own
+`quit`, as the engine's QuitGame does); `AHUD::GetOwningPlayerController()`.
+Two new self-test mutations: a key the engine does not have (`F13`), and
+the deferral asked of the actor rather than the world's timers - both
+caught.
+
+**Reviewed the same day by two read-only agents** (one against the UE 5.6
+API, one adversarial on the pages' logic); what they found and what moved,
+before the second push:
+
+- The title page asked the store for the newest save ON EVERY FRAME, and
+  the engine store's List reads and digests every container whole: a
+  hundred megabytes a frame with two saves. The controller composes the
+  page's rows once, when the page changes (`RefreshFront`), and the HUD
+  draws them as it draws the panel's - it composes nothing, as its header
+  promised since 14.09; the pause row's year and day are the controller's
+  now. What remains: List still reads every save whole, once per launch -
+  26 MB a save at the ship cell, minutes at the 2.37 GB Lively cell -
+  where Store.h promised a header read. Follow-up: a header-only List (a
+  `ReadCheckpointHeader` in VaelenRun, a partial read in both stores).
+- `FPlatformMisc::RequestExit` closes the whole EDITOR under play-in-editor;
+  quit goes through `ConsoleCommand("quit")`, which the editor turns into
+  "stop playing" and a package into an orderly exit. Under play-in-editor,
+  `Escape` (Stop) and `F8` (Eject) are the editor's before the game sees
+  them: the pause and Continue exist under `-game` and in a package, where
+  the sittings run; Enter, F5, F9 and F10 are free everywhere.
+- `Vaelen.Day 100` turns the day one at a time to time each turn, and would
+  have autosaved ten times inside one typed line: it counts once now
+  (`AdvanceDay(1, false)` in its loop, `CountForAutosave(N)` after), so a
+  batch saves at most once, at its end; a hundred presses of Space save at
+  every tenth. Negative days count for nothing.
+- `.stream` files sit in the same folder and pass the name rule; the store
+  listed them at tick 0, and on a first launch after an F9 the title page
+  would have offered one. `NewestSave` skips what this build could not read
+  as a container (version 0).
+- The walk's "landed" asked for the body PLACED, which the retaking sets
+  and which can come before Vaelen.Walk respawns a walker that fell while
+  the title page was up: it asks for a body only.
+- "A few seconds" for a Begin measured at 17.9 s release (20.01), so a
+  Development build's half a minute of a frozen window: the page says so.
+- Newest is the highest TICK, and ticks are not comparable across worlds:
+  after experiments at another size the title offers the older world's
+  later save; the page prints the name and the tick, and the rule stays
+  clockless on purpose.
+
+**What is not here, on purpose:** a quit-to-title (the host holds one
+world, Begin's rule; quit and Continue is the loop), a save chooser (the
+newest save is the one a player wants; `Vaelen.Saves` lists them), any
+font, colour or layout beyond the rows of 14.09 - polish is Phase 22's
+remainder after a stranger has played.
+
+### 22.02, 2026-09-27: a listing reads heads and trailers, not files
+
+The follow-up 22.01's review named. `StoreEntry` promised its fields "from
+the container's own header, so a chooser can show a save's tick and version
+without loading two gigabytes to find out" - and both stores loaded every
+save whole and digested it, 26 MB a save at the ship cell, minutes at the
+2.37 GB Lively cell; the title page pays one listing per launch.
+
+- **`ReadCheckpointHeading`** (VaelenRun): the head and the section table
+  from a container's first bytes - at most `CheckpointListingBytes`, under
+  two kilobytes (the head, 56 bytes, and 64 rows of 30, the table's cap) -
+  and nothing else: no trailer, no section digest, no payload. The
+  refusals a whole read gives from the head alone (magic, version, inner
+  version, a required flag, the table's count and order), Truncated when
+  cut inside the table; the STATE row's offset and length, where the
+  image's trailer lies. A listing BELIEVES the head; Read verifies.
+- **`ICheckpointStore::ReadPart`** (Offset, Length): the stdio store
+  seeks; the engine's opens an `FArchive` through
+  `IFileManager::CreateFileReader` and seeks (seven beliefs: the reader,
+  its class, Seek, TotalSize, Serialize, IsError, and FileSize for the
+  size - 147 in the ledger). A store with no better way inherits a default
+  that reads whole and copies the part.
+- **`DescribeSave`**: ONE describer for both stores' `List` (16.14's lesson
+  again: one reader) - two partial reads, the head and the trailer's eight
+  bytes, and the size as the disk gives it. What is not a container this
+  build reads is listed by name and size with every field 0, so the title
+  page's `NewestSave` skips it (22.01's rule, version 0).
+
+MEASURED by the store's own count of bytes pulled off the disk (Run.Store,
+`AListingReadsHeadsAndTrailersAndNotFiles`): a listing of two saves reads at
+most 2 x (1976 + 8) bytes where each save is many times that, and says of
+each exactly what a whole read says (tick, version, sections, the image
+trailer); the CONTROL, a Read, costs the file. A flipped payload byte is
+nothing to the listing and Corrupt to Read - the division of labour,
+asserted. Run.Checkpoint, `TheHeadingIsReadFromTheFirstBytesAlone`: field
+by field against ReadCheckpoint, exactly the head and table's bytes
+suffice, one fewer is Truncated, each refusal by name, and the trailer
+flipped is Corrupt to the whole read and nothing to the heading.
+
+**Shown failing on purpose (ADR-0149), one sabotaged build:** ReadPart
+reading the whole file and copying (the bytes count: caught), the trailer
+read at the STATE section's start (the digest: caught), a cut table read
+as a shorter one (Truncated expected: caught; and the cut file listed with
+fields set: caught). Every case passes restored.
+
+Shim: one new self-test mutation (the reader asked of FFileHelper, which
+has none - caught, 30). ENGINE: UNVERIFIED until S4 compiles the seven.
+
+Found by Run.Shuffled the same hour, before the push held: the first HALF
+of a save - head and table whole, payload cut - described as a save of
+version 2 where the whole read had said Truncated, and Run.StoreColdProcess's
+control (a half file under a plain name lists with no version) caught it.
+The heading now says where the last section ends (`PayloadEnd`), and a
+file shorter than its own table claims is listed by name and size with
+every field 0. Run.Store holds the half file beside the stray and the cut.
+
+### 22.03, 2026-09-27: `check_cook.py` - a package checked against what the code asks of it, and the UAT line
+
+Section 27's step 7, the last headless item before S4's package. A package
+that starts and draws no house is worse than one that refuses to start: the
+scenery finds its shapes by NAME at construction (`/Engine/BasicShapes/Cube`,
+ConstructorHelpers), the ground paints with the engine's vertex-colour
+material when M_VaelenTile is not on this disk, the default map is the
+engine's Entry - strings in .cpp files, none of them an asset the cooker can
+see from a map. `Tools/check_cook.py <staged directory>` reads the two
+manifests UnrealAutomationTool stages with every build (one line per file,
+UFS and NonUFS) and refuses a package missing any file the code names.
+
+What is required is DERIVED, not listed: every `/Engine/...` literal the
+engine modules' sources name (today the four basic shapes, their material,
+the vertex-colour, grid and default materials) as `Engine/Content/<path>.uasset`;
+the GameDefaultMap of DefaultEngine.ini as a `.umap`; the three
+Config/Default*.ini and the .uproject; an executable, Development or
+Shipping by name. Every `/Game/...` literal is optional and noted absent
+(the code falls back). Backslashes, case and a manifest named instead of
+its folder are all the same package. `Kernel.CookSelfTest`: the complete
+package accepted, each required file missing refused by name, no executable
+refused, the Shipping name accepted, the optional asset a note, a folder
+without manifests refused as not a staged build - fourteen controls.
+
+The UAT line and the check are ENGINE_HANDOFF's S4 step 0. If the shapes
+come back refused, the cooker did not follow the CDO's finder: the config
+line `+DirectoriesToAlwaysCook=(Path="/Engine/BasicShapes")` under
+`[/Script/UnrealEd.ProjectPackagingSettings]` in DefaultGame.ini is the
+fix, and a config line is the owner's (section 27).
+
+### Section 27 step 2 measured, 2026-09-27: why Play+Colony offers nobody bound at 128 - the colony's ground, not the world
+
+The timebox was a day; the answer took an afternoon and one instrument. The
+question section 27 asked (step 2, and the second of its three risks): the
+premise of the game is a bound life, `StartRules{}` asks for one, and the
+40-second Atlas cell that carries the colony (Play+Stream+Lively+Colony, the
+`full-*` goldens) is offered nobody at 128. WHY, measured on the two worlds
+of the question, from one seed, with a scratch probe against the release
+libraries and then `Run.Bound` (`Tests/Run/Test_Bound.cpp`), which pins it:
+
+| world (AELVOR 128, 300+120 years) | detailed region | its culture / bondage bits | alive | aged 16-40 | bound | bound in the window | `TakeUp(WantBound=1)` |
+|---|---|---|---|---|---|---|---|
+| Play+Stream (the SUBSYSTEM's world, no colony) | 26, the busiest | 1 / 7 (debt, capture, birth) | 1428 | 522 | 119 | 45 | person 3580, bound |
+| Play+Stream+Colony (the Atlas cell; Lively changes nothing) | 75, the busiest WITH ORE, the colony founded there | 3 / 0 (none) | 1359 | 503 | 0 | 0 | nobody |
+
+**THE CAUSE IS TWO RULES MEETING.** `Aelvor::Begin` details one region for
+the pre-play years: the busiest, or with `Options::Colony` the busiest that
+has ore under it, because a colony is people put on rock (`BusiestWithOre`,
+copied from the Atlas). On AELVOR 128 those are different regions, 26 and
+75, and the two belong to different cultures. A culture's customs
+(`NormSet::BondageAllowed`, 05.04) say which bondage institutions it
+allows, each of the three drawn at 500 per mille from the culture's
+identity: of AELVOR's five cultures, culture 1 allows all three, culture 2
+allows debt and birth, and cultures 3 and 4 allow NONE. Every entry
+`Bondage.cpp` has asks the culture first - debt (`Allows(Culture, Debt)`),
+birth (`Allows(Culture, Birth)`), capture - and the promotion path binds
+only what an earlier detail left in the region's strata, which a first
+detail has none of. Region 75 is 1359 people of culture 3: nobody there can
+be bound by any rule the kernel has, in 120 years or a thousand. Not the
+size (the window holds 503 lives), not the age window, not the colony's
+hands (1100 of them, 463 lifted): the ground the colony rule chose, and
+the customs of the people on it. The Lively cell reads the same numbers.
+
+**AND THE PRODUCT'S WORLD IS NOT THAT CELL.** `VaelenWorldSubsystem::Begin`
+asks for Play and Stream and never the colony (`Source/VaelenGame/Private/VaelenWorldSubsystem.cpp`),
+so the game's world details region 26, where 119 are bound after 120 years
+and 45 of them are inside the default window: the premise IS in the
+product's world as it is built today. Only the host's `Rules.WantBound = 0`
+line (twice: Begin and the load path) hides it, and that line is the
+owner's by this section's own rule. Section 27's risk sentence ("the
+premise not in the world as measured") was written from the Atlas cell and
+is narrower than it read: it is the COLONY cell that lacks the premise.
+
+**THE CHEAPEST FIXES, for the owner to choose from - none applied, none
+moves a pin here:**
+
+1. *Ship the world as measured*: the subsystem's `WantBound = 1` with the
+   printed fallback to 0 that step 2 already names. Two host lines. The
+   game then starts person 3580 of region 26, bound, aged in the window; a
+   map that holds nobody bound falls back and says so in the log. No kernel
+   digest moves. This is the fix section 27 assumed and it is enough for
+   S3's "a bound life" clause.
+2. *If the colony must be in the shipped world*: `BusiestWithOre` picks,
+   among the ore regions, the busiest whose MAJORITY CULTURE allows debt
+   bondage. Measured at the moment of the choice (year 300): region 63
+   (921 people, culture 2) instead of 75 (1385). One kernel rule in
+   `Aelvor.cpp` and the Atlas's copy; every Colony world's digests move
+   (the `full-*` goldens, `Run.Aelvor`'s colony day, the gate cells), so it
+   is a re-freeze commit in the 18.10 form and the owner's to authorise.
+3. *Or the colony holds its hands*: 11.04 already says "a region that
+   keeps people bound with nobody to hold them is what a colony IS", and
+   `BondState::Holder = 0` means the region itself. Founding a colony
+   could bind its hands to the region (a Promotion entry with holder 0,
+   custom or no custom). A design change to Bondage or Mining with a
+   Phase 11 gate behind it; the most game-like answer and the most
+   expensive.
+
+The instrument stays: `Run.Bound` costs two 128 worlds, which `Run.Climate`
+already pays on every leg (measured here: 42 s on gcc release, 82 s on gcc
+debug, timeout 3600 as its sibling's), and pins the region, the culture, its bits, the
+seven counts and the person, so that the day one of the three fixes lands
+the suite names what moved. Sabotaged on purpose on the release build
+(ADR-0149, the variable kept): the expected bits of region 75 set to 1 -
+`R.BondageBits == 1` refused with the actual 0; the expected person set to
+3579 - refused with 3580; and the control's `WantBound = 0` set to 1 -
+`Taken != 0` refused, since region 75 offers nobody bound. All three back; `Run.Bound` 2 of 2 on release and debug after, `verify_fast`
+clean. CI: run 328 on c8ac9bf was in progress when this pushed and is
+cancelled by it, as 327 was; the run on this commit is the one to read.
+
+**`Replay.Bound`, the same afternoon: the premise held by an entry.** Step 2
+also asked for the bound start's stand-in, and the measurement above says
+where one can be written: `VaelenAtlas --stand --size 128 --years 120
+--want-bound 1` (the climate world, Play only, as the 18.10 stand-in) takes
+up Erdass of Krukraldord, 40, bound to Okigerdo, and writes thirty days and
+32 intents - `Tests/Run/Streams/aelvor128-bound-stand-2026-09-27.stream`.
+`ReplayPlayed.cmake` learns `WANTBOUND` (default 0, the literal every entry
+passed until now) and `BOND`, the page's own row about the bond, so that a
+replay held to a bound life is held to the life BEING bound and not only to
+four digests. `Replay.Bound` (-DERA=--climate -DWANTBOUND=1) pins Erdass's
+month: state fa3a942904aaeb26, log 0ccf228b6b72f976, life 8818b318eb76441b,
+panel 41268c2b1206c449, the climate line Replay.Climate's (the same world on
+the same day), 19 taken and 13 refused by the world - "could not eat:
+nothing to do it with", what a bound life at 128 is like today, pinned
+rather than argued. THE CONTROL, `Replay.Bound.AsFree`: the same tape
+without the rule is REFUSED by the replay (exit 1, one wrong taking: the tape
+says Erdass, a host asking for whoever comes offers Dokdahum), and the month
+it prints on the way is Dokdahum's, Replay.Climate's four digests exactly -
+the thirty-two intents are the same, who lives them is the host's rule alone,
+told to the replay and never read from the tape (Door.h). The driver learns
+`WRONG` for it: a refusal pinned by its reason, so a replay that read the
+rule from the tape and ran clean fails the control. The first version of
+this control expected the free month to run CLEAN and was red on its first
+run - the refusal is the better control and is what is kept.
+Replay.Bound joins the gate list as the nineteenth, the only entry with the
+premise in it. Sabotaged five ways through the driver on the release build:
+WANTBOUND dropped against the bound line, one recorded Give re-aimed
+(4714 -> 4715), one life digit changed, the bond row expected for another
+holder, a BOND too short to be a row - each refused by name; and the control
+replayed WITH the rule runs clean and fails the control for it.
+
+**The bound life's larder, measured the same evening (the third risk, the
+fun).** Replay.Bound's month reads "could not eat: nothing to do it with"
+six times, and a page that says so six times in thirty days is the risk
+section 27 names third. Measured with two scratch probes against the release
+libraries, on the --stand world (Play, climate on) at the moment of the
+start: Erdass (person 3610, family 393, twelve alive at the table) is taken
+up with a house stock of 0 grain and a region stock of 0, where Dokdahum
+(family 39) starts with 103. The verbs are sound - a day of work brings 2
+grain into the house, a meal takes 1, and nothing between days takes it
+back, so Erdass eats on any day after a day of work (10 days driven by hand:
+day 1 refused, every meal after a work day taken). The six refusals are the
+stand-in writer's order (Eat on days before any Work), not the world's. But
+the EMPTY LARDER is the world's, and it is not the rule for the bound: of
+the 46 bound aged 16-40 in region 26, 7 start with nothing in the house
+(median 60 grain, mean 68.5, households of 16), against 43 of 472 free
+(median 84, mean 89.9). Erdass is one of the seven because TakeUp takes the
+LOWEST person index the rules allow (Start.cpp), and 3610 is the lowest
+bound index in the window. So the premise life the product would start
+today is, by an accident of index order, one of the poorest houses of the
+region - "you own nothing, and the house owns nothing either" - and the
+first page a stranger reads says so. Whether that is the game (work first,
+eat after: the premise made concrete on day one) or a bad first page is a
+design decision and the owner's; the cheapest lever if it is the latter is
+in the start rules (a preference among the offered, as PreferOre already is
+- a house with grain, or the poorest on purpose), which moves the person
+every bound entry pins and is therefore a re-freeze. Not touched.
+
+The `--empty` play was the wrong instrument for this question and is
+written down as such: it takes nobody up by design (14.03), so its "0
+taking(s)" says nothing about the offer. The probe read the offer.
+
+### The page's wording, 2026-09-28: "could not eat", and the view digests that moved with it
+
+Replay.Bound's page read "Erdass could not ate: nothing to do it with" six
+times, and Test_Panel pinned "Eikha could not walked: too far to walk" as
+the row a refusal makes. `PlayerHistory.cpp` had one verb table, `Told` -
+the past tense, "ate", "walked", "took from" - and used it after "could
+not". A stranger reads that row first (section 27, the third risk), so the
+refused sentence now takes `Meant`, the infinitive: "could not eat", "could
+not walk", "could not take from". Nothing in the world moved: the chronicle
+composes its text from the event log at read time, so every STATE and LOG
+digest in the tree is the same byte, and the release suite says so - 244 of
+254 entries green with no pin touched, and the 10 red ones exactly the
+entries that hash a VIEW's text:
+
+| moved | before | after | why |
+|---|---|---|---|
+| `VAELEN_LIFE_FROZEN_TEXT` (Player.LifeHistory) | 3727cebce1fc782c | 7b2fd0311b38a004 | the exported life's twelve records, one of them a refusal |
+| `VAELEN_PANEL_FROZEN_PLAYED` / `_WALK` (View.Panel) | 777351768a3a4fc6 / 77038fcf880e61c7 | fbc0e50f6b16ee9c / 890302c885b31b9d | the page's refused row |
+| Replay.Played, life | 654e2de6455d8b7a | 3039c736974e7503 | the life view carries the chronicle's text; state, log, PANEL unmoved |
+| Replay.Climate, Atlas.Keys128, Replay.Bound.AsFree, life | 7406a01f544161f6 | b351e2246441036a | as above; both pages unmoved |
+| Replay.Bound, life and panel | 8818b318eb76441b / 41268c2b1206c449 | 313303cf74469015 / 64a084c49b348f45 | the only page in the tree with a refusal among its last rows |
+
+**The engine's log of 2026-09-16 cannot be rewritten**, and Session.SelfTest
+compares it to the headless line byte for byte, life digest included. The
+session reader learns one key, `moved <old> <new>`: a VIEW digest the log
+carries for a wording the view no longer has, read as the new one - that
+16-hex token exactly, nothing else on the line. `s0916.session` carries
+`moved 654e2de6455d8b7a 3039c736974e7503` with the reason beside it, and the
+self-test holds the key to two new controls: with the `moved` taken out the
+log is refused at that digest (the substitution does work), and a `moved`
+naming a wrong new value is refused (it does only the work it says). The
+world's digests never move this way, and a session that said so of them
+would be refused by the same control. Streams/README.md and ENGINE_HANDOFF
+keep the line the engine printed and say what its life digest reads as now.
+
+### Found on CI run 332 (05f2ca7), 2026-09-28: the parse job's long pole sat 39 seconds past its timeout
+
+Run 332 came back nine legs of ten green - Windows, macOS, both releases,
+both noasserts, both debugs, the format - and "cancelled" as a whole because
+`engine modules parse (clang 18)` was cancelled by its own `timeout-minutes:
+10`: the shim self-test (30 mutations since 22.02, each a compile of the
+engine modules) took 9 min 21 s on that runner, against 6 min 13 s on run
+331's, and the `Kernel modules` step after it was cut at 02:03:10, ten
+minutes to the second after the job began. Not a regression of ours: the
+same self-test, the same mutations, a slower runner - the same class as run
+312's Windows edge. The job gets 20 minutes, with the two measurements
+beside it, and the leg's suite is untouched.
+
+CI so far this stretch: run 325 green (ed087b9, 22.01); run 329 green
+(7f2aaa4, Run.Bound on ten legs); run 332 nine of ten on 05f2ca7 (the
+wording re-pins: Replay.Bound, Replay.Bound.AsFree, Session.SelfTest with
+`moved`, the two pages and the life text all green on every leg that ran
+its suite), the tenth cancelled by the timeout above; 327, 328, 330 and 331
+cancelled by the pushes after them.
+
+CI run 333 (c306851), read 2026-09-28 07:46 UTC: ten legs of ten green, the
+parse job in 7 min 44 s under its new line. The first fully green run since
+329, with Replay.Bound, Replay.Bound.AsFree, the `moved` session key and the
+re-pinned pages and life texts on every compiler.
+
+### The eleventh leg, 2026-09-28: MSVC release, the configuration that ships, run by CI at last
+
+CI run 334 (9135c95): ten legs of ten green, as 333 was. And then the
+review of 2026-09-14 (section "eight CTest legs named") said it in one
+clause and nothing followed: `windows-msvc-release` has had a preset since
+Phase 00 (`CMakePresets.json:150,226`, RelWithDebInfo) and no job ran it.
+The product ships MSVC with the optimiser on - the Shipping package is this
+kernel under the noasserts presets' flags - and every frozen digest in the
+tree had been agreed by MSVC Debug, Linux release, Linux noasserts and
+AppleClang, never by the compiler and optimiser a stranger's copy carries.
+Fix64, the seeded PRNG and `-ffp-contract=off` are how the kernel keeps
+ten compilers on one digest; an optimiser nobody ran is the one place they
+had not been asked.
+
+The Windows job becomes a matrix of two presets: `windows-msvc-debug` as
+it was (`-E Shuffled`, the leg already runs an hour) and
+`windows-msvc-release`, the whole suite with the shuffles, since release is
+the fast leg. Eleven jobs, nine of them CTest. The first run says what it
+costs; the leg's `timeout-minutes: 180` bounds it as the others'. If a
+digest differs there, that is the finding this leg exists for, and it is
+worked as a defect of ours before anything else ships.
+
+CI run 335 (5151013), read 2026-09-28 21:46 UTC: eleven legs of eleven
+green. The release leg's first numbers: build 8 min 32 s, the whole suite
+with the shuffles 35 min 59 s, 45 minutes end to end - against 1 h 59 min
+for the MSVC debug suite without them, and 27 minutes for gcc release on
+Linux. Every frozen digest in the tree now agrees under the compiler and
+optimiser the product ships with; nothing moved.
+
+### The bound life played three years, 2026-09-29: the premise is a row on the page and nothing else
+
+CI run 336 (cae78ef): eleven of eleven green. Then the question the two
+larder probes left open, measured the same way: what does the premise life
+come to when it is PLAYED - not thirty days of a stand-in but the three
+years Run.Soak gives the free life, in the product's world (Play+Stream, the
+climate, 128/300+120), by the same round-robin of the eight verbs through
+the Door. A scratch probe against the release libraries; the free control
+comes to Run.Soak's own pin, `16954db42400b164`, so the probe is the soak.
+
+| three years by the round-robin | bound (WantBound 1) | free (WantBound 0, Run.Soak's life) |
+|---|---|---|
+| who | Esvuhurdu, person 3580, family 65 (30 at the table), region 26, held by 2892 | Dikrisso, person 3575, family 316 (22), region 26 |
+| alive / food / health / rest after 3 years | 1 / 255 / 255 / 255 | 1 / 255 / 255 / 255 |
+| meals refused | 0 of 135 | 0 of 135 |
+| house grain, year 1 / 2 / 3 | 64 / 114 / 154 | 94 / 137 / 185 |
+| bond after 3 years | still Bonded to 2892, who is alive | free |
+| state | `6e9f76c02755513c` | `16954db42400b164` |
+
+The bound life is as safe as the free one: it eats every meal, its house
+grows by fifty grain a year, nobody frees it, nobody hardens it (fifteen
+years for that), the holder outlives the three years. And that is the
+finding: **in the product's wiring the bond is read by nothing that plays.**
+`Start.cpp` records it and the page prints "bound to Okigerdo since year
+420"; `Bondage.cpp` rolls manumission and flight once a year and hardens
+after fifteen; `Production.cpp` reads a bond only where ore is mined (the
+colony's hands); `Judgement.cpp` binds and frees by a verdict, and it is
+Lively's, which the product does not wire. No verb costs a bound life more,
+no holder asks for a day's work or a share of the grain, no page row moves
+from year to year. A stranger who takes the bound start and plays a season
+sees "bound to X" on day one and the same row on day 1080, with nothing
+between that the free start did not also show. The larder measured the day
+before was the accident of an index; this is the design: the premise
+section 27 sells is, today, a label.
+
+What follows is the owner's, and it is the third risk's answer rather than
+the second's: the cheapest thing that makes the bond PLAY is one rule in
+`Doings.cpp` - a holder's share of a bound life's day of work (the yield
+split, `WorkYield` 2 becoming 1 to the house and 1 to the holder's), which
+the page can say in one row ("worked, 4 hours of it; 1 grain to Okigerdo")
+and which gives the second row of the page a reason to exist - and its
+mirror, a way out (the debt paid, `BondExit::Manumission` by the played
+person's own grain rather than the yearly draw). Both move the state
+digest of every played world and the life digest of every bound page; both
+are a Phase 10/11 design decision; neither is written. The 3-year probe
+stays in the scratchpad: the numbers above are its output and the free
+column pins it to Run.Soak.
+
+### Section 27 fix 1 applied, 2026-09-29: the host takes a bound life first, and says when it cannot
+
+Five "continue"s after the measurement and its three fixes were put to the
+owner, with no word against any of them: the proposal answers, as section
+27 says of Q1, Q2 and Q9, until the owner says otherwise. Fix 1 was the
+cheapest and the one step 2 had named from the start - "Rules.WantBound =
+1, falling back to 0 with a printed line" - and it is applied:
+
+- `UVaelenWorldSubsystem::Begin` builds its door with `StartRules{}` (a
+  bound life aged 16 to 40) and takes up; when the world offers nobody it
+  prints `LogVaelenWorld: nobody bound to take up on AELVOR N; whoever the
+  world offers instead (--want-bound 0 headless)`, builds a second door
+  with `WantBound = 0` and takes up with that. The first door recorded
+  nothing (`Door::TakeUp` writes a taking only for a person), so the second
+  door's tape is the whole tape and its rules are what a save carries and
+  a replay is told. The untaped load path keeps `WantBound = 0`, since a
+  save without a tape carries a life already taken up and those rules take
+  nobody up.
+- `Run.Soak`, the headless twin of the subsystem's world, begins its life
+  the same way and now plays Esvuhurdu, person 3580, bound to 2892, three
+  years: its pin moves from Dikrisso's `16954db42400b164` to
+  `6e9f76c02755513c`, the value the scratch probe of "The bound life played
+  three years" had measured the day before, so the pin was predicted
+  before the test was run. The fallback arm is the one `Run.Bound`'s colony
+  world exercises (nobody bound, whoever comes offered): both arms have a
+  test.
+- ENGINE_HANDOFF: S3's twin becomes `--want-bound 1` unless the fallback
+  line is in the log; S4 says whose life Enter begins. S1 and S2 are built
+  on commits before this one and their twins keep `--want-bound 0`.
+
+What this does NOT do: make the bond play. "The bound life played three
+years" stands - the premise is on the page from day one now, and it is
+still a row. The rule that makes it cost or offer something is the design
+decision named there, and it stays the owner's.
