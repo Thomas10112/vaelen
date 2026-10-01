@@ -121,9 +121,9 @@ namespace VaelenShim
 #define VAELEN_SHIM_PASTE(ShimA, ShimB, ShimC, ShimD) ShimA##ShimB##ShimC##ShimD
 #define VAELEN_SHIM_BODY(ShimFile, ShimLine) VAELEN_SHIM_PASTE(ShimFile, _, ShimLine, _GENERATED_BODY)
 #ifdef VAELEN_SHIM_INHERITED_SUPER
-#define GENERATED_BODY(...)
+#	define GENERATED_BODY(...)
 #else
-#define GENERATED_BODY(...) VAELEN_SHIM_BODY(CURRENT_FILE_ID, __LINE__)
+#	define GENERATED_BODY(...) VAELEN_SHIM_BODY(CURRENT_FILE_ID, __LINE__)
 #endif
 #define GENERATED_UCLASS_BODY(...)
 #define meta(...)
@@ -335,7 +335,7 @@ public:
 };
 
 #define DECLARE_MULTICAST_DELEGATE(DelegateName) using DelegateName = TMulticastDelegate<>
-#define DECLARE_MULTICAST_DELEGATE_OneParam(DelegateName, Param1Type, Param1Name)                              \
+#define DECLARE_MULTICAST_DELEGATE_OneParam(DelegateName, Param1Type, Param1Name)                                      \
 	using DelegateName = TMulticastDelegate<Param1Type>
 
 class UClass;
@@ -521,6 +521,17 @@ struct FColor
 	static const FColor Purple;
 };
 
+/// 23.03 BELIEF: the grade's contrast is one of these (Engine/Scene.h).
+struct FVector4
+{
+	double X = 0.0;
+	double Y = 0.0;
+	double Z = 0.0;
+	double W = 0.0;
+	FVector4() = default;
+	FVector4(double InX, double InY, double InZ, double InW) : X(InX), Y(InY), Z(InZ), W(InW) {}
+};
+
 struct FLinearColor
 {
 	float R = 0.0f;
@@ -536,6 +547,8 @@ struct FLinearColor
 	{
 		return R == Other.R && G == Other.G && B == Other.B && A == Other.A;
 	}
+	/// 23.03 BELIEF: a colour scaled (the fog's inscattering from the sun's colour and lux).
+	FLinearColor operator*(float Scalar) const { return FLinearColor(R * Scalar, G * Scalar, B * Scalar, A * Scalar); }
 };
 
 struct FPlatformTime

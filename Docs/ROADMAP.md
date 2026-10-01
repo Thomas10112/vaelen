@@ -9643,3 +9643,44 @@ different scene), 23.01 and 23.02 together (the material and the trees are
 what the eye sees next), then 23.05, 23.04, 23.06, 23.07. Each task is one
 commit to build, and the sitting's two lines or two pictures close it.
 
+### 23.03 built, 2026-10-01: the light and the air
+
+CI run 344 (d96a418) and run 346 (2bffb48, carrying the S4 session commit
+whose own run 345 the push cancelled): eleven legs of eleven green, both.
+
+The first task of THE LOOK, engine-only but for one pure function, so no
+frozen byte moves. `Scene::LightOf(Sun)` (Sky.h) says in integers what the
+sun's height lights the scene with: nothing under the horizon and a
+twentieth of a sky light; from the first tenth of a degree to thirty, amber
+(255, 150, 80) warming to the 19.06 white (255, 243, 230), two lux growing
+to ten, the sky light three tenths growing to one; past thirty degrees,
+noon's light however high. `Scene.Sky` holds it: monotone up the ramp, amber
+at dawn (red over blue by more than 150), near white at noon (within 25),
+and two CONTROLs - a sun at 85 degrees is lit as one at 30, and the azimuth
+lights nothing. Shown red on purpose on the debug build with the ramp's two
+channels inverted (whitening at dawn): five refusals at Test_Sky.cpp:517;
+green again with the ramp put back.
+
+The engine side, parsed and NOT yet built (sitting S5): `AVaelenSky::Aim`
+applies LightOf to the sun, the sky light and the fog (the sun's colour
+along its direction, the sky's blue-grey elsewhere, both dimmed with the sky
+light); the haze is thinner than 19.06's (0.012 against 0.02, which greyed
+the ring at 30 m), falls off with height, starts past the walker's tile and
+never closes; a `UPostProcessComponent` on the sky actor grades the whole
+screen (exposure held between half a lux and four so dawn is dim and noon is
+bright, bloom 0.3, ambient occlusion 0.6, no motion blur, vignette 0.3, a
+tenth of contrast); a `UVolumetricCloudComponent` on the engine's own simple
+cloud material (`/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud_Inst`,
+now a path check_cook holds the package to) from 2 km up. `Vaelen.Look
+[0-2]` sets the level and prints what it SET: `LogVaelenLook: level N:
+clouds on/off/no material, volumetric fog on/off, ambient occlusion A,
+exposure 0.5-4.0 lux, bloom B` - 0 is the T400 at ground level (nothing
+extra), 1 the default, 2 the full air (volumetric fog and the clouds).
+Thirty-three shim names are beliefs again (`Tools/shim_beliefs.txt`, task
+23.03): the grade's settings and override bits, the fog's six setters, the
+cloud component, `SetVisibility`, `FVector4`, and a scalar product on
+`FLinearColor`; the sitting that builds them drops them. ENGINE_HANDOFF
+sitting S5 says what to bring back: the three Look lines, `stat unit` at
+each level, and a screenshot beside its sky line at launch (dawn) and after
+the day turned.
+

@@ -163,6 +163,26 @@ namespace Vaelen::Scene
 		return SunOf(Row, Height, DayOfYear, Life.Spent, Life.Awake);
 	}
 
+	SunLight LightOf(const Sun& S)
+	{
+		SunLight Out;
+		if (S.Elevation <= 0)
+		{
+			Out.SkyMilli = 50; // the night's sky light: a twentieth, so the ground is a shape and not a hole
+			return Out;
+		}
+		// The ramp, 0..NoonElevation, clamped: a sun past thirty degrees is
+		// noon's light however high it stands (the tropics are not brighter).
+		const int32 T = S.Elevation > NoonElevation ? NoonElevation : S.Elevation;
+		// Amber (255, 150, 80) at the horizon to the 19.06 white (255, 243, 230).
+		Out.R = 255;
+		Out.G = static_cast<uint8>(150 + (243 - 150) * T / NoonElevation);
+		Out.B = static_cast<uint8>(80 + (230 - 80) * T / NoonElevation);
+		Out.Lux10 = 20 + 80 * T / NoonElevation;
+		Out.SkyMilli = 300 + 700 * T / NoonElevation;
+		return Out;
+	}
+
 	BodyWeather BodyOf(const View::LifeView& Life)
 	{
 		BodyWeather Out;

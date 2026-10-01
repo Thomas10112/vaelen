@@ -492,3 +492,54 @@ VAELEN_TEST(Sky, BreathInTheColdAndAShiverFromTheChill)
 	Life.Alive = 1;
 	VT_CHECK_EQ(BodyOf(Life).Breath, 0u);
 }
+
+VAELEN_TEST(Sky, TheLightFollowsTheSunsHeight)
+{
+	// 23.03: the engine's light is this function and nothing the engine
+	// invents. Night: no sun at all, a twentieth of a sky light.
+	Sun Night;
+	Night.Elevation = -100;
+	VT_CHECK_EQ(LightOf(Night).Lux10, 0);
+	VT_CHECK_EQ(LightOf(Night).R, 0u);
+	VT_CHECK_EQ(LightOf(Night).SkyMilli, 50);
+	Sun Horizon; // elevation 0 is still under: dawn is the first tenth above it
+	VT_CHECK_EQ(LightOf(Horizon).Lux10, 0);
+	// From the first tenth of a degree to thirty, the sun grows and whitens,
+	// never stepping back; the sky light with it.
+	SunLight Last = LightOf(Horizon);
+	for (int32 E = 1; E <= NoonElevation; ++E)
+	{
+		Sun S;
+		S.Elevation = E;
+		const SunLight L = LightOf(S);
+		VT_CHECK(L.Lux10 >= Last.Lux10);
+		VT_CHECK(L.SkyMilli >= Last.SkyMilli);
+		VT_CHECK(L.B >= Last.B || Last.Lux10 == 0);
+		VT_CHECK_EQ(L.R, 255u);
+		Last = L;
+	}
+	// Dawn is amber: red well over blue. Noon is near white: the three within
+	// a tenth of each other.
+	Sun Dawn;
+	Dawn.Elevation = 1;
+	VT_CHECK(LightOf(Dawn).R - LightOf(Dawn).B > 150);
+	VT_CHECK_EQ(LightOf(Dawn).Lux10, 20);
+	Sun Noon;
+	Noon.Elevation = NoonElevation;
+	VT_CHECK(LightOf(Noon).R - LightOf(Noon).B <= 25);
+	VT_CHECK_EQ(LightOf(Noon).Lux10, 100);
+	VT_CHECK_EQ(LightOf(Noon).SkyMilli, 1000);
+	// CONTROL: a sun past thirty degrees is lit as noon, however high - the
+	// tropics are not brighter than the temperate noon.
+	Sun High;
+	High.Elevation = 850;
+	VT_CHECK_EQ(LightOf(High).Lux10, LightOf(Noon).Lux10);
+	VT_CHECK_EQ(LightOf(High).G, LightOf(Noon).G);
+	VT_CHECK_EQ(LightOf(High).B, LightOf(Noon).B);
+	// CONTROL: the azimuth lights nothing - the same height in the west is the
+	// same light as in the east.
+	Sun West = Dawn;
+	West.Azimuth = 2700;
+	VT_CHECK_EQ(LightOf(West).G, LightOf(Dawn).G);
+	VT_CHECK_EQ(LightOf(West).Lux10, LightOf(Dawn).Lux10);
+}

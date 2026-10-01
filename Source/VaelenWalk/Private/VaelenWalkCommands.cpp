@@ -15,9 +15,9 @@
 // Nothing here turns the day or means a verb: those are the controller's and
 // the subsystem's, and the fence refuses the words (check_ui_fence.py).
 //
-// STATUS: UNVERIFIED (engine) - written (and 22.01: the front end) and PARSED against Tools/EngineShim on
-// 2026-09-25 (reviewed and corrected 2026-09-26, 19.11b), not yet built by
-// UnrealBuildTool nor run: sitting S2 builds it.
+// STATUS: UNVERIFIED (engine) since 23.03 (2026-10-01): Vaelen.Look is parsed against Tools/EngineShim
+// and not yet built - sitting S5 builds it. Build b1001 (d96a418) compiled the file as it stood
+// before (Vaelen.Walk, Vaelen.Probe, Vaelen.Scene), and Vaelen.Scene ran on the owner's machine.
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
@@ -325,6 +325,38 @@ namespace
 				   D.Houses, D.Figures, D.Company, D.Squares, D.RoadTiles, D.Pits);
 		}
 	}
+
+	/// 23.03: the look level, set on the sky Vaelen.Walk spawned, and SAID -
+	/// the five settings as applied, so the sitting's line is of what the
+	/// screen shows and not of what the level meant.
+	void Look(const TArray<FString>& Args, UWorld* World_)
+	{
+		AVaelenSky* Sky = nullptr;
+		if (World_ != nullptr)
+		{
+			for (TActorIterator<AVaelenSky> It(World_); It; ++It)
+			{
+				Sky = *It;
+				break;
+			}
+		}
+		if (Sky == nullptr)
+		{
+			UE_LOG(LogVaelenWalk, Warning, TEXT("LogVaelenWalk: no sky to look at (Vaelen.Walk first)"));
+			return;
+		}
+		const FVaelenLook L = Args.Num() > 0 ? Sky->SetLook(NumberAt(Args, 0, 1)) : Sky->Look();
+		UE_LOG(LogVaelenWalk, Log,
+			   TEXT("LogVaelenWalk: LogVaelenLook: level %d: clouds %s, volumetric fog %s, ambient occlusion %.1f, "
+					"exposure %.1f-%.1f lux, bloom %.1f"),
+			   L.Level, L.bClouds ? TEXT("on") : (L.Level == 2 ? TEXT("no material") : TEXT("off")),
+			   L.bVolumetricFog ? TEXT("on") : TEXT("off"), L.AmbientOcclusion, L.ExposureMin, L.ExposureMax, L.Bloom);
+	}
+
+	FAutoConsoleCommandWithWorldAndArgs GLook(TEXT("Vaelen.Look"),
+											  TEXT("The look level of the sky, 0 (the T400 at ground level) to 2 (the "
+												   "full air), and what it set. Vaelen.Look [level]"),
+											  FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Look));
 
 	FAutoConsoleCommandWithWorldAndArgs GScene(TEXT("Vaelen.Scene"),
 											   TEXT("The three LogVaelenScene lines of the world as it stands, and "

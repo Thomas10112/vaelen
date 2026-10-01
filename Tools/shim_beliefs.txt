@@ -19,3 +19,38 @@
 # 2026-10-01: build b1001 (d96a418) compiled the whole engine tree - every one of the 147 beliefs listed
 # since 19.01 was SEEN by it and is dropped here, the ledger's rule. What the shim says of their SHAPE
 # is still the shim's; the build is what proved the names.
+
+# 23.03 (2026-10-01): the light and the air - the grade of the screen, the fog lit by the sun, the clouds.
+AEM_Histogram                            23.03  FPostProcessSettings::AEM_Histogram, one of the grade's values
+AmbientOcclusionIntensity                23.03  FPostProcessSettings::AmbientOcclusionIntensity, one of the grade's values
+AutoExposureMaxBrightness                23.03  FPostProcessSettings::AutoExposureMaxBrightness, one of the grade's values
+AutoExposureMethod                       23.03  FPostProcessSettings::AutoExposureMethod, one of the grade's values
+AutoExposureMinBrightness                23.03  FPostProcessSettings::AutoExposureMinBrightness, one of the grade's values
+BloomIntensity                           23.03  FPostProcessSettings::BloomIntensity, one of the grade's values
+ColorContrast                            23.03  FPostProcessSettings::ColorContrast, one of the grade's values
+FVector4                                 23.03  FPostProcessSettings::ColorContrast is one
+MotionBlurAmount                         23.03  FPostProcessSettings::MotionBlurAmount, one of the grade's values
+SetDirectionalInscatteringColor          23.03  the haze the sun's colour along its direction
+SetDirectionalInscatteringExponent       23.03  how narrow that sunward glow is
+SetFogHeightFalloff                      23.03  the haze falls off with height: the valleys hold it
+SetFogInscatteringColor                  23.03  the haze the sky's blue-grey, dimmed with the sky light
+SetFogMaxOpacity                         23.03  the ridge line never lost in the haze
+SetLayerBottomAltitude                   23.03  the clouds from 2 km up
+SetLayerHeight                           23.03  the clouds 4 km thick
+SetStartDistance                         23.03  no haze on the walker's own tile
+SetVisibility                            23.03  the clouds hidden below Vaelen.Look 2
+SetVolumetricFog                         23.03  the fog volumetric at Vaelen.Look 2
+Settings                                 23.03  UPostProcessComponent::Settings, the FPostProcessSettings the grade sets
+UPostProcessComponent                    23.03  the grade of the screen, a component of the sky actor (no second actor)
+UVolumetricCloudComponent                23.03  the clouds, shown at Vaelen.Look 2
+VignetteIntensity                        23.03  FPostProcessSettings::VignetteIntensity, one of the grade's values
+bEnabled                                 23.03  UPostProcessComponent::bEnabled
+bOverride_AmbientOcclusionIntensity      23.03  FPostProcessSettings: the override bit of AmbientOcclusionIntensity
+bOverride_AutoExposureMaxBrightness      23.03  FPostProcessSettings: the override bit of AutoExposureMaxBrightness
+bOverride_AutoExposureMethod             23.03  FPostProcessSettings: the override bit of AutoExposureMethod
+bOverride_AutoExposureMinBrightness      23.03  FPostProcessSettings: the override bit of AutoExposureMinBrightness
+bOverride_BloomIntensity                 23.03  FPostProcessSettings: the override bit of BloomIntensity
+bOverride_ColorContrast                  23.03  FPostProcessSettings: the override bit of ColorContrast
+bOverride_MotionBlurAmount               23.03  FPostProcessSettings: the override bit of MotionBlurAmount
+bOverride_VignetteIntensity              23.03  FPostProcessSettings: the override bit of VignetteIntensity
+bUnbound                                 23.03  UPostProcessComponent::bUnbound - the grade is the whole screen's wherever the walker stands

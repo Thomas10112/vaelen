@@ -620,6 +620,35 @@ new at launch and cost no typing: the title page, and Escape.
 **Report rather than repair**, as always: a key that does nothing, a page
 that does not go away, a line that differs.
 
+## PHASE 23 - sitting S5 (task 23.03): the light and the air
+
+The same walk as S2/S4, lit. Build the commit of 23.03 or later (found by
+subject, `^23.03 `), rev-parse first. Thirty-three shim names are compiled
+for the first time (ROADMAP "23.03 built"): the ones most likely to be wrong
+are `UPostProcessComponent::bUnbound` (a bitfield in the engine; the shim
+says so), the fog's `SetDirectionalInscatteringColor` and the cloud
+component's `SetLayerBottomAltitude`. REPORT, do not repair: the first error
+verbatim and its module.
+
+1. Build. First error verbatim.
+2. Launch the walk mode under `-game`, `Enter` on the title page. The walk
+   opens at dawn: the sun amber, two lux, the fog warm towards it. Type
+   `Vaelen.Look` - it prints `LogVaelenWalk: LogVaelenLook: level 1: clouds
+   off, volumetric fog off, ambient occlusion 0.6, exposure 0.5-4.0 lux,
+   bloom 0.3`. Bring that line back verbatim, and `Vaelen.Scene`'s sky
+   line beside a screenshot (the sun's azimuth and elevation are on it).
+3. `Vaelen.Look 2`: the clouds and the volumetric fog - its line says
+   `clouds on` or `clouds no material` (then the engine's cloud material
+   is not where the code names it: say so). `stat unit` at eye level.
+   `Vaelen.Look 0`: its line, `stat unit` again. The three numbers decide
+   which level the package ships at.
+4. Space five or six times (the day turns, the sun moves with the life's
+   hours): a second screenshot beside its sky line, from the same spot.
+5. Bring back the whole `Saved\Logs\Vaelen.log`, rev-parse first, and the
+   screenshots named `s5-dawn.png`, `s5-day.png` (`Saved\Screenshots\`,
+   F9 is the stream, so use the engine's `Shot` console command or
+   `HighResShot 1`).
+
 ## What the kernel half already hands you
 
 | You need | It is called | Where |

@@ -33,4 +33,6 @@ public:
 	void RegisterComponent();
 	void SetWorldLocation(const FVector& Where);
 	void SetRelativeLocation(const FVector& Where);
+	/// 23.03 BELIEF: the clouds shown at one look level and hidden at the others.
+	void SetVisibility(bool bNewVisibility, bool bPropagateToChildren = false);
 };

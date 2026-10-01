@@ -149,7 +149,10 @@ TASK (S4) : sitting S4 played 2026-10-01 - Esvuhurdu (3580) taken up BOUND from 
   controls green); the four played digests wait on the stream file. Found: the replay hint printed
   `--want-bound 0` for a bound life - repaired (UVaelenWorldSubsystem::WantBound). ROADMAP "Sitting S4 played".
 PHASE 23 (THE LOOK) : PLANNED 2026-10-01 at the owner's ask - seven tasks, ROADMAP section 29; assets
-  committed as the output of a commandlet; the frame budget is the T400's. Next: 23.03, then 23.01 + 23.02.
+  committed as the output of a commandlet; the frame budget is the T400's.
+TASK 23.03 : the light and the air - Scene::LightOf VALIDATED headless (Scene.Sky, two controls, shown red on
+  purpose); AVaelenSky lit by it, the grade, the clouds and Vaelen.Look UNVERIFIED (engine) until sitting S5
+  (33 shim beliefs listed). ROADMAP "23.03 built". Next: 23.01 + 23.02 (materials by commandlet, forests).
 
 TASK (27.fix1) : the host takes a bound life first — DONE 2026-09-29 (headless VALIDATED by Run.Soak's
   new pin 6e9f76c02755513c, predicted by the probe; engine UNVERIFIED). VaelenWorldSubsystem::Begin

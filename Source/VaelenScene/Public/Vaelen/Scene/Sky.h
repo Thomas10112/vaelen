@@ -65,6 +65,24 @@ namespace Vaelen::Scene
 	/// the day). MeasureSky and the engine's sky both go through this.
 	VAELEN_SCENE_API Sun SunOfLife(uint32 Row, uint32 Height, uint32 DayOfYear, const View::LifeView& Life);
 
+	/// 23.03 (2026-10-01): what the sun's height lights the scene with, in
+	/// integers, so the engine applies a light it did not invent. Night
+	/// (elevation at or under the horizon): no sun, the sky light at a
+	/// twentieth. From the horizon to thirty degrees the sun warms from amber
+	/// to white and grows from two to ten lux, the sky light from three tenths
+	/// to one; above thirty degrees it is noon's, whatever the height.
+	struct SunLight
+	{
+		uint8 R = 0;
+		uint8 G = 0;
+		uint8 B = 0;
+		uint8 Reserved = 0;
+		int32 Lux10 = 0;	///< the sun's intensity, tenths of a lux
+		int32 SkyMilli = 0; ///< the sky light's scale, thousandths
+	};
+	inline constexpr int32 NoonElevation = 300; ///< tenths of a degree: the ramp's end
+	VAELEN_SCENE_API SunLight LightOf(const Sun& S);
+
 	struct BodyWeather
 	{
 		uint8 Breath = 0; ///< 1 when the air at the played region is below zero
