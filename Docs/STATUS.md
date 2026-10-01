@@ -142,8 +142,14 @@ TASK (27.bond) : the bond that plays — ON in the host 2026-09-30 (Aelvor: Hold
 TASK (27.build) : the owner's build of 3ee975a FAILED (LNK2019 MeasureNeeds/MeasureWinters from VaelenGame;
   C4456 World shadowed in VaelenPlayerController.cpp) — repaired 2026-09-30, both modules this side's:
   VaelenGame.Build.cs names VaelenPopulation and VaelenEconomy, the inner World is Signals. The parse gained
-  -Wshadow and was shown red on the fault. ROADMAP "Found on the owner's build of 3ee975a". UNVERIFIED until
-  the owner's next build compiles it.
+  -Wshadow and was shown red on the fault. ROADMAP "Found on the owner's build of 3ee975a". BUILT 2026-10-01
+  (b1001): the owner built d96a418 and played.
+TASK (S4) : sitting S4 played 2026-10-01 - Esvuhurdu (3580) taken up BOUND from the title page on the owner's
+  machine, 67 days, the stream written; the climate line equals the Atlas's byte for byte (Session.P19S4,
+  controls green); the four played digests wait on the stream file. Found: the replay hint printed
+  `--want-bound 0` for a bound life - repaired (UVaelenWorldSubsystem::WantBound). ROADMAP "Sitting S4 played".
+PHASE 23 (THE LOOK) : PLANNED 2026-10-01 at the owner's ask - seven tasks, ROADMAP section 29; assets
+  committed as the output of a commandlet; the frame budget is the T400's. Next: 23.03, then 23.01 + 23.02.
 
 TASK (27.fix1) : the host takes a bound life first — DONE 2026-09-29 (headless VALIDATED by Run.Soak's
   new pin 6e9f76c02755513c, predicted by the probe; engine UNVERIFIED). VaelenWorldSubsystem::Begin

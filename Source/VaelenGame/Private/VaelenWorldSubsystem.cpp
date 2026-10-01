@@ -215,6 +215,11 @@ bool UVaelenWorldSubsystem::Streaming() const
 	return Held && Held->Streaming;
 }
 
+uint32 UVaelenWorldSubsystem::WantBound() const
+{
+	return Held && Held->Door ? Held->Door->Rules().WantBound : 0u;
+}
+
 void UVaelenWorldSubsystem::Watch(int32 Region, int32 Reach, int32 Most)
 {
 	if (!Held)

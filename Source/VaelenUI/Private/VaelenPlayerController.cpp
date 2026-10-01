@@ -5,12 +5,16 @@
 // page: the target a key aims at, whether the page offers the verb at all,
 // and what it foresaw when it does not.
 //
-// STATUS: UNVERIFIED (engine) since 19.10 (and 22.01: the front end's pages, keys and autosave) - its code has changed
-// after the last build that compiled it (b0921, 15.10, 867a129): the eight verbs bound from the host's key table
-// (ADR-0158) instead of eight literals. Parsed against Tools/EngineShim, never compiled;
-// FKey(FName) is a 19.02 belief until a sitting builds it. The record of what earlier
-// builds validated follows.
-// BUILD: b0921 - Tools/engine_builds.txt
+// STATUS: BUILT (engine) - compiled and linked by UnrealBuildTool on 2026-10-01 (b1001, d96a418, UE 5.6.1,
+// MSVC) and RUN under play-in-editor: Enter began a world from the title page, the eight verbs and Tab queued
+// and aimed (the sitting's log, Tests/Run/Sessions/s4-2026-10-01.log). FKey(FName) and the next-tick timer are
+// beliefs no more. Not VALIDATED: the page's rows were not brought back. The record of what earlier builds
+// validated follows.
+// BUILD: b1001 - Tools/engine_builds.txt
+//
+// UNTIL 2026-10-01: UNVERIFIED (engine) since 19.10 (and 22.01: the front end's pages, keys and autosave) - its code
+// had changed after the last build that compiled it (b0921, 15.10, 867a129): the eight verbs bound from the host's key
+// table (ADR-0158) instead of eight literals.
 //
 // UNTIL 19.10: VALIDATED (Phase 14) for what Phase 14 left here - built by
 // UnrealBuildTool and RUN on 2026-09-16 (UE 5.6, MSVC 19.51, Win64 Development

@@ -561,6 +561,17 @@ the holder in one gift ends the bond, the row reading "freed of <holder>".
 Bring back one such share row verbatim; `Replay.Bound` pins the headless
 twin's.)
 
+(2026-10-01: PLAYED, under play-in-editor in the PLAY mode - the default game
+mode, so Enter ran `Vaelen.Play 128 120 1` and there was no scene to show.
+Esvuhurdu was taken up bound, 67 days played, the stream written; the log is
+`Tests/Run/Sessions/s4-2026-10-01.log` and `Session.P19S4` holds its climate
+line. STILL WANTED from that sitting: the stream file
+`Saved\Vaelen\41454c564f52-128.stream` - copy it to
+`Tests\Run\Streams\aelvor128-s4-2026-10-01.stream` and push, or paste it -
+and the page's share row after a day of work, verbatim. The replay hint that
+sitting printed (`--want-bound 0`) was wrong and is repaired: the next build
+prints `--want-bound 1` for a bound life.)
+
 AFTER S3. The build of 22.01's commit or later (found by subject,
 `^22.01: `), rev-parse first, the standing rule as always. Two things are
 new at launch and cost no typing: the title page, and Escape.

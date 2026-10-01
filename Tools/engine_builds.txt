@@ -19,3 +19,4 @@ b0910  2026-09-10  7f4fd51  RECONSTRUCTED  13.06: VaelenAtlasActor compiled and 
 b0914  2026-09-14  bca6745  RECONSTRUCTED  13.09: AVaelenViewActor built and run; the frame digest agrees with the headless one
 b0916  2026-09-16  9059709  RECONSTRUCTED  14.08-14.10: VaelenGame and VaelenUI built and run; the 83-day month played and written
 b0921  2026-09-21  867a129  RECONSTRUCTED  15.10: the look handed to the door each day; the 142-day lived walk written
+b1001  2026-10-01  d96a418  RECONSTRUCTED  27.build: the owner built the repair of 3ee975a and played Esvuhurdu, bound, 67 days from the title page (PIE, play mode); the climate line agrees with the headless twin

@@ -1,0 +1,180 @@
+# VAELEN - sitting S4 of 2026-10-01 (build b1001, d96a418), as the owner pasted the editor's
+# Output Log into the chat: no `[timestamp][frame]` prefixes (the Output Log strips them), and
+# no `git rev-parse HEAD` first line (the owner was told to check out d96a418 and reported the
+# build green; the ledger row is RECONSTRUCTED for that reason). CUT by hand, and said so: the
+# ~330 lines of the engine's own start-up (plugin mounting, CVar application, scalability,
+# shader formats, DDC and Zen, Slate resources) between `LogInit: Branch Name` and the first
+# line this project printed. Everything the project printed, and the lines around the PIE
+# start, are verbatim.
+LogInit: ExecutableName: UnrealEditor.exe
+LogInit: Build: ++UE5+Release-5.6-CL-44394996
+LogInit: Platform=WindowsEditor
+LogInit: Engine Version: 5.6.1-44394996+++UE5+Release-5.6
+LogInit: Compatible Engine Version: 5.6.0-43139311+++UE5+Release-5.6
+LogInit: OS: Windows 11 (25H2) [10.0.26200.9457] (), CPU: Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz, GPU: NVIDIA T400 4GB
+LogInit: Compiled (64-bit): Jul 28 2025 20:53:34
+LogInit: Architecture: x64
+LogInit: Compiled with Visual C++: 19.38.33130.00
+LogInit: Build Configuration: Development
+LogInit: Branch Name: ++UE5+Release-5.6
+LogInit: Command Line: -log -d3d11
+LogRHI: Using Forced RHI: D3D11
+LogRHI: RHI D3D11 with Feature Level SM5 is supported and will be used.
+LogRHI: RHI Adapter Info:
+LogRHI:             Name: NVIDIA T400 4GB
+LogRHI:   Driver Version: 472.47 (internal:30.0.14.7247, unified:472.47)
+LogRHI:      Driver Date: 10-26-2021
+LogRHI: Warning: Out of date driver found. Using: '472.47' Suggested: '560.81'
+LogRendererCore: Ray tracing is disabled. Reason: disabled through project setting (r.RayTracing=0).
+LogStreaming: Warning: LoadPackage: SkipPackage: /Game/M_VaelenTile (0x8E6E891EFBF8E725) - The package to load does not exist on disk or in the loader
+LogUObjectGlobals: Warning: Impossible de trouver l'objet 'MaterialInterface /Game/M_VaelenTile.M_VaelenTile'
+LogUObjectGlobals: Error: CDO Constructor (VaelenLand): Failed to find /Game/M_VaelenTile.M_VaelenTile
+LogUObjectGlobals: Error: CDO Constructor (VaelenViewActor): Failed to find /Game/M_VaelenTile.M_VaelenTile
+LogVaelen: VAELEN 0.0.1 - kernel save format v3 - kernel asserts on - module started
+LogUObjectArray: 42493 objects as part of root set at end of initial load.
+LogUObjectArray: CloseDisregardForGC: 0/0 objects in disregard for GC pool
+LogAutomationTest: Error: Condition failed
+LogAutomationTest: Error: Condition failed
+LogAutomationTest: Error: Condition failed
+LogAutomationTest: Error: Condition failed
+LogAutomationTest: Error: Condition failed
+LogAutomationTest: Error: Condition failed
+LogAutomationTest: Error: Condition failed
+LogEngine: Initializing Engine...
+LogInit: Display: Engine is initialized. Leaving FEngineLoop::Init()
+LogUnrealEdMisc: Loading editor; pre map load, took 38.064
+Cmd: MAP LOAD FILE="../../../Engine/Content/Maps/Templates/OpenWorld.umap" TEMPLATE=1 SHOWPROGRESS=1 FEATURELEVEL=3
+LogUnrealEdMisc: Total Editor Startup Time, took 39.348
+LogLoad: (Engine Initialization) Total time: 40.70 seconds
+LogDebuggerCommands: Repeating last play command: Hublot sélectionné
+LogContentBundle: [Untitled_1(Éditeur)] Generating Streaming for 0 Content Bundles.
+LogWorldPartition: Display: GenerateStreaming for 'OpenWorld.Engine' started...
+LogWorldPartition: Display: GenerateStreaming for 'OpenWorld.Engine' took 7.374 ms
+LogPlayLevel: PlayLevel: No blueprints needed recompiling
+LogOnline: OSS: Created online subsystem instance for: NULL
+LogOnline: OSS: TryLoadSubsystemAndSetDefault: Loaded subsystem for type [NULL]
+LogPlayLevel: Creating play world package: /Temp/UEDPIE_0_Untitled_1
+LogWorldPartition: Display: UWorldPartition::PostDuplicatePIE started...
+LogWorldPartition: Display: UWorldPartition::PostDuplicatePIE took 7.328 ms
+LogPlayLevel: PIE: StaticDuplicateObject took: (0.040025s)
+LogPlayLevel: PIE: Created PIE world by copying editor world from /Temp/Untitled_1.Untitled_1 to /Temp/UEDPIE_0_Untitled_1.Untitled_1 (0.040224s)
+LogUObjectHash: Compacting FUObjectHashTables data took   0.84ms
+LogChaosDD: Creating Chaos Debug Draw Scene for world Untitled_1
+LogWorldPartition: ULevel::OnLevelLoaded(Untitled_1)(bIsOwningWorldGameWorld=1, bIsOwningWorldPartitioned=1, InitializeForMainWorld=1, InitializeForEditor=0, InitializeForGame=1)
+LogWorldPartition: Display: WorldPartition initialize started...
+LogWorldPartition: UWorldPartition::Initialize : World = /Temp/UEDPIE_0_Untitled_1.Untitled_1, World Type = PIE, IsMainWorldPartition = 1, Location = V(0), Rotation = R(0), IsEditor = 0, IsGame = 0, IsPIEWorldTravel = 0, IsCooking = 0
+LogWorldPartition: UWorldPartition::Initialize Context : World NetMode = Standalone, IsServer = 0, IsDedicatedServer = 0, IsServerStreamingEnabled = 0, IsServerStreamingOutEnabled = 0, IsUsingMakingVisibleTransaction = 0, IsUsingMakingInvisibleTransaction = 0
+LogWorldPartition: Display: WorldPartition initialize took 10.836 ms (total: 725.713 ms)
+LogPlayLevel: PIE: World Init took: (0.013803s)
+LogAudio: Display: Creating Audio Device:                 Id: 2, Scope: Unique, Realtime: True
+LogAudioMixer: Display: Audio Mixer Platform Settings:
+LogAudioMixer: Display:     Sample Rate:                          48000
+LogAudioMixer: Display:     Callback Buffer Frame Size Requested: 1024
+LogAudioMixer: Display:     Callback Buffer Frame Size To Use:    1024
+LogAudioMixer: Display:     Number of buffers to queue:           1
+LogAudioMixer: Display:     Max Channels (voices):                32
+LogAudioMixer: Display:     Number of Async Source Workers:       4
+LogAudio: Display: AudioDevice MaxSources: 32
+LogAudio: Display: Audio Spatialization Plugin: None (built-in).
+LogAudio: Display: Audio Reverb Plugin: None (built-in).
+LogAudio: Display: Audio Occlusion Plugin: None (built-in).
+LogAudioMixer: Display: Initializing audio mixer using platform API: 'XAudio2'
+LogAudioMixer: Display: Using Audio Hardware Device Haut-parleurs (Realtek(R) Audio)
+LogAudioMixer: Display: Initializing Sound Submixes...
+LogAudioMixer: Display: Creating Master Submix 'MasterSubmixDefault'
+LogAudioMixer: Display: Creating Master Submix 'MasterReverbSubmixDefault'
+LogAudioMixer: FMixerPlatformXAudio2::StartAudioStream() called. InstanceID=2
+LogAudioMixer: Display: Output buffers initialized: Frames=1024, Channels=2, Samples=2048, InstanceID=2
+LogAudioMixer: Display: Starting AudioMixerPlatformInterface::RunInternal(), InstanceID=2
+LogAudioMixer: Display: FMixerPlatformXAudio2::SubmitBuffer() called for the first time. InstanceID=2
+LogInit: FAudioDevice initialized with ID 2.
+LogAudio: Display: Audio Device (ID: 2) registered with world 'Untitled_1'.
+LogAudioMixer: Initializing Audio Bus Subsystem for audio device with ID 2
+LogLoad: Game class is 'VaelenGameMode'
+LogWorld: Bringing World /Temp/UEDPIE_0_Untitled_1.Untitled_1 up for play (max tick rate 0) at 2026.10.01-15.58.50
+LogWorld: Bringing up level for play took: 0.003158
+LogOnline: OSS: Created online subsystem instance for: :Context_1
+LogStreaming: Display: FlushAsyncLoading(520,519,518,517,516,515,514,513,512,511,510,509,508,507,506,505,504,503,502,501,500,499,498,497,496,495,494,493,492,491,490,489,488,487,486,485,484,483,482,481,480,479,478,477): 44 QueuedPackages, 0 AsyncPackages
+PIE: Serveur connecté
+PIE: Play in Editor : temps total de démarrage 0,524 secondes.
+Cmd: Vaelen.Play 128 120 1
+LogVaelenPlay: LogVaelenPlay: AELVOR 128 at 120 years, cadence daily (Options::Stream on, replay with --stream): person 3580 in region 26, 36086 alive
+LogVaelenPlay: LogVaelenClimate: AELVOR 128 seed 41454c564f52: day 1 of year 420, spring; coldest -26 warmest 28; frost 8381 of 16384 tiles, 6448 growing; hard winters 12835, cold deaths 1582; climate 59615fa1f5d24bd1
+LogVaelenUI: LogVaelenUI: front end ran `Vaelen.Play 128 120 1`: a world is begun
+LogVaelenUI: LogVaelenUI: speak -> queued
+LogVaelenUI: LogVaelenUI: wait -> queued
+LogVaelenUI: LogVaelenUI: wait -> queued
+LogVaelenUI: LogVaelenUI: wait -> queued
+LogVaelenUI: LogVaelenUI: wait -> queued
+LogVaelenUI: LogVaelenUI: wait -> queued
+LogVaelenUI: LogVaelenUI: wait -> queued
+LogVaelenUI: LogVaelenUI: wait -> queued
+LogVaelenUI: LogVaelenUI: wait -> the queue is full
+LogVaelenUI: LogVaelenUI: wait -> the queue is full
+LogVaelenUI: LogVaelenUI: wait -> the queue is full
+LogVaelenUI: LogVaelenUI: work -> the queue is full
+LogVaelenUI: LogVaelenUI: work -> the queue is full
+LogVaelenUI: LogVaelenUI: work -> the queue is full
+LogVaelenUI: LogVaelenUI: work -> the queue is full
+LogVaelenUI: LogVaelenUI: work -> the queue is full
+LogVaelenUI: LogVaelenUI: work -> queued
+LogVaelenUI: LogVaelenUI: work -> queued
+LogVaelenUI: LogVaelenUI: work -> queued
+LogVaelenUI: LogVaelenUI: work -> queued
+LogVaelenUI: LogVaelenUI: work -> queued
+LogVaelenUI: LogVaelenUI: work -> queued
+LogVaelenUI: LogVaelenUI: work -> queued
+LogVaelenUI: LogVaelenUI: eat -> queued
+LogVaelenWorld: LogVaelenWorld: autosave ../../../../Desktop/vaelen/Saved/Vaelen/autosave
+LogVaelenUI: LogVaelenUI: eat -> queued
+LogVaelenUI: LogVaelenUI: take -> queued
+LogVaelenUI: LogVaelenUI: wait -> queued
+LogVaelenUI: LogVaelenUI: wait -> queued
+LogVaelenUI: LogVaelenUI: wait -> queued
+LogVaelenUI: LogVaelenUI: wait -> queued
+LogVaelenUI: LogVaelenUI: wait -> queued
+LogVaelenUI: LogVaelenUI: wait -> queued
+LogVaelenWorld: LogVaelenWorld: autosave ../../../../Desktop/vaelen/Saved/Vaelen/autosave
+LogVaelenUI: LogVaelenUI: wait -> queued
+LogVaelenUI: LogVaelenUI: wait -> queued
+LogVaelenUI: LogVaelenUI: take -> queued
+LogVaelenUI: LogVaelenUI: take -> queued
+LogVaelenUI: LogVaelenUI: take -> queued
+LogVaelenUI: LogVaelenUI: take -> queued
+LogVaelenUI: LogVaelenUI: eat -> queued
+LogVaelenUI: LogVaelenUI: eat -> queued
+LogVaelenWorld: LogVaelenWorld: autosave ../../../../Desktop/vaelen/Saved/Vaelen/autosave
+LogVaelenUI: LogVaelenUI: eat -> queued
+LogVaelenUI: LogVaelenUI: eat -> queued
+LogVaelenUI: LogVaelenUI: eat -> queued
+LogVaelenUI: LogVaelenUI: move -> queued
+LogVaelenUI: LogVaelenUI: move -> queued
+LogVaelenUI: LogVaelenUI: move -> queued
+LogVaelenUI: LogVaelenUI: move -> queued
+LogVaelenUI: LogVaelenUI: move -> queued
+LogVaelenUI: LogVaelenUI: aim 1 of 16
+LogVaelenUI: LogVaelenUI: aim 2 of 16
+LogVaelenWorld: LogVaelenWorld: autosave ../../../../Desktop/vaelen/Saved/Vaelen/autosave
+LogVaelenUI: LogVaelenUI: move -> queued
+LogVaelenUI: LogVaelenUI: aim 3 of 16
+LogVaelenUI: LogVaelenUI: move -> queued
+LogVaelenUI: LogVaelenUI: move -> queued
+LogVaelenUI: LogVaelenUI: aim 4 of 16
+LogVaelenUI: LogVaelenUI: aim 5 of 16
+LogVaelenUI: LogVaelenUI: take -> queued
+LogDerivedDataCache: D:/Users/Utilisateur/AppData/Local/UnrealEngine/Common/DerivedDataCache: Maintenance finished in +00:00:00.001 and deleted 0 files with total size 0 MiB and 0 empty folders. Scanned 0 files in 1 folders with total size 0 MiB.
+LogVaelenUI: LogVaelenUI: aim 6 of 16
+LogVaelenUI: LogVaelenUI: aim 7 of 16
+LogVaelenUI: LogVaelenUI: aim 8 of 16
+LogVaelenUI: LogVaelenUI: aim 9 of 16
+LogVaelenWorld: LogVaelenWorld: autosave ../../../../Desktop/vaelen/Saved/Vaelen/autosave
+LogVaelenUI: LogVaelenUI: aim 10 of 16
+LogVaelenUI: LogVaelenUI: aim 11 of 16
+LogVaelenWorld: LogVaelenWorld: autosave ../../../../Desktop/vaelen/Saved/Vaelen/autosave
+Cmd: Vaelen.Scene
+LogVaelenWalk: Warning: LogVaelenWalk: no scene (Vaelen.Walk first)
+Cmd: Vaelen.Stream.Write
+LogVaelenPlay: LogVaelenPlay: AELVOR 128 seed 41454c564f52: played Esvuhurdu (person 3580, region 9) 67 days, 44 intents (39 taken, 5 refused by the world, 0 dropped at the door), state 30738d82f2ce26b6, log fc30847387ad85d0, life 0a5ef7a8efee89af, panel 76068ef3eb7328b3
+LogVaelenPlay: LogVaelenPlay: verbs work 7 rest 0 eat 7 wait 15 speak 1 give 0 take 6 move 8
+LogVaelenPlay: LogVaelenPlay: 66 looks, 1 takings, cadence daily: replay with VaelenAtlas --gate <file> --want-bound 0
+LogVaelenPlay: LogVaelenPlay: ../../../../Desktop/vaelen/Saved/Vaelen/41454c564f52-128.stream

@@ -94,6 +94,9 @@ public:
 	/// A replay must be told this (VaelenAtlas --stream), so a host that does
 	/// not say which it used has written a stream nobody can replay.
 	bool Streaming() const;
+	/// The WantBound the door took up under (0 when no world is begun): what a
+	/// replay of the written stream must be told. 2026-10-01.
+	uint32 WantBound() const;
 
 	/// Where the host is looking: a region of the world, how many borders out
 	/// the eye reaches, and the most regions it will pay to have detailed.

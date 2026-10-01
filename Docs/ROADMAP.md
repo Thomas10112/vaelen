@@ -9567,3 +9567,79 @@ module which calls a kernel function DIRECTLY names that function's module.
 census). The commit of this note is the one to build; CI runs 339 (f5ea470)
 and 342 (9495b21) green, eleven legs each; run 343 (3ee975a) in flight.
 
+### Sitting S4 played, 2026-10-01: the bound life taken up on the machine, and a hint that lied
+
+The owner built d96a418 (the repair; build b1001 in the ledger, RECONSTRUCTED:
+no rev-parse line came back) and launched play-in-editor in the PLAY mode -
+the default game mode, so Enter ran `Vaelen.Play 128 120 1`, not the walk,
+and `Vaelen.Scene` answered "no scene". What the log holds, committed as it
+was pasted (`Tests/Run/Sessions/s4-2026-10-01.log`, the engine's own start-up
+cut and said so):
+
+| what | the machine printed | headless |
+|---|---|---|
+| the life taken up | `person 3580 in region 26, 36086 alive` - no "nobody bound" line: Esvuhurdu, BOUND, the premise of section 27, taken up on the machine for the first time | Run.Bound: 3580, region 26 |
+| the climate line | `... hard winters 12835, cold deaths 1582; climate 59615fa1f5d24bd1` | the Atlas `--empty --stream --climate --want-bound 1 --size 128 --years 120`: the same bytes. `Session.P19S4` holds it, its controls green (a digit changed is refused; another world's command is refused) |
+| 67 days played | 44 intents, 39 taken, 5 refused, 0 dropped; work 7 eat 7 wait 15 speak 1 take 6 move 8; state 30738d82f2ce26b6, log fc30847387ad85d0, life 0a5ef7a8efee89af, panel 76068ef3eb7328b3 | NOT re-read: the stream file (`Saved/Vaelen/41454c564f52-128.stream`) has not come back. When it lands under Tests/Run/Streams the two LogVaelenPlay lines join s4.session, replayed with `--want-bound 1` |
+| the queue | eight `wait` queued, then "the queue is full" eight times before Space turned a day | by design (14.09: eight slots) - but the page should say the queue is full before the ninth key, not the log alone; noted for the front end |
+| the share row | not brought back (the log does not carry the page) | Replay.Bound pins the headless twin's |
+
+Found in that log, this side's: the third `LogVaelenPlay` line said `replay
+with VaelenAtlas --gate <file> --want-bound 0` - a literal written in 15.10,
+when every door took whoever came - for a tape whose taking names a bound
+life. A replay told so refuses the tape (`Replay.Bound.AsFree` is exactly that
+refusal, exit 1). `UVaelenWorldSubsystem::WantBound()` now answers from the
+door's rules and the line prints it; `VaelenPlayCommands.cpp` goes back to
+UNVERIFIED for that line, `VaelenPlayerController.cpp` and
+`VaelenGame.Build.cs`, unchanged since d96a418, are BUILT at b1001. Two
+engine lines to keep in view, neither this project's code: the editor's
+`CDO Constructor (VaelenLand): Failed to find /Game/M_VaelenTile` (the
+material on one disk, open question 5 of Phase 19 - answered below) and
+seven `LogAutomationTest: Error: Condition failed` at start-up, before any
+Vaelen module ran, from the engine's plugins on UE 5.6.1.
+
+## 29. Phase 23 - THE LOOK: task breakdown
+
+The owner, 2026-10-01: "je veux du visuel 3d bien incroyable comme on avait
+dit, ça traîne trop". What stands today, from the sittings and the code: a
+ground of 1 km tiles painted one flat biome colour per vertex through the
+engine's `VertexColorMaterial`, a sun, a sky atmosphere and a height fog made
+in C++, houses and figures as the engine's four basic shapes, water as a
+procedural mesh - and no asset in git at all (`Content/.gitkeep`). The
+machine that shows it: an NVIDIA T400 4GB on a 2021 driver, D3D11 forced,
+SM5 - no Lumen, no Nanite, no virtual shadow maps whatever DefaultEngine.ini
+says; 30 ms a frame at ground level over the 13.09 scene. "Incroyable" on
+that card is light, silhouette, density and weather done well, not features
+the card cannot run.
+
+**Decisions, this side's, standing until the owner objects:**
+
+1. **Assets are committed.** Open question 5 of Phase 19 is answered: materials
+   and the few meshes this phase makes live under `Content/Vaelen/` as
+   `.uasset` files, binary, in git without LFS (tens of kilobytes each), and
+   every one of them is the OUTPUT of code in this repository - a commandlet
+   builds them, so a lost asset is rebuilt, never redrawn by hand.
+2. **The look is computed, not painted.** Where a tree stands, how tall it is,
+   which way a roof faces: integers in VaelenScene, hashed from the tile and
+   the seed, digested and pinned headless like the layout (ADR-0149). The
+   engine draws what the builders built; a screenshot is the sitting's proof
+   and never the test.
+3. **The frame budget is the T400's.** Every task states its instance count
+   and keeps `stat unit` under 33 ms at 1080p on that card, or ships a
+   `Vaelen.Look <0-2>` level that does.
+
+| task | what | proof |
+|---|---|---|
+| 23.01 | **Materials built by code.** New Editor-only module `VaelenEditor` (`Source/VaelenEditor`, Editor target only; the parse skips it, the shim does not know editor APIs) with a commandlet `VaelenMaterials` that builds, from `UMaterialExpression` graphs, and saves under `Content/Vaelen/Materials/`: `M_Ground` (vertex colour as the base, a slope mask from the vertex normal blending a grey rock above 35°, the snow the climate painted kept white, two octaves of `Noise` for grain and a cheap normal from it, roughness 0.9, no texture); `M_Water` (translucent, two panned noise normals, depth fade at the shore, fresnel to the sky); `M_Flat` (opaque, per-instance custom data tints an ISM: trunks, crowns, walls, roofs); `M_Leaf` (masked, two-sided, noise-cut quads). Run once: `UnrealEditor-Cmd.exe Vaelen.uproject -run=VaelenMaterials`; the four `.uasset` are committed with the log of the run. `AVaelenLand` takes `M_Ground` when it exists, the vertex-colour material otherwise (today's rule). | the commandlet prints one line per material with the expression count and the saved path; `Tools/check_cook.py` learns the four paths; the sitting brings the run's lines and one screenshot of a hill |
+| 23.02 | **Forests.** `Vaelen/Scene/Flora.h` (pure): `PlantTrees(Ground, Region, Ring, Flora&)` - per land tile of a forest biome a hashed set of trees (Boreal 14/tile, Temperate 12, Tropical 16, Scrubland 3, Savanna 2, the rest 0; the ring at a quarter), each `{X, Y, Z, Kind, HeightCm}` in integers, positions from `Hash(seed, tile, i)`, none on a road, a square, a house plot or water; `MeasureFlora` digests it. `AVaelenScenery` draws them as two ISMs (trunk: cylinder; crown: cone for boreal, sphere for the rest) with `M_Flat` and per-instance tint by biome and season (19.09's snow whitens crowns). Budget: ≤ 24,000 instances for a region and its ring; `Vaelen.Look 0` halves densities. | `Atlas --scene-flora R` prints `LogVaelenFlora: AELVOR S seed X region R: N trees (boreal B temperate T tropical P scrub S savanna V), digest D`; `Atlas.SceneFlora128` pins region 26; a sabotage moving one tree one centimetre is refused; the sitting's line equals the Atlas's |
+| 23.03 | **Light and air.** `AVaelenSky`: the sun's colour and intensity by elevation (warm and 3 lux at dawn, white and 10 lux at noon; off under the horizon), the sky light's intensity following it, the fog's inscattering taken from the atmosphere (`bInscatteringColorFromAtmosphere`), a `UVolumetricCloudComponent` on the engine's own cloud material at `Vaelen.Look 2` only (the T400 pays ~6 ms for it). A post-process volume made in C++ (`APostProcessVolume`, unbound): exposure min/max 0.5-4, bloom 0.3, SSAO on, motion blur off, vignette 0.3, a 10% contrast lift. | engine-only (no kernel byte moves); `Vaelen.Look` prints its level and the five settings it set; the sitting brings dawn and noon screenshots and `stat unit` at both |
+| 23.04 | **Water that reads as water.** The scenery's water sections take `M_Water`; the sea's plane extends to the horizon of the ring; the shore is the ground's (no new geometry). | the water digest unmoved (geometry untouched); screenshot at a lake |
+| 23.05 | **Houses with roofs, towns with a shape.** A house is a cube body and a cube rotated 45° about its long axis, scaled flat, half sunk into the body - a gabled roof from the shapes we have; the long axis follows the road the layout placed it on; walls tinted by culture (the view's `Culture` byte), roofs darker. Squares get a well (cylinder) and figures stand on the square's edge, not its centre. | `MeasureLayout` gains the roof axis (one byte per house) and its pin moves ONCE, with the table of what moved; screenshot of a town |
+| 23.06 | **Grass under foot.** Within 60 m of the walker, masked quads (`M_Leaf`) on hashed positions, tinted by the tile's biome and whitened by snow, re-planted when the walker crosses a tile; wind in the material (world-position sine), nothing on the CPU per frame. ≤ 6,000 quads; `Vaelen.Look 0` none. | engine-only; `stat unit` at eye level with and without (the sitting) |
+| 23.07 | **The screenshot gate.** `Vaelen.Shot <name>` writes `Saved/Screenshots/<name>.png` through `FScreenshotRequest`; sitting S5 brings six (dawn hill, noon town, lake, forest edge, winter, night) and ROADMAP keeps them under `Docs/Shots/` - the only pictures in the repository, dated, each beside the digest line of the world it shows. | the pictures are the proof of the phase to the owner; the digests beside them are the proof to the tests |
+
+Order: 23.03 first (no asset, no kernel byte: the same scene lit well is a
+different scene), 23.01 and 23.02 together (the material and the trees are
+what the eye sees next), then 23.05, 23.04, 23.06, 23.07. Each task is one
+commit to build, and the sitting's two lines or two pictures close it.
+

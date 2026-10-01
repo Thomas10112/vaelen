@@ -147,6 +147,14 @@ if(Python3_Interpreter_FOUND)
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_session.py
             ${PROJECT_SOURCE_DIR}/Tests/Run/Sessions/s0916.session --atlas $<TARGET_FILE:VaelenAtlas> --self-test)
   set_tests_properties(Session.SelfTest PROPERTIES TIMEOUT 3600 COST 2000)
+  # 2026-10-01: the first sitting whose raw log is committed - S4, the bond ON,
+  # Esvuhurdu taken up bound from the title page on the owner's machine. Its
+  # climate line must be the Atlas's, byte for byte (Sessions/s4.session says
+  # what else waits on the stream file).
+  add_test(NAME Session.P19S4
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_session.py
+            ${PROJECT_SOURCE_DIR}/Tests/Run/Sessions/s4.session --atlas $<TARGET_FILE:VaelenAtlas>)
+  set_tests_properties(Session.P19S4 PROPERTIES TIMEOUT 3600 COST 2000)
 
   add_test(NAME Atlas.Output
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Tools/check_atlas_output.py ${VAELEN_ATLAS_A})

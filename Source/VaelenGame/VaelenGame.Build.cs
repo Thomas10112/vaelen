@@ -1,9 +1,12 @@
 // VAELEN - VaelenGame module rules. Phase 14 task 14.08.
 //
-// STATUS: UNVERIFIED (engine) since 19.06 - its code has changed after the last build that
-// compiled it (b0921, 15.10, 867a129): VaelenScene joined its dependencies (the ground one
-// walks on is cut once by the subsystem). Parsed, never compiled; sitting S2 builds it.
-// BUILD: b0921 - Tools/engine_builds.txt
+// STATUS: BUILT (engine) - compiled and linked by UnrealBuildTool on 2026-10-01 (b1001, d96a418), after
+// the build of 3ee975a stopped on the two kernel modules this file now names (ROADMAP "Found on the
+// owner's build of 3ee975a"). The world it holds was begun and played that day (sitting S4).
+// BUILD: b1001 - Tools/engine_builds.txt
+//
+// UNTIL 2026-10-01: UNVERIFIED (engine) since 19.06 - VaelenScene joined its dependencies (the ground one
+// walks on is cut once by the subsystem), parsed and never compiled.
 //
 // UNTIL 19.06: BUILT - compiled and linked by UnrealBuildTool on 2026-09-16 (UE 5.6,
 // MSVC 19.51, Win64 Development Editor), after three defects nothing headless

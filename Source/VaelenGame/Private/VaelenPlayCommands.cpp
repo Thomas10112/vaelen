@@ -329,11 +329,15 @@ namespace
 		// them. What 15.10 needs said - that the stream carries looks, and
 		// which cadence the world was begun under, which a replay must be TOLD
 		// because the stream does not carry it - goes here.
+		// The rules the door took up under, not a literal: since fix 1 (2026-09-29)
+		// Begin asks for a bound life, and the sitting of 2026-10-01 printed
+		// `--want-bound 0` for a tape whose taking names Esvuhurdu, bound - a
+		// replay told so refuses the tape (Replay.Bound.AsFree is that refusal).
 		UE_LOG(LogVaelenPlay, Log,
 			   TEXT("LogVaelenPlay: %u looks, %u takings, cadence %s: replay with VaelenAtlas "
-					"--gate <file> --want-bound 0%s"),
+					"--gate <file> --want-bound %u%s"),
 			   static_cast<unsigned>(Tape.Looks.size()), static_cast<unsigned>(Tape.Takings.size()),
-			   World->Streaming() ? TEXT("daily") : TEXT("yearly"),
+			   World->Streaming() ? TEXT("daily") : TEXT("yearly"), static_cast<unsigned>(World->WantBound()),
 			   World->Streaming() ? TEXT("") : TEXT(" - but a walk for the 15.10 gate wants the daily one"));
 		UE_LOG(LogVaelenPlay, Log, TEXT("LogVaelenPlay: %s"), *Path);
 	}

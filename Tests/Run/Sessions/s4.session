@@ -1,0 +1,22 @@
+# VAELEN - sitting S4 (19.12 with 22.01's front end, the bond ON), 2026-10-01, build b1001. 19.01, ADR-0159.
+#
+# The owner built d96a418 (the repair of 3ee975a) and, under play-in-editor in the PLAY mode (the
+# default game mode, not the walk's - so Enter ran `Vaelen.Play 128 120 1` and Vaelen.Scene had no
+# scene), pressed Enter on the title page: the door took up Esvuhurdu, person 3580, BOUND, in region
+# 26, with no "nobody bound" fallback line - the premise of section 27, taken up on the machine for
+# the first time. Sixty-seven days were played (44 intents, 39 taken, 5 refused) and the stream
+# written; the stream file itself (Saved/Vaelen/41454c564f52-128.stream) has not come back yet, so
+# the four played digests are NOT re-read here - when it lands under Tests/Run/Streams a `line` for
+# the two LogVaelenPlay lines joins this file, replayed with --want-bound 1.
+#
+# What IS re-read: the climate line, byte for byte, against the Atlas begun the way Vaelen.Play
+# begins (Play and Stream, the climate on, the daily cadence, a bound life). `other` is a world one
+# cold death away (measured 2026-09-26: 1581 against 1582), so the comparison is seen to depend
+# on the run.
+#
+# Found in this log and repaired with its commit: the third LogVaelenPlay line printed `--want-bound
+# 0` for a tape whose taking names a bound life; it prints the door's rules now.
+log s4-2026-10-01.log
+run --empty --stream --climate --want-bound 1 --size 128 --years 120
+line LogVaelenClimate: AELVOR 128
+other --size 128 --prehistory 300 --years 120 --scene-terrain 26
