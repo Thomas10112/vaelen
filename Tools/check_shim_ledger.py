@@ -132,19 +132,29 @@ def self_test():
 
     refused, beliefs, _ = check()
     expect("the tree as committed: every belief listed, nothing else listed", not refused, "; ".join(refused))
-    expect("there is at least one belief, so the check is not vacuous", len(beliefs) > 0)
 
     with tempfile.TemporaryDirectory() as tmp:
         listing = os.path.join(tmp, "beliefs.txt")
         with open(BELIEFS, encoding="utf-8") as f:
             text = f.read()
-        victim = sorted(beliefs)[0]
-        with open(listing, "w", encoding="utf-8") as f:
-            f.write(re.sub(r"(?m)^{}\s.*\n".format(re.escape(victim)), "", text))
-        refused, _, _ = check(beliefs_path=listing)
+        # NOT VACUOUS, either way (2026-10-01: build b1001 compiled the whole
+        # engine tree and the list emptied, which is the ledger's success and
+        # left this control with no belief to unlist). The newest build's
+        # record is copied with its `seen` lines blinded: every name it alone
+        # saw comes back as a belief, and must be refused as unlisted.
+        newest = L.load_ledger()[-1].ident
+        records = os.path.join(tmp, "records")
+        shutil.copytree(L.RECORDS, records)
+        with open(os.path.join(records, newest + ".txt"), encoding="utf-8") as f:
+            blinded = [line for line in f.read().split("\n") if not line.startswith("seen ")]
+        with open(os.path.join(records, newest + ".txt"), "w", encoding="utf-8") as f:
+            f.write("\n".join(blinded) + "\n")
+        refused, came_back, _ = check(records=records)
+        expect("the newest build's record blinded, the names it alone saw are beliefs again",
+               len(came_back) > len(beliefs) and all(" at Source/" in r for r in refused), str(refused)[:300])
+        victim = sorted(came_back - beliefs)[0]
         expect("an unlisted belief is refused, naming where the engine code uses it",
-               len(refused) == 1 and refused[0].startswith(victim + " ") and " at Source/" in refused[0],
-               str(refused))
+               any(r.startswith(victim + " ") and " at Source/" in r for r in refused), str(refused)[:300])
 
         with open(listing, "w", encoding="utf-8") as f:
             f.write(text + "GetGameInstance  19.01  a seen name listed as a belief\n")
