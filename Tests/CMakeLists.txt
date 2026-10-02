@@ -218,6 +218,16 @@ if(Python3_Interpreter_FOUND)
   set_tests_properties(Atlas.SceneLayout128 PROPERTIES TIMEOUT 900
     PASS_REGULAR_EXPRESSION "layout day 100: squares 3, houses 565 \\(unplaced 0\\), figures 779 \\(company 0\\), roads 16 over 282 tiles \\(unrouted 0\\), pits 0; layout 6917612c1344027f\n")
 
+  # 23.02: the wood of region 26 (where the played life of the 128/120 world
+  # stands) on that same layout: trees per tile by biome, a quarter on the
+  # ring, none on a road, a house, a square or a pit. Scene.Flora ASSERTS the
+  # same digest by another wiring.
+  add_test(NAME Atlas.SceneFlora128
+    COMMAND VaelenAtlas --size 128 --prehistory 60 --years 10 --scene-layout 100 --scene-flora 26
+            --out ${CMAKE_CURRENT_BINARY_DIR}/atlas-scene-flora.json)
+  set_tests_properties(Atlas.SceneFlora128 PROPERTIES TIMEOUT 900
+    PASS_REGULAR_EXPRESSION "flora region 26: trees 1266 \\(conifer 730, broadleaf 432, palm 0, shrub 104\\), ring 1111, dropped 0; flora 982297351bd5dfb9\n")
+
   # 19.09: the day's snow, grass and sun from the climate leaf, at noon of
   # sixteen waking hours over region 1's centroid row. Scene.Sky computes the
   # same digest by another wiring. CONTROL: the world before the winter has

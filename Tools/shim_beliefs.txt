@@ -54,3 +54,8 @@ bOverride_ColorContrast                  23.03  FPostProcessSettings: the overri
 bOverride_MotionBlurAmount               23.03  FPostProcessSettings: the override bit of MotionBlurAmount
 bOverride_VignetteIntensity              23.03  FPostProcessSettings: the override bit of VignetteIntensity
 bUnbound                                 23.03  UPostProcessComponent::bUnbound - the grade is the whole screen's wherever the walker stands
+
+# 23.02 (2026-10-02): the wood drawn. `Tree` is the scene's own type (Flora.h), a name the shim also
+# happens to hold - counted as a belief the way Bytes and Directory were (the ledger reads names, not meanings).
+Tree                                     23.02  Scene::Tree, the scenery's loop variable; a coincidence of names with the shim
+

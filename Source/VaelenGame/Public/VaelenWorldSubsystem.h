@@ -48,6 +48,7 @@
 #include "Vaelen/View/Frame.h"
 #include "Vaelen/View/Life.h"
 #include "Vaelen/View/Panel.h"
+#include "Vaelen/Scene/Flora.h"
 #include "Vaelen/Scene/Layout.h"
 #include "Vaelen/Scene/Terrain.h"
 #include "Vaelen/View/Climate.h"
@@ -193,6 +194,9 @@ public:
 	/// pits). ONE layout for the scenery that draws it and the controller
 	/// that aims at it, so the figure spoken to is the figure drawn.
 	const Vaelen::Scene::SceneLayout& Layout() const;
+	/// 23.02: the played region's wood, planted on that layout at every
+	/// retaking (Flora.h). The scenery draws it when its digest moved.
+	const Vaelen::Scene::Flora& Wood() const;
 	/// The world's seed and size, for the lines the walk prints in the Atlas's
 	/// words. 0 before Begin.
 	uint64 Seed() const;

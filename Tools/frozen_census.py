@@ -157,6 +157,7 @@ TABLE = {
     # asserted as the terrain test's control.
     "Tests/Scene/Test_Terrain.cpp": "WORLD",
     "Tests/Scene/Test_Layout.cpp": "WORLD",  # the review of 2026-09-27: the layout digest asserted, not logged
+    "Tests/Scene/Test_Flora.cpp": "WORLD",  # 23.02: the wood of region 26, pinned beside Atlas.SceneFlora128
     # 19.09: the Atlas's sky line (Atlas.SceneSky128), computed by a second wiring.
     "Tests/Scene/Test_Sky.cpp": "WORLD",
     # 19.04: hand-built facts for the line composer; the climate digest is

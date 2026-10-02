@@ -78,6 +78,10 @@ struct FVaelenHeld
 	Vaelen::View::ClimateView Climate;
 	Vaelen::View::NetView Net;
 	Vaelen::Scene::SceneLayout Laid;
+	/// 23.02: the played region's wood, planted on the layout (its roads and
+	/// houses exclude tiles) at every retaking - cheap, and the scenery
+	/// redraws it only when its digest moved.
+	Vaelen::Scene::Flora Wood;
 
 	void TakeAll(const Vaelen::View::PanelKeys& Keys)
 	{
@@ -97,6 +101,7 @@ struct FVaelenHeld
 		if (Scene_.Width != 0u)
 		{
 			Vaelen::Scene::BuildLayout(Scene_, Frame, Net, Folk, Life, Life.Day + 1u, Laid);
+			Vaelen::Scene::PlantTrees(Scene_, Laid, Life.Region, Vaelen::Scene::FloraRules{}, Wood);
 		}
 	}
 
@@ -442,6 +447,12 @@ const Vaelen::Scene::SceneLayout& UVaelenWorldSubsystem::Layout() const
 {
 	static const Vaelen::Scene::SceneLayout Nothing;
 	return Held ? Held->Laid : Nothing;
+}
+
+const Vaelen::Scene::Flora& UVaelenWorldSubsystem::Wood() const
+{
+	static const Vaelen::Scene::Flora Nothing;
+	return Held ? Held->Wood : Nothing;
 }
 
 uint64 UVaelenWorldSubsystem::Seed() const

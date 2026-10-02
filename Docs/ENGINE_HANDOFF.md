@@ -637,6 +637,12 @@ verbatim and its module.
    off, volumetric fog off, ambient occlusion 0.6, exposure 0.5-4.0 lux,
    bloom 0.3`. Bring that line back verbatim, and `Vaelen.Scene`'s sky
    line beside a screenshot (the sun's azimuth and elevation are on it).
+   (23.02: `Vaelen.Scene` prints a FOURTH line, `LogVaelenScene: ... flora
+   region R: trees N (...); flora <hex>`, and `trees N` at the end of its
+   drawn line - the two N must agree, and the wood stands as GREY shapes
+   around you, cones and spheres on cylinders, until 23.01's material.
+   Bring the flora line back verbatim: `Session.P19S5` holds it to the
+   Atlas's `--scene-flora R`.)
 3. `Vaelen.Look 2`: the clouds and the volumetric fog - its line says
    `clouds on` or `clouds no material` (then the engine's cloud material
    is not where the code names it: say so). `stat unit` at eye level.

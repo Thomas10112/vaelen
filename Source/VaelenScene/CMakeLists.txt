@@ -1,4 +1,4 @@
-# VaelenScene - the ground, the fence, the layout and the sky, in integers (Phase 19, ADR-0156).
+# VaelenScene - the ground, the fence, the layout, the sky and the forests, in integers (Phase 19, ADR-0156).
 # Every file listed here is ALSO compiled by UBT (Source/VaelenScene/VaelenScene.Build.cs).
 # VaelenSceneModule.cpp is the only Unreal-facing file and is intentionally absent.
 # It reads view LEAVES only (Tools/check_ui_fence.py holds it to Core and the leaves),
@@ -9,6 +9,7 @@ set(VAELEN_SCENE_PUBLIC_HEADERS
   Public/Vaelen/Scene/Fence.h
   Public/Vaelen/Scene/Layout.h
   Public/Vaelen/Scene/Sky.h
+  Public/Vaelen/Scene/Flora.h
 )
 
 set(VAELEN_SCENE_SOURCES
@@ -16,6 +17,7 @@ set(VAELEN_SCENE_SOURCES
   Private/Fence.cpp
   Private/Layout.cpp
   Private/Sky.cpp
+  Private/Flora.cpp
   Private/Vaelen/Scene/LineWriter.h
 )
 

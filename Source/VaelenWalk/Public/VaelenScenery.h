@@ -12,14 +12,15 @@
 // a frame, and the instance counts equal the layout line's - Vaelen.Scene
 // prints both, and Session.P19S3 holds them equal.
 //
-// STATUS: UNVERIFIED (engine) - written and PARSED against Tools/EngineShim on
-// 2026-09-25, not yet built by UnrealBuildTool nor run: sitting S3 builds it.
-// That /Engine/BasicShapes/Cube, Cone, Cylinder and Sphere are 100 cm shapes
-// found by those names is the belief here.
+// STATUS: UNVERIFIED (engine) since 23.02 (2026-10-02): the wood (DrawFlora,
+// four instanced components, per-instance custom data) is parsed against
+// Tools/EngineShim and not yet built - sitting S5 builds it. Build b1001
+// (d96a418) compiled the 19.11 scenery as it stood.
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Vaelen/Scene/Flora.h"
 #include "Vaelen/Scene/Layout.h"
 #include "Vaelen/Scene/Terrain.h"
 
@@ -45,6 +46,13 @@ public:
 	/// lake tile at its surface. The map does not move, so neither does this.
 	void DrawWater(const Vaelen::Scene::Ground& G);
 
+	/// 23.02: the wood drawn over the ground, from what Flora.h planted - a
+	/// trunk (cylinder) and a crown (a cone for a conifer, a sphere for the
+	/// rest; a shrub is a low sphere alone) per tree, no collision, tinted
+	/// per instance through custom data (three floats, the crown's colour
+	/// by kind) for the material 23.01 brings; the engine's default until
+	/// then. Redrawn only when the wood's digest moved.
+	bool DrawFlora(const Vaelen::Scene::Flora& Wood);
 	/// What stands drawn, for the line Vaelen.Scene prints beside the layout's.
 	struct FDrawn
 	{
@@ -54,6 +62,7 @@ public:
 		int32 Squares = 0;
 		int32 RoadTiles = 0;
 		int32 Pits = 0;
+		int32 Trees = 0;
 	};
 	FDrawn Drawn() const;
 
@@ -71,5 +80,10 @@ private:
 	UInstancedStaticMeshComponent* Roads = nullptr;
 	UInstancedStaticMeshComponent* Pits = nullptr;
 	UProceduralMeshComponent* Water = nullptr;
+	UInstancedStaticMeshComponent* Trunks = nullptr;
+	UInstancedStaticMeshComponent* Conifers = nullptr;
+	UInstancedStaticMeshComponent* Crowns = nullptr;
+	UInstancedStaticMeshComponent* Shrubs = nullptr;
 	bool bShapesFound = false;
+	Vaelen::Hash64 WoodDrawn = 0; ///< the digest of the wood last drawn
 };

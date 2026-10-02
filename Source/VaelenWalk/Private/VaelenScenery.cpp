@@ -70,7 +70,105 @@ AVaelenScenery::AVaelenScenery()
 	Squares = Shapes(this, Water, TEXT("Squares"), Cube.Object, false, bFound);
 	Roads = Shapes(this, Water, TEXT("Roads"), Cube.Object, false, bFound);
 	Pits = Shapes(this, Water, TEXT("Pits"), Cylinder.Object, false, bFound);
+	// 23.02: the wood. Three floats of custom data per instance: the tint
+	// the material of 23.01 reads (PerInstanceCustomData 0-2); nothing reads
+	// them until it lands, and they cost nothing to set.
+	Trunks = Shapes(this, Water, TEXT("Trunks"), Cylinder.Object, false, bFound);
+	Conifers = Shapes(this, Water, TEXT("Conifers"), Cone.Object, false, bFound);
+	Crowns = Shapes(this, Water, TEXT("Crowns"), Sphere.Object, false, bFound);
+	Shrubs = Shapes(this, Water, TEXT("Shrubs"), Sphere.Object, false, bFound);
+	for (UInstancedStaticMeshComponent* Each : {Trunks, Conifers, Crowns, Shrubs})
+	{
+		Each->NumCustomDataFloats = 3;
+	}
 	bShapesFound = bFound;
+}
+
+namespace
+{
+	/// The crown's tint by kind, and the trunk's: what the custom data carries.
+	struct FTint
+	{
+		float R, G, B;
+	};
+	constexpr FTint TintOf(Vaelen::uint8 Kind)
+	{
+		switch (Kind)
+		{
+		case Vaelen::Scene::TreeKind::Conifer:
+			return {0.10f, 0.28f, 0.14f};
+		case Vaelen::Scene::TreeKind::Broadleaf:
+			return {0.22f, 0.44f, 0.16f};
+		case Vaelen::Scene::TreeKind::Palm:
+			return {0.34f, 0.52f, 0.18f};
+		default:
+			return {0.40f, 0.42f, 0.20f};
+		}
+	}
+	constexpr FTint Bark = {0.30f, 0.22f, 0.14f};
+
+	void Tinted(UInstancedStaticMeshComponent* Into, const FTransform& Where, const FTint& Tint)
+	{
+		const int32 Index = Into->AddInstance(Where);
+		Into->SetCustomDataValue(Index, 0, Tint.R);
+		Into->SetCustomDataValue(Index, 1, Tint.G);
+		Into->SetCustomDataValue(Index, 2, Tint.B);
+	}
+} // namespace
+
+bool AVaelenScenery::DrawFlora(const Vaelen::Scene::Flora& Wood)
+{
+	const Vaelen::Hash64 Digest = Vaelen::Scene::MeasureFlora(Wood).Digest;
+	if (Digest == WoodDrawn)
+	{
+		return bShapesFound;
+	}
+	for (UInstancedStaticMeshComponent* Each : {Trunks, Conifers, Crowns, Shrubs})
+	{
+		Each->ClearInstances();
+	}
+	WoodDrawn = Digest;
+	if (!bShapesFound)
+	{
+		return false;
+	}
+	for (const Vaelen::Scene::Tree& T : Wood.Trees)
+	{
+		const double X = T.X, Y = T.Y, Z = T.Z;
+		const double H = T.HeightCm;
+		const FTint Crown = TintOf(T.Kind);
+		switch (T.Kind)
+		{
+		case Vaelen::Scene::TreeKind::Conifer:
+		{
+			// A trunk of a third, a cone of the rest, as wide as a quarter of it.
+			const double Trunk = H / 3.0, Cone = H - Trunk;
+			Tinted(Trunks, At(X, Y, Z + Trunk / 2.0, 0.35, 0.35, Trunk / 100.0), Bark);
+			Tinted(Conifers, At(X, Y, Z + Trunk + Cone / 2.0, Cone / 400.0, Cone / 400.0, Cone / 100.0), Crown);
+			break;
+		}
+		case Vaelen::Scene::TreeKind::Palm:
+		{
+			// A thin trunk of three quarters, a flat crown on top.
+			const double Trunk = H * 0.75;
+			Tinted(Trunks, At(X, Y, Z + Trunk / 2.0, 0.25, 0.25, Trunk / 100.0), Bark);
+			Tinted(Crowns, At(X, Y, Z + Trunk, H / 250.0, H / 250.0, H / 600.0), Crown);
+			break;
+		}
+		case Vaelen::Scene::TreeKind::Shrub:
+			Tinted(Shrubs, At(X, Y, Z + H / 2.0, H / 80.0, H / 80.0, H / 100.0), Crown);
+			break;
+		default:
+		{
+			// A trunk of two fifths, a round crown as wide as it is tall.
+			const double Trunk = H * 0.4, Ball = H - Trunk;
+			Tinted(Trunks, At(X, Y, Z + Trunk / 2.0, 0.4, 0.4, Trunk / 100.0), Bark);
+			Tinted(Crowns, At(X, Y, Z + Trunk + Ball / 2.0, Ball / 100.0, Ball / 100.0, Ball / 100.0), Crown);
+			break;
+		}
+		}
+	}
+	return true;
 }
 
 bool AVaelenScenery::Draw(const Vaelen::Scene::Ground& G, const Vaelen::Scene::SceneLayout& L)
@@ -215,6 +313,7 @@ AVaelenScenery::FDrawn AVaelenScenery::Drawn() const
 	Out.Squares = Squares->GetInstanceCount();
 	Out.RoadTiles = Roads->GetInstanceCount();
 	Out.Pits = Pits->GetInstanceCount();
+	Out.Trees = Conifers->GetInstanceCount() + Crowns->GetInstanceCount() + Shrubs->GetInstanceCount();
 	return Out;
 }
 
@@ -231,4 +330,5 @@ void AVaelenScenery::OnViewsTaken()
 		return;
 	}
 	Draw(World->Scene(), World->Layout());
+	DrawFlora(World->Wood());
 }

@@ -152,7 +152,11 @@ PHASE 23 (THE LOOK) : PLANNED 2026-10-01 at the owner's ask - seven tasks, ROADM
   committed as the output of a commandlet; the frame budget is the T400's.
 TASK 23.03 : the light and the air - Scene::LightOf VALIDATED headless (Scene.Sky, two controls, shown red on
   purpose); AVaelenSky lit by it, the grade, the clouds and Vaelen.Look UNVERIFIED (engine) until sitting S5
-  (33 shim beliefs listed). ROADMAP "23.03 built". Next: 23.01 + 23.02 (materials by commandlet, forests).
+  (33 shim beliefs listed). ROADMAP "23.03 built". CI run 347 green, eleven legs.
+TASK 23.02 : forests - Scene::PlantTrees VALIDATED headless (Scene.Flora, Atlas.SceneFlora128 pinned
+  982297351bd5dfb9 at region 26: 1266 trees, shown red on purpose); the subsystem's Wood() and the scenery's
+  DrawFlora UNVERIFIED (engine) until sitting S5. ROADMAP "23.02 built". Next: 23.01 (materials by commandlet:
+  the wood is grey shapes until then), then 23.05.
 
 TASK (27.fix1) : the host takes a bound life first — DONE 2026-09-29 (headless VALIDATED by Run.Soak's
   new pin 6e9f76c02755513c, predicted by the probe; engine UNVERIFIED). VaelenWorldSubsystem::Begin

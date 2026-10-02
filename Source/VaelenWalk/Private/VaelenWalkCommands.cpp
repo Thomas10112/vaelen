@@ -15,9 +15,9 @@
 // Nothing here turns the day or means a verb: those are the controller's and
 // the subsystem's, and the fence refuses the words (check_ui_fence.py).
 //
-// STATUS: UNVERIFIED (engine) since 23.03 (2026-10-01): Vaelen.Look is parsed against Tools/EngineShim
-// and not yet built - sitting S5 builds it. Build b1001 (d96a418) compiled the file as it stood
-// before (Vaelen.Walk, Vaelen.Probe, Vaelen.Scene), and Vaelen.Scene ran on the owner's machine.
+// STATUS: UNVERIFIED (engine) since 23.03 (2026-10-01; 23.02 the wood's line): Vaelen.Look is parsed against
+// Tools/EngineShim and not yet built - sitting S5 builds it. Build b1001 (d96a418) compiled the file as it stood before
+// (Vaelen.Walk, Vaelen.Probe, Vaelen.Scene), and Vaelen.Scene ran on the owner's machine.
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
@@ -27,6 +27,7 @@
 #include "GameFramework/PlayerController.h"
 #include "HAL/IConsoleManager.h"
 #include "Vaelen/Scene/Fence.h"
+#include "Vaelen/Scene/Flora.h"
 #include "Vaelen/Scene/Layout.h"
 #include "Vaelen/Scene/Sky.h"
 #include "Vaelen/Scene/Terrain.h"
@@ -158,6 +159,7 @@ namespace
 			UE_LOG(LogVaelenWalk, Warning,
 				   TEXT("LogVaelenWalk: a basic shape was not found; the scenery is not drawn"));
 		}
+		Scenery->DrawFlora(World->Wood()); // 23.02: the wood, said by Vaelen.Scene
 		World->OnViewsTaken.AddUObject(Land, &AVaelenLand::OnViewsTaken);
 		World->OnViewsTaken.AddUObject(Scenery, &AVaelenScenery::OnViewsTaken);
 		Land->OnViewsTaken();
@@ -317,12 +319,22 @@ namespace
 				UE_LOG(LogVaelenWalk, Log, TEXT("%s"), ANSI_TO_TCHAR(Line));
 			}
 		}
+		// 23.02: the wood's line, the Atlas's --scene-flora R by another wiring.
+		{
+			char Line[Vaelen::Scene::FloraLineBytes];
+			if (Vaelen::Scene::FloraLine(Size, World->Seed(), Life.Region, Vaelen::Scene::MeasureFlora(World->Wood()),
+										 Line, Vaelen::Scene::FloraLineBytes) != 0u)
+			{
+				UE_LOG(LogVaelenWalk, Log, TEXT("%s"), ANSI_TO_TCHAR(Line));
+			}
+		}
 		if (Scenery != nullptr)
 		{
 			const AVaelenScenery::FDrawn D = Scenery->Drawn();
 			UE_LOG(LogVaelenWalk, Log,
-				   TEXT("LogVaelenWalk: drawn houses %d figures %d (company %d) squares %d road tiles %d pits %d"),
-				   D.Houses, D.Figures, D.Company, D.Squares, D.RoadTiles, D.Pits);
+				   TEXT("LogVaelenWalk: drawn houses %d figures %d (company %d) squares %d road tiles %d pits %d "
+						"trees %d"),
+				   D.Houses, D.Figures, D.Company, D.Squares, D.RoadTiles, D.Pits, D.Trees);
 		}
 	}
 

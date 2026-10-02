@@ -58,6 +58,7 @@
 #include "Vaelen/View/Frame.h"
 #include "Vaelen/View/Panel.h"
 #include "Vaelen/View/Proof.h"
+#include "Vaelen/Scene/Flora.h"
 #include "Vaelen/Scene/Layout.h"
 #include "Vaelen/Scene/Sky.h"
 #include "Vaelen/Scene/Terrain.h"
@@ -537,6 +538,8 @@ namespace
 		int64 SceneLayoutDay = -1;
 		/// 19.09: print the sky's LogVaelenScene line, this many of sixteen waking hours into the day (-1: none).
 		int64 SceneSkyHour = -1;
+		/// 23.02: print the forest's LogVaelenScene line for this region, on the --scene-layout day (0: none).
+		int64 SceneFloraRegion = 0;
 		/// 17.01: write the container corpus to this directory.
 		std::string Containers;
 		/// 17.05: the cause census over a container read from this file. The
@@ -689,6 +692,8 @@ namespace
 					 "  --scene-dump FILE  write the ground, hill-shaded, as a greyscale PGM picture (19.05)\n"
 					 "  --scene-layout DAY  print the layout's LogVaelenScene line for that day (19.08)\n"
 					 "  --scene-sky HOUR    print the sky's LogVaelenScene line, HOUR of 16 waking hours in (19.09)\n"
+					 "  --scene-flora R     print the forest's LogVaelenScene line for region R, on the\n"
+					 "                  --scene-layout day (23.02); with --scene, the played region's\n"
 					 "  --containers DIR  write the container corpus of 17.01 to this directory\n"
 					 "  --causes FILE   17.05: the cause census over a container, per event type\n"
 					 "  --census        the same over a world generated from --size and the rest\n"
@@ -768,6 +773,17 @@ namespace
 					return false;
 				}
 				Out.SceneLayoutDay = static_cast<int64>(Day);
+			}
+			else if (std::strcmp(Arg, "--scene-flora") == 0 && HasValue)
+			{
+				char* End = nullptr;
+				const unsigned long R = std::strtoul(Argv[++I], &End, 10);
+				if (*End != '\0' || R == 0ul || R > 65535ul)
+				{
+					std::fprintf(stderr, "AELVOR: --scene-flora takes a region (1-65535), not %s\n", Argv[I]);
+					return false;
+				}
+				Out.SceneFloraRegion = static_cast<int64>(R);
 			}
 			else if (std::strcmp(Arg, "--scene-sky") == 0 && HasValue)
 			{
@@ -3553,6 +3569,18 @@ namespace
 					std::printf("%s\n", Line);
 				}
 			}
+			// 23.02: the played region's wood, as the engine plants it (Vaelen.Walk).
+			if (Opt.SceneFloraRegion > 0 && Life.Region != 0u)
+			{
+				Scene::Flora Wood;
+				Scene::PlantTrees(G, Laid, Life.Region, Scene::FloraRules{}, Wood);
+				char FloraText[Scene::FloraLineBytes];
+				if (Scene::FloraLine(RO.Size, RO.Seed, Life.Region, Scene::MeasureFlora(Wood), FloraText,
+									 Scene::FloraLineBytes) != 0u)
+				{
+					std::printf("%s\n", FloraText);
+				}
+			}
 			if (RO.Climate)
 			{
 				ClimateView Climate;
@@ -3848,6 +3876,18 @@ namespace
 				0u)
 			{
 				std::printf("%s\n", Line);
+			}
+			// 23.02: the wood of one region on that layout, when asked.
+			if (Opt.SceneFloraRegion > 0)
+			{
+				Scene::Flora Wood;
+				Scene::PlantTrees(G, Laid, static_cast<uint32>(Opt.SceneFloraRegion), Scene::FloraRules{}, Wood);
+				char FloraText[Scene::FloraLineBytes];
+				if (Scene::FloraLine(Opt.Size, Opt.Seed, static_cast<uint32>(Opt.SceneFloraRegion),
+									 Scene::MeasureFlora(Wood), FloraText, Scene::FloraLineBytes) != 0u)
+				{
+					std::printf("%s\n", FloraText);
+				}
 			}
 		}
 		// 19.09: the day's snow, grass and sun, from the climate leaf. Nobody is

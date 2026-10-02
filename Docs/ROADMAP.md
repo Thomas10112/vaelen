@@ -9684,3 +9684,56 @@ sitting S5 says what to bring back: the three Look lines, `stat unit` at
 each level, and a screenshot beside its sky line at launch (dawn) and after
 the day turned.
 
+### 23.02 built, 2026-10-02: forests, planted in integers and drawn as instances
+
+CI run 347 (58493e5, 23.03): eleven legs of eleven green.
+
+`Vaelen/Scene/Flora.h` (pure, VALIDATED headless): `PlantTrees(Ground,
+SceneLayout, Region, FloraRules, Flora&)` puts a tree on every land tile of
+the played region at its biome's density and on the other tiles of the
+chunks the region touches (the land's near chunks, `ChunkHolds`) at a
+quarter of it - boreal 40 a tile, temperate 32, tropical 48, scrubland 6,
+savanna 4, grassland 3 and cold steppe 1 (the scattered trees a plain reads
+as alive by), the rest none; never on water, a road's tile, under a house,
+a square or a pit; each at a point hashed from its tile and index (the
+layout's own formula), on the ground's height, of its biome's kind
+(conifer, broadleaf, palm, shrub) and a hashed height. A cap of 24,000
+scales every tile by the same ratio and the line says what it dropped.
+`MeasureFlora` digests the 16-byte trees; `FloraLine` prints `LogVaelenScene:
+AELVOR S seed X flora region R: trees N (conifer C, broadleaf B, palm P,
+shrub S), ring G, dropped D; flora <16 hex>`.
+
+Measured at region 26 of AELVOR 128 after 60 + 10 years, day 100 (the
+world of Atlas.SceneLayout128), with the plains bare and then with them
+scattered:
+
+| rules | trees | of which ring | digest |
+|---|---|---|---|
+| forests alone | 1247 (conifer 730, broadleaf 432, shrub 85) | 1111 | dba16077d081ac2c |
+| plains scattered (the rules as committed) | 1266 (shrub 104) | 1111 | 982297351bd5dfb9 - PINNED in `Scene.Flora` and `Atlas.SceneFlora128` |
+
+Region 26 itself is plain: of its wood 155 trees stand on its own tiles and
+1111 on the ring - the forests are its neighbours'. `Scene.Flora` holds
+every tree to the rules (on land of a biome that grows it, in a near chunk,
+on no excluded tile, at HeightAt, ring-flagged exactly when another
+region's; the per-tile counts the rules' when nothing was dropped; the
+same bytes twice; another region another wood; region 0 nothing) and the
+cap (thins every tile alike, drops at most the integer remainder, keeps a
+tree where it stood or drops it and never moves it; a cap the wood fits
+under drops nothing and is the same wood). Shown red on purpose on the
+debug build with every tree one centimetre east (the pin refused); green
+with it put back. `--scene-flora R` prints the line standalone on the
+`--scene-layout` day and, with `--scene`, the played region's.
+
+The engine side, parsed and not built (sitting S5): the subsystem plants
+the wood at every retaking beside the layout (`Wood()`); `AVaelenScenery::
+DrawFlora` draws it as four instanced components of the basic shapes - a
+cylinder trunk and a cone for a conifer, a sphere crown for a broadleaf,
+a flat sphere high on a thin trunk for a palm, a low sphere for a shrub -
+with three floats of per-instance custom data carrying the kind's tint
+for the material 23.01 brings (the engine's default material until then,
+which is grey: the wood will be SHAPES first and colour with 23.01), and
+redraws only when the wood's digest moved. `Vaelen.Scene` prints the
+flora line and `trees N` in its drawn line; `Session.P19S5` will hold the
+line to the Atlas's. One shim belief (`Tree`, a coincidence of names).
+
