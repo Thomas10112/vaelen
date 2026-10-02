@@ -6,6 +6,8 @@
 // UnrealBuildTool nor run: sitting S3 builds it.
 #include "VaelenScenery.h"
 
+#include "Materials/MaterialInterface.h"
+
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
@@ -77,9 +79,20 @@ AVaelenScenery::AVaelenScenery()
 	Conifers = Shapes(this, Water, TEXT("Conifers"), Cone.Object, false, bFound);
 	Crowns = Shapes(this, Water, TEXT("Crowns"), Sphere.Object, false, bFound);
 	Shrubs = Shapes(this, Water, TEXT("Shrubs"), Sphere.Object, false, bFound);
+	// 23.01: the materials the commandlet writes, when they are on this disk.
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> WaterMaterial(
+		TEXT("/Game/Vaelen/Materials/M_Water.M_Water"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> FlatMaterial(
+		TEXT("/Game/Vaelen/Materials/M_Flat.M_Flat"));
+	WaterPaint = WaterMaterial.Succeeded() ? WaterMaterial.Object : nullptr;
+	FlatPaint = FlatMaterial.Succeeded() ? FlatMaterial.Object : nullptr;
 	for (UInstancedStaticMeshComponent* Each : {Trunks, Conifers, Crowns, Shrubs})
 	{
 		Each->NumCustomDataFloats = 3;
+		if (FlatPaint != nullptr)
+		{
+			Each->SetMaterial(0, FlatPaint);
+		}
 	}
 	bShapesFound = bFound;
 }
@@ -271,8 +284,13 @@ void AVaelenScenery::DrawWater(const Vaelen::Scene::Ground& G)
 	Quad(-C / 2.0, -C / 2.0, (G.Width - 0.5) * C, (G.Height - 0.5) * C, 0.0, FLinearColor(0.10f, 0.25f, 0.45f, 1.0f));
 	Water->CreateMeshSection_LinearColor(0, Vertices, Triangles, Normals, UV0, Colours, Tangents, false);
 	// A material per section, or the section is drawn with the engine's default
-	// and the vertex colour above shows nothing (19.11b, the review).
-	if (GEngine != nullptr)
+	// and the vertex colour above shows nothing (19.11b, the review). 23.01:
+	// the water's own when the commandlet has written it.
+	if (WaterPaint != nullptr)
+	{
+		Water->SetMaterial(0, WaterPaint);
+	}
+	else if (GEngine != nullptr)
 	{
 		Water->SetMaterial(0, GEngine->VertexColorMaterial);
 	}
@@ -297,7 +315,11 @@ void AVaelenScenery::DrawWater(const Vaelen::Scene::Ground& G)
 	if (Vertices.Num() > 0)
 	{
 		Water->CreateMeshSection_LinearColor(1, Vertices, Triangles, Normals, UV0, Colours, Tangents, false);
-		if (GEngine != nullptr)
+		if (WaterPaint != nullptr)
+		{
+			Water->SetMaterial(1, WaterPaint);
+		}
+		else if (GEngine != nullptr)
 		{
 			Water->SetMaterial(1, GEngine->VertexColorMaterial);
 		}

@@ -9737,3 +9737,44 @@ redraws only when the wood's digest moved. `Vaelen.Scene` prints the
 flora line and `trees N` in its drawn line; `Session.P19S5` will hold the
 line to the Atlas's. One shim belief (`Tree`, a coincidence of names).
 
+### 23.01 built, 2026-10-02: the materials, by a commandlet, as assets to commit
+
+Not the editor MODULE section 29 planned: an editor module would enter the
+uproject and the editor target (the owner's files) and give the module lists
+a seventh place to disagree. The same thing with none of that - a commandlet
+inside `WITH_EDITOR` in VaelenWalk (`VaelenMaterialsCommandlet.h/.cpp`), with
+`UnrealEd`, `MaterialEditor` and `AssetRegistry` as private dependencies of
+the editor target alone (`Target.bBuildEditor`). A cooked game carries
+neither the modules nor the file's code. Run once on the machine that has
+the editor:
+
+```
+UnrealEditor-Cmd.exe <repo>\Vaelen.uproject -run=VaelenMaterials
+```
+
+It builds three materials from `UMaterialExpression` nodes through the
+editor's own `UMaterialEditingLibrary` (create, connect, recompile), tells
+the asset registry and saves them under `Content/Vaelen/Materials/`, one
+`LogVaelenMaterials: <name>: N expressions, saved <file>` line each and a
+last `3 of 3 materials saved`:
+
+| material | graph | who takes it |
+|---|---|---|
+| `M_Ground` | the vertex colour (the biome, the snow, the grass that `Scene::ApplyClimate` painted) blended to a rock grey where `1 - normal.z` runs from 0.13 (about 30 degrees) to 0.28 (the 44.76 degree floor), saturated; a simplex noise over world position added as a grain of plus or minus a sixteenth; roughness 0.9; 14 nodes | `AVaelenLand`, before `M_VaelenTile` and the engine's vertex-colour material |
+| `M_Water` | translucent; the vertex colour the sections carry; roughness 0.08, specular 0.6, opacity 0.7, so the sky reflects and the bed shows near the shore | the scenery's sea and lake sections |
+| `M_Flat` | the base colour appended from three `PerInstanceCustomData` floats (default 0.5: a grey, never black), roughness 0.85, `bUsedWithInstancedStaticMeshes` | the wood's four instanced components (23.02 set every tree's tint by kind) |
+
+The code that uses them falls back when they are not on the disk (the
+engine's vertex-colour material, its default), as it did: `check_cook.py`
+counts a `/Game` path as optional for that reason, and the ASSETS - three
+`.uasset` under Content/Vaelen/Materials, binary, tens of kilobytes - are
+the OWNER's to commit after the run, since only that machine can write
+them (decision 1 of section 29: committed, and the output of code). The
+headless parse sees nothing of the commandlet (the shim has no editor; the
+whole file is under `WITH_EDITOR`, which the parse leaves undefined) and
+the ledger lists no belief for it: the owner's build is its first
+compiler, and the names most likely wrong are `UMaterialEditingLibrary`'s
+input names (`"Input"`, `"A"`, `"B"`, `"Alpha"`, `"Position"`), the
+`ConstB` members of Subtract and Multiply, and `FSavePackageArgs`. Every
+engine-side check passes (parse 26 TUs, fence, status, ledger, modules).
+

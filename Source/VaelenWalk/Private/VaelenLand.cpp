@@ -1,9 +1,10 @@
 // VAELEN - VaelenWalk
 // Phase 19 task 19.06: the ground one walks on, uploaded. See VaelenLand.h.
 //
-// STATUS: UNVERIFIED (engine) - written and PARSED against Tools/EngineShim on
-// 2026-09-25 (reviewed and corrected 2026-09-26, 19.11b), not yet built by
-// UnrealBuildTool nor run: sitting S2 builds it.
+// STATUS: UNVERIFIED (engine) since 23.01 (2026-10-02): the ground takes
+// M_Ground when the commandlet has written it - parsed against
+// Tools/EngineShim, not yet built; sitting S5 builds it. Build b1001
+// (d96a418) compiled the 19.06-19.11b land as it stood.
 #include "VaelenLand.h"
 
 #include "CollisionQueryParams.h"
@@ -49,7 +50,12 @@ AVaelenLand::AVaelenLand()
 	// otherwise, which is the asset-free default ADR-0157 asks for and a
 	// BELIEF until S2 sees a coloured hill.
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Tile(TEXT("/Game/M_VaelenTile.M_VaelenTile"));
-	Paint = Tile.Succeeded() ? Tile.Object : nullptr;
+	// 23.01: the ground's own material when the commandlet has written it -
+	// the vertex colour under a rock mask on the slopes and a grain of noise;
+	// the tile material of 13.x, then the engine's, when it has not.
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Ground(
+		TEXT("/Game/Vaelen/Materials/M_Ground.M_Ground"));
+	Paint = Ground.Succeeded() ? Ground.Object : (Tile.Succeeded() ? Tile.Object : nullptr);
 }
 
 bool AVaelenLand::Build(const Vaelen::Scene::Ground& G, const Vaelen::View::ClimateView& Climate, uint32 Region)

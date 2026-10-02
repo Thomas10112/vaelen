@@ -59,3 +59,11 @@ bUnbound                                 23.03  UPostProcessComponent::bUnbound 
 # happens to hold - counted as a belief the way Bytes and Directory were (the ledger reads names, not meanings).
 Tree                                     23.02  Scene::Tree, the scenery's loop variable; a coincidence of names with the shim
 
+# 23.01 (2026-10-02): the materials commandlet - editor-only code the parse never sees (WITH_EDITOR), whose
+# names the shim happens to hold; listed because the ledger reads text, not preprocessor state.
+Base                                     23.01  used by the commandlet; a name the shim also holds
+Channel                                  23.01  used by the commandlet; a name the shim also holds
+Params                                   23.01  used by the commandlet; a name the shim also holds
+Scalar                                   23.01  used by the commandlet; a name the shim also holds
+UMaterial                                23.01  the material the commandlet builds (the shim knows the type from VaelenLand's Materials/Material.h)
+

@@ -155,8 +155,10 @@ TASK 23.03 : the light and the air - Scene::LightOf VALIDATED headless (Scene.Sk
   (33 shim beliefs listed). ROADMAP "23.03 built". CI run 347 green, eleven legs.
 TASK 23.02 : forests - Scene::PlantTrees VALIDATED headless (Scene.Flora, Atlas.SceneFlora128 pinned
   982297351bd5dfb9 at region 26: 1266 trees, shown red on purpose); the subsystem's Wood() and the scenery's
-  DrawFlora UNVERIFIED (engine) until sitting S5. ROADMAP "23.02 built". Next: 23.01 (materials by commandlet:
-  the wood is grey shapes until then), then 23.05.
+  DrawFlora UNVERIFIED (engine) until sitting S5. ROADMAP "23.02 built".
+TASK 23.01 : the materials by a WITH_EDITOR commandlet in VaelenWalk (M_Ground, M_Water, M_Flat), the land, the
+  water and the wood taking them when on the disk - UNVERIFIED (engine), NOT parsed (editor only): sitting S5
+  runs it and the owner commits the three .uasset. ROADMAP "23.01 built". Next: 23.05 (roofs, towns), 23.04.
 
 TASK (27.fix1) : the host takes a bound life first — DONE 2026-09-29 (headless VALIDATED by Run.Soak's
   new pin 6e9f76c02755513c, predicted by the probe; engine UNVERIFIED). VaelenWorldSubsystem::Begin

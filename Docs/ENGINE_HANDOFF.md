@@ -630,9 +630,26 @@ says so), the fog's `SetDirectionalInscatteringColor` and the cloud
 component's `SetLayerBottomAltitude`. REPORT, do not repair: the first error
 verbatim and its module.
 
-1. Build. First error verbatim.
+1. Build. First error verbatim. (23.01: the editor target now compiles
+   `VaelenMaterialsCommandlet.cpp`, editor-only code the headless parse
+   never saw - if it is the file that fails, bring the first error and
+   skip to step 2 with the engine's grey; the walk runs without it.)
+1b. THE MATERIALS (23.01), once the build is green and BEFORE launching:
+   ```
+   "<UE_5.6>\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "<repo>\Vaelen.uproject" -run=VaelenMaterials
+   ```
+   Bring back its `LogVaelenMaterials:` lines (one per material, then
+   `3 of 3 materials saved`). It writes `Content\Vaelen\Materials\M_Ground.uasset`,
+   `M_Water.uasset`, `M_Flat.uasset`: COMMIT AND PUSH THOSE THREE (they are
+   binary, tens of kilobytes; `git add Content/Vaelen/Materials` then
+   commit on the branch) - only your machine can write them, and the
+   package of 22.03 ships grey without them. A `dir Content\Vaelen\Materials`
+   beside the lines.
 2. Launch the walk mode under `-game`, `Enter` on the title page. The walk
-   opens at dawn: the sun amber, two lux, the fog warm towards it. Type
+   opens at dawn: the sun amber, two lux, the fog warm towards it. The
+   ground is the biome's colour with grey rock on the slopes and a grain
+   to it, the water reflects the sky, the trees are green (M_Flat) - or
+   all of it grey where a material did not load (then say which). Type
    `Vaelen.Look` - it prints `LogVaelenWalk: LogVaelenLook: level 1: clouds
    off, volumetric fog off, ambient occlusion 0.6, exposure 0.5-4.0 lux,
    bloom 0.3`. Bring that line back verbatim, and `Vaelen.Scene`'s sky

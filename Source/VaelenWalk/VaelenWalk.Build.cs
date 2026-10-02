@@ -47,5 +47,13 @@ public class VaelenWalk : ModuleRules
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
+
+		// 23.01: the materials are built by a commandlet (VaelenMaterialsCommandlet,
+		// inside WITH_EDITOR) with the editor's own material library - editor
+		// target only; a cooked game carries neither module nor the file's code.
+		if (Target.bBuildEditor)
+		{
+			PrivateDependencyModuleNames.AddRange(new string[] { "UnrealEd", "MaterialEditor", "AssetRegistry" });
+		}
 	}
 }

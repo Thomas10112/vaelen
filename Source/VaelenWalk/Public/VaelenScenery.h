@@ -27,6 +27,7 @@
 #include "VaelenScenery.generated.h"
 
 class UInstancedStaticMeshComponent;
+class UMaterialInterface;
 class UProceduralMeshComponent;
 class UStaticMesh;
 
@@ -86,4 +87,9 @@ private:
 	UInstancedStaticMeshComponent* Shrubs = nullptr;
 	bool bShapesFound = false;
 	Vaelen::Hash64 WoodDrawn = 0; ///< the digest of the wood last drawn
+	/// 23.01: the commandlet's materials when they are on this disk - the
+	/// water's (translucent, smooth) and the flat one every instanced shape
+	/// takes its tint from; the engine's otherwise.
+	UMaterialInterface* WaterPaint = nullptr;
+	UMaterialInterface* FlatPaint = nullptr;
 };
