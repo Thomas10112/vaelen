@@ -31,6 +31,7 @@
 #include "Vaelen/Scene/Layout.h"
 #include "Vaelen/Scene/Sky.h"
 #include "Vaelen/Scene/Terrain.h"
+#include "Vaelen/Scene/Town.h"
 #include "VaelenLand.h"
 #include "VaelenScenery.h"
 #include "VaelenSky.h"
@@ -154,7 +155,7 @@ namespace
 		// bindings die with the actors. The fence walls and the water once.
 		const int32 Walled = Land->BuildFenceWalls(G, Life.Region);
 		Scenery->DrawWater(G);
-		if (!Scenery->Draw(G, World->Layout()))
+		if (!Scenery->Draw(G, World->Layout(), World->Town()))
 		{
 			UE_LOG(LogVaelenWalk, Warning,
 				   TEXT("LogVaelenWalk: a basic shape was not found; the scenery is not drawn"));
@@ -315,6 +316,15 @@ namespace
 			char Line[Vaelen::Scene::SkyLineBytes];
 			if (Vaelen::Scene::SkyLine(Size, World->Seed(), World->Climate().Day + 1u, Sky, Line,
 									   Vaelen::Scene::SkyLineBytes) != 0u)
+			{
+				UE_LOG(LogVaelenWalk, Log, TEXT("%s"), ANSI_TO_TCHAR(Line));
+			}
+		}
+		// 23.05: the town's line, the Atlas's beside its layout line.
+		{
+			char Line[Vaelen::Scene::TownLineBytes];
+			if (Vaelen::Scene::TownLine(Size, World->Seed(), Life.Day + 1u, Vaelen::Scene::MeasureTown(World->Town()),
+										Line, Vaelen::Scene::TownLineBytes) != 0u)
 			{
 				UE_LOG(LogVaelenWalk, Log, TEXT("%s"), ANSI_TO_TCHAR(Line));
 			}

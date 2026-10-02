@@ -46,6 +46,39 @@ namespace
 	{
 		return FTransform(FRotator::ZeroRotator, FVector(X, Y, Z), FVector(SX, SY, SZ));
 	}
+
+	/// 23.05: a gabled roof from the cube we have - the cube turned 45 degrees
+	/// about the ridge (roll for a ridge along X, pitch for one along Y),
+	/// scaled long along it and square across, so its lower edges sink into
+	/// the walls and its top edge is the ridge.
+	FTransform Gable(double X, double Y, double Z, bool bAlongY, double Length, double Across)
+	{
+		return FTransform(bAlongY ? FRotator(45.0, 0.0, 0.0) : FRotator(0.0, 0.0, 45.0), FVector(X, Y, Z),
+						  bAlongY ? FVector(Across, Length, Across) : FVector(Length, Across, Across));
+	}
+
+	/// The walls' plaster by culture (six tints, the culture's index modulo
+	/// six), a coarse house's grey, and the roof's thatch.
+	struct FWallTint
+	{
+		float R, G, B;
+	};
+	constexpr FWallTint WallOf(Vaelen::uint32 Culture)
+	{
+		constexpr FWallTint Plaster[6] = {{0.80f, 0.74f, 0.62f}, {0.72f, 0.60f, 0.46f}, {0.62f, 0.66f, 0.60f},
+										  {0.78f, 0.66f, 0.52f}, {0.56f, 0.52f, 0.48f}, {0.70f, 0.70f, 0.66f}};
+		return Culture == 0u ? FWallTint{0.60f, 0.58f, 0.54f} : Plaster[Culture % 6u];
+	}
+	constexpr FWallTint Thatch = {0.34f, 0.22f, 0.12f};
+	constexpr FWallTint Stone = {0.46f, 0.45f, 0.43f};
+
+	void Painted(UInstancedStaticMeshComponent* Into, const FTransform& Where, const FWallTint& Tint)
+	{
+		const int32 Index = Into->AddInstance(Where);
+		Into->SetCustomDataValue(Index, 0, Tint.R);
+		Into->SetCustomDataValue(Index, 1, Tint.G);
+		Into->SetCustomDataValue(Index, 2, Tint.B);
+	}
 } // namespace
 
 AVaelenScenery::AVaelenScenery()
@@ -72,6 +105,7 @@ AVaelenScenery::AVaelenScenery()
 	Squares = Shapes(this, Water, TEXT("Squares"), Cube.Object, false, bFound);
 	Roads = Shapes(this, Water, TEXT("Roads"), Cube.Object, false, bFound);
 	Pits = Shapes(this, Water, TEXT("Pits"), Cylinder.Object, false, bFound);
+	Wells = Shapes(this, Water, TEXT("Wells"), Cylinder.Object, true, bFound);
 	// 23.02: the wood. Three floats of custom data per instance: the tint
 	// the material of 23.01 reads (PerInstanceCustomData 0-2); nothing reads
 	// them until it lands, and they cost nothing to set.
@@ -86,7 +120,9 @@ AVaelenScenery::AVaelenScenery()
 		TEXT("/Game/Vaelen/Materials/M_Flat.M_Flat"));
 	WaterPaint = WaterMaterial.Succeeded() ? WaterMaterial.Object : nullptr;
 	FlatPaint = FlatMaterial.Succeeded() ? FlatMaterial.Object : nullptr;
-	for (UInstancedStaticMeshComponent* Each : {Trunks, Conifers, Crowns, Shrubs})
+	// 23.05: the houses, their roofs, the squares and the wells are tinted
+	// through the same custom data (the walls by the family's culture).
+	for (UInstancedStaticMeshComponent* Each : {Trunks, Conifers, Crowns, Shrubs, Houses, Roofs, Squares, Wells, Pits})
 	{
 		Each->NumCustomDataFloats = 3;
 		if (FlatPaint != nullptr)
@@ -184,10 +220,11 @@ bool AVaelenScenery::DrawFlora(const Vaelen::Scene::Flora& Wood)
 	return true;
 }
 
-bool AVaelenScenery::Draw(const Vaelen::Scene::Ground& G, const Vaelen::Scene::SceneLayout& L)
+bool AVaelenScenery::Draw(const Vaelen::Scene::Ground& G, const Vaelen::Scene::SceneLayout& L,
+						  const Vaelen::Scene::TownLook& T)
 {
 	for (UInstancedStaticMeshComponent* Each :
-		 {Houses, Roofs, Figures, Heads, Company, CompanyHeads, Squares, Roads, Pits})
+		 {Houses, Roofs, Figures, Heads, Company, CompanyHeads, Squares, Roads, Pits, Wells})
 	{
 		Each->ClearInstances();
 	}
@@ -195,13 +232,19 @@ bool AVaelenScenery::Draw(const Vaelen::Scene::Ground& G, const Vaelen::Scene::S
 	{
 		return false;
 	}
-	// A house: 8 m square (HouseHalfCm), 4 m of wall, a 3 m roof on it; the
-	// layout's Z is the ground under its centre.
-	for (const Vaelen::Scene::Placed& H : L.Houses)
+	// A house: 8 m square (HouseHalfCm), 4 m of wall in the family's plaster,
+	// and (23.05) a gabled roof along the ridge Town.h chose - 8.6 m along
+	// it, 3.2 m across, its lower edges sunk into the walls - thatch dark;
+	// the layout's Z is the ground under its centre. A town look that does
+	// not fit the layout (it always does: the subsystem makes both from the
+	// same layout) falls back to a ridge along X and no culture.
+	for (Vaelen::usize I = 0; I < L.Houses.size(); ++I)
 	{
+		const Vaelen::Scene::Placed& H = L.Houses[I];
+		const Vaelen::Scene::HouseLook Look = I < T.Houses.size() ? T.Houses[I] : Vaelen::Scene::HouseLook{};
 		const double X = H.X, Y = H.Y, Z = H.Z;
-		Houses->AddInstance(At(X, Y, Z + 200.0, 8.0, 8.0, 4.0));
-		Roofs->AddInstance(At(X, Y, Z + 400.0, 8.0, 8.0, 3.0));
+		Painted(Houses, At(X, Y, Z + 200.0, 8.0, 8.0, 4.0), WallOf(Look.Culture));
+		Painted(Roofs, Gable(X, Y, Z + 460.0, Look.RidgeAlongY != 0u, 8.6, 3.2), Thatch);
 	}
 	// A figure: a 1.6 m cylinder and a head; the company's a size larger, so
 	// that who can be spoken to is told from who cannot at a glance.
@@ -224,11 +267,13 @@ bool AVaelenScenery::Draw(const Vaelen::Scene::Ground& G, const Vaelen::Scene::S
 	// cylinder sunk into it.
 	for (const Vaelen::Scene::Placed& S : L.Squares)
 	{
-		Squares->AddInstance(At(S.X, S.Y, static_cast<double>(S.Z) + 10.0, 12.0, 12.0, 0.2));
+		Painted(Squares, At(S.X, S.Y, static_cast<double>(S.Z) + 10.0, 12.0, 12.0, 0.2), Stone);
+		// 23.05: a well at its middle - a 1.2 m ring of stone, waist high.
+		Painted(Wells, At(S.X, S.Y, static_cast<double>(S.Z) + 70.0, 1.2, 1.2, 1.0), Stone);
 	}
 	for (const Vaelen::Scene::Placed& P : L.Pits)
 	{
-		Pits->AddInstance(At(P.X, P.Y, static_cast<double>(P.Z) - 60.0, 6.0, 6.0, 1.0));
+		Painted(Pits, At(P.X, P.Y, static_cast<double>(P.Z) - 60.0, 6.0, 6.0, 1.0), Stone);
 	}
 	// A road: a slab per tile, on the ground at the tile's centre.
 	for (const Vaelen::Scene::RoadPath& R : L.Roads)
@@ -351,6 +396,6 @@ void AVaelenScenery::OnViewsTaken()
 	{
 		return;
 	}
-	Draw(World->Scene(), World->Layout());
+	Draw(World->Scene(), World->Layout(), World->Town());
 	DrawFlora(World->Wood());
 }

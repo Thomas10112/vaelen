@@ -82,6 +82,8 @@ struct FVaelenHeld
 	/// houses exclude tiles) at every retaking - cheap, and the scenery
 	/// redraws it only when its digest moved.
 	Vaelen::Scene::Flora Wood;
+	/// 23.05: the houses' roofs and walls, read from the layout and the people.
+	Vaelen::Scene::TownLook Town;
 
 	void TakeAll(const Vaelen::View::PanelKeys& Keys)
 	{
@@ -102,6 +104,7 @@ struct FVaelenHeld
 		{
 			Vaelen::Scene::BuildLayout(Scene_, Frame, Net, Folk, Life, Life.Day + 1u, Laid);
 			Vaelen::Scene::PlantTrees(Scene_, Laid, Life.Region, Vaelen::Scene::FloraRules{}, Wood);
+			Vaelen::Scene::LookOfTown(Scene_, Laid, Folk, Town);
 		}
 	}
 
@@ -453,6 +456,12 @@ const Vaelen::Scene::Flora& UVaelenWorldSubsystem::Wood() const
 {
 	static const Vaelen::Scene::Flora Nothing;
 	return Held ? Held->Wood : Nothing;
+}
+
+const Vaelen::Scene::TownLook& UVaelenWorldSubsystem::Town() const
+{
+	static const Vaelen::Scene::TownLook Nothing;
+	return Held ? Held->Town : Nothing;
 }
 
 uint64 UVaelenWorldSubsystem::Seed() const

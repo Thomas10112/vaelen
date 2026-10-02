@@ -218,6 +218,15 @@ if(Python3_Interpreter_FOUND)
   set_tests_properties(Atlas.SceneLayout128 PROPERTIES TIMEOUT 900
     PASS_REGULAR_EXPRESSION "layout day 100: squares 3, houses 565 \\(unplaced 0\\), figures 779 \\(company 0\\), roads 16 over 282 tiles \\(unrouted 0\\), pits 0; layout 6917612c1344027f\n")
 
+  # 23.05: the roofs and the walls on that same layout - ridges along the
+  # nearest road, walls of the family's culture. Scene.Town ASSERTS the same
+  # digest by another wiring. Printed by --scene-layout beside the layout.
+  add_test(NAME Atlas.SceneTown128
+    COMMAND VaelenAtlas --size 128 --prehistory 60 --years 10 --scene-layout 100
+            --out ${CMAKE_CURRENT_BINARY_DIR}/atlas-scene-town.json)
+  set_tests_properties(Atlas.SceneTown128 PROPERTIES TIMEOUT 900
+    PASS_REGULAR_EXPRESSION "town day 100: houses 565, ridges along y 254 \\(by a road 324\\), of a culture 152 \\(1 cultures\\); town 5bff6255ceba5f21\n")
+
   # 23.02: the wood of region 26 (where the played life of the 128/120 world
   # stands) on that same layout: trees per tile by biome, a quarter on the
   # ring, none on a road, a house, a square or a pit. Scene.Flora ASSERTS the

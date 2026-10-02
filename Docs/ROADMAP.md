@@ -9778,3 +9778,45 @@ input names (`"Input"`, `"A"`, `"B"`, `"Alpha"`, `"Position"`), the
 `ConstB` members of Subtract and Multiply, and `FSavePackageArgs`. Every
 engine-side check passes (parse 26 TUs, fence, status, ledger, modules).
 
+### 23.05 built, 2026-10-02: roofs that face their street, walls of their family
+
+Not as section 29 wrote it: it said `MeasureLayout` would gain the roof's
+axis and its pin would move once. The layout's digest is pinned in the
+replays too (`6e23ade67f848db7` on the walk of 15.10, `Replay.Walked`) and
+every gate that prints the scene, so a byte added to `Placed` would re-pin
+the lot for a roof. Instead `Vaelen/Scene/Town.h` (pure, VALIDATED
+headless) reads the roof and the wall FROM the layout and the people, by
+functions beside it, digested on their own and nothing of the layout
+moved: `RidgeOf` runs a house's ridge along the nearest road tile within
+two of its own (the road's direction there, the way to its next tile; ties
+on the lower index) and, with no road near, along an axis hashed from the
+house's key - a street is lined with gables, a lone farm faces whichever
+way it was built; `CultureOfHouse` is the family's lowest-indexed living
+member's culture, 0 for a coarse region's house or a family nobody living
+is of; `LookOfTown` both for every house; `MeasureTown` and `TownLine`
+(`LogVaelenScene: AELVOR S seed X town day D: houses H, ridges along y Y
+(by a road R), of a culture C (K cultures); town <16 hex>`), printed by
+the Atlas beside every layout line and by `Vaelen.Scene`.
+
+Measured on the sixty-year world, day 100: 565 houses, 254 ridges along Y,
+324 set by a road, 152 of a culture (one culture - the 128 world after
+seventy years has one), town `5bff6255ceba5f21`, pinned in `Scene.Town`
+and `Atlas.SceneTown128`. `Scene.Town` holds every house to an
+independent search (the nearest road tile within reach and its axis; the
+family's first living member), the one-house functions to the whole-town
+one, the same bytes twice, and two CONTROLs: a layout with its roads
+removed sets no ridge by a road and leaves every hashed ridge where it
+was (a road sets a ridge and never moves another); a people view with
+nobody gives no wall a culture and moves no ridge. Shown red on purpose
+with every road-set ridge turned the other way, green with it put back.
+
+The engine side (parsed, not built - sitting S5): the subsystem keeps the
+town beside the layout (`Town()`); the scenery draws a house's walls in
+its culture's plaster (six tints by the culture's index, a coarse house
+grey) and a gabled roof - the cube turned 45 degrees about the ridge,
+8.6 m along it and 3.2 m across, its lower edges sunk into the walls,
+thatch dark - a stone well waist-high at every square's middle, the
+squares and pits in stone; all through `M_Flat`'s custom data (23.01).
+The figures stay where the layout put them: moving them to the square's
+edge is a layout change, and the layout is not touched.
+

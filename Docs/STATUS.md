@@ -158,7 +158,11 @@ TASK 23.02 : forests - Scene::PlantTrees VALIDATED headless (Scene.Flora, Atlas.
   DrawFlora UNVERIFIED (engine) until sitting S5. ROADMAP "23.02 built".
 TASK 23.01 : the materials by a WITH_EDITOR commandlet in VaelenWalk (M_Ground, M_Water, M_Flat), the land, the
   water and the wood taking them when on the disk - UNVERIFIED (engine), NOT parsed (editor only): sitting S5
-  runs it and the owner commits the three .uasset. ROADMAP "23.01 built". Next: 23.05 (roofs, towns), 23.04.
+  runs it and the owner commits the three .uasset. ROADMAP "23.01 built".
+TASK 23.05 : roofs and walls - Scene::LookOfTown VALIDATED headless (Scene.Town, Atlas.SceneTown128 pinned
+  5bff6255ceba5f21: 565 houses, 324 ridges by a road, 152 of a culture; shown red on purpose; the layout's
+  digest untouched); the scenery's gables, plaster and wells UNVERIFIED (engine) until S5. ROADMAP "23.05
+  built". Next: 23.04 (the water is M_Water's already; the sea to the ring's horizon), 23.06, 23.07.
 
 TASK (27.fix1) : the host takes a bound life first — DONE 2026-09-29 (headless VALIDATED by Run.Soak's
   new pin 6e9f76c02755513c, predicted by the probe; engine UNVERIFIED). VaelenWorldSubsystem::Begin

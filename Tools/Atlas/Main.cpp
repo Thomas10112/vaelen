@@ -62,6 +62,7 @@
 #include "Vaelen/Scene/Layout.h"
 #include "Vaelen/Scene/Sky.h"
 #include "Vaelen/Scene/Terrain.h"
+#include "Vaelen/Scene/Town.h"
 #include "Vaelen/View/Land.h"
 #include "Vaelen/View/Net.h"
 #include "Vaelen/View/Take.h"
@@ -3569,6 +3570,17 @@ namespace
 					std::printf("%s\n", Line);
 				}
 			}
+			// 23.05: the town's line, as Vaelen.Scene prints it beside the layout's.
+			{
+				Scene::TownLook Town;
+				Scene::LookOfTown(G, Laid, Folk, Town);
+				char TownText[Scene::TownLineBytes];
+				if (Scene::TownLine(RO.Size, RO.Seed, Life.Day + 1u, Scene::MeasureTown(Town), TownText,
+									Scene::TownLineBytes) != 0u)
+				{
+					std::printf("%s\n", TownText);
+				}
+			}
 			// 23.02: the played region's wood, as the engine plants it (Vaelen.Walk).
 			if (Opt.SceneFloraRegion > 0 && Life.Region != 0u)
 			{
@@ -3876,6 +3888,17 @@ namespace
 				0u)
 			{
 				std::printf("%s\n", Line);
+			}
+			// 23.05: the town's roofs and walls, beside the layout - every time it prints.
+			{
+				Scene::TownLook Town;
+				Scene::LookOfTown(G, Laid, Folk, Town);
+				char TownText[Scene::TownLineBytes];
+				if (Scene::TownLine(Opt.Size, Opt.Seed, Day, Scene::MeasureTown(Town), TownText,
+									Scene::TownLineBytes) != 0u)
+				{
+					std::printf("%s\n", TownText);
+				}
 			}
 			// 23.02: the wood of one region on that layout, when asked.
 			if (Opt.SceneFloraRegion > 0)

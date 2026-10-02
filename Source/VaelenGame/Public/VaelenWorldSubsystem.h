@@ -51,6 +51,7 @@
 #include "Vaelen/Scene/Flora.h"
 #include "Vaelen/Scene/Layout.h"
 #include "Vaelen/Scene/Terrain.h"
+#include "Vaelen/Scene/Town.h"
 #include "Vaelen/View/Climate.h"
 #include "Vaelen/View/Land.h"
 #include "Vaelen/View/Net.h"
@@ -197,6 +198,8 @@ public:
 	/// 23.02: the played region's wood, planted on that layout at every
 	/// retaking (Flora.h). The scenery draws it when its digest moved.
 	const Vaelen::Scene::Flora& Wood() const;
+	/// 23.05: every house's ridge and culture (Town.h), beside the layout.
+	const Vaelen::Scene::TownLook& Town() const;
 	/// The world's seed and size, for the lines the walk prints in the Atlas's
 	/// words. 0 before Begin.
 	uint64 Seed() const;

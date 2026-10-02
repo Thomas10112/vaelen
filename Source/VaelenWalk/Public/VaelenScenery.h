@@ -12,9 +12,9 @@
 // a frame, and the instance counts equal the layout line's - Vaelen.Scene
 // prints both, and Session.P19S3 holds them equal.
 //
-// STATUS: UNVERIFIED (engine) since 23.02 (2026-10-02): the wood (DrawFlora,
-// four instanced components, per-instance custom data) is parsed against
-// Tools/EngineShim and not yet built - sitting S5 builds it. Build b1001
+// STATUS: UNVERIFIED (engine) since 23.02 (2026-10-02; 23.01 the materials,
+// 23.05 the roofs along their street, the walls by culture, the wells): all
+// parsed against Tools/EngineShim and not yet built - sitting S5 builds it. Build b1001
 // (d96a418) compiled the 19.11 scenery as it stood.
 #pragma once
 
@@ -23,6 +23,7 @@
 #include "Vaelen/Scene/Flora.h"
 #include "Vaelen/Scene/Layout.h"
 #include "Vaelen/Scene/Terrain.h"
+#include "Vaelen/Scene/Town.h"
 
 #include "VaelenScenery.generated.h"
 
@@ -41,7 +42,7 @@ public:
 
 	/// Draws the layout over the ground: every instance cleared and placed
 	/// again. Returns false when a shape could not be found on this engine.
-	bool Draw(const Vaelen::Scene::Ground& G, const Vaelen::Scene::SceneLayout& L);
+	bool Draw(const Vaelen::Scene::Ground& G, const Vaelen::Scene::SceneLayout& L, const Vaelen::Scene::TownLook& T);
 
 	/// The water once: the sea plane over the whole map at 0, and a quad per
 	/// lake tile at its surface. The map does not move, so neither does this.
@@ -80,6 +81,7 @@ private:
 	UInstancedStaticMeshComponent* Squares = nullptr;
 	UInstancedStaticMeshComponent* Roads = nullptr;
 	UInstancedStaticMeshComponent* Pits = nullptr;
+	UInstancedStaticMeshComponent* Wells = nullptr; ///< 23.05: one on every square
 	UProceduralMeshComponent* Water = nullptr;
 	UInstancedStaticMeshComponent* Trunks = nullptr;
 	UInstancedStaticMeshComponent* Conifers = nullptr;

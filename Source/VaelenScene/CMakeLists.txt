@@ -10,6 +10,7 @@ set(VAELEN_SCENE_PUBLIC_HEADERS
   Public/Vaelen/Scene/Layout.h
   Public/Vaelen/Scene/Sky.h
   Public/Vaelen/Scene/Flora.h
+  Public/Vaelen/Scene/Town.h
 )
 
 set(VAELEN_SCENE_SOURCES
@@ -18,6 +19,7 @@ set(VAELEN_SCENE_SOURCES
   Private/Layout.cpp
   Private/Sky.cpp
   Private/Flora.cpp
+  Private/Town.cpp
   Private/Vaelen/Scene/LineWriter.h
 )
 
