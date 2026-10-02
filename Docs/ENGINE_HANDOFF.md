@@ -622,8 +622,17 @@ that does not go away, a line that differs.
 
 ## PHASE 23 - sitting S5 (task 23.03): the light and the air
 
-The same walk as S2/S4, lit. Build the commit of 23.03 or later (found by
-subject, `^23.03 `), rev-parse first. Thirty-three shim names are compiled
+The same walk as S2/S4, lit. Build the TIP of the branch (every task of
+Phase 23 is on it; `git checkout origin/claude/vaelen-master-prompt-aw7zqj`),
+rev-parse first.
+
+(2026-10-02: the WALK is now the default game mode, and the editor opens on
+the game's own empty map (`Config/DefaultEngine.ini`, section 27's Q9). So
+the editor's Play button lands on the title page of the walk: Enter runs
+`Vaelen.Walk 128 120` and the 3D world is drawn around you. Sitting S4
+pressed Play and got the old text-only mode - that is why it showed nothing.
+`-game` standalone is still the better launch for the keys: under
+play-in-editor the editor takes Escape (it stops the play) and F8.) Thirty-three shim names are compiled
 for the first time (ROADMAP "23.03 built"): the ones most likely to be wrong
 are `UPostProcessComponent::bUnbound` (a bitfield in the engine; the shim
 says so), the fog's `SetDirectionalInscatteringColor` and the cloud

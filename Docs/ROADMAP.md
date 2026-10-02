@@ -9883,3 +9883,26 @@ code moved. The run's other 258 entries passed on every leg: Scene.Flora,
 Scene.Town, Atlas.SceneFlora128 and Atlas.SceneTown128 agree on MSVC,
 AppleClang, gcc and clang, debug and release.
 
+### Q9 answered, 2026-10-02: the game opens in the walk
+
+Section 26's question 9 ("should the game open in the walker or on the Phase
+13 map?") is one of the three section 27 lets the proposal answer until the
+owner says otherwise, and the proposal's answer was "the game mode by
+config". Sitting S4 is why it is applied now: the owner pressed Play in the
+editor, got `VaelenUI.VaelenGameMode` (the text page, Enter running
+`Vaelen.Play`), and so saw no ground, no sky and none of Phase 23 - while
+asking, the same day, for "du visuel 3d bien incroyable". Two lines of
+`Config/DefaultEngine.ini`:
+
+| line | before | after | why |
+|---|---|---|---|
+| `GlobalDefaultGameMode` | `/Script/VaelenUI.VaelenGameMode` | `/Script/VaelenWalk.VaelenWalkGameMode` | Enter on the title page runs `Vaelen.Walk 128 120` (the walk controller's `NewWorldLines`); the walker is the pawn, the page and every key of 14.09 still there |
+| `EditorStartupMap` | `/Engine/Maps/Templates/OpenWorld` | `/Engine/Maps/Entry` | Play in the editor plays the open level; on the OpenWorld template that is a landscape, a sun and a sky of its own under ours |
+
+The text mode is one URL away (`Entry?game=/Script/VaelenUI.VaelenGameMode`)
+and the change is one revert. Nothing headless reads either line
+(`check_cook.py` reads `GameDefaultMap`, untouched; its self-test holds).
+CI run 352 (82222d9): ten legs of eleven green, the eleventh (linux-clang-
+debug) ended at 151 minutes of its 180 with the Test step still running and
+no log to download - a lost runner; re-run once.
+

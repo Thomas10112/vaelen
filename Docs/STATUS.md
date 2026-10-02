@@ -168,6 +168,9 @@ TASK 23.06 : grass under foot - blades on a hashed lattice within 60 m of the wa
   fourth), replanted by the walk's one presentation clock (a half-second timer) - UNVERIFIED (engine) until S5.
 TASK 23.07 : Vaelen.Shot <name> writes the picture and prints its sky line; Docs/Shots/README.md. UNVERIFIED
   (engine) until S5. ROADMAP "23.04, 23.06, 23.07 built". PHASE 23: every task written; S5 decides.
+Q9 (start mode) : ANSWERED 2026-10-02 by the proposal (section 27) - the walk is the default game mode and the
+  editor opens on the game's empty map, so Play shows the 3D world. Config/DefaultEngine.ini, two lines,
+  one revert. ROADMAP "Q9 answered".
 
 TASK (27.fix1) : the host takes a bound life first — DONE 2026-09-29 (headless VALIDATED by Run.Soak's
   new pin 6e9f76c02755513c, predicted by the probe; engine UNVERIFIED). VaelenWorldSubsystem::Begin
