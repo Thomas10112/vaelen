@@ -26,6 +26,8 @@
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/PlayerController.h"
 #include "HAL/IConsoleManager.h"
+#include "Misc/Paths.h"
+#include "UnrealClient.h"
 #include "Vaelen/Scene/Fence.h"
 #include "Vaelen/Scene/Flora.h"
 #include "Vaelen/Scene/Layout.h"
@@ -343,8 +345,8 @@ namespace
 			const AVaelenScenery::FDrawn D = Scenery->Drawn();
 			UE_LOG(LogVaelenWalk, Log,
 				   TEXT("LogVaelenWalk: drawn houses %d figures %d (company %d) squares %d road tiles %d pits %d "
-						"trees %d"),
-				   D.Houses, D.Figures, D.Company, D.Squares, D.RoadTiles, D.Pits, D.Trees);
+						"trees %d blades %d"),
+				   D.Houses, D.Figures, D.Company, D.Squares, D.RoadTiles, D.Pits, D.Trees, D.Blades);
 		}
 	}
 
@@ -368,12 +370,48 @@ namespace
 			return;
 		}
 		const FVaelenLook L = Args.Num() > 0 ? Sky->SetLook(NumberAt(Args, 0, 1)) : Sky->Look();
+		// 23.06: level 0 has no grass either.
+		if (AVaelenScenery* Scenery = SceneryOf(World_); Scenery != nullptr && Args.Num() > 0)
+		{
+			Scenery->SetGrass(L.Level != 0);
+		}
 		UE_LOG(LogVaelenWalk, Log,
 			   TEXT("LogVaelenWalk: LogVaelenLook: level %d: clouds %s, volumetric fog %s, ambient occlusion %.1f, "
 					"exposure %.1f-%.1f lux, bloom %.1f"),
 			   L.Level, L.bClouds ? TEXT("on") : (L.Level == 2 ? TEXT("no material") : TEXT("off")),
 			   L.bVolumetricFog ? TEXT("on") : TEXT("off"), L.AmbientOcclusion, L.ExposureMin, L.ExposureMax, L.Bloom);
 	}
+
+	/// 23.07: a screenshot by name, with the sky line beside it in the log, so
+	/// the picture and the digest of the world it shows land together.
+	void Shot(const TArray<FString>& Args, UWorld* World_)
+	{
+		UVaelenWorldSubsystem* World = Held(World_);
+		if (World == nullptr || !World->Begun() || Args.Num() == 0)
+		{
+			UE_LOG(LogVaelenWalk, Warning, TEXT("LogVaelenWalk: Vaelen.Shot <name>, on a begun world"));
+			return;
+		}
+		FString Name = Args[0];
+		Name += TEXT(".png");
+		const FString File = FPaths::Combine(FPaths::ScreenShotDir(), Name);
+		FScreenshotRequest::RequestScreenshot(File, false, false);
+		bool bEquatorIsPlusY = true;
+		const uint32 Row = CentroidRow(*World, bEquatorIsPlusY);
+		const Vaelen::Scene::SkyStats Sky =
+			Vaelen::Scene::MeasureSky(World->Scene(), World->Climate(), World->Life(), Row);
+		char Line[Vaelen::Scene::SkyLineBytes];
+		if (Vaelen::Scene::SkyLine(static_cast<uint32>(World->Size()), World->Seed(), World->Climate().Day + 1u, Sky,
+								   Line, Vaelen::Scene::SkyLineBytes) != 0u)
+		{
+			UE_LOG(LogVaelenWalk, Log, TEXT("LogVaelenWalk: shot %s of %s"), *File, ANSI_TO_TCHAR(Line));
+		}
+	}
+
+	FAutoConsoleCommandWithWorldAndArgs GShot(TEXT("Vaelen.Shot"),
+											  TEXT("A screenshot to Saved/Screenshots/<name>.png, its sky line in "
+												   "the log. Vaelen.Shot <name>"),
+											  FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Shot));
 
 	FAutoConsoleCommandWithWorldAndArgs GLook(TEXT("Vaelen.Look"),
 											  TEXT("The look level of the sky, 0 (the T400 at ground level) to 2 (the "

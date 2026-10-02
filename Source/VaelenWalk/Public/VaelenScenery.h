@@ -20,6 +20,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "TimerManager.h"
 #include "Vaelen/Scene/Flora.h"
 #include "Vaelen/Scene/Layout.h"
 #include "Vaelen/Scene/Terrain.h"
@@ -55,6 +56,16 @@ public:
 	/// by kind) for the material 23.01 brings; the engine's default until
 	/// then. Redrawn only when the wood's digest moved.
 	bool DrawFlora(const Vaelen::Scene::Flora& Wood);
+	/// 23.06: the grass under foot - blades (crossed planes, M_Leaf) on hashed
+	/// points of a 1.5 m lattice within 60 m of the walker, on land of a biome
+	/// that grows it, tinted by the biome and whitened by the day's snow;
+	/// replanted when the walker has moved 20 m from where they were
+	/// planted, by the ONE presentation clock of the walk (a half-second
+	/// looping timer that reads the walker's position and nothing of the
+	/// world). At most GrassCap blades. Off at Vaelen.Look 0.
+	void SetGrass(bool bOn);
+	bool Grass() const { return bGrass; }
+	static constexpr int32 GrassCap = 6000;
 	/// What stands drawn, for the line Vaelen.Scene prints beside the layout's.
 	struct FDrawn
 	{
@@ -65,11 +76,16 @@ public:
 		int32 RoadTiles = 0;
 		int32 Pits = 0;
 		int32 Trees = 0;
+		int32 Blades = 0;
 	};
 	FDrawn Drawn() const;
 
 	/// Bound to the subsystem's OnViewsTaken by Vaelen.Walk: the layout of the day.
 	void OnViewsTaken();
+
+protected:
+	/// 23.06: starts the grass timer.
+	virtual void BeginPlay() override;
 
 private:
 	UInstancedStaticMeshComponent* Houses = nullptr;
@@ -81,7 +97,14 @@ private:
 	UInstancedStaticMeshComponent* Squares = nullptr;
 	UInstancedStaticMeshComponent* Roads = nullptr;
 	UInstancedStaticMeshComponent* Pits = nullptr;
-	UInstancedStaticMeshComponent* Wells = nullptr; ///< 23.05: one on every square
+	UInstancedStaticMeshComponent* Wells = nullptr;	 ///< 23.05: one on every square
+	UInstancedStaticMeshComponent* Blades = nullptr; ///< 23.06: the grass
+	FTimerHandle GrassTimer;
+	FVector GrassAt = FVector(0.0, 0.0, 0.0); ///< where the grass was last planted
+	bool bGrass = true;
+	bool bGrassPlanted = false;
+	/// The timer's call: replants when the walker has moved far enough.
+	void Regrow();
 	UProceduralMeshComponent* Water = nullptr;
 	UInstancedStaticMeshComponent* Trunks = nullptr;
 	UInstancedStaticMeshComponent* Conifers = nullptr;

@@ -639,8 +639,8 @@ verbatim and its module.
    "<UE_5.6>\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "<repo>\Vaelen.uproject" -run=VaelenMaterials
    ```
    Bring back its `LogVaelenMaterials:` lines (one per material, then
-   `3 of 3 materials saved`). It writes `Content\Vaelen\Materials\M_Ground.uasset`,
-   `M_Water.uasset`, `M_Flat.uasset`: COMMIT AND PUSH THOSE THREE (they are
+   `4 of 4 materials saved`). It writes `Content\Vaelen\Materials\M_Ground.uasset`,
+   `M_Water.uasset`, `M_Flat.uasset`, `M_Leaf.uasset`: COMMIT AND PUSH THOSE FOUR (they are
    binary, tens of kilobytes; `git add Content/Vaelen/Materials` then
    commit on the branch) - only your machine can write them, and the
    package of 22.03 ships grey without them. A `dir Content\Vaelen\Materials`
@@ -669,10 +669,13 @@ verbatim and its module.
    which level the package ships at.
 4. Space five or six times (the day turns, the sun moves with the life's
    hours): a second screenshot beside its sky line, from the same spot.
-5. Bring back the whole `Saved\Logs\Vaelen.log`, rev-parse first, and the
-   screenshots named `s5-dawn.png`, `s5-day.png` (`Saved\Screenshots\`,
-   F9 is the stream, so use the engine's `Shot` console command or
-   `HighResShot 1`).
+5. The pictures (23.07): `Vaelen.Shot s5-dawn` right after Enter (the
+   grass around you, the wood, a town if one is near) and `Vaelen.Shot
+   s5-day` after step 4's day turns; each prints `LogVaelenWalk: shot
+   <file> of LogVaelenScene: ... sky ...` - the picture and its line. They
+   land in `Saved\Screenshots\<platform>\`. Bring back the whole
+   `Saved\Logs\Vaelen.log`, rev-parse first, and the two PNGs: they go
+   under `Docs/Shots/` with their lines (its README says how).
 
 ## What the kernel half already hands you
 

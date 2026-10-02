@@ -9820,3 +9820,45 @@ squares and pits in stone; all through `M_Flat`'s custom data (23.01).
 The figures stay where the layout put them: moving them to the square's
 edge is a layout change, and the layout is not touched.
 
+### 23.04, 23.06, 23.07 built, 2026-10-02: the water as it stands, grass under foot, the screenshot gate
+
+**23.04 closes with no code.** Section 29 asked for a water that reads as
+water and a sea to the ring's horizon: 23.01's `M_Water` (translucent,
+smooth, seven tenths opaque, the vertex colour) is on both sections since
+that commit, and the sea plane was already one quad over the whole map,
+half a tile past its edge (19.11) - sixteen kilometres from the middle,
+far beyond the haze. Nothing to add, nothing to pin: the water is geometry
+of the scenery alone and has no digest.
+
+**23.06, the grass** (engine, parsed, not built): `AVaelenScenery` plants
+blades on hashed points of a 1.5 m lattice within 60 m of the walker - the
+engine's plane stood up and scaled (35 to 80 cm, a quarter as wide), two
+crossed per point, on land of a biome that grows grass (none on ice,
+desert or water; one in four cells on tundra and alpine, up to four in
+four on grassland), tinted by the biome and whitened by the day's snow
+(`Scene::SnowOf` on the climate leaf), through `M_Leaf` - the fourth
+material of the commandlet, masked to a taper, two-sided, bent by a sine
+of time and world x times the blade's height in the world position
+offset, nothing on the CPU per frame. At most 6,000 blades. THE ONE
+PRESENTATION CLOCK OF THE WALK: a half-second looping timer reads where
+the walker stands and replants when they have moved 20 m; it reads nothing
+of the world and turns nothing (ADR-0138 is about the world's day; the
+fence's words are untouched, and this is said here so nobody later takes
+the timer for a precedent). `Vaelen.Look 0` clears it. The drawn line
+gains `blades N`.
+
+**23.07, the screenshot gate**: `Vaelen.Shot <name>` writes
+`Saved/Screenshots/<name>.png` (`FScreenshotRequest`) and prints `shot
+<file> of <the sky line>` in one log line, so a picture and the digest of
+the world it shows land together. `Docs/Shots/README.md` holds the rule
+for the pictures the sittings bring (dated, named, each beside its line;
+none yet). Five shim beliefs for the three tasks (the timer, the handle,
+the request, the directory).
+
+What sitting S5 now brings back: the build's first error or none; the
+commandlet's four lines; `Vaelen.Look` at 0, 1 and 2 with `stat unit`;
+`Vaelen.Scene`'s five lines; `Vaelen.Shot s5-dawn` at launch and
+`Vaelen.Shot s5-day` after the day turned; the whole log and the two
+pictures. With it, 23.01-23.07 are BUILT or refused, and the phase's
+pictures exist.
+

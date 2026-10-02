@@ -10,10 +10,12 @@
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "MaterialEditingLibrary.h"
 #include "Materials/Material.h"
+#include "Materials/MaterialExpressionAbs.h"
 #include "Materials/MaterialExpressionAdd.h"
 #include "Materials/MaterialExpressionAppendVector.h"
 #include "Materials/MaterialExpressionComponentMask.h"
 #include "Materials/MaterialExpressionConstant.h"
+#include "Materials/MaterialExpressionConstant2Vector.h"
 #include "Materials/MaterialExpressionConstant3Vector.h"
 #include "Materials/MaterialExpressionLinearInterpolate.h"
 #include "Materials/MaterialExpressionMultiply.h"
@@ -21,7 +23,10 @@
 #include "Materials/MaterialExpressionOneMinus.h"
 #include "Materials/MaterialExpressionPerInstanceCustomData.h"
 #include "Materials/MaterialExpressionSaturate.h"
+#include "Materials/MaterialExpressionSine.h"
 #include "Materials/MaterialExpressionSubtract.h"
+#include "Materials/MaterialExpressionTextureCoordinate.h"
+#include "Materials/MaterialExpressionTime.h"
 #include "Materials/MaterialExpressionVertexColor.h"
 #include "Materials/MaterialExpressionVertexNormalWS.h"
 #include "Materials/MaterialExpressionWorldPosition.h"
@@ -163,6 +168,101 @@ namespace
 		return bOk;
 	}
 
+	/// M_Leaf (23.06): a blade of grass on a plane - masked to a taper (the
+	/// quad's corners cut: opaque where |u - 0.5| < 0.45 (1 - v), so the blade
+	/// is wide at its foot and a point at its top), two-sided, tinted by the
+	/// instance's custom data as M_Flat is, and bent by a wind in the
+	/// material alone: a sine of time and world x, times the blade's height,
+	/// into the world position offset - nothing on the CPU per frame.
+	bool BuildLeaf(UMaterial* M)
+	{
+		M->BlendMode = BLEND_Masked;
+		M->TwoSided = true;
+		M->bUsedWithInstancedStaticMeshes = true;
+		// The taper.
+		UMaterialExpressionTextureCoordinate* UV = Node<UMaterialExpressionTextureCoordinate>(M, -1500, 0);
+		UMaterialExpressionComponentMask* U = Node<UMaterialExpressionComponentMask>(M, -1300, -100);
+		U->R = true;
+		U->G = false;
+		U->B = false;
+		U->A = false;
+		UMaterialExpressionComponentMask* V = Node<UMaterialExpressionComponentMask>(M, -1300, 100);
+		V->R = false;
+		V->G = true;
+		V->B = false;
+		V->A = false;
+		UMaterialExpressionSubtract* Centred = Node<UMaterialExpressionSubtract>(M, -1100, -100);
+		Centred->ConstB = 0.5f;
+		UMaterialExpressionAbs* Side = Node<UMaterialExpressionAbs>(M, -950, -100);
+		UMaterialExpressionOneMinus* Down = Node<UMaterialExpressionOneMinus>(M, -1100, 100);
+		UMaterialExpressionMultiply* Width = Node<UMaterialExpressionMultiply>(M, -950, 100);
+		Width->ConstB = 0.45f;
+		UMaterialExpressionSubtract* Inside = Node<UMaterialExpressionSubtract>(M, -800, 0);
+		UMaterialExpressionMultiply* Sharp = Node<UMaterialExpressionMultiply>(M, -650, 0);
+		Sharp->ConstB = 64.0f;
+		UMaterialExpressionSaturate* Cut = Node<UMaterialExpressionSaturate>(M, -500, 0);
+		// The tint, as M_Flat's.
+		UMaterialExpressionPerInstanceCustomData* Channel[3] = {};
+		for (int32 I = 0; I < 3; ++I)
+		{
+			Channel[I] = Node<UMaterialExpressionPerInstanceCustomData>(M, -900, -500 + 150 * I);
+			Channel[I]->DataIndex = I;
+			Channel[I]->DefaultValue = 0.5f;
+		}
+		UMaterialExpressionAppendVector* RG = Node<UMaterialExpressionAppendVector>(M, -700, -450);
+		UMaterialExpressionAppendVector* RGB = Node<UMaterialExpressionAppendVector>(M, -500, -400);
+		UMaterialExpressionConstant* Rough = Scalar(M, 0.9f, -500, -250);
+		// The wind.
+		UMaterialExpressionWorldPosition* Where = Node<UMaterialExpressionWorldPosition>(M, -1500, 400);
+		UMaterialExpressionComponentMask* WX = Node<UMaterialExpressionComponentMask>(M, -1300, 400);
+		WX->R = true;
+		WX->G = false;
+		WX->B = false;
+		WX->A = false;
+		UMaterialExpressionMultiply* Phase = Node<UMaterialExpressionMultiply>(M, -1100, 400);
+		Phase->ConstB = 0.01f;
+		UMaterialExpressionTime* Now = Node<UMaterialExpressionTime>(M, -1100, 550);
+		UMaterialExpressionAdd* Swing = Node<UMaterialExpressionAdd>(M, -950, 450);
+		UMaterialExpressionSine* Wave = Node<UMaterialExpressionSine>(M, -800, 450);
+		UMaterialExpressionMultiply* ByHeight = Node<UMaterialExpressionMultiply>(M, -650, 450);
+		UMaterialExpressionMultiply* Bend = Node<UMaterialExpressionMultiply>(M, -500, 450);
+		Bend->ConstB = 8.0f;
+		UMaterialExpressionConstant2Vector* Flat = Node<UMaterialExpressionConstant2Vector>(M, -500, 600);
+		Flat->R = 0.0f;
+		Flat->G = 0.0f;
+		UMaterialExpressionAppendVector* Offset = Node<UMaterialExpressionAppendVector>(M, -350, 500);
+		bool bOk = true;
+		bOk &= Wire(UV, U, TEXT("Input"));
+		bOk &= Wire(UV, V, TEXT("Input"));
+		bOk &= Wire(U, Centred, TEXT("A"));
+		bOk &= Wire(Centred, Side, TEXT("Input"));
+		bOk &= Wire(V, Down, TEXT("Input"));
+		bOk &= Wire(Down, Width, TEXT("A"));
+		bOk &= Wire(Width, Inside, TEXT("A"));
+		bOk &= Wire(Side, Inside, TEXT("B"));
+		bOk &= Wire(Inside, Sharp, TEXT("A"));
+		bOk &= Wire(Sharp, Cut, TEXT("Input"));
+		bOk &= Property(Cut, MP_OpacityMask);
+		bOk &= Wire(Channel[0], RG, TEXT("A"));
+		bOk &= Wire(Channel[1], RG, TEXT("B"));
+		bOk &= Wire(RG, RGB, TEXT("A"));
+		bOk &= Wire(Channel[2], RGB, TEXT("B"));
+		bOk &= Property(RGB, MP_BaseColor);
+		bOk &= Property(Rough, MP_Roughness);
+		bOk &= Wire(Where, WX, TEXT("Input"));
+		bOk &= Wire(WX, Phase, TEXT("A"));
+		bOk &= Wire(Phase, Swing, TEXT("A"));
+		bOk &= Wire(Now, Swing, TEXT("B"));
+		bOk &= Wire(Swing, Wave, TEXT("Input"));
+		bOk &= Wire(Wave, ByHeight, TEXT("A"));
+		bOk &= Wire(V, ByHeight, TEXT("B"));
+		bOk &= Wire(ByHeight, Bend, TEXT("A"));
+		bOk &= Wire(Bend, Offset, TEXT("A"));
+		bOk &= Wire(Flat, Offset, TEXT("B"));
+		bOk &= Property(Offset, MP_WorldPositionOffset);
+		return bOk;
+	}
+
 	/// One material: a package, the graph, a recompile, the asset registry
 	/// told, the file written. Says what it did, or what refused.
 	bool Make(const TCHAR* Name, bool (*Build)(UMaterial*), int32& Saved)
@@ -214,7 +314,8 @@ int32 UVaelenMaterialsCommandlet::Main(const FString& Params)
 	Make(TEXT("M_Ground"), &BuildGround, Saved);
 	Make(TEXT("M_Water"), &BuildWater, Saved);
 	Make(TEXT("M_Flat"), &BuildFlat, Saved);
-	UE_LOG(LogVaelenMaterials, Display, TEXT("LogVaelenMaterials: %d of 3 materials saved under %s"), Saved, Folder);
-	return Saved == 3 ? 0 : 1;
+	Make(TEXT("M_Leaf"), &BuildLeaf, Saved);
+	UE_LOG(LogVaelenMaterials, Display, TEXT("LogVaelenMaterials: %d of 4 materials saved under %s"), Saved, Folder);
+	return Saved == 4 ? 0 : 1;
 }
 #endif

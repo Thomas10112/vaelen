@@ -67,3 +67,10 @@ Params                                   23.01  used by the commandlet; a name t
 Scalar                                   23.01  used by the commandlet; a name the shim also holds
 UMaterial                                23.01  the material the commandlet builds (the shim knows the type from VaelenLand's Materials/Material.h)
 
+# 23.06 / 23.07 (2026-10-02): the grass on a looping timer, the screenshot by name.
+FTimerHandle                             23.06  the grass timer's handle
+SetTimer                                 23.06  FTimerManager::SetTimer, looping every half second: the walk's one presentation clock
+FScreenshotRequest                       23.07  Vaelen.Shot's request (UnrealClient.h)
+RequestScreenshot                        23.07  FScreenshotRequest::RequestScreenshot(file, no UI, no suffix)
+ScreenShotDir                            23.07  FPaths::ScreenShotDir, where the picture lands
+

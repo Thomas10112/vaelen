@@ -162,7 +162,12 @@ TASK 23.01 : the materials by a WITH_EDITOR commandlet in VaelenWalk (M_Ground, 
 TASK 23.05 : roofs and walls - Scene::LookOfTown VALIDATED headless (Scene.Town, Atlas.SceneTown128 pinned
   5bff6255ceba5f21: 565 houses, 324 ridges by a road, 152 of a culture; shown red on purpose; the layout's
   digest untouched); the scenery's gables, plaster and wells UNVERIFIED (engine) until S5. ROADMAP "23.05
-  built". Next: 23.04 (the water is M_Water's already; the sea to the ring's horizon), 23.06, 23.07.
+  built".
+TASK 23.04 : closed with no code - M_Water (23.01) on both sections, the sea plane already the whole map's.
+TASK 23.06 : grass under foot - blades on a hashed lattice within 60 m of the walker, M_Leaf (the commandlet's
+  fourth), replanted by the walk's one presentation clock (a half-second timer) - UNVERIFIED (engine) until S5.
+TASK 23.07 : Vaelen.Shot <name> writes the picture and prints its sky line; Docs/Shots/README.md. UNVERIFIED
+  (engine) until S5. ROADMAP "23.04, 23.06, 23.07 built". PHASE 23: every task written; S5 decides.
 
 TASK (27.fix1) : the host takes a bound life first — DONE 2026-09-29 (headless VALIDATED by Run.Soak's
   new pin 6e9f76c02755513c, predicted by the probe; engine UNVERIFIED). VaelenWorldSubsystem::Begin

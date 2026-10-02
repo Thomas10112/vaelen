@@ -9,7 +9,8 @@
 //   UnrealEditor-Cmd.exe <repo>\Vaelen.uproject -run=VaelenMaterials
 //
 // and it writes, under Content/Vaelen/Materials/, the three the walk looks
-// for by name (VaelenLand, VaelenScenery): M_Ground, M_Water, M_Flat. The
+// for by name (VaelenLand, VaelenScenery): M_Ground, M_Water, M_Flat and
+// (23.06) M_Leaf, the blade of grass. The
 // code that USES them falls back to the engine's vertex-colour material and
 // its default when they are not on the disk (Tools/check_cook.py counts a
 // /Game path as optional for that reason), so a build without the assets
@@ -44,9 +45,9 @@ class UVaelenMaterialsCommandlet : public UCommandlet
 public:
 	UVaelenMaterialsCommandlet();
 
-	/// Builds and saves the three materials; prints one LogVaelenMaterials
+	/// Builds and saves the four materials; prints one LogVaelenMaterials
 	/// line per material (its expression count and the file written) and a
-	/// last line with the count saved. Returns 0 when all three were saved.
+	/// last line with the count saved. Returns 0 when all four were saved.
 	virtual int32 Main(const FString& Params) override;
 };
 #endif
