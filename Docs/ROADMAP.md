@@ -9862,3 +9862,24 @@ commandlet's four lines; `Vaelen.Look` at 0, 1 and 2 with `stat unit`;
 pictures. With it, 23.01-23.07 are BUILT or refused, and the phase's
 pictures exist.
 
+### Found on CI run 351 (7a24a90), 2026-10-02: two readers of the engine tree not told about 23.01
+
+Ten legs of eleven red, one cause twice: the materials commandlet is a new
+UCLASS whose header lives in `Private/` (editor-only code has no public
+face), and two instruments enumerate the engine tree by their own lists.
+`Kernel.EngineStatusSelfTest` holds the set of files newer than build
+b0921 as a known answer measured from git (NEW_SINCE_B0921) and refused the
+two files it had not been told about - the control doing its job, as its
+docstring says it would; the two are named now. The parse job's "Generated
+stubs" step counts `.generated.h` includes with a grep over `Public/*.h`
+and `Private/*.cpp`, while the parser stubs every include it finds: 15
+against 16, the drift that step exists to catch, in the direction it
+catches it; the grep reads `Private/*.h` now. `verify_fast.sh` runs the
+status CHECK and not its self-test, which is why the tree passed here and
+not there: the self-tests are the suite's (`ctest -R SelfTest`), and the
+rule stands - a new engine file is named in NEW_SINCE_B0921 the day it is
+written. Both reproduced locally and green after the fix; nothing of the
+code moved. The run's other 258 entries passed on every leg: Scene.Flora,
+Scene.Town, Atlas.SceneFlora128 and Atlas.SceneTown128 agree on MSVC,
+AppleClang, gcc and clang, debug and release.
+

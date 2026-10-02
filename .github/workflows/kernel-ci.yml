@@ -134,7 +134,11 @@ jobs:
           # means removing its two globs in the same commit. The lasting fix
           # is for both readers to share one list rather than restate it;
           # that is parse_engine_modules.py's to offer and is not done here.
-          WANTED=$(grep -hoE '[A-Za-z]+\.generated\.h' Source/Vaelen*/Public/*.h Source/Vaelen*/Private/*.cpp \
+          # Private/*.h too (run 351, 2026-10-02): 23.01's commandlet is a UCLASS
+          # whose header lives in Private, the parser stubbed it (16) and this
+          # grep counted 15 - the drift again, in the direction it exists to catch.
+          WANTED=$(grep -hoE '[A-Za-z]+\.generated\.h' Source/Vaelen*/Public/*.h Source/Vaelen*/Private/*.h \
+                   Source/Vaelen*/Private/*.cpp \
                    Tools/ShimProbe/Public/*.h Tools/ShimProbe/Private/*.cpp \
                    | sort -u | wc -l)
           test "$WANTED" -ge 1

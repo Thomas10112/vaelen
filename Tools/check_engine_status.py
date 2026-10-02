@@ -156,6 +156,10 @@ NEW_SINCE_B0921 = {
     # 19.11: the scenery.
     "Source/VaelenWalk/Private/VaelenScenery.cpp",
     "Source/VaelenWalk/Public/VaelenScenery.h",
+    # 23.01: the materials commandlet (editor only; found by CI run 351, 2026-10-02,
+    # which this set had not been told about).
+    "Source/VaelenWalk/Private/VaelenMaterialsCommandlet.cpp",
+    "Source/VaelenWalk/Private/VaelenMaterialsCommandlet.h",
 }
 COMMENTS_ONLY_SINCE_B0921 = {
     "Source/VaelenPresentation/Private/VaelenViewDrawer.cpp",
