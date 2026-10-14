@@ -9906,3 +9906,10 @@ CI run 352 (82222d9): ten legs of eleven green, the eleventh (linux-clang-
 debug) ended at 151 minutes of its 180 with the Test step still running and
 no log to download - a lost runner; re-run once.
 
+### CI made manual, 2026-10-14
+CI run 353 (aa10e99, Q9): eleven legs of eleven green - phase 23 and the
+game-mode change certified on MSVC, AppleClang, gcc and clang. From this
+commit `kernel-ci.yml` runs on `workflow_dispatch` only (the owner's call:
+the goal is now the packaged build, section 27 steps 8 and 10). A phase gate
+that names "the CI matrix" (section 2, clause 1) is met by a run started by
+hand from the Actions tab on the commit to be certified.

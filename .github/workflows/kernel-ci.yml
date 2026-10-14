@@ -5,10 +5,11 @@
 # stay labelled UNVERIFIED.
 name: kernel-ci
 
+# Manual only since 2026-10-14 (the owner: "arrête la CI"). Run it from the
+# Actions tab, "Run workflow", on the branch to check - before a release or
+# after a commit that moves a frozen digest.
 on:
-  push:
-    branches: ["**"]
-  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
